@@ -1,0 +1,61 @@
+plugins {
+    id 'idea'
+    id 'java'
+    id 'net.minecraftforge.gradle' version '6.0.54'
+    id 'org.spongepowered.mixin' version '0.7.38'
+}
+
+group = 'dev.gungang'
+version = '0.1.0'
+base { archivesName = 'gungang-acoustics-1.20.1' }
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+minecraft {
+    mappings channel: 'official', version: '1.20.1'
+    copyIdeResources = true
+    runs {
+        client {
+            workingDirectory project.file('run')
+            property 'forge.logging.console.level', 'info'
+            mods { gungang_acoustics { source sourceSets.main } }
+        }
+        server {
+            workingDirectory project.file('run-server')
+            args '--nogui'
+            mods { gungang_acoustics { source sourceSets.main } }
+        }
+    }
+}
+
+repositories { maven { url = 'https://repo.spongepowered.org/repository/maven-public/' } }
+// Optional local compatibility test dependency; no TaCZ binaries are bundled or required by this mod.
+if (project.hasProperty('taczVersion')) {
+    repositories { flatDir { dirs '.cache/compat' } }
+}
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.20.1-47.4.0'
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    if (project.hasProperty('taczVersion')) {
+        runtimeOnly fg.deobf("local.tacz:tacz-1.20.1:${project.property('taczVersion')}")
+    }
+}
+mixin {
+    add sourceSets.main, 'gungang_acoustics.refmap.json'
+    config 'gungang_acoustics.mixins.json'
+}
+tasks.named('jar', Jar).configure {
+    manifest { attributes(['MixinConfigs': 'gungang_acoustics.mixins.json']) }
+    finalizedBy 'reobfJar'
+}
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+test { useJUnitPlatform() }
+
+// Export only this build's installable, reobfuscated artifact (never stale/dev/source JARs).
+tasks.register('exportJar', Copy) {
+    group = 'build'
+    description = 'Build, test and copy the installable mod JAR into dist.'
+    dependsOn 'build', 'reobfJar'
+    from tasks.named('jar', Jar).flatMap { it.archiveFile }
+    into layout.projectDirectory.dir('dist')
+}
