@@ -10,5 +10,6 @@ public final class GungangAcoustics {
 
     public GungangAcoustics() {
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, AcousticConfig.SPEC);
+        dev.gungang.acoustics.server.GungangNetwork.register();
     }
 }

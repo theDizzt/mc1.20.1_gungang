@@ -5,7 +5,6 @@ import dev.gungang.acoustics.GungangAcoustics;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.PlayerFaceRenderer;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.PlayerModelPart;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.api.distmarker.Dist;
@@ -17,19 +16,26 @@ import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(modid = GungangAcoustics.ID, value = Dist.CLIENT)
 public final class ShooterHud {
-    private static final int WIDTH = 180;
-    private static final int HEIGHT = 88;
+    private static final int WIDTH = 140; // 68px portrait gap + two slots (34 + 4 + 34).
+    private static final int HEIGHT = 64;
+    private static final int HEALTH_WIDTH = Math.round(72 * 3.2f);
+    private static final int HEALTH_HEIGHT = Math.round(14 * 1.6f);
 
-    private static boolean visible(Minecraft mc) {
-        return mc.player != null && mc.level != null && !mc.player.isSpectator()
+    public static boolean visible(Minecraft mc) {
+        return mc.player != null && mc.level != null
                 && !mc.options.hideGui && AcousticConfig.SHOOTER_HUD.get();
     }
 
     @SubscribeEvent
     public static void hideVanilla(RenderGuiOverlayEvent.Pre event) {
         if (!visible(Minecraft.getInstance())) return;
+        if (event.getOverlay().id().equals(VanillaGuiOverlay.POTION_ICONS.id())
+                || event.getOverlay().id().equals(VanillaGuiOverlay.ARMOR_LEVEL.id())
+                || event.getOverlay().id().equals(VanillaGuiOverlay.AIR_LEVEL.id())) event.setCanceled(true);
+        if (Minecraft.getInstance().player.isSpectator()) return;
         var id = event.getOverlay().id();
-        if (id.equals(VanillaGuiOverlay.HOTBAR.id()) || id.equals(VanillaGuiOverlay.PLAYER_HEALTH.id())) {
+        if (id.equals(VanillaGuiOverlay.HOTBAR.id()) || id.equals(VanillaGuiOverlay.PLAYER_HEALTH.id())
+                || id.equals(VanillaGuiOverlay.EXPERIENCE_BAR.id()) || id.equals(VanillaGuiOverlay.FOOD_LEVEL.id())) {
             event.setCanceled(true);
         }
     }
@@ -38,45 +44,120 @@ public final class ShooterHud {
         Minecraft mc = Minecraft.getInstance();
         if (!visible(mc)) return;
         var player = mc.player;
-        // On narrow GUI scales, leave the central food/armor/XP area unobstructed.
-        int bottomPadding = screenWidth < 560 ? 64 : 8;
-        int x = 8, y = screenHeight - HEIGHT - bottomPadding;
+        // Two framebuffer pixels per HUD unit, independent of the Minecraft GUI scale.
+        float scale = (float) (2.0 / mc.getWindow().getGuiScale());
+        screenWidth = mc.getWindow().getWidth() / 2;
+        screenHeight = mc.getWindow().getHeight() / 2;
+        graphics.pose().pushPose();
+        graphics.pose().scale(scale, scale, 1);
+        int x = Math.min(AcousticConfig.HUD_OFFSET_X.get(), Math.max(0, screenWidth - WIDTH));
+        int y = Math.max(0, screenHeight - HEIGHT - AcousticConfig.HUD_OFFSET_Y.get());
         gui.setupOverlayRenderState(true, false);
-        graphics.fill(x, y, x + WIDTH, y + HEIGHT, 0xD9101720);
-        graphics.fill(x, y, x + 2, y + HEIGHT, 0xFF62D9C6);
-        graphics.fill(x + 8, y + 12, x + 48, y + 52, 0xFF36434F);
-        PlayerFaceRenderer.draw(graphics, player.getSkinTextureLocation(), x + 10, y + 14, 36,
+        graphics.fill(x, y + 2, x + 62, y + 64, TeamHud.teamColor(player));
+        PlayerFaceRenderer.draw(graphics, player.getSkinTextureLocation(), x + 3, y + 5, 56,
                 player.isModelPartShown(PlayerModelPart.HAT), false);
-
+        if (!RespawnPortrait.render(graphics, player.getUUID(), x + 3, y + 5, 56) && !player.isDeadOrDying())
+            PortraitEffects.tint(graphics, player, x + 3, y + 5, 56);
+        int detailX = x + 68;
+        HudText.draw(graphics, player.getName().getString(), detailX, y + 19, WIDTH - 68, 0xFFFFFFFF);
         // Slot 1 is always inventory index 0, independent of the player's selected slot.
-        slot(graphics, player.getInventory().getItem(0), x + 64, y + 20,
-                Component.translatable("gungang.hud.slotOne"), player.getInventory().selected == 0);
-        slot(graphics, player.getOffhandItem(), x + 108, y + 20,
-                Component.translatable("gungang.hud.offhand"), false);
+        slot(graphics, player.getInventory().getItem(0), detailX, y + 32, player.getInventory().selected == 0);
+        slot(graphics, player.getOffhandItem(), detailX + 38, y + 32, false);
 
         float health = player.getHealth(), maximum = player.getMaxHealth();
         float fraction = HudHealth.fraction(health, maximum);
-        int color = fraction <= 0.25f ? 0xFFFF6262 : fraction <= 0.5f ? 0xFFFFC45E : 0xFF62D9C6;
+        int color = fraction <= 0.25f ? 0xFFFF9292 : fraction <= 0.5f ? 0xFFFFDC98 : 0xFFF5F5F0;
         String value = HudHealth.label(health, maximum);
-        graphics.drawString(mc.font, Component.translatable("gungang.hud.health"), x + 10, y + 59, 0xFFCED8DF);
-        if (player.getAbsorptionAmount() > 0) {
-            graphics.drawString(mc.font, "+" + HudHealth.number(player.getAbsorptionAmount()), x + 32, y + 59, 0xFFFFD36B);
+        String mode = mc.gameMode != null && mc.gameMode.getPlayerMode() != net.minecraft.world.level.GameType.SURVIVAL
+                ? net.minecraft.network.chat.Component.translatable("gameMode." + mc.gameMode.getPlayerMode().getName()).getString() : "";
+        int sideSpace = mode.isEmpty() ? 8 : Math.round(mc.font.width(mode) * 1.25f) + 12;
+        int barWidth = Math.min(HEALTH_WIDTH, Math.max(4, screenWidth - sideSpace * 2));
+        int barX = (screenWidth - barWidth) / 2;
+        int barY = Math.max(0, screenHeight - HEALTH_HEIGHT - AcousticConfig.HUD_OFFSET_Y.get());
+        // On narrow windows keep the centered bar clear of the portrait and item slots.
+        if (barX < x + WIDTH + 8 && barX + barWidth > x)
+            barY = Math.max(0, y - HEALTH_HEIGHT - 8);
+        CompassHud.render(graphics, barX + barWidth / 2, barY, barWidth, partialTick);
+        panel(graphics, barX, barY, barWidth, HEALTH_HEIGHT, 0xFF60696D, 0x8029353E);
+        var layers = HudHealthBars.layers(player, partialTick);
+        float displayed = layers.absorptionEnd();
+        float filled = (barWidth - 2) * displayed;
+        HudHealthBars.render(graphics, barX + 1, barY + 1, barWidth - 2, HEALTH_HEIGHT - 2, layers, color);
+        HudHealthBars.stripes(graphics, barX + 1, barY + 1, barWidth - 2, HEALTH_HEIGHT - 2, displayed, (player.tickCount + partialTick) / 20.0);
+        int airPercent = Math.round(100f * Math.max(0, Math.min(player.getMaxAirSupply(), player.getAirSupply()))
+                / Math.max(1, player.getMaxAirSupply()));
+        String airLabel = airPercent + "%";
+        int airSpace = player.isInWater()
+                ? Math.min(Math.max(0, barWidth - 6), mc.font.width("100%") + 4) : 0;
+        int healthTextWidth = Math.max(0, barWidth - 6 - airSpace);
+        HudText.health(graphics, value, barX + 3, barY + 1, healthTextWidth, HEALTH_HEIGHT - 2, 0xFFFFFFFF);
+        if (filled > 0) {
+            graphics.enableScissor(Math.round((barX + 1) * scale), Math.round((barY + 1) * scale),
+                    Math.round((barX + 1 + filled) * scale), Math.round((barY + HEALTH_HEIGHT - 1) * scale));
+            HudText.health(graphics, value, barX + 3, barY + 1, healthTextWidth, HEALTH_HEIGHT - 2, 0xFF111820);
+            graphics.disableScissor();
         }
-        graphics.drawString(mc.font, value, x + WIDTH - 10 - mc.font.width(value), y + 59, 0xFFFFFFFF);
-        graphics.fill(x + 10, y + 74, x + WIDTH - 10, y + 80, 0xFF35424E);
-        int filled = Math.round((WIDTH - 20) * fraction);
-        if (filled > 0) graphics.fill(x + 10, y + 74, x + 10 + filled, y + 80, color);
+        if (airSpace > 4) {
+            float airScale = Math.min(1f, (airSpace - 4f) / Math.max(1, mc.font.width(airLabel)));
+            graphics.pose().pushPose();
+            graphics.pose().translate(barX + barWidth - 4, barY + (HEALTH_HEIGHT - 8 * airScale) / 2f, 0);
+            graphics.pose().scale(airScale, airScale, 1);
+            int left = -mc.font.width(airLabel);
+            for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++)
+                if (dx != 0 || dy != 0) graphics.drawString(mc.font, airLabel, left + dx, dy, 0xFF000000, false);
+            graphics.drawString(mc.font, airLabel, left, 0, 0xFF55AAFF, false);
+            graphics.pose().popPose();
+        }
+        int effectX = barX + barWidth - 15 - airSpace;
+        var effects = player.getActiveEffects().stream().filter(e -> e.showIcon())
+                .sorted(java.util.Comparator.comparingInt(e -> net.minecraft.world.effect.MobEffect.getId(e.getEffect()))).toList();
+        int numberSpace = Math.round(mc.font.width(value) * 1.8f) + 10;
+        for (var effect : effects) {
+            if (effectX < barX + numberSpace) break;
+            graphics.blit(effectX, barY + (HEALTH_HEIGHT - 12) / 2, 0, 12, 12,
+                    mc.getMobEffectTextures().get(effect.getEffect()));
+            effectX -= 14;
+        }
+        if (player.getAbsorptionAmount() > 0) {
+            HudText.draw(graphics, "+" + HudHealth.number(player.getAbsorptionAmount()), x + 3, y + 50, 56, 0xFFFFD36B);
+        }
+        if (!mode.isEmpty()) {
+            int modeX = barX + barWidth + 6;
+            int space = screenWidth - modeX - 4;
+            // Fit the complete mode label on smaller windows instead of truncating it away.
+            float textScale = Math.min(1.25f, Math.max(0.5f, (float) space / Math.max(1, mc.font.width(mode))));
+            graphics.pose().pushPose();
+            graphics.pose().translate(modeX, barY + (HEALTH_HEIGHT - 9 * textScale) / 2f, 0);
+            graphics.pose().scale(textScale, textScale, 1);
+            graphics.drawString(mc.font, mode, 0, 0, 0xFFFFFFFF, false);
+            graphics.pose().popPose();
+        }
+        TeamHud.render(graphics, x, y, screenWidth, screenHeight, partialTick);
+        graphics.flush();
+        graphics.pose().popPose();
     }
 
-    private static void slot(GuiGraphics graphics, ItemStack stack, int x, int y, Component label, boolean selected) {
+    private static void slot(GuiGraphics graphics, ItemStack stack, int x, int y, boolean selected) {
         Minecraft mc = Minecraft.getInstance();
-        graphics.drawCenteredString(mc.font, label, x + 14, y - 12, 0xFFCCD7E0);
-        graphics.fill(x, y, x + 28, y + 28, selected ? 0xFF62D9C6 : 0xFF465360);
-        graphics.fill(x + 1, y + 1, x + 27, y + 27, 0xFF1C2833);
+        panel(graphics, x, y, 34, 32, selected ? 0xFFF3F5F6 : 0xFF68737B, 0x801C2833);
         if (!stack.isEmpty()) {
-            graphics.renderItem(stack, x + 6, y + 6);
-            graphics.renderItemDecorations(mc.font, stack, x + 6, y + 6);
+            graphics.pose().pushPose();
+            graphics.pose().translate(x + 5, y + 4, 0);
+            graphics.pose().scale(1.5f, 1.5f, 1);
+            graphics.renderItem(stack, 0, 0);
+            graphics.renderItemDecorations(mc.font, stack, 0, 0);
+            graphics.pose().popPose();
         }
     }
+    public static void panel(GuiGraphics graphics, int x, int y, int width, int height,
+                              int border, int background) {
+        // Keep the opaque border out of the translucent interior.
+        graphics.fill(x, y, x + width, y + 1, border);
+        graphics.fill(x, y + height - 1, x + width, y + height, border);
+        graphics.fill(x, y + 1, x + 1, y + height - 1, border);
+        graphics.fill(x + width - 1, y + 1, x + width, y + height - 1, border);
+        graphics.fill(x + 1, y + 1, x + width - 1, y + height - 1, background);
+    }
+
     private ShooterHud() { }
 }

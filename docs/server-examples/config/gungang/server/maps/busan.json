@@ -1,0 +1,63 @@
+{
+  "id": "busan",
+  "name": "사찰",
+  "description": "제공된 Gungame 데이터팩의 스폰 좌표. 스폰 구역 경계를 확인하고 enabled를 켜세요.",
+  "enabled": false,
+  "timeLimitSeconds": 600,
+  "gameMode": "adventure",
+  "dimension": "minecraft:overworld",
+  "alphaSpawn": {
+    "x": 175.5,
+    "y": 34,
+    "z": -65.5,
+    "yaw": 0,
+    "pitch": 0
+  },
+  "bravoSpawn": {
+    "x": 175.5,
+    "y": 34,
+    "z": 112.5,
+    "yaw": 180,
+    "pitch": 0
+  },
+  "spectatorSpawn": {
+    "x": 13.5,
+    "y": 95,
+    "z": -25.5,
+    "yaw": 90,
+    "pitch": 0
+  },
+  "alphaArea": {
+    "minX": 171,
+    "minY": 33,
+    "minZ": -70,
+    "maxX": 180,
+    "maxY": 39,
+    "maxZ": -61
+  },
+  "bravoArea": {
+    "minX": 171,
+    "minY": 33,
+    "minZ": 108,
+    "maxX": 180,
+    "maxY": 39,
+    "maxZ": 117
+  },
+  "capture": {
+    "name": "사찰 거점",
+    "area": {
+      "minX": 187,
+      "minY": 32,
+      "minZ": 18,
+      "maxX": 198,
+      "maxY": 39,
+      "maxZ": 29
+    },
+    "winningScore": 100,
+    "captureStepTicks": 2,
+    "scoreIntervalTicks": 30
+  },
+  "onPrepare": [],
+  "onStart": [],
+  "onEnd": []
+}

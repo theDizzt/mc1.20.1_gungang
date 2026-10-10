@@ -4,6 +4,16 @@ package dev.gungang.acoustics.physics;
 public final class AcousticMath {
     public static double amplitude(double decibels) { return Math.pow(10, -Math.max(0, decibels) / 20); }
 
+    /** Smooth approach to the user floor; additional walls remain distinguishable rather than hard-clipping. */
+    public static double wallGain(double lossDb, double minimumPercent) {
+        return withVolumeFloor(amplitude(lossDb), minimumPercent);
+    }
+
+    public static double withVolumeFloor(double gain, double minimumPercent) {
+        double floor = Math.max(0, Math.min(1, minimumPercent / 100));
+        return floor + (1 - floor) * Math.max(0, Math.min(1, gain));
+    }
+
     public static double distanceGain(double distance, double range, double reference, double rolloff) {
         if (range <= 0 || distance >= range) return 0;
         double pressure = reference / (reference + rolloff * Math.max(0, distance - reference));

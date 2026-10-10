@@ -1,0 +1,44 @@
+[
+  {
+    "id": "reference_1",
+    "itemNbt": "{\"id\":\"tacz:modern_kinetic_gun\",\"Count\":1b,\"tag\":{\"HasBulletInBarrel\":1b,\"GunFireMode\":\"BURST\",\"GunId\":\"deep_rock_galactic:zkf\",\"GunCurrentAmmoCount\":30,\"display\":{\"Name\":\"{\\\"text\\\":\\\"Zhukov NUK17\\\"}\"}}}",
+    "name": "deep_rock_galactic:zkf",
+    "description": "서버 참고 자료의 실제 총기 NBT. 부착물 정보 포함. 표시 이름과 설명을 편집하세요.",
+    "specs": {
+      "damage": "설정 필요",
+      "accuracy": "설정 필요",
+      "stability": "설정 필요",
+      "range": "설정 필요",
+      "fireRate": "설정 필요"
+    },
+    "usage": "서버의 TaCZ 키 설정에 따라 사용합니다."
+  },
+  {
+    "id": "reference_2",
+    "itemNbt": "{\"id\":\"tacz:modern_kinetic_gun\",\"Count\":1b,\"tag\":{\"HasBulletInBarrel\":1b,\"GunFireMode\":\"SEMI\",\"GunId\":\"bf1:sw_model3\",\"GunCurrentAmmoCount\":6}}",
+    "name": "bf1:sw_model3",
+    "description": "서버 참고 자료의 실제 총기 NBT. 부착물 정보 포함. 표시 이름과 설명을 편집하세요.",
+    "specs": {
+      "damage": "설정 필요",
+      "accuracy": "설정 필요",
+      "stability": "설정 필요",
+      "range": "설정 필요",
+      "fireRate": "설정 필요"
+    },
+    "usage": "서버의 TaCZ 키 설정에 따라 사용합니다."
+  },
+  {
+    "id": "reference_3",
+    "itemNbt": "{\"id\":\"tacz:modern_kinetic_gun\",\"Count\":1b,\"tag\":{\"HasBulletInBarrel\":1b,\"GunFireMode\":\"SEMI\",\"GunId\":\"tacz:mk14\",\"AttachmentSCOPE\":{\"id\":\"tacz:attachment\",\"Count\":1b,\"tag\":{\"AttachmentId\":\"tacz:scope_hamr\"}},\"GunCurrentAmmoCount\":1}}",
+    "name": "tacz:mk14",
+    "description": "서버 참고 자료의 실제 총기 NBT. 부착물 정보 포함. 표시 이름과 설명을 편집하세요.",
+    "specs": {
+      "damage": "설정 필요",
+      "accuracy": "설정 필요",
+      "stability": "설정 필요",
+      "range": "설정 필요",
+      "fireRate": "설정 필요"
+    },
+    "usage": "서버의 TaCZ 키 설정에 따라 사용합니다."
+  }
+]

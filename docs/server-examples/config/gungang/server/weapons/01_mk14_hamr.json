@@ -1,0 +1,15 @@
+{
+  "id": "mk14_hamr",
+  "category": "지정사수소총",
+  "itemNbt": "{\"id\":\"tacz:modern_kinetic_gun\",\"Count\":1b,\"tag\":{\"HasBulletInBarrel\":1b,\"GunFireMode\":\"SEMI\",\"GunId\":\"tacz:mk14\",\"AttachmentSCOPE\":{\"id\":\"tacz:attachment\",\"Count\":1b,\"tag\":{\"AttachmentId\":\"tacz:scope_hamr\"}},\"GunCurrentAmmoCount\":1}}",
+  "name": "MK14 / HAMR",
+  "description": "서버 참고 자료의 실제 총기 NBT. 부착물 정보 포함. 표시 이름과 설명을 편집하세요.",
+  "specs": {
+    "damage": "설정 필요",
+    "accuracy": "설정 필요",
+    "stability": "설정 필요",
+    "range": "설정 필요",
+    "fireRate": "설정 필요"
+  },
+  "usage": "서버의 TaCZ 키 설정에 따라 사용합니다."
+}

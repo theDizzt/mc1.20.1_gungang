@@ -5,9 +5,10 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class HudHealthTest {
     @Test void displaysHealthPointsAndModifiedMaximumHealth() {
-        assertEquals("20/20", HudHealth.label(20, 20));
-        assertEquals("7.5/40", HudHealth.label(7.5f, 40));
-        assertEquals("0/20", HudHealth.label(0, 20));
+        assertEquals("20", HudHealth.label(20, 20));
+        assertEquals("8", HudHealth.label(7.5f, 40));
+        assertEquals("1", HudHealth.label(0.1f, 20));
+        assertEquals("0", HudHealth.label(0, 20));
         assertEquals(0.1875f, HudHealth.fraction(7.5f, 40));
     }
     @Test void keepsTheBarInsideItsBounds() {

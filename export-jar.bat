@@ -1,6 +1,6 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
-title Gungang Acoustics - Export JAR
+title GunGangRealistic - Export JAR
 set "RESULT=1"
 set "BUILD_JAVA_HOME="
 pushd "%~dp0"

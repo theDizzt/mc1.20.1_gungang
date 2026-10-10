@@ -4,15 +4,15 @@ license="All Rights Reserved"
 
 [[mods]]
 modId="gungang_acoustics"
-version="0.1.0"
-displayName="Gungang Acoustics"
+version="${modVersion}"
+displayName="GunGangRealistic"
 displayTest="IGNORE_ALL_VERSION"
-description='''Client-side distance attenuation, material transmission and approximate sound diffraction.'''
+description='''FPS acoustics and HUD, with optional server acoustic policy, arena lobby and loadout selection.'''
 
 [[dependencies.gungang_acoustics]]
 modId="forge"
 mandatory=true
-versionRange="[47.4.0,48)"
+versionRange="[47.3.22,48)"
 ordering="NONE"
 side="BOTH"
 

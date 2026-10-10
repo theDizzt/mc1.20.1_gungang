@@ -1,0 +1,63 @@
+{
+  "id": "ilios",
+  "name": "일히오스",
+  "description": "제공된 Gungame 데이터팩의 스폰 좌표. 스폰 구역 경계를 확인하고 enabled를 켜세요.",
+  "enabled": false,
+  "timeLimitSeconds": 600,
+  "gameMode": "adventure",
+  "dimension": "minecraft:overworld",
+  "alphaSpawn": {
+    "x": 98.5,
+    "y": 34,
+    "z": -12.5,
+    "yaw": 0,
+    "pitch": 0
+  },
+  "bravoSpawn": {
+    "x": -101.5,
+    "y": 34,
+    "z": -12.5,
+    "yaw": 0,
+    "pitch": 0
+  },
+  "spectatorSpawn": {
+    "x": 13.5,
+    "y": 95,
+    "z": -25.5,
+    "yaw": 90,
+    "pitch": 0
+  },
+  "alphaArea": {
+    "minX": 94,
+    "minY": 33,
+    "minZ": -17,
+    "maxX": 103,
+    "maxY": 39,
+    "maxZ": -8
+  },
+  "bravoArea": {
+    "minX": -106,
+    "minY": 33,
+    "minZ": -17,
+    "maxX": -97,
+    "maxY": 39,
+    "maxZ": -8
+  },
+  "capture": {
+    "name": "일히오스 거점",
+    "area": {
+      "minX": -10,
+      "minY": 32,
+      "minZ": 60,
+      "maxX": 7,
+      "maxY": 38,
+      "maxZ": 71
+    },
+    "winningScore": 100,
+    "captureStepTicks": 2,
+    "scoreIntervalTicks": 30
+  },
+  "onPrepare": [],
+  "onStart": [],
+  "onEnd": []
+}
