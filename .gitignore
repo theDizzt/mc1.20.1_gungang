@@ -8,3 +8,4 @@ run-server/
 *.iml
 .vscode/
 logs/
+server_resource/

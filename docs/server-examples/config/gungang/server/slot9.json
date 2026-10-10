@@ -1,0 +1,7 @@
+{
+  "id": "food",
+  "itemNbt": "{id:\"minecraft:cooked_beef\",Count:16b}",
+  "name": "전투 식량",
+  "description": "핫바 9번 기본 지급 예시",
+  "usage": "우클릭으로 먹습니다."
+}

@@ -1,0 +1,8 @@
+{
+  "id": "sw_model3",
+  "category": "권총",
+  "itemNbt": "{\"id\":\"tacz:modern_kinetic_gun\",\"Count\":1b,\"tag\":{\"HasBulletInBarrel\":1b,\"GunFireMode\":\"SEMI\",\"GunId\":\"bf1:sw_model3\",\"GunCurrentAmmoCount\":6}}",
+  "name": "S&W Model 3",
+  "description": "서버 참고 자료의 실제 총기 NBT. 부착물 정보 포함. 표시 이름과 설명을 편집하세요.",
+  "usage": "서버의 TaCZ 키 설정에 따라 사용합니다."
+}

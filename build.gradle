@@ -6,8 +6,10 @@ plugins {
 }
 
 group = 'dev.gungang'
-version = '0.1.0'
-base { archivesName = 'gungang-acoustics-1.20.1' }
+version = java.time.LocalDate.now(java.time.ZoneId.of('Asia/Seoul'))
+        .format(java.time.format.DateTimeFormatter.ofPattern('ddMMMyy', java.util.Locale.ENGLISH))
+        .toLowerCase(java.util.Locale.ROOT)
+base { archivesName = 'gungang-realistic_1.20.1' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
 minecraft {
@@ -45,10 +47,20 @@ mixin {
     config 'gungang_acoustics.mixins.json'
 }
 tasks.named('jar', Jar).configure {
+    archiveFileName = "gungang-realistic_1.20.1_${project.version}.jar"
     manifest { attributes(['MixinConfigs': 'gungang_acoustics.mixins.json']) }
     finalizedBy 'reobfJar'
 }
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+tasks.named('processResources', ProcessResources).configure {
+    inputs.property 'modVersion', project.version
+    filesMatching('META-INF/mods.toml') { expand(modVersion: project.version) }
+    from('font') {
+        include 'Galmuri11-Bold.ttf'
+        into 'assets/gungang_acoustics/font'
+        rename { it.toLowerCase(java.util.Locale.ROOT).replace(' ', '-') }
+    }
+}
 test { useJUnitPlatform() }
 
 // Export only this build's installable, reobfuscated artifact (never stale/dev/source JARs).

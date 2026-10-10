@@ -2,36 +2,49 @@ package dev.gungang.acoustics.client;
 
 import dev.gungang.acoustics.AcousticConfig;
 import dev.gungang.acoustics.physics.AcousticMath;
+import dev.gungang.acoustics.physics.BodyVisibility;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Map;
+import java.util.WeakHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.HitResult;
 
 /** Bounded geometric acoustics approximation. All level access must stay on the client thread. */
 public final class WorldAcoustics {
     public record Trace(double lossDb, Vec3 firstObstacle) { }
     public record Transmission(double gain, double highFrequency) { }
+    private record BodyPath(long tick, Vec3 listener, Vec3 camera, AABB bounds, Trace trace) { }
+    private static final Map<Player, BodyPath> BODY_PATHS = new WeakHashMap<>();
 
-    public static Transmission evaluate(Level level, Vec3 source, Vec3 listener, boolean allowDiffraction) {
+    public static Transmission evaluate(Level level, Vec3 source, Vec3 listener, Vec3 viewPosition, Player emitter, boolean allowDiffraction) {
         double distance = source.distanceTo(listener);
-        if (distance < 0.05 || distance > AcousticConfig.MAX_TRACE_DISTANCE.get()) return new Transmission(1, 1);
+        if (distance < 0.05 || distance > dev.gungang.acoustics.server.AcousticPolicy.get(AcousticConfig.MAX_TRACE_DISTANCE)) return new Transmission(1, 1);
         Trace direct = trace(level, source, listener);
+        if (emitter != null) {
+            Trace body = bodyTrace(level, emitter, listener, viewPosition);
+            if (body.lossDb() <= 0.001) return new Transmission(1, 1);
+            if (body.lossDb() < direct.lossDb()) direct = body;
+        }
         double directGain = AcousticMath.amplitude(direct.lossDb());
         double diffracted = 0;
-        if (allowDiffraction && direct.firstObstacle() != null && direct.lossDb() > 0.1 && AcousticConfig.DIFFRACTION.get()) {
+        if (allowDiffraction && direct.firstObstacle() != null && direct.lossDb() > 0.1 && dev.gungang.acoustics.server.AcousticPolicy.get(AcousticConfig.DIFFRACTION)) {
             Vec3 direction = listener.subtract(source).normalize();
             Vec3 side = direction.cross(new Vec3(0, 1, 0));
             if (side.lengthSqr() < 0.001) side = new Vec3(1, 0, 0);
             side = side.normalize();
             Vec3 up = side.cross(direction).normalize();
             // A single bend is intentionally conservative: both legs must be completely unobstructed.
-            for (int radius = 1; radius <= AcousticConfig.DIFFRACTION_RADIUS.get(); radius *= 2) {
+            for (int radius = 1; radius <= dev.gungang.acoustics.server.AcousticPolicy.get(AcousticConfig.DIFFRACTION_RADIUS); radius *= 2) {
                 for (int i = 0; i < 8; i++) {
                     double angle = i * Math.PI / 4;
                     Vec3 bend = direct.firstObstacle().add(side.scale(Math.cos(angle) * (radius + 0.25)))
@@ -48,10 +61,46 @@ public final class WorldAcoustics {
         // Incoherent energy sum, not a phase-accurate interference calculation.
         double energy = directGain * directGain + diffracted * diffracted;
         double gain = Math.min(1, Math.sqrt(energy));
-        double directHf = AcousticMath.amplitude(direct.lossDb() * 0.8);
+        double directHf = 0.35 + 0.65 * AcousticMath.amplitude(direct.lossDb() * 0.35);
         double hf = energy < 1e-12 ? 0.02 :
-                Math.sqrt((directGain * directGain * directHf * directHf + diffracted * diffracted * 0.12 * 0.12) / energy);
-        return new Transmission(gain, Math.max(0.02, Math.min(1, hf)));
+                Math.sqrt((directGain * directGain * directHf * directHf + diffracted * diffracted * 0.5 * 0.5) / energy);
+        return new Transmission(AcousticMath.withVolumeFloor(gain, dev.gungang.acoustics.server.AcousticPolicy.get(AcousticConfig.MIN_EFFECT_VOLUME)), Math.max(0.35, Math.min(1, hf)));
+    }
+
+    private static Trace bodyTrace(Level level, Player emitter, Vec3 listener, Vec3 camera) {
+        AABB body = emitter.getBoundingBox();
+        BodyPath cached = BODY_PATHS.get(emitter);
+        if (cached != null && cached.tick() == level.getGameTime() && cached.listener().equals(listener)
+                && cached.camera().equals(camera) && cached.bounds().equals(body)) return cached.trace();
+        // Shared by that player's footsteps and gunfire in this tick; never read a level on the sound thread.
+        double visible = BodyVisibility.leastLoss(point -> {
+            Vec3 target = bodyPoint(body, point);
+            return clear(level, listener, target, emitter)
+                    || (listener.distanceToSqr(camera) > 0.01 && clear(level, camera, target, emitter)) ? 0 : 1;
+        });
+        Trace result;
+        if (visible == 0) result = new Trace(0, null);
+        else {
+            final Trace[] best = {new Trace(120, body.getCenter())};
+            BodyVisibility.leastLoss(point -> {
+                Trace candidate = trace(level, bodyPoint(body, point), listener);
+                if (candidate.lossDb() < best[0].lossDb()) best[0] = candidate;
+                return candidate.lossDb();
+            });
+            result = best[0];
+        }
+        BODY_PATHS.put(emitter, new BodyPath(level.getGameTime(), listener, camera, body, result));
+        return result;
+    }
+
+    private static Vec3 bodyPoint(AABB body, double[] point) {
+        return new Vec3(body.minX + body.getXsize() * point[0], body.minY + body.getYsize() * point[1],
+                body.minZ + body.getZsize() * point[2]);
+    }
+
+    private static boolean clear(Level level, Vec3 eye, Vec3 target, Player emitter) {
+        return level.clip(new ClipContext(eye, target, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, emitter))
+                .getType() == HitResult.Type.MISS;
     }
 
     public static Trace trace(Level level, Vec3 start, Vec3 end) {
@@ -86,7 +135,7 @@ public final class WorldAcoustics {
                 }
                 if (covered > 1e-8) {
                     if (first == null) first = start.add(delta.scale(intervals.get(0)[0]));
-                    loss += covered * length * materialLoss(state) * AcousticConfig.WALL_STRENGTH.get();
+                    loss += covered * length * materialLoss(state) * dev.gungang.acoustics.server.AcousticPolicy.get(AcousticConfig.WALL_STRENGTH);
                     if (loss >= 120) return new Trace(120, first);
                 }
             }
@@ -102,19 +151,19 @@ public final class WorldAcoustics {
 
     private static double materialLoss(BlockState state) {
         String id = BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
-        for (String entry : AcousticConfig.MATERIALS.get()) {
+        for (String entry : dev.gungang.acoustics.server.AcousticPolicy.get(AcousticConfig.MATERIALS)) {
             int equals = entry.indexOf('=');
             if (id.equals(entry.substring(0, equals))) return Double.parseDouble(entry.substring(equals + 1));
         }
-        if (state.is(BlockTags.WOOL)) return 24;
+        if (state.is(BlockTags.WOOL)) return 8;
         if (state.is(BlockTags.LEAVES)) return 2;
-        if (state.is(BlockTags.PLANKS) || state.is(BlockTags.LOGS)) return 10;
+        if (state.is(BlockTags.PLANKS) || state.is(BlockTags.LOGS)) return 4;
         SoundType sound = state.getSoundType();
-        if (sound == SoundType.GLASS) return 7;
-        if (sound == SoundType.WOOD || sound == SoundType.BAMBOO_WOOD) return 10;
-        if (sound == SoundType.METAL || sound == SoundType.ANVIL || sound == SoundType.COPPER) return 25;
-        if (sound == SoundType.SAND || sound == SoundType.GRAVEL || sound == SoundType.SNOW) return 12;
-        return 18;
+        if (sound == SoundType.GLASS) return 3;
+        if (sound == SoundType.WOOD || sound == SoundType.BAMBOO_WOOD) return 4;
+        if (sound == SoundType.METAL || sound == SoundType.ANVIL || sound == SoundType.COPPER) return 9;
+        if (sound == SoundType.SAND || sound == SoundType.GRAVEL || sound == SoundType.SNOW) return 4;
+        return 6;
     }
 
     private static int floor(double d) { return (int) Math.floor(d); }

@@ -17,9 +17,12 @@ public final class ClientSetup {
     public static void keys(RegisterKeyMappingsEvent event) {
         event.register(OffhandMacro.ATTACK);
         event.register(OffhandMacro.USE);
+        event.register(LobbyClient.LOADOUT);
+        event.register(ItemNbtCopy.COPY);
     }
     @SubscribeEvent
     public static void overlays(RegisterGuiOverlaysEvent event) {
+        event.registerBelow(VanillaGuiOverlay.HOTBAR.id(), "damage_vignette", DamageVignette::render);
         event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "shooter_hud", ShooterHud::render);
     }
     @SubscribeEvent

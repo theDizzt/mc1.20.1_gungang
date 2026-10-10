@@ -10,9 +10,9 @@ public final class HudHealth {
     }
     public static String number(float value) {
         if (!Float.isFinite(value) || value <= 0) return "0";
-        return value == Math.floor(value) ? String.format(Locale.ROOT, "%.0f", value)
-                : String.format(Locale.ROOT, "%.1f", value);
+        // Round up so a living player with less than one HP never appears dead.
+        return String.format(Locale.ROOT, "%.0f", Math.ceil(value));
     }
-    public static String label(float health, float maximum) { return number(health) + "/" + number(maximum); }
+    public static String label(float health, float maximum) { return number(health); }
     private HudHealth() { }
 }

@@ -28,6 +28,7 @@ public abstract class ChannelMixin implements AcousticChannel {
     @Unique private float gungang$baseVolume = 1;
     @Unique private float gungang$range = 16;
     @Unique private double gungang$gain = 1;
+    @Unique private double gungang$volumeScale = 1;
     @Unique private double gungang$hf = 1;
     @Unique private boolean gungang$enabled;
     @Unique private boolean gungang$originalLinear;
@@ -45,11 +46,13 @@ public abstract class ChannelMixin implements AcousticChannel {
     @ModifyArg(method = "setVolume", at = @At(value = "INVOKE", target = "Lorg/lwjgl/openal/AL10;alSourcef(IIF)V", remap = false), index = 2)
     private float gungang$volume(float volume) {
         gungang$baseVolume = volume;
-        return (float) (volume * gungang$gain);
+        return (float) (volume * gungang$gain * gungang$volumeScale);
     }
 
     @Override
     public void gungang$apply(AcousticFrame frame) {
+        boolean volumeChanged = gungang$volumeScale != frame.volumeScale();
+        gungang$volumeScale = frame.volumeScale();
         if (!frame.enabled()) {
             if (gungang$enabled) {
                 gungang$enabled = false;
@@ -58,6 +61,8 @@ public abstract class ChannelMixin implements AcousticChannel {
                 else disableAttenuation();
                 setVolume(gungang$baseVolume);
                 gungang$releaseFilter();
+            } else if (volumeChanged) {
+                setVolume(gungang$baseVolume);
             }
             gungang$lastUpdate = 0;
             return;
@@ -65,7 +70,8 @@ public abstract class ChannelMixin implements AcousticChannel {
         long now = System.nanoTime();
         double gain = frame.transmission() * (frame.manageDistance()
                 ? AcousticMath.distanceGain(frame.distance(), gungang$range, frame.reference(), frame.rolloff()) : 1);
-        if (gungang$lastUpdate == 0) {
+        // Visible targets should become clear immediately instead of remaining muffled during smoothing.
+        if (gungang$lastUpdate == 0 || (frame.transmission() >= 0.9999 && frame.highFrequency() >= 0.9999)) {
             gungang$gain = gain;
             gungang$hf = frame.highFrequency();
         } else {
