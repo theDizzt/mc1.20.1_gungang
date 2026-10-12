@@ -1,0 +1,148 @@
+{
+  "variants": {
+    "facing=north,part=0": {
+      "model": "gungang:block/modern_armory_y0_z0",
+      "y": 270
+    },
+    "facing=east,part=0": {
+      "model": "gungang:block/modern_armory_y0_z0",
+      "y": 0
+    },
+    "facing=south,part=0": {
+      "model": "gungang:block/modern_armory_y0_z0",
+      "y": 90
+    },
+    "facing=west,part=0": {
+      "model": "gungang:block/modern_armory_y0_z0",
+      "y": 180
+    },
+    "facing=north,part=1": {
+      "model": "gungang:block/modern_armory_y0_z1",
+      "y": 270
+    },
+    "facing=east,part=1": {
+      "model": "gungang:block/modern_armory_y0_z1",
+      "y": 0
+    },
+    "facing=south,part=1": {
+      "model": "gungang:block/modern_armory_y0_z1",
+      "y": 90
+    },
+    "facing=west,part=1": {
+      "model": "gungang:block/modern_armory_y0_z1",
+      "y": 180
+    },
+    "facing=north,part=2": {
+      "model": "gungang:block/modern_armory_y1_z0",
+      "y": 270
+    },
+    "facing=east,part=2": {
+      "model": "gungang:block/modern_armory_y1_z0",
+      "y": 0
+    },
+    "facing=south,part=2": {
+      "model": "gungang:block/modern_armory_y1_z0",
+      "y": 90
+    },
+    "facing=west,part=2": {
+      "model": "gungang:block/modern_armory_y1_z0",
+      "y": 180
+    },
+    "facing=north,part=3": {
+      "model": "gungang:block/modern_armory_y1_z1",
+      "y": 270
+    },
+    "facing=east,part=3": {
+      "model": "gungang:block/modern_armory_y1_z1",
+      "y": 0
+    },
+    "facing=south,part=3": {
+      "model": "gungang:block/modern_armory_y1_z1",
+      "y": 90
+    },
+    "facing=west,part=3": {
+      "model": "gungang:block/modern_armory_y1_z1",
+      "y": 180
+    },
+    "facing=north,part=4": {
+      "model": "gungang:block/modern_armory_y2_z0",
+      "y": 270
+    },
+    "facing=east,part=4": {
+      "model": "gungang:block/modern_armory_y2_z0",
+      "y": 0
+    },
+    "facing=south,part=4": {
+      "model": "gungang:block/modern_armory_y2_z0",
+      "y": 90
+    },
+    "facing=west,part=4": {
+      "model": "gungang:block/modern_armory_y2_z0",
+      "y": 180
+    },
+    "facing=north,part=5": {
+      "model": "gungang:block/modern_armory_y2_z1",
+      "y": 270
+    },
+    "facing=east,part=5": {
+      "model": "gungang:block/modern_armory_y2_z1",
+      "y": 0
+    },
+    "facing=south,part=5": {
+      "model": "gungang:block/modern_armory_y2_z1",
+      "y": 90
+    },
+    "facing=west,part=5": {
+      "model": "gungang:block/modern_armory_y2_z1",
+      "y": 180
+    },
+    "facing=north,part=6": {
+      "model": "gungang:block/modern_armory_y2_z1",
+      "y": 270
+    },
+    "facing=east,part=6": {
+      "model": "gungang:block/modern_armory_y2_z1",
+      "y": 0
+    },
+    "facing=south,part=6": {
+      "model": "gungang:block/modern_armory_y2_z1",
+      "y": 90
+    },
+    "facing=west,part=6": {
+      "model": "gungang:block/modern_armory_y2_z1",
+      "y": 180
+    },
+    "facing=north,part=7": {
+      "model": "gungang:block/modern_armory_y2_z1",
+      "y": 270
+    },
+    "facing=east,part=7": {
+      "model": "gungang:block/modern_armory_y2_z1",
+      "y": 0
+    },
+    "facing=south,part=7": {
+      "model": "gungang:block/modern_armory_y2_z1",
+      "y": 90
+    },
+    "facing=west,part=7": {
+      "model": "gungang:block/modern_armory_y2_z1",
+      "y": 180
+    },
+    "facing=north,part=8": {
+      "model": "gungang:block/modern_armory_y2_z1",
+      "y": 270
+    },
+    "facing=east,part=8": {
+      "model": "gungang:block/modern_armory_y2_z1",
+      "y": 0
+    },
+    "facing=south,part=8": {
+      "model": "gungang:block/modern_armory_y2_z1",
+      "y": 90
+    },
+    "facing=west,part=8": {
+      "model": "gungang:block/modern_armory_y2_z1",
+      "y": 180
+    }
+  }
+}

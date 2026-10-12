@@ -17,13 +17,20 @@ import org.lwjgl.glfw.GLFW;
 @Mod.EventBusSubscriber(modid = GungangAcoustics.ID, value = Dist.CLIENT)
 public final class LobbyClient {
     public static final KeyMapping LOADOUT = new KeyMapping("key.gungang.loadout", GLFW.GLFW_KEY_E, "key.categories.gungang");
+    public static final KeyMapping LOBBY = new KeyMapping("key.gungang.lobby", GLFW.GLFW_KEY_L, "key.categories.gungang");
     public static EquipmentSnapshot equipment;
+    public static TeamOptions options=TeamOptions.defaults();
     private static long requestedUntil;
     private static boolean hintVisible;
+    private static boolean lobbyAvailable;
     public static void acoustics(String json) { AcousticPolicy.receive(JsonParser.parseString(json).getAsJsonObject()); }
     public static void receive(String json) {
         var state = ServerFiles.GSON.fromJson(json, LobbySnapshot.class);
+        lobbyAvailable=state.enabled()&&state.phase().equals("LOBBY");
+        var previousOptions=options;
+        options=state.options()==null?TeamOptions.defaults():state.options();
         Minecraft mc = Minecraft.getInstance();
+        if(mc.level!=null&&(previousOptions.color("ALPHA")!=options.color("ALPHA")||previousOptions.color("BRAVO")!=options.color("BRAVO")))mc.levelRenderer.allChanged();
         if (!state.enabled() || !state.phase().equals("LOBBY")) {
             if (mc.screen instanceof LobbyScreen) mc.setScreen(null);
             return;
@@ -43,6 +50,10 @@ public final class LobbyClient {
     public static void action(String action, String value, String target) { GungangNetwork.CHANNEL.sendToServer(new GungangNetwork.Action(action, value, target)); }
     @SubscribeEvent public static void key(InputEvent.Key event) {
         var mc = Minecraft.getInstance();
+        if(event.getAction()==GLFW.GLFW_PRESS&&lobbyAvailable&&LOBBY.matches(event.getKey(),event.getScanCode())&&mc.player!=null&&mc.screen==null){
+            if(mc.options.keyAdvancements.matches(event.getKey(),event.getScanCode()))while(mc.options.keyAdvancements.consumeClick()) { }
+            action("lobby","","");return;
+        }
         if (event.getAction() == GLFW.GLFW_PRESS && LOADOUT.matches(event.getKey(), event.getScanCode())
                 && equipment != null && equipment.allowed() && mc.screen == null) {
             requestedUntil = System.nanoTime() + 1_000_000_000L;
@@ -58,12 +69,14 @@ public final class LobbyClient {
     @SubscribeEvent public static void hint(TickEvent.ClientTickEvent event) {
         if(event.phase!=TickEvent.Phase.END)return;
         var mc=Minecraft.getInstance();
-        boolean show=mc.player!=null&&mc.screen==null&&equipment!=null&&equipment.spawnHint();
-        if(show)mc.gui.setOverlayMessage(Component.translatable("gungang.loadout.hint",LOADOUT.getTranslatedKeyMessage()),false);
+        boolean safe=SafeZones.contains(mc.player);
+        boolean show=safe||mc.player!=null&&mc.screen==null&&equipment!=null&&equipment.spawnHint();
+        if(safe)mc.gui.setOverlayMessage(Component.literal("비무장 지대"),false);
+        else if(show)mc.gui.setOverlayMessage(Component.translatable("gungang.loadout.hint",LOADOUT.getTranslatedKeyMessage()),false);
         else if(hintVisible)mc.gui.setOverlayMessage(Component.empty(),false);
         hintVisible=show;
     }
-    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event) { AcousticPolicy.clear(); equipment = null; requestedUntil = 0; hintVisible=false; }
-    @SubscribeEvent public static void login(ClientPlayerNetworkEvent.LoggingIn event) { AcousticPolicy.clear(); equipment = null; }
+    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event) { SafeZones.clearClient(); PreviewCache.clear(); AcousticPolicy.clear(); equipment = null; requestedUntil = 0; hintVisible=false; lobbyAvailable=false; options=TeamOptions.defaults(); }
+    @SubscribeEvent public static void login(ClientPlayerNetworkEvent.LoggingIn event) { AcousticPolicy.clear(); equipment = null;lobbyAvailable=false; }
     private LobbyClient() { }
 }

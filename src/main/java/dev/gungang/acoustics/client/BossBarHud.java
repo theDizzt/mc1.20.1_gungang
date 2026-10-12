@@ -6,8 +6,8 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.world.BossEvent;
 
 public final class BossBarHud {
-    public static int bottom = 14;
-    public static void beginFrame() { bottom = 14; }
+    public static int bottom = 0;
+    public static void beginFrame() { bottom = 0; }
     public static void draw(GuiGraphics g, int x, int y, BossEvent boss, int color) {
         var mc = Minecraft.getInstance();
         bottom = Math.max(bottom, y + 9);

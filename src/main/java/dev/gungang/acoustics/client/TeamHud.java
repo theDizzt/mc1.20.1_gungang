@@ -31,6 +31,10 @@ public final class TeamHud {
     }
 
     public static int teamColor(Player player) {
+        if(player.getTeam()!=null) {
+            if(player.getTeam().getName().equals("Red")) return LobbyClient.options.color("ALPHA");
+            if(player.getTeam().getName().equals("Blue")) return LobbyClient.options.color("BRAVO");
+        }
         Integer color = player.getTeam() == null ? null : player.getTeam().getColor().getColor();
         return 0xFF000000 | (color == null ? 0xFFFFFF : color);
     }
@@ -56,7 +60,7 @@ public final class TeamHud {
                     .filter(info -> !info.getProfile().getId().equals(mc.player.getUUID())
                             && mc.player.getTeam() != null
                             && mc.player.getTeam().isAlliedTo(info.getTeam())
-                            && info.getGameMode() != net.minecraft.world.level.GameType.SPECTATOR)
+                            && (info.getGameMode() != net.minecraft.world.level.GameType.SPECTATOR || RespawnPortrait.waiting(info.getProfile().getId())))
                     .sorted(Comparator.comparing(info -> info.getProfile().getName())).toList();
             int capacity = Math.max(0, Math.min(height / 3, mainY - 20) / 34);
             int count = Math.min(capacity, members.size());
@@ -66,8 +70,7 @@ public final class TeamHud {
                 int y = 8 + i * 34;
                 g.fill(x, y, x + 30, y + 30, teamColor(mc.player));
                 PlayerFaceRenderer.draw(g, info.getSkinLocation(), x + 2, y + 2, 26);
-                if (!RespawnPortrait.render(g, info.getProfile().getId(), x + 2, y + 2, 26) && (p == null || !p.isDeadOrDying()))
-                    PortraitEffects.tint(g, p, x + 2, y + 2, 26);
+                RespawnPortrait.render(g, info.getProfile().getId(), x + 2, y + 2, 26);
                 HudText.draw(g, info.getProfile().getName(), x + 34, y + 1, 80, 0xFFFFFFFF);
                 ShooterHud.panel(g, x + 34, y + 16, 80, 14, 0xFF60696D, 0x8029353E);
                 ShooterHud.panel(g, x + 118, y + 8, 22, 22, 0xFF68737B, 0x801C2833);
@@ -125,6 +128,8 @@ public final class TeamHud {
         var team = info == null ? mc.level.getScoreboard().getPlayersTeam(name.getString()) : info.getTeam();
         Integer teamRgb = team == null ? null : team.getColor().getColor();
         int color = 0xFF000000 | (teamRgb == null ? 0xFFFFFF : teamRgb);
+        if(team!=null&&team.getName().equals("Red"))color=LobbyClient.options.color("ALPHA");
+        if(team!=null&&team.getName().equals("Blue"))color=LobbyClient.options.color("BRAVO");
         g.fill(left, y, left + 16, y + 16, color);
         PlayerFaceRenderer.draw(g, skin, left + 1, y + 1, 14);
         g.drawString(mc.font, label, left + 20, y + 4, color, false);

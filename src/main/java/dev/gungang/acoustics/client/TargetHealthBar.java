@@ -27,12 +27,14 @@ public final class TargetHealthBar {
         for (var entity : mc.level.entitiesForRendering()) {
             if (!(entity instanceof LivingEntity target) || !target.isAlive() || target == mc.player
                     || target.isSpectator() || target.isInvisibleTo(mc.player)
+                    || (target instanceof dev.gungang.acoustics.server.DeployableEntity deployed && !deployed.showHealthBar())
                     || (target instanceof net.minecraft.world.entity.player.Player player && TeamHud.teammate(player))
                     || target.distanceToSqr(mc.player) > 96 * 96) continue;
             var pose = event.getPoseStack();
             Vec3 position = target.getPosition(event.getPartialTick());
             // Keep the bar below vanilla name labels; the render type uses normal depth testing.
             double top = target.getBbHeight() + 0.22;
+            if(target instanceof dev.gungang.acoustics.server.DeployableEntity deployed && deployed.wall())top+=3;
             pose.pushPose();
             pose.translate(position.x - eye.x, position.y + top - eye.y, position.z - eye.z);
             pose.mulPose(mc.getEntityRenderDispatcher().cameraOrientation());

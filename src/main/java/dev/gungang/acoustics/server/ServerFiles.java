@@ -9,7 +9,7 @@ import net.minecraftforge.fml.loading.FMLPaths;
 
 public final class ServerFiles {
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    public record Loaded(JsonObject acoustics, List<ArenaMap> maps) { }
+    public record Loaded(JsonObject acoustics, List<ArenaMap> maps, TeamOptions options) { }
     public static Path root() { return FMLPaths.CONFIGDIR.get().resolve("gungang"); }
     public static Loaded load() throws IOException {
         Path directory = root();
@@ -18,13 +18,19 @@ public final class ServerFiles {
         if (!Files.exists(acousticFile)) Files.writeString(acousticFile, GSON.toJson(AcousticPolicy.defaults()), StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW);
         JsonObject acoustic = JsonParser.parseString(read(acousticFile)).getAsJsonObject();
         var checked = AcousticPolicy.parse(acoustic);
-        return new Loaded(GSON.toJsonTree(checked).getAsJsonObject(), loadMaps(directory));
+        Path optionsFile = directory.resolve("server/option.json");
+        ConfigLayout.writeNew(optionsFile, GSON.toJson(TeamOptions.defaults()));
+        TeamOptions options = GSON.fromJson(read(optionsFile), TeamOptions.class);
+        if (options == null) throw new IOException("Empty option.json");
+        return new Loaded(GSON.toJsonTree(checked).getAsJsonObject(), loadMaps(directory), options);
     }
     static List<ArenaMap> loadMaps(Path directory) throws IOException {
         Path mapsDirectory = directory.resolve("server").resolve("maps");
         boolean firstRun = !Files.exists(mapsDirectory);
         Files.createDirectories(mapsDirectory);
+        Files.createDirectories(mapsDirectory.resolve("preview"));
         if (firstRun) ConfigLayout.writeNew(mapsDirectory.resolve("example.json"), GSON.toJson(ArenaMap.example()));
+        ConfigLayout.writeNew(mapsDirectory.resolve("normandy.json"), GSON.toJson(NormandyRules.example()));
         List<ArenaMap> maps = new ArrayList<>();
         Set<String> ids = new HashSet<>();
         try (var paths = Files.list(mapsDirectory)) {

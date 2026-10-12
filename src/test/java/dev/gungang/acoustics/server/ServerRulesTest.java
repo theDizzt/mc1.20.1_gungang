@@ -7,11 +7,14 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ServerRulesTest {
-    @Test void readyRequiresBothTeamsAndIgnoresSpectators() {
+    @Test void readyAllowsSoloAndIgnoresSpectators() {
         var alpha = new LobbyRules.Readiness("ALPHA", true);
         var bravo = new LobbyRules.Readiness("BRAVO", true);
         assertTrue(LobbyRules.allReady(List.of(alpha, bravo, new LobbyRules.Readiness("SPECTATOR", false))));
-        assertFalse(LobbyRules.allReady(List.of(alpha)));
+        assertTrue(LobbyRules.allReady(List.of(alpha)));
+        assertTrue(LobbyRules.allReady(List.of(bravo)));
+        assertFalse(LobbyRules.allReady(List.of()));
+        assertFalse(LobbyRules.allReady(List.of(new LobbyRules.Readiness("SPECTATOR", true))));
         assertFalse(LobbyRules.allReady(List.of(alpha, bravo, new LobbyRules.Readiness("UNASSIGNED", false))));
         assertFalse(LobbyRules.allReady(List.of(alpha, new LobbyRules.Readiness("BRAVO", false))));
     }

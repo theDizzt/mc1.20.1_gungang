@@ -1,0 +1,18 @@
+// Example snippets for Forge 1.20.1; integrate with your existing registry and mod ID.
+// Register the item using your existing DeferredRegister<Item>:
+// public static final RegistryObject<Item> POLICE_RIOT_SHIELD = ITEMS.register(
+//     "police_riot_shield",
+//     () -> new ShieldItem(new Item.Properties().durability(900)));
+
+// During FMLClientSetupEvent, inside event.enqueueWork(() -> { ... }):
+// ItemProperties.register(ModItems.POLICE_RIOT_SHIELD.get(),
+//     new ResourceLocation("combattable", "blocking"),
+//     (stack, level, entity, seed) ->
+//         entity != null && entity.isUsingItem() && entity.getUseItem() == stack ? 1.0F : 0.0F);
+
+// Required imports:
+// net.minecraft.client.renderer.item.ItemProperties
+// net.minecraft.resources.ResourceLocation
+// net.minecraft.world.item.ShieldItem
+// net.minecraft.world.item.Item
+// net.minecraftforge.registries.RegistryObject

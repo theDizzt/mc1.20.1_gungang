@@ -24,6 +24,15 @@ public final class TeamSilhouette extends RenderType {
                     .setWriteMaskState(COLOR_WRITE).setCullState(NO_CULL)
                     .setLightmapState(LIGHTMAP).setOverlayState(OVERLAY).createCompositeState(false));
     private static final MultiBufferSource.BufferSource BUFFER = MultiBufferSource.immediate(new BufferBuilder(32768));
+    public static void lifeGlow(LivingEntity entity,EntityModel<?> model,PoseStack pose,MultiBufferSource buffers) {
+        if(!(entity instanceof Player p))return;
+        var state=dev.gungang.acoustics.server.SurvivalGadgets.clientState(p);
+        if(state==null||state.lifeEnd()<=p.level().getGameTime()||!p.isAlive()||p.isSpectator())return;
+        int color=state.color();pose.pushPose();pose.scale(1.003f,1.003f,1.003f);
+        model.renderToBuffer(pose,buffers.getBuffer(RenderType.entityTranslucent(new ResourceLocation("minecraft","textures/block/white_concrete.png"))),
+                15728880,OverlayTexture.NO_OVERLAY,(color>>16&255)/255f,(color>>8&255)/255f,(color&255)/255f,.65f);
+        pose.popPose();
+    }
 
     public static void capture(LivingEntity entity, EntityModel<?> model, PoseStack pose) {
         var mc = Minecraft.getInstance();

@@ -1,4 +1,5 @@
 {
+  "key.gungang.lobby": "대기실 다시 열기",
   "key.gungang.loadout": "스폰 구역 무기 선택",
   "key.categories.gungang": "GunGang",
   "gungang.options.tab.5": "폰트",
@@ -103,5 +104,10 @@
   "key.gungang.copy_item_nbt": "주 손 아이템 NBT 복사",
   "gungang.nbt.empty": "NBT를 복사할 아이템을 주 손에 드세요.",
   "gungang.loadout.hint": "%s를 눌러 무기 교체",
-  "gungang.nbt.copied": "%s의 전체 아이템 NBT를 복사했습니다."
+  "gungang.nbt.copied": "%s의 전체 아이템 NBT를 복사했습니다.",
+  "entity.gungang_acoustics.deployable": "설치물",
+  "item.gungang.landmine": "지뢰",
+  "item.gungang.recovery_potion": "회복약",
+  "item.gungang.adrenaline": "전투자극제",
+  "item.gungang.barrier": "방벽"
 }

@@ -4,7 +4,21 @@ package dev.gungang.acoustics.server;
 public record ArenaMap(String id, String name, String description, boolean enabled, int timeLimitSeconds,
                        String gameMode, String dimension, Spawn alphaSpawn, Spawn bravoSpawn, Spawn spectatorSpawn,
                        Area alphaArea, Area bravoArea, Capture capture, java.util.List<String> onPrepare,
-                       java.util.List<String> onStart, java.util.List<String> onEnd) {
+                       java.util.List<String> onStart, java.util.List<String> onEnd, NormandyRules normandy,
+                       @com.google.gson.annotations.SerializedName(value="previewImage",alternate={"preview"}) String previewImage) {
+    public ArenaMap { previewImage=previewImage==null?"":previewImage.strip(); }
+    public ArenaMap(String id,String name,String description,boolean enabled,int timeLimitSeconds,String gameMode,String dimension,
+                    Spawn alphaSpawn,Spawn bravoSpawn,Spawn spectatorSpawn,Area alphaArea,Area bravoArea,Capture capture,
+                    java.util.List<String> onPrepare,java.util.List<String> onStart,java.util.List<String> onEnd,NormandyRules normandy) {
+        this(id,name,description,enabled,timeLimitSeconds,gameMode,dimension,alphaSpawn,bravoSpawn,spectatorSpawn,
+                alphaArea,bravoArea,capture,onPrepare,onStart,onEnd,normandy,"");
+    }
+    public ArenaMap(String id,String name,String description,boolean enabled,int timeLimitSeconds,String gameMode,String dimension,
+                    Spawn alphaSpawn,Spawn bravoSpawn,Spawn spectatorSpawn,Area alphaArea,Area bravoArea,Capture capture,
+                    java.util.List<String> onPrepare,java.util.List<String> onStart,java.util.List<String> onEnd) {
+        this(id,name,description,enabled,timeLimitSeconds,gameMode,dimension,alphaSpawn,bravoSpawn,spectatorSpawn,
+                alphaArea,bravoArea,capture,onPrepare,onStart,onEnd,null);
+    }
     public record Area(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
         public boolean contains(double x, double y, double z) {
             return x >= minX && x <= maxX && y >= minY && y <= maxY && z >= minZ && z <= maxZ;
@@ -33,6 +47,7 @@ public record ArenaMap(String id, String name, String description, boolean enabl
         }
     }
     public ArenaMap validate() {
+        if(!previewImage.isEmpty()&&!MapPreviewFiles.validName(previewImage))throw new IllegalArgumentException("Invalid preview image filename: "+previewImage);
         if (id == null || !id.matches("[a-z0-9_-]{1,48}") || name == null || name.isBlank() || name.length() > 80
                 || description == null || description.length() > 1000 || timeLimitSeconds < 0 || timeLimitSeconds > 86400
                 || !java.util.Set.of("survival", "adventure", "creative").contains(gameMode == null ? "" : gameMode)
@@ -42,6 +57,10 @@ public record ArenaMap(String id, String name, String description, boolean enabl
         alphaSpawn.validate(); bravoSpawn.validate(); spectatorSpawn.validate();
         alphaArea.validate(alphaSpawn); bravoArea.validate(bravoSpawn);
         if (capture != null) capture.validate();
+        if (normandy != null) {
+            normandy.validate();
+            if (capture != null || timeLimitSeconds == 0) throw new IllegalArgumentException("Normandy requires a time limit and no capture rules");
+        }
         for (var hooks : java.util.Arrays.asList(onPrepare, onStart, onEnd)) if (hooks != null) {
             if (hooks.size() > 16) throw new IllegalArgumentException("Too many map functions");
             for (String function : hooks) if (function == null || !function.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) throw new IllegalArgumentException("Invalid function id");

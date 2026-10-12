@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "cooling=false": {
+      "model": "gungang:block/small_health_pack"
+    },
+    "cooling=true": {
+      "model": "gungang:block/small_health_pack_cooling"
+    }
+  }
+}
