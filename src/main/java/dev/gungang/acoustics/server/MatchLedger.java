@@ -12,7 +12,12 @@ public final class MatchLedger {
     }
     private final Map<UUID, Score> players = new LinkedHashMap<>();
     private final Map<UUID, Map<UUID, Integer>> hits = new HashMap<>();
-    public void add(UUID id, String name, String team) { players.putIfAbsent(id,new Score(name,team)); }
+    private final Map<String,Integer> teamKills = new HashMap<>();
+    public int kills(String team) { return teamKills.getOrDefault(team,0); }
+    public void add(UUID id, String name, String team) {
+        var score=players.computeIfAbsent(id,ignored->new Score(name,team));
+        score.name=name; score.team=team;
+    }
     public void played(UUID id) { var score = players.get(id); if (score != null && !score.team.equals("SPECTATOR")) score.ticks++; }
     public boolean enemies(UUID attacker, UUID victim) {
         var a = players.get(attacker); var v = players.get(victim);
@@ -24,14 +29,24 @@ public final class MatchLedger {
         hits.computeIfAbsent(victim, ignored -> new HashMap<>()).put(attacker,tick);
     }
     public void death(UUID victim, UUID killer, int tick) {
+        death(victim,killer,tick,false);
+    }
+    public void death(UUID victim, UUID killer, int tick,boolean penalizeTeamKill) {
         var score = players.get(victim);
         if (score == null || score.team.equals("SPECTATOR")) return;
         score.deaths++;
         var contributors = hits.remove(victim);
+        var attacker=players.get(killer);
+        if(penalizeTeamKill&&killer!=null&&!killer.equals(victim)&&attacker!=null&&attacker.team.equals(score.team)
+                &&(score.team.equals("ALPHA")||score.team.equals("BRAVO"))) {
+            teamKills.merge(score.team.equals("ALPHA")?"BRAVO":"ALPHA",1,Integer::sum);
+            return;
+        }
         if (killer == null && contributors != null) killer = contributors.entrySet().stream()
                 .filter(e -> tick - e.getValue() <= 200).max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse(null);
         if (killer == null || !enemies(killer,victim)) return;
         players.get(killer).kills++;
+        teamKills.merge(players.get(killer).team,1,Integer::sum);
         if (contributors != null) for (var entry : contributors.entrySet())
             if (!entry.getKey().equals(killer) && tick - entry.getValue() <= 200 && enemies(entry.getKey(),victim)) players.get(entry.getKey()).assists++;
     }

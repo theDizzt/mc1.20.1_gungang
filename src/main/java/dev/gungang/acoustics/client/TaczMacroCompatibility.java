@@ -34,6 +34,7 @@ public final class TaczMacroCompatibility {
     }
 
     public static Result attack(LocalPlayer player) {
+        if(dev.gungang.acoustics.server.CombatGadgets.holdingShield(player))return Result.DONE;
         if (!isGun(player)) return Result.NOT_GUN;
         try {
             if (!(boolean) charge.invoke(player, true)) return Result.WAIT;
@@ -49,6 +50,7 @@ public final class TaczMacroCompatibility {
     }
 
     public static void aim(LocalPlayer player, boolean down) {
+        if(down&&dev.gungang.acoustics.server.CombatGadgets.holdingShield(player))return;
         if (!isGun(player)) return;
         try { aim.invoke(player, down); }
         catch (ReflectiveOperationException failure) { LogUtils.getLogger().warn("TaCZ offhand aim failed", failure); }

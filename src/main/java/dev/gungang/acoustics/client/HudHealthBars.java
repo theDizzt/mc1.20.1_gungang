@@ -16,7 +16,7 @@ final class HudHealthBars {
             if (point < health) return healthColor;
             if (point < absorptionEnd) return 0xFFFFD36B;
             if (point < absorptionTrailEnd) return 0xFFB9903F;
-            if (point < healthTrail) return 0xFFD6A06E;
+            if (point < healthTrail) return 0xFF45494F;
             return 0x8029353E;
         }
         float[] boundaries() {

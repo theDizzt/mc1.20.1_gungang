@@ -21,5 +21,6 @@ public abstract class TeamSilhouetteMixin {
                             MultiBufferSource buffers, int packedLight) {
         TeamSilhouette.capture(entity, model, pose);
         model.renderToBuffer(pose, consumer, light, overlay, red, green, blue, alpha);
+        TeamSilhouette.lifeGlow(entity,model,pose,buffers);
     }
 }

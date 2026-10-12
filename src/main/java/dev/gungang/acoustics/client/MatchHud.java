@@ -7,7 +7,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.*;
 import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
@@ -18,12 +17,40 @@ import net.minecraftforge.fml.common.Mod;
 public final class MatchHud {
     private static MatchSnapshot state;
     private static int page;
+    private static MatchSnapshot pendingResult;
+    private static int resultDelay;
     public static boolean active() { return state!=null&&state.active(); }
     public static void receive(String json) {
         state=ServerFiles.GSON.fromJson(json,MatchSnapshot.class);
-        if(state.result()) Minecraft.getInstance().setScreen(new Results(state));
+        RespawnPortrait.sync(state.respawns());
+        pendingResult=null;resultDelay=0;
+        if(state.result()) {
+            var mc=Minecraft.getInstance();
+            pendingResult=state;resultDelay=60;
+            mc.setScreen(null);
+            mc.gui.setTimes(10,40,10);
+            mc.gui.setSubtitle(Component.empty());
+            mc.gui.setTitle(resultTitle(state));
+        }
     }
-    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut e) { state=null; page=0; }
+    static Component resultTitle(MatchSnapshot result) {
+        if(result.winner().equals("DRAW"))return Component.literal("무승부");
+        if(result.winner().equals("ABORTED"))return Component.literal("경기 종료");
+        var options=result.options()==null?TeamOptions.defaults():result.options();
+        return Component.empty().append(Component.literal("Team "+result.winner()).withStyle(s->s.withColor(options.color(result.winner())&0xFFFFFF)))
+                .append(Component.literal(" 승리").withStyle(ChatFormatting.WHITE));
+    }
+    @SubscribeEvent public static void tick(net.minecraftforge.event.TickEvent.ClientTickEvent event) {
+        if(event.phase!=net.minecraftforge.event.TickEvent.Phase.END||pendingResult==null)return;
+        var mc=Minecraft.getInstance();
+        if(mc.level==null||mc.player==null) {pendingResult=null;resultDelay=0;return;}
+        if(--resultDelay<=0) {
+            var result=pendingResult;pendingResult=null;
+            mc.gui.clear();
+            mc.setScreen(new Results(result));
+        }
+    }
+    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut e) { state=null; page=0;pendingResult=null;resultDelay=0; }
     @SubscribeEvent public static void hide(RenderGuiOverlayEvent.Pre e) {
         if(state!=null&&state.active()&&e.getOverlay().id().equals(VanillaGuiOverlay.PLAYER_LIST.id())) e.setCanceled(true);
     }
@@ -33,52 +60,48 @@ public final class MatchHud {
     }
     @SubscribeEvent public static void render(RenderGuiEvent.Post e) {
         var mc=Minecraft.getInstance(); if(state==null||!state.active()||mc.options.hideGui)return;
-        var g=e.getGuiGraphics(); var text=Component.literal(MatchReport.time(state.seconds())).withStyle(s->s.withFont(new ResourceLocation(GungangAcoustics.ID,"timer")));
-        int x=(g.guiWidth()-mc.font.width(text))/2,y=BossBarHud.bottom+8;
-        for(int dx=-1;dx<=1;dx++)for(int dy=-1;dy<=1;dy++)if(dx!=0||dy!=0)g.drawString(mc.font,text,x+dx,y+dy,0xFF000000,false);
-        g.flush();
-        // TTF glyphs may extend above the draw origin. Cover both ascenders and descenders.
-        // Advance the fill slightly toward the camera so the outline cannot obscure it.
-        g.pose().pushPose(); g.pose().translate(0,0,0.1f);
-        for(int row=-16;row<20;row++) {
-            g.enableScissor(x-2,y+row,x+mc.font.width(text)+3,y+row+1);
-            float t=Math.max(0,Math.min(1,(row+5)/12f));
-            int red=Math.round(180-125*t),green=Math.round(255-60*t),blue=Math.round(170-125*t);
-            g.drawString(mc.font,text,x,y,0xFF000000|(red<<16)|(green<<8)|blue,false);
-            g.flush(); g.disableScissor();
-        }
-        g.pose().popPose();
+        var g=e.getGuiGraphics();
+        boolean deathmatch=state.point()!=null&&"DEATHMATCH".equals(state.point().mode());
+        int y;
+        if(deathmatch)y=DeathmatchHud.draw(g,state);
+        else {y=ControlPointHud.draw(g,state)+2;MatchTimerHud.draw(g,MatchReport.time(state.seconds()),y);}
         if(mc.screen==null&&mc.options.keyPlayerList.isDown()) table(g,state,Math.max(4,(g.guiWidth()-480)/2),y+22,Math.min(480,g.guiWidth()-8),g.guiHeight()-y-35,page);
     }
     static int table(GuiGraphics g,MatchSnapshot value,int x,int y,int width,int height,int requestedPage) {
-        var font=Minecraft.getInstance().font; int capacity=Math.max(1,(height-32)/18),pages=Math.max(1,(value.players().size()+capacity-1)/capacity),p=Math.min(requestedPage,pages-1);
-        g.fill(x,y,x+width,y+height,0xEE101B29);
-        g.drawString(font,"PLAYER",x+8,y+6,0xFF9AAABD,false);
-        g.drawString(font,"K / D / A",x+width-160,y+6,0xFF9AAABD,false);
-        g.drawString(font,"DAMAGE",x+width-60,y+6,0xFF9AAABD,false);
-        for(int i=0;i<capacity&&p*capacity+i<value.players().size();i++) {
-            var r=value.players().get(p*capacity+i); int ry=y+24+i*18;
-            int color=r.team().equals("ALPHA")?0xFFFF7777:r.team().equals("BRAVO")?0xFF77AAFF:0xFFAAAAAA;
-            g.drawString(font,font.plainSubstrByWidth(r.name(),Math.max(20,width-180)),x+8,ry,color,false);
-            g.drawString(font,String.format(Locale.ROOT,"%d / %d / %d",r.kills(),r.deaths(),r.assists()),x+width-160,ry,0xFFFFFFFF,false);
-            String damage=String.format(Locale.ROOT,"%.1f",r.damage());
-            g.drawString(font,damage,x+width-12-font.width(damage),ry,0xFFFFFFFF,false);
+        var font=Minecraft.getInstance().font;int capacity=Math.max(1,(height-28)/28),pages=tablePages(value,height),p=Math.min(requestedPage,pages-1);
+        int half=(width-8)/2;
+        var options=value.options()==null?TeamOptions.defaults():value.options();
+        for(int team=0;team<2;team++) {
+            String name=team==0?"ALPHA":"BRAVO";int left=x+team*(half+8),color=options.color(name);
+            var rows=value.players().stream().filter(r->r.team().equals(name)).toList();
+            g.fill(left,y,left+half,y+height,0xEE101B29);g.fill(left,y,left+half,y+2,color);
+            g.drawString(font,name+" · "+(team==0?value.alphaScore():value.bravoScore()),left+8,y+8,color,false);
+            for(int i=0;i<capacity&&p*capacity+i<rows.size();i++) {
+                var row=rows.get(p*capacity+i);int ry=y+26+i*28;
+                g.drawString(font,font.plainSubstrByWidth(row.name(),half-16),left+8,ry,0xFFFFFFFF,false);
+                String stats=String.format(Locale.ROOT,"%d/%d/%d · DMG %.0f",row.kills(),row.deaths(),row.assists(),row.damage());
+                g.drawString(font,font.plainSubstrByWidth(stats,half-16),left+8,ry+12,0xFF9AAABD,false);
+            }
         }
         return pages;
     }
+    private static int tablePages(MatchSnapshot value,int height) {
+        long count=Math.max(value.players().stream().filter(r->r.team().equals("ALPHA")).count(),value.players().stream().filter(r->r.team().equals("BRAVO")).count());
+        int capacity=Math.max(1,(height-28)/28);return Math.max(1,(int)((count+capacity-1)/capacity));
+    }
     private static final class Results extends ArenaScreen {
         final MatchSnapshot result; int current;
-        Results(MatchSnapshot result) { super(result.winner().equals("DRAW")?"무승부":result.winner().equals("ABORTED")?"경기 종료":"Team "+result.winner()+" 승리"); this.result=result; }
+        Results(MatchSnapshot result) { super(resultTitle(result)); this.result=result; }
         @Override protected void init() {
             button("이전",left()+10,height-40,60,20,true,ACCENT,()->current=Math.max(0,current-1));
-            button("다음",left()+76,height-40,60,20,true,ACCENT,()->current=Math.min(Math.max(0,(result.players().size()-1)/Math.max(1,(height-144)/18)),current+1));
-            button("닫기",left()+body()-80,height-40,70,20,true,ACCENT,this::onClose);
+            button("다음",left()+76,height-40,60,20,true,ACCENT,()->current=Math.min(tablePages(result,height-112)-1,current+1));
+            closeButton(left()+body()-80,height-40,70,20);
         }
         @Override public void render(GuiGraphics g,int mx,int my,float partial) {
             shell(g,Component.literal(result.map()+" · 플레이 시간 "+MatchReport.time(result.seconds())+" · ")
-                    .append(Component.literal("Team ALPHA "+result.alphaScore()).withStyle(ChatFormatting.RED))
+                    .append(Component.literal("Team ALPHA "+result.alphaScore()).withStyle(s->s.withColor((result.options()==null?TeamOptions.defaults():result.options()).color("ALPHA")&0xFFFFFF)))
                     .append(Component.literal(" : ").withStyle(ChatFormatting.GRAY))
-                    .append(Component.literal("Team Bravo "+result.bravoScore()).withStyle(ChatFormatting.BLUE)));
+                    .append(Component.literal("Team Bravo "+result.bravoScore()).withStyle(s->s.withColor((result.options()==null?TeamOptions.defaults():result.options()).color("BRAVO")&0xFFFFFF))));
             table(g,result,left()+8,62,body()-16,height-112,current); super.render(g,mx,my,partial);
         }
     }

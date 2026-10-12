@@ -1,0 +1,148 @@
+{
+  "variants": {
+    "facing=north,part=0": {
+      "model": "gungang:block/combat_table_north_west",
+      "y": 0
+    },
+    "facing=east,part=0": {
+      "model": "gungang:block/combat_table_north_west",
+      "y": 90
+    },
+    "facing=south,part=0": {
+      "model": "gungang:block/combat_table_north_west",
+      "y": 180
+    },
+    "facing=west,part=0": {
+      "model": "gungang:block/combat_table_north_west",
+      "y": 270
+    },
+    "facing=north,part=1": {
+      "model": "gungang:block/combat_table_north_center",
+      "y": 0
+    },
+    "facing=east,part=1": {
+      "model": "gungang:block/combat_table_north_center",
+      "y": 90
+    },
+    "facing=south,part=1": {
+      "model": "gungang:block/combat_table_north_center",
+      "y": 180
+    },
+    "facing=west,part=1": {
+      "model": "gungang:block/combat_table_north_center",
+      "y": 270
+    },
+    "facing=north,part=2": {
+      "model": "gungang:block/combat_table_north_east",
+      "y": 0
+    },
+    "facing=east,part=2": {
+      "model": "gungang:block/combat_table_north_east",
+      "y": 90
+    },
+    "facing=south,part=2": {
+      "model": "gungang:block/combat_table_north_east",
+      "y": 180
+    },
+    "facing=west,part=2": {
+      "model": "gungang:block/combat_table_north_east",
+      "y": 270
+    },
+    "facing=north,part=3": {
+      "model": "gungang:block/combat_table_center_west",
+      "y": 0
+    },
+    "facing=east,part=3": {
+      "model": "gungang:block/combat_table_center_west",
+      "y": 90
+    },
+    "facing=south,part=3": {
+      "model": "gungang:block/combat_table_center_west",
+      "y": 180
+    },
+    "facing=west,part=3": {
+      "model": "gungang:block/combat_table_center_west",
+      "y": 270
+    },
+    "facing=north,part=4": {
+      "model": "gungang:block/combat_table_center_center",
+      "y": 0
+    },
+    "facing=east,part=4": {
+      "model": "gungang:block/combat_table_center_center",
+      "y": 90
+    },
+    "facing=south,part=4": {
+      "model": "gungang:block/combat_table_center_center",
+      "y": 180
+    },
+    "facing=west,part=4": {
+      "model": "gungang:block/combat_table_center_center",
+      "y": 270
+    },
+    "facing=north,part=5": {
+      "model": "gungang:block/combat_table_center_east",
+      "y": 0
+    },
+    "facing=east,part=5": {
+      "model": "gungang:block/combat_table_center_east",
+      "y": 90
+    },
+    "facing=south,part=5": {
+      "model": "gungang:block/combat_table_center_east",
+      "y": 180
+    },
+    "facing=west,part=5": {
+      "model": "gungang:block/combat_table_center_east",
+      "y": 270
+    },
+    "facing=north,part=6": {
+      "model": "gungang:block/combat_table_south_west",
+      "y": 0
+    },
+    "facing=east,part=6": {
+      "model": "gungang:block/combat_table_south_west",
+      "y": 90
+    },
+    "facing=south,part=6": {
+      "model": "gungang:block/combat_table_south_west",
+      "y": 180
+    },
+    "facing=west,part=6": {
+      "model": "gungang:block/combat_table_south_west",
+      "y": 270
+    },
+    "facing=north,part=7": {
+      "model": "gungang:block/combat_table_south_center",
+      "y": 0
+    },
+    "facing=east,part=7": {
+      "model": "gungang:block/combat_table_south_center",
+      "y": 90
+    },
+    "facing=south,part=7": {
+      "model": "gungang:block/combat_table_south_center",
+      "y": 180
+    },
+    "facing=west,part=7": {
+      "model": "gungang:block/combat_table_south_center",
+      "y": 270
+    },
+    "facing=north,part=8": {
+      "model": "gungang:block/combat_table_south_east",
+      "y": 0
+    },
+    "facing=east,part=8": {
+      "model": "gungang:block/combat_table_south_east",
+      "y": 90
+    },
+    "facing=south,part=8": {
+      "model": "gungang:block/combat_table_south_east",
+      "y": 180
+    },
+    "facing=west,part=8": {
+      "model": "gungang:block/combat_table_south_east",
+      "y": 270
+    }
+  }
+}

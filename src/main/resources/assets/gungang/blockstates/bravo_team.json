@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "cooling=false": {
+      "model": "gungang:block/bravo_team"
+    },
+    "cooling=true": {
+      "model": "gungang:block/bravo_team"
+    }
+  }
+}

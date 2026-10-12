@@ -11,6 +11,9 @@ version = java.time.LocalDate.now(java.time.ZoneId.of('Asia/Seoul'))
         .toLowerCase(java.util.Locale.ROOT)
 base { archivesName = 'gungang-realistic_1.20.1' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+// Explicit development-only server smoke checks; never included in a normal build/JAR.
+if (project.hasProperty('gungangSmoke')) sourceSets.main.java.srcDir('src/smoke/java')
+if (project.hasProperty('gungangClientSmoke')) sourceSets.main.java.srcDir('src/clientSmoke/java')
 
 minecraft {
     mappings channel: 'official', version: '1.20.1'
@@ -47,6 +50,8 @@ mixin {
     config 'gungang_acoustics.mixins.json'
 }
 tasks.named('jar', Jar).configure {
+    exclude 'dev/gungang/acoustics/server/GadgetSmokeChecks*.class'
+    exclude 'dev/gungang/acoustics/client/PreviewSmokeChecks*.class'
     archiveFileName = "gungang-realistic_1.20.1_${project.version}.jar"
     manifest { attributes(['MixinConfigs': 'gungang_acoustics.mixins.json']) }
     finalizedBy 'reobfJar'
@@ -56,7 +61,7 @@ tasks.named('processResources', ProcessResources).configure {
     inputs.property 'modVersion', project.version
     filesMatching('META-INF/mods.toml') { expand(modVersion: project.version) }
     from('font') {
-        include 'Galmuri11-Bold.ttf'
+        include 'Galmuri11-Bold.ttf', 'advanced_pixel_lcd-7.ttf'
         into 'assets/gungang_acoustics/font'
         rename { it.toLowerCase(java.util.Locale.ROOT).replace(' ', '-') }
     }

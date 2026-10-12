@@ -9,7 +9,11 @@ public final class GungangAcoustics {
     public static final String ID = "gungang_acoustics";
 
     public GungangAcoustics() {
+        dev.gungang.acoustics.server.StationBlocks.register(net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext.get().getModEventBus());
+        dev.gungang.acoustics.server.GadgetItems.register(net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext.get().getModEventBus());
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, AcousticConfig.SPEC);
         dev.gungang.acoustics.server.GungangNetwork.register();
+        dev.gungang.acoustics.server.SecondaryRuntime.registerTacz();
+        dev.gungang.acoustics.server.SafeZones.registerTacz();
     }
 }

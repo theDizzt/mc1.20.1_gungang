@@ -1,0 +1,29 @@
+{
+  "id": "normandy",
+  "name": "노르망디",
+  "description": "BRAVO 공격 / ALPHA 방어 · A → B → C → D",
+  "enabled": false,
+  "timeLimitSeconds": 900,
+  "gameMode": "adventure",
+  "dimension": "minecraft:overworld",
+  "alphaSpawn": {"x":14,"y":15,"z":385,"yaw":180,"pitch":0},
+  "bravoSpawn": {"x":77,"y":14,"z":169,"yaw":90,"pitch":0},
+  "spectatorSpawn": {"x":17,"y":40,"z":222,"yaw":0,"pitch":0},
+  "alphaArea": {"minX":9,"minY":9,"minZ":377,"maxX":20,"maxY":22,"maxZ":390},
+  "bravoArea": {"minX":72,"minY":12,"minZ":164,"maxX":82,"maxY":21,"maxZ":175},
+  "onPrepare": [],
+  "onStart": [],
+  "onEnd": [],
+  "normandy": {
+    "captureTicks":400,
+    "decayDelayTicks":400,
+    "decayStepTicks":10,
+    "attackLaunch":{"x":53,"y":23,"z":169,"yaw":-90,"pitch":0},
+    "points":[
+      {"name":"A","center":{"x":17,"y":4,"z":222,"yaw":0,"pitch":0},"radius":5,"attackSpawn":{"x":60,"y":22,"z":163,"yaw":0,"pitch":0}},
+      {"name":"B","center":{"x":6,"y":16,"z":282,"yaw":0,"pitch":0},"radius":5,"attackSpawn":{"x":-30,"y":5,"z":197,"yaw":0,"pitch":0}},
+      {"name":"C","center":{"x":-25,"y":18,"z":333,"yaw":0,"pitch":0},"radius":5,"attackSpawn":{"x":-5,"y":24,"z":259,"yaw":0,"pitch":0}},
+      {"name":"D","center":{"x":40,"y":12,"z":330,"yaw":0,"pitch":0},"radius":5,"attackSpawn":{"x":23,"y":22,"z":258,"yaw":0,"pitch":0}}
+    ]
+  }
+}

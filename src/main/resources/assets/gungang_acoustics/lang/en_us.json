@@ -1,4 +1,5 @@
 {
+  "key.gungang.lobby": "Reopen match lobby",
   "key.gungang.loadout": "Spawn-area loadout selection",
   "key.categories.gungang": "GunGang",
   "gungang.options.tab.5": "Font",
@@ -103,5 +104,10 @@
   "key.gungang.copy_item_nbt": "Copy main-hand item NBT",
   "gungang.nbt.empty": "Hold an item in your main hand to copy its NBT.",
   "gungang.loadout.hint": "Press %s to change weapons",
-  "gungang.nbt.copied": "Copied the complete item NBT for %s."
+  "gungang.nbt.copied": "Copied the complete item NBT for %s.",
+  "entity.gungang_acoustics.deployable": "Deployable",
+  "item.gungang.landmine": "Landmine",
+  "item.gungang.recovery_potion": "Recovery Potion",
+  "item.gungang.adrenaline": "Adrenaline",
+  "item.gungang.barrier": "Barrier"
 }
