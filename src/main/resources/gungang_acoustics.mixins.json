@@ -4,6 +4,7 @@
   "package": "dev.gungang.acoustics.mixin",
   "compatibilityLevel": "JAVA_17",
   "refmap": "gungang_acoustics.refmap.json",
+  "mixins": ["SecondaryItemUseMixin", "SecondaryCooldownMixin", "TacticalCooldownMixin", "FoodRegenerationMixin", "OrdnanceFriendlyFireMixin", "JetpackStepMixin"],
   "client": [
     "ChannelMixin",
     "SoundEngineMixin",
@@ -11,6 +12,7 @@
     "TaczShootInputMixin",
     "TaczAimInputMixin",
     "TeamSilhouetteMixin",
+    "MineOutlineMixin",
     "FontTextureMixin",
     "EffectColorAccessor",
     "BossHealthOverlayMixin",

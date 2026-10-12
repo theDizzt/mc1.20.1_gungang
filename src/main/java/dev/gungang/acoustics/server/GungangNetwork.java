@@ -19,8 +19,45 @@ public final class GungangNetwork {
     public record Lobby(String json) { }
     public record Equipment(String json) { }
     public record Match(String json) { }
+    public record Progression(String json) { }
+    public record SafeZoneConfig(String json) { }
+    public record Utility(String json) { }
+    public record Scan(String json) { }
+    public record Ability(SurvivalGadgets.View state) { }
+    public record MapPreview(String id,byte[] png,String error) { }
+    public record WeaponPreview(String id,net.minecraft.world.item.ItemStack stack) { }
+    public record Gadget(String preview,double range) {
+        public Gadget(String preview) {this(preview,preview.equals("orbital_strike")?OrdnanceRules.TARGET_RANGE:preview.equals("barrier")?GadgetConfig.barrier.range():GadgetConfig.mine.range());}
+    }
     public record Action(String action, String value, String target) { }
     public static void register() {
+        CHANNEL.registerMessage(12,Ability.class,(p,b)->{b.writeUUID(p.state.player());b.writeLong(p.state.lifeEnd());b.writeLong(p.state.jetEnd());b.writeInt(p.state.color());},
+                b->new Ability(new SurvivalGadgets.View(b.readUUID(),b.readLong(),b.readLong(),b.readInt())),(p,context)->{
+                    var ctx=context.get();ctx.enqueueWork(()->SurvivalGadgets.receive(p.state));ctx.setPacketHandled(true);
+                },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(10,Utility.class,(p,b)->b.writeUtf(p.json,8192),b->new Utility(b.readUtf(8192)),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.UtilityHud.receive(p.json)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(11,Scan.class,(p,b)->b.writeUtf(p.json,262144),b->new Scan(b.readUtf(262144)),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.ScannerVision.receive(p.json)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(9,SafeZoneConfig.class,(p,b)->b.writeUtf(p.json,262144),b->new SafeZoneConfig(b.readUtf(262144)),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->SafeZones.receive(p.json));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(7,MapPreview.class,(p,b)->{b.writeUtf(p.id,48);b.writeByteArray(p.png);b.writeUtf(p.error,256);},
+                b->new MapPreview(b.readUtf(48),b.readByteArray(MapPreviewFiles.MAX_BYTES),b.readUtf(256)),(p,context)->{
+                    var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.PreviewCache.map(p)));ctx.setPacketHandled(true);
+                },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(8,WeaponPreview.class,(p,b)->{b.writeUtf(p.id,64);b.writeItem(p.stack);},
+                b->new WeaponPreview(b.readUtf(64),b.readItem()),(p,context)->{
+                    var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.PreviewCache.weapon(p)));ctx.setPacketHandled(true);
+                },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(6,Progression.class,(p,b)->b.writeUtf(p.json,4096),b->new Progression(b.readUtf(4096)),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.ProgressionHud.receive(p.json)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(5,Gadget.class,(p,b)->{b.writeUtf(p.preview,32);b.writeDouble(p.range);},b->new Gadget(b.readUtf(32),b.readDouble()),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.GadgetClient.receive(p.preview,p.range)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(0, Acoustics.class, (p, b) -> b.writeUtf(p.json, 65536), b -> new Acoustics(b.readUtf(65536)),
                 (p, context) -> {
                     var ctx = context.get();
@@ -55,7 +92,7 @@ public final class GungangNetwork {
                     ctx.setPacketHandled(true);
                 }, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     }
-    public static boolean installed(ServerPlayer player) { return CHANNEL.isRemotePresent(player.connection.connection); }
+    public static boolean installed(ServerPlayer player) { return player.connection!=null&&player.connection.connection.channel()!=null&&CHANNEL.isRemotePresent(player.connection.connection); }
     public static void send(ServerPlayer player, Object packet) {
         if (installed(player)) CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
     }
