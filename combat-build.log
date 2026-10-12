@@ -1,0 +1,98 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :
+MixinGradle is skipping eclipse integration, extension not found
+
+> Task :downloadMcpConfig
+> Task :extractSrg UP-TO-DATE
+> Task :createMcpToSrg UP-TO-DATE
+
+> Task :compileJava
+Note: SpongePowered MIXIN Annotation Processor Version=0.8.5 (MixinGradle Version=0.7.38)
+Note: Supported obfuscation types: ObfuscationServiceMCP supports [notch] ObfuscationServiceFG3 supports [searge]
+Note: Loading searge mappings from C:\Github\mc1.20.1_gungang\build\createMcpToSrg\output.tsrg
+Note: Writing refmap to C:\Github\mc1.20.1_gungang\build\tmp\compileJava\compileJava-refmap.json
+Note: Writing refmap to C:\Github\mc1.20.1_gungang\build\tmp\compileJava\compileJava-refmap.json
+Note: Writing searge composite mappings to C:\Github\mc1.20.1_gungang\build\tmp\compileJava\compileJava-mappings.tsrg
+Note: Writing refmap to C:\Github\mc1.20.1_gungang\build\tmp\compileJava\compileJava-refmap.json
+Note: Writing refmap to C:\Github\mc1.20.1_gungang\build\tmp\compileJava\compileJava-refmap.json
+Note: Writing searge composite mappings to C:\Github\mc1.20.1_gungang\build\tmp\compileJava\compileJava-mappings.tsrg
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\client\MatchTimerHud.java:9: warning: [removal] ResourceLocation(String,String) in ResourceLocation has been deprecated and marked for removal
+    private static final ResourceLocation ATLAS = new ResourceLocation(GungangAcoustics.ID,"textures/gui/timer.png");
+                                                  ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\server\GungangNetwork.java:17: warning: [removal] ResourceLocation(String,String) in ResourceLocation has been deprecated and marked for removal
+            new ResourceLocation(GungangAcoustics.ID, "server"), () -> "1", GungangNetwork::accepts, GungangNetwork::accepts);
+            ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\client\ScannerVision.java:23: warning: [removal] ResourceLocation(String,String) in ResourceLocation has been deprecated and marked for removal
+                    .setTextureState(new TextureStateShard(new ResourceLocation("minecraft","textures/block/white_concrete.png"),false,false))
+                                                           ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\client\TeamSilhouette.java:22: warning: [removal] ResourceLocation(String,String) in ResourceLocation has been deprecated and marked for removal
+                    .setTextureState(new TextureStateShard(new ResourceLocation("minecraft", "textures/block/white_concrete.png"), false, false))
+                                                           ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\GungangAcoustics.java:12: warning: [removal] get() in FMLJavaModLoadingContext has been deprecated and marked for removal
+        dev.gungang.acoustics.server.StationBlocks.register(net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext.get().getModEventBus());
+                                                                                                                      ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\GungangAcoustics.java:13: warning: [removal] get() in FMLJavaModLoadingContext has been deprecated and marked for removal
+        dev.gungang.acoustics.server.GadgetItems.register(net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext.get().getModEventBus());
+                                                                                                                    ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\GungangAcoustics.java:14: warning: [removal] get() in ModLoadingContext has been deprecated and marked for removal
+        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, AcousticConfig.SPEC);
+                         ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\server\CaptureFloor.java:22: warning: [removal] ResourceLocation(String) in ResourceLocation has been deprecated and marked for removal
+        level=server.getLevel(ResourceKey.create(Registries.DIMENSION,new ResourceLocation(map.dimension())));
+                                                                      ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\server\CaptureFloor.java:44: warning: [removal] ResourceLocation(String,String) in ResourceLocation has been deprecated and marked for removal
+            var block=BuiltInRegistries.BLOCK.get(new ResourceLocation("minecraft",dye.getName()+(wool?"_wool":"_stained_glass")));
+                                                  ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\server\LobbyManager.java:308: warning: [removal] ResourceLocation(String) in ResourceLocation has been deprecated and marked for removal
+        ServerLevel level = server.getLevel(ResourceKey.create(Registries.DIMENSION, new ResourceLocation(map.dimension())));
+                                                                                     ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\server\LobbyManager.java:420: warning: [removal] ResourceLocation(String) in ResourceLocation has been deprecated and marked for removal
+            var function = server.getFunctions().get(new ResourceLocation(id));
+                                                     ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\server\MatchManager.java:105: warning: [removal] ResourceLocation(String) in ResourceLocation has been deprecated and marked for removal
+        var level=server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,new net.minecraft.resources.ResourceLocation(map.dimension())));
+                                                                                                                                ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\server\NormandyBeacon.java:22: warning: [removal] ResourceLocation(String) in ResourceLocation has been deprecated and marked for removal
+            var level=server.getLevel(ResourceKey.create(Registries.DIMENSION,new ResourceLocation(tag.getString("Dimension"))));
+                                                                              ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\server\NormandyBeacon.java:41: warning: [removal] ResourceLocation(String) in ResourceLocation has been deprecated and marked for removal
+        var level=server.getLevel(ResourceKey.create(Registries.DIMENSION,new ResourceLocation(map.dimension())));if(level==null)return;
+                                                                          ^
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+14 warnings
+
+> Task :processResources
+> Task :classes
+> Task :compileTestJava
+> Task :processTestResources
+> Task :testClasses
+
+> Task :test
+
+AbsorptionBarTest > withoutAbsorptionPreservesOriginalHealthAndDamageTrail() FAILED
+    org.opentest4j.AssertionFailedError at AbsorptionBarTest.java:25
+
+113 tests completed, 1 failed
+
+> Task :test FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':test'.
+> There were failing tests. See the report at: file:///C:/Github/mc1.20.1_gungang/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.8/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 25s
+8 actionable tasks: 6 executed, 2 up-to-date

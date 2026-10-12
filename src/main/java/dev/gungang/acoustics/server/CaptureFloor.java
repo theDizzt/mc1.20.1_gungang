@@ -8,6 +8,9 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.item.DyeColor;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.level.block.StainedGlassBlock;
 
 /** Only recolors existing wool and point-colored glass inside the capture volume and its floor. */
 final class CaptureFloor {
@@ -36,11 +39,23 @@ final class CaptureFloor {
         for(var pos:positions) {
             var state=level.getBlockState(pos);
             boolean wool=state.is(BlockTags.WOOL);
-            if(!wool&&!state.is(Blocks.WHITE_STAINED_GLASS)&&!state.is(Blocks.RED_STAINED_GLASS)&&!state.is(Blocks.BLUE_STAINED_GLASS))continue;
-            var block=wool?(owner>0?Blocks.RED_WOOL:owner<0?Blocks.BLUE_WOOL:Blocks.WHITE_WOOL)
-                    :(owner>0?Blocks.RED_STAINED_GLASS:owner<0?Blocks.BLUE_STAINED_GLASS:Blocks.WHITE_STAINED_GLASS);
+            if(!wool&&!(state.getBlock() instanceof StainedGlassBlock))continue;
+            DyeColor dye=owner==0?DyeColor.WHITE:teamDye(owner>0?"ALPHA":"BRAVO");
+            var block=BuiltInRegistries.BLOCK.get(new ResourceLocation("minecraft",dye.getName()+(wool?"_wool":"_stained_glass")));
             if(!state.is(block))level.setBlock(pos,block.defaultBlockState(),2);
         }
+    }
+    private static DyeColor teamDye(String team) {
+        int rgb=LobbyManager.options().color(team);
+        if(rgb==TeamOptions.defaults().color(team)) return team.equals("ALPHA")?DyeColor.RED:DyeColor.BLUE;
+        int best=Integer.MAX_VALUE; DyeColor closest=DyeColor.WHITE;
+        for(var dye:DyeColor.values()) {
+            int other=dye.getTextColor();
+            int r=(rgb>>16&255)-(other>>16&255),g=(rgb>>8&255)-(other>>8&255),b=(rgb&255)-(other&255);
+            int distance=r*r+g*g+b*b;
+            if(distance<best) { best=distance; closest=dye; }
+        }
+        return closest;
     }
     void reset() { color(0);positions.clear();level=null; }
 }

@@ -9,10 +9,24 @@ import net.minecraft.network.chat.Component;
 abstract class ArenaScreen extends Screen {
     static final int INK = 0xFFF0F4FA, MUTED = 0xFF9AAABD, ACCENT = 0xFF70CDBF;
     ArenaScreen(String title) { super(Component.literal(title)); }
+    ArenaScreen(Component title) { super(title); }
     int left() { return Math.max(8, (width - 620) / 2); }
     int body() { return width - left() * 2; }
     void button(String text, int x, int y, int w, int h, boolean enabled, int accent, Runnable action) {
-        var button = new FlatButton(x, y, w, h, Component.literal(text), b -> action.run(), accent);
+        addButton(text,x,y,w,h,enabled,accent,false,action);
+    }
+    void button(Component text,int x,int y,int w,int h,boolean enabled,int accent,Runnable action) {
+        var button=new FlatButton(x,y,w,h,text,b->action.run(),accent,false);
+        button.active=enabled;addRenderableWidget(button);
+    }
+    void colorButton(String text,int x,int y,int w,int h,boolean enabled,int color,Runnable action) {
+        addButton(text,x,y,w,h,enabled,color,true,action);
+    }
+    void closeButton(int x,int y,int w,int h) {
+        colorButton("닫기",x,y,w,h,true,0xFFCC3333,this::onClose);
+    }
+    private void addButton(String text,int x,int y,int w,int h,boolean enabled,int accent,boolean filled,Runnable action) {
+        var button = new FlatButton(x, y, w, h, Component.literal(text), b -> action.run(), accent,filled);
         button.active = enabled; addRenderableWidget(button);
     }
     void shell(GuiGraphics g, String subtitle) {
@@ -31,16 +45,25 @@ abstract class ArenaScreen extends Screen {
     @Override public void onClose() { minecraft.setScreen(null); }
     private static final class FlatButton extends Button {
         final int accent;
-        FlatButton(int x, int y, int w, int h, Component label, OnPress press, int accent) {
-            super(x, y, w, h, label, press, DEFAULT_NARRATION); this.accent = accent;
+        final boolean filled;
+        FlatButton(int x, int y, int w, int h, Component label, OnPress press, int accent,boolean filled) {
+            super(x, y, w, h, label, press, DEFAULT_NARRATION); this.accent = accent;this.filled=filled;
         }
         @Override protected void renderWidget(GuiGraphics g, int mouseX, int mouseY, float partial) {
             int background = !active ? 0xFF1A2330 : isHoveredOrFocused() ? 0xFF304157 : 0xFF243247;
+            if(filled) {
+                int r=accent>>16&255,gc=accent>>8&255,b=accent&255;
+                if(!active) {r/=2;gc/=2;b/=2;}
+                else if(isHoveredOrFocused()) {r+=(255-r)/5;gc+=(255-gc)/5;b+=(255-b)/5;}
+                background=0xFF000000|r<<16|gc<<8|b;
+            }
             g.fill(getX(), getY(), getX() + width, getY() + height, background);
             g.fill(getX(), getY(), getX() + 2, getY() + height, active ? accent : 0xFF4B5665);
             var font = Minecraft.getInstance().font;
-            String label = font.plainSubstrByWidth(getMessage().getString(), Math.max(1,width - 14));
-            g.drawString(font, label, getX() + 8, getY() + (height - 8) / 2, active ? INK : 0xFF697789, false);
+            var label = net.minecraft.locale.Language.getInstance().getVisualOrder(font.substrByWidth(getMessage(), Math.max(1,width - 14)));
+            int textColor=active?INK:0xFF697789;
+            if(filled)textColor=((background>>16&255)*299+(background>>8&255)*587+(background&255)*114)>=150000?0xFF101820:INK;
+            g.drawString(font, label, getX() + 8, getY() + (height - 8) / 2, textColor, false);
         }
     }
 }

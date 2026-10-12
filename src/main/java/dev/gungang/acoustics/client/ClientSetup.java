@@ -13,11 +13,28 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
 @Mod.EventBusSubscriber(modid = GungangAcoustics.ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class ClientSetup {
+    @SubscribeEvent public static void renderers(net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
+        event.registerBlockEntityRenderer(dev.gungang.acoustics.server.StationBlocks.ENTITY.get(),StationRenderer::new);
+        event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.DEPLOYABLE.get(),DeployableRenderer::new);
+        event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.MOLOTOV_PROJECTILE.get(),net.minecraft.client.renderer.entity.ThrownItemRenderer::new);
+        event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.ORDNANCE.get(),OrdnanceRenderer::new);
+    }
+    @SubscribeEvent public static void blockColors(net.minecraftforge.client.event.RegisterColorHandlersEvent.Block event) {
+        event.register((state,level,pos,tint)->LobbyClient.options.color("ALPHA"),dev.gungang.acoustics.server.StationBlocks.ALPHA.get());
+        event.register((state,level,pos,tint)->LobbyClient.options.color("BRAVO"),dev.gungang.acoustics.server.StationBlocks.BRAVO.get());
+    }
+    @SubscribeEvent public static void itemColors(net.minecraftforge.client.event.RegisterColorHandlersEvent.Item event) {
+        event.register((stack,tint)->tint==0?0xCC2020:0xFFFFFF,dev.gungang.acoustics.server.GadgetItems.MOLOTOV.get());
+        event.register((stack,tint)->tint==0?0xFFE033:0xFFFFFF,dev.gungang.acoustics.server.GadgetItems.ADRENALINE.get());
+        event.register((stack,tint)->LobbyClient.options.color("ALPHA"),dev.gungang.acoustics.server.StationBlocks.ALPHA.get());
+        event.register((stack,tint)->LobbyClient.options.color("BRAVO"),dev.gungang.acoustics.server.StationBlocks.BRAVO.get());
+    }
     @SubscribeEvent
     public static void keys(RegisterKeyMappingsEvent event) {
         event.register(OffhandMacro.ATTACK);
         event.register(OffhandMacro.USE);
         event.register(LobbyClient.LOADOUT);
+        event.register(LobbyClient.LOBBY);
         event.register(ItemNbtCopy.COPY);
     }
     @SubscribeEvent
@@ -27,6 +44,11 @@ public final class ClientSetup {
     }
     @SubscribeEvent
     public static void setup(FMLClientSetupEvent event) {
+        event.enqueueWork(()->net.minecraft.client.renderer.item.ItemProperties.register(
+                dev.gungang.acoustics.server.GadgetItems.SHIELD.get(),new net.minecraft.resources.ResourceLocation("gungang","blocking"),
+                (stack,level,entity,seed)->entity instanceof net.minecraft.world.entity.player.Player player
+                        &&(player.getMainHandItem()==stack||player.getOffhandItem()==stack)
+                        &&dev.gungang.acoustics.server.CombatGadgets.holdingShield(player)?1:0));
         ModList.get().getModContainerById(GungangAcoustics.ID).orElseThrow().registerExtensionPoint(
                 ConfigScreenHandler.ConfigScreenFactory.class,
                 () -> new ConfigScreenHandler.ConfigScreenFactory((mc, parent) -> new AcousticConfigScreen(parent)));

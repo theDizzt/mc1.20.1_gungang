@@ -1,0 +1,154 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :
+MixinGradle is skipping eclipse integration, extension not found
+
+> Task :downloadMcpConfig
+> Task :extractSrg UP-TO-DATE
+> Task :createMcpToSrg UP-TO-DATE
+
+> Task :compileJava
+Note: SpongePowered MIXIN Annotation Processor Version=0.8.5 (MixinGradle Version=0.7.38)
+Note: Supported obfuscation types: ObfuscationServiceMCP supports [notch] ObfuscationServiceFG3 supports [searge]
+Note: Loading searge mappings from C:\Github\mc1.20.1_gungang\build\createMcpToSrg\output.tsrg
+Note: Writing refmap to C:\Github\mc1.20.1_gungang\build\tmp\compileJava\compileJava-refmap.json
+Note: Writing refmap to C:\Github\mc1.20.1_gungang\build\tmp\compileJava\compileJava-refmap.json
+Note: Writing searge composite mappings to C:\Github\mc1.20.1_gungang\build\tmp\compileJava\compileJava-mappings.tsrg
+Note: Writing refmap to C:\Github\mc1.20.1_gungang\build\tmp\compileJava\compileJava-refmap.json
+Note: Writing refmap to C:\Github\mc1.20.1_gungang\build\tmp\compileJava\compileJava-refmap.json
+Note: Writing searge composite mappings to C:\Github\mc1.20.1_gungang\build\tmp\compileJava\compileJava-mappings.tsrg
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\client\MatchTimerHud.java:9: warning: [removal] ResourceLocation(String,String) in ResourceLocation has been deprecated and marked for removal
+    private static final ResourceLocation ATLAS = new ResourceLocation(GungangAcoustics.ID,"textures/gui/timer.png");
+                                                  ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\server\GungangNetwork.java:17: warning: [removal] ResourceLocation(String,String) in ResourceLocation has been deprecated and marked for removal
+            new ResourceLocation(GungangAcoustics.ID, "server"), () -> "1", GungangNetwork::accepts, GungangNetwork::accepts);
+            ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\client\ScannerVision.java:23: warning: [removal] ResourceLocation(String,String) in ResourceLocation has been deprecated and marked for removal
+                    .setTextureState(new TextureStateShard(new ResourceLocation("minecraft","textures/block/white_concrete.png"),false,false))
+                                                           ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\client\TeamSilhouette.java:22: warning: [removal] ResourceLocation(String,String) in ResourceLocation has been deprecated and marked for removal
+                    .setTextureState(new TextureStateShard(new ResourceLocation("minecraft", "textures/block/white_concrete.png"), false, false))
+                                                           ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\GungangAcoustics.java:12: warning: [removal] get() in FMLJavaModLoadingContext has been deprecated and marked for removal
+        dev.gungang.acoustics.server.StationBlocks.register(net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext.get().getModEventBus());
+                                                                                                                      ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\GungangAcoustics.java:13: warning: [removal] get() in FMLJavaModLoadingContext has been deprecated and marked for removal
+        dev.gungang.acoustics.server.GadgetItems.register(net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext.get().getModEventBus());
+                                                                                                                    ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\GungangAcoustics.java:14: warning: [removal] get() in ModLoadingContext has been deprecated and marked for removal
+        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, AcousticConfig.SPEC);
+                         ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\server\CaptureFloor.java:22: warning: [removal] ResourceLocation(String) in ResourceLocation has been deprecated and marked for removal
+        level=server.getLevel(ResourceKey.create(Registries.DIMENSION,new ResourceLocation(map.dimension())));
+                                                                      ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\server\CaptureFloor.java:44: warning: [removal] ResourceLocation(String,String) in ResourceLocation has been deprecated and marked for removal
+            var block=BuiltInRegistries.BLOCK.get(new ResourceLocation("minecraft",dye.getName()+(wool?"_wool":"_stained_glass")));
+                                                  ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\server\LobbyManager.java:308: warning: [removal] ResourceLocation(String) in ResourceLocation has been deprecated and marked for removal
+        ServerLevel level = server.getLevel(ResourceKey.create(Registries.DIMENSION, new ResourceLocation(map.dimension())));
+                                                                                     ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\server\LobbyManager.java:420: warning: [removal] ResourceLocation(String) in ResourceLocation has been deprecated and marked for removal
+            var function = server.getFunctions().get(new ResourceLocation(id));
+                                                     ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\server\MatchManager.java:105: warning: [removal] ResourceLocation(String) in ResourceLocation has been deprecated and marked for removal
+        var level=server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,new net.minecraft.resources.ResourceLocation(map.dimension())));
+                                                                                                                                ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\server\NormandyBeacon.java:22: warning: [removal] ResourceLocation(String) in ResourceLocation has been deprecated and marked for removal
+            var level=server.getLevel(ResourceKey.create(Registries.DIMENSION,new ResourceLocation(tag.getString("Dimension"))));
+                                                                              ^
+C:\Github\mc1.20.1_gungang\src\main\java\dev\gungang\acoustics\server\NormandyBeacon.java:41: warning: [removal] ResourceLocation(String) in ResourceLocation has been deprecated and marked for removal
+        var level=server.getLevel(ResourceKey.create(Registries.DIMENSION,new ResourceLocation(map.dimension())));if(level==null)return;
+                                                                          ^
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+14 warnings
+
+> Task :processResources UP-TO-DATE
+> Task :classes
+> Task :createSrgToMcp UP-TO-DATE
+> Task :downloadMCMeta UP-TO-DATE
+> Task :downloadAssets UP-TO-DATE
+> Task :extractNatives UP-TO-DATE
+> Task :makeSrcDirs
+> Task :prepareRuns
+> Task :prepareRunServer
+> Task :prepareRunServerCompile
+
+> Task :runServer
+2026-10-12 13:05:01,092 main WARN Advanced terminal features are not available in this environment
+[13:05:01] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: ModLauncher running: args [--launchTarget, forgeserveruserdev, --gameDir, ., --fml.forgeVersion, 47.4.0, --fml.mcVersion, 1.20.1, --fml.forgeGroup, net.minecraftforge, --fml.mcpVersion, 20230612.114412, --nogui, --mixin.config, gungang_acoustics.mixins.json]
+[13:05:01] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: ModLauncher 10.0.9+10.0.9+main.dcd20f30 starting: java version 17.0.10 by Oracle Corporation; OS Windows 11 arch amd64 version 10.0
+[13:05:01] [main/INFO] [ne.mi.fm.lo.ImmediateWindowHandler/]: ImmediateWindowProvider not loading because launch target is forgeserveruserdev
+[13:05:01] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.5 Source=union:/C:/Users/eorhk/.gradle/caches/modules-2/files-2.1/org.spongepowered/mixin/0.8.5/9d1c0c3a304ae6697ecd477218fa61b850bf57fc/mixin-0.8.5.jar%23132!/ Service=ModLauncher Env=SERVER
+[13:05:01] [main/WARN] [ne.mi.fm.lo.mo.ModFileParser/LOADING]: Mod file C:\Users\eorhk\.gradle\caches\modules-2\files-2.1\net.minecraftforge\javafmllanguage\1.20.1-47.4.0\f0c0b352173d0a378cbdcec9cfc4ba65899a721\javafmllanguage-1.20.1-47.4.0.jar is missing mods.toml file
+[13:05:01] [main/WARN] [ne.mi.fm.lo.mo.ModFileParser/LOADING]: Mod file C:\Users\eorhk\.gradle\caches\modules-2\files-2.1\net.minecraftforge\lowcodelanguage\1.20.1-47.4.0\e862740d8c84d08dbfedea412bef88fe42e727c5\lowcodelanguage-1.20.1-47.4.0.jar is missing mods.toml file
+[13:05:01] [main/WARN] [ne.mi.fm.lo.mo.ModFileParser/LOADING]: Mod file C:\Users\eorhk\.gradle\caches\modules-2\files-2.1\net.minecraftforge\mclanguage\1.20.1-47.4.0\5719b3a297a33f877ed5dde4cb4bd75c859096af\mclanguage-1.20.1-47.4.0.jar is missing mods.toml file
+[13:05:01] [main/WARN] [ne.mi.fm.lo.mo.ModFileParser/LOADING]: Mod file C:\Users\eorhk\.gradle\caches\modules-2\files-2.1\net.minecraftforge\fmlcore\1.20.1-47.4.0\235975dafa4309945b59c56b53f31dc5b65a6051\fmlcore-1.20.1-47.4.0.jar is missing mods.toml file
+[13:05:01] [main/INFO] [ne.mi.fm.lo.mo.JarInJarDependencyLocator/]: No dependencies to load found. Skipping!
+[13:05:02] [main/INFO] [mixin/]: Compatibility level set to JAVA_17
+[13:05:02] [main/INFO] [cp.mo.mo.LaunchServiceHandler/MODLAUNCHER]: Launching target 'forgeserveruserdev' with arguments [--gameDir, ., --nogui]
+[13:05:02] [main/WARN] [mixin/]: Reference map 'gungang_acoustics.refmap.json' for gungang_acoustics.mixins.json could not be read. If this is a development environment you can ignore this message
+[13:05:02] [main/WARN] [mixin/]: Error loading class: me/xjqsh/lrtactical/capability/CustomItemCoolDowns (java.lang.ClassNotFoundException: me.xjqsh.lrtactical.capability.CustomItemCoolDowns)
+[13:05:06] [modloading-worker-0/INFO] [ne.mi.co.ForgeMod/FORGEMOD]: Forge mod loading, version 47.4.0, for MC 1.20.1 with MCP 20230612.114412
+[13:05:06] [modloading-worker-0/INFO] [ne.mi.co.MinecraftForge/FORGE]: MinecraftForge v47.4.0 Initialized
+[13:05:06] [Forge Version Check/INFO] [ne.mi.fm.VersionChecker/]: [forge] Starting version check at https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json
+[13:05:07] [main/INFO] [mojang/YggdrasilAuthenticationService]: Environment: authHost='https://authserver.mojang.com', accountsHost='https://api.mojang.com', sessionHost='https://sessionserver.mojang.com', servicesHost='https://api.minecraftservices.com', name='PROD'
+[13:05:07] [Forge Version Check/INFO] [ne.mi.fm.VersionChecker/]: [forge] Found status: OUTDATED Current: 47.4.0 Target: 47.4.10
+[13:05:07] [main/WARN] [minecraft/VanillaPackResourcesBuilder]: Assets URL 'union:/C:/Users/eorhk/.gradle/caches/forge_gradle/minecraft_user_repo/net/minecraftforge/forge/1.20.1-47.4.0_mapped_official_1.20.1/forge-1.20.1-47.4.0_mapped_official_1.20.1-recomp.jar%23191!/assets/.mcassetsroot' uses unexpected schema
+[13:05:07] [main/WARN] [minecraft/VanillaPackResourcesBuilder]: Assets URL 'union:/C:/Users/eorhk/.gradle/caches/forge_gradle/minecraft_user_repo/net/minecraftforge/forge/1.20.1-47.4.0_mapped_official_1.20.1/forge-1.20.1-47.4.0_mapped_official_1.20.1-recomp.jar%23191!/data/.mcassetsroot' uses unexpected schema
+[13:05:08] [main/INFO] [minecraft/RecipeManager]: Loaded 7 recipes
+[13:05:08] [main/INFO] [minecraft/AdvancementList]: Loaded 1271 advancements
+[13:05:09] [Server thread/INFO] [minecraft/DedicatedServer]: Starting minecraft server version 1.20.1
+[13:05:09] [Server thread/INFO] [minecraft/DedicatedServer]: Loading properties
+[13:05:09] [Server thread/INFO] [minecraft/DedicatedServer]: Default game type: SURVIVAL
+[13:05:09] [Server thread/INFO] [minecraft/MinecraftServer]: Generating keypair
+[13:05:09] [Server thread/INFO] [minecraft/DedicatedServer]: Starting Minecraft server on 127.0.0.1:25585
+[13:05:09] [Server thread/INFO] [minecraft/ServerConnectionListener]: Using default channel type
+[13:05:09] [Server thread/WARN] [minecraft/DedicatedServer]: **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+[13:05:09] [Server thread/WARN] [minecraft/DedicatedServer]: The server will make no attempt to authenticate usernames. Beware.
+[13:05:09] [Server thread/WARN] [minecraft/DedicatedServer]: While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
+[13:05:09] [Server thread/WARN] [minecraft/DedicatedServer]: To change this, set "online-mode" to "true" in the server.properties file.
+[13:05:09] [Server thread/INFO] [minecraft/DedicatedServer]: Preparing level "world"
+[13:05:09] [Server thread/INFO] [minecraft/MinecraftServer]: Preparing start region for dimension minecraft:overworld
+[13:05:10] [Worker-Main-12/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[13:05:10] [Worker-Main-12/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[13:05:10] [Worker-Main-9/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[13:05:11] [Server thread/INFO] [minecraft/LoggerChunkProgressListener]: Time elapsed: 1470 ms
+[13:05:11] [Server thread/INFO] [minecraft/DedicatedServer]: Done (1.610s)! For help, type "help"
+[13:05:11] [Server thread/INFO] [minecraft/DedicatedServer]: Starting remote control listener
+[13:05:11] [Server thread/INFO] [minecraft/GenericThread]: Thread RCON Listener started
+[13:05:11] [Server thread/INFO] [minecraft/RconThread]: RCON running on 127.0.0.1:25586
+[13:05:11] [Server thread/INFO] [ne.mi.ga.ForgeGameTestHooks/]: Enabled Gametest Namespaces: []
+[13:05:11] [Server thread/INFO] [ne.mi.se.pe.PermissionAPI/]: Successfully initialized permission handler forge:default_handler
+[13:05:11] [Server thread/INFO] [de.gu.ac.se.ServerFiles/]: [GunGang] Loaded 0 enabled maps from C:\Github\mc1.20.1_gungang\run-server\config\gungang\server\maps
+[13:05:11] [Server thread/INFO] [minecraft/MinecraftServer]: [Minecraft]�� xp ���� �����߽��ϴ�.
+[13:05:11] [Server thread/INFO] [minecraft/MinecraftServer]: [Minecraft]�� xp ���� �����߽��ϴ�.
+[13:05:11] [Server thread/INFO] [minecraft/MinecraftServer]: [Minecraft] �� Lv. 3 �� ����ġ 0/159
+��� 0��� �� 0�� �� 0ų / 0���� �� ���� 0.0 �� ��� �÷��� 0�ð� 0�� 0��
+[13:05:11] [Server thread/INFO] [minecraft/MinecraftServer]: [Minecraft] �� Lv. 3 �� ����ġ 0/159
+[13:05:11] [Server thread/INFO] [minecraft/MinecraftServer]: ���ڡ��溮 1�� ����, �̷ε� ��ġ���� ��ȿȭ�߽��ϴ�.
+[13:05:11] [Server thread/INFO] [de.gu.ac.se.ServerFiles/]: [GunGang] Loaded 0 enabled maps from C:\Github\mc1.20.1_gungang\run-server\config\gungang\server\maps
+[13:05:11] [Server thread/INFO] [minecraft/MinecraftServer]: �̹� �غ� ���̰ų� ���� ���� ��Ⱑ �ֽ��ϴ�. ���������� �� ��⸸ ��� �� �ֽ��ϴ�.
+[13:05:11] [Server thread/INFO] [minecraft/MinecraftServer]: �̹� �غ� ���̰ų� ���� ���� ��Ⱑ �ֽ��ϴ�. ���������� �� ��⸸ ��� �� �ֽ��ϴ�.
+GUNGANG_GADGET_SMOKE_PASS
+[13:05:11] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server
+[13:05:11] [Server thread/INFO] [minecraft/MinecraftServer]: Saving players
+[13:05:11] [Server thread/INFO] [minecraft/MinecraftServer]: Saving worlds
+[13:05:11] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[13:05:12] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[13:05:12] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+[13:05:12] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (world): All chunks are saved
+[13:05:12] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[13:05:12] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[13:05:12] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage: All dimensions are saved
+[13:05:12] [Server thread/INFO] [minecraft/GenericThread]: Thread RCON Listener stopped
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.8/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 26s
+11 actionable tasks: 4 executed, 7 up-to-date

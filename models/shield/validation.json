@@ -1,0 +1,6 @@
+{
+  "model_cubes": 49,
+  "opaque_in_window_area": [],
+  "glass_alpha": 65,
+  "forge_render_type": "minecraft:translucent"
+}

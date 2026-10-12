@@ -1,0 +1,14 @@
+{
+  "block.gungang.war_table": "War Table",
+  "block.gungang.armory": "Armory",
+  "block.gungang.alpha_team": "ALPHA Team Station",
+  "block.gungang.bravo_team": "BRAVO Team Station",
+  "block.gungang.small_health_pack": "Small Health Pack",
+  "block.gungang.large_health_pack": "Large Health Pack",
+  "item.gungang.infrared_scanner": "Infrared Scanner",
+  "item.gungang.shield": "Shield",
+  "item.gungang.molotov": "Molotov Cocktail",
+  "item.gungang.orbital_strike": "Orbital Strike",
+  "item.gungang.life_support": "Life Support",
+  "item.gungang.jetpack": "Jetpack"
+}

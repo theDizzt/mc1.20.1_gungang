@@ -56,13 +56,14 @@ public final class ShooterHud {
         graphics.fill(x, y + 2, x + 62, y + 64, TeamHud.teamColor(player));
         PlayerFaceRenderer.draw(graphics, player.getSkinTextureLocation(), x + 3, y + 5, 56,
                 player.isModelPartShown(PlayerModelPart.HAT), false);
-        if (!RespawnPortrait.render(graphics, player.getUUID(), x + 3, y + 5, 56) && !player.isDeadOrDying())
-            PortraitEffects.tint(graphics, player, x + 3, y + 5, 56);
+        RespawnPortrait.render(graphics, player.getUUID(), x + 3, y + 5, 56);
         int detailX = x + 68;
+        ProgressionHud.draw(graphics,detailX,y+7,WIDTH-68);
         HudText.draw(graphics, player.getName().getString(), detailX, y + 19, WIDTH - 68, 0xFFFFFFFF);
         // Slot 1 is always inventory index 0, independent of the player's selected slot.
         slot(graphics, player.getInventory().getItem(0), detailX, y + 32, player.getInventory().selected == 0);
         slot(graphics, player.getOffhandItem(), detailX + 38, y + 32, false);
+        UtilityHud.placements(graphics,x+WIDTH+8,y+35);
 
         float health = player.getHealth(), maximum = player.getMaxHealth();
         float fraction = HudHealth.fraction(health, maximum);
@@ -75,9 +76,10 @@ public final class ShooterHud {
         int barX = (screenWidth - barWidth) / 2;
         int barY = Math.max(0, screenHeight - HEALTH_HEIGHT - AcousticConfig.HUD_OFFSET_Y.get());
         // On narrow windows keep the centered bar clear of the portrait and item slots.
-        if (barX < x + WIDTH + 8 && barX + barWidth > x)
+        if (barX < x + WIDTH + 8 + UtilityHud.placementWidth() && barX + barWidth > x)
             barY = Math.max(0, y - HEALTH_HEIGHT - 8);
         CompassHud.render(graphics, barX + barWidth / 2, barY, barWidth, partialTick);
+        UtilityHud.gauges(graphics,barX+barWidth/2,barY,barWidth/2,HEALTH_HEIGHT/2,partialTick);
         panel(graphics, barX, barY, barWidth, HEALTH_HEIGHT, 0xFF60696D, 0x8029353E);
         var layers = HudHealthBars.layers(player, partialTick);
         float displayed = layers.absorptionEnd();
@@ -147,6 +149,22 @@ public final class ShooterHud {
             graphics.renderItem(stack, 0, 0);
             graphics.renderItemDecorations(mc.font, stack, 0, 0);
             graphics.pose().popPose();
+            long cooldown=dev.gungang.acoustics.server.SecondaryRuntime.remaining(mc.player,stack);
+            if(cooldown>0) {
+                graphics.flush();
+                graphics.pose().pushPose();
+                // Item models and decorations write depth up to z=200; keep both overlay layers above them.
+                graphics.pose().translate(0,0,300);
+                int total=Math.max(1,stack.getTag().getInt("GunGangCooldownTicks"));
+                graphics.fill(x+1,y+31-Math.round(30*Math.min(1,cooldown/(float)total)),x+33,y+31,0xAA101820);
+                String seconds=String.format(java.util.Locale.ROOT,"%.1f",cooldown/20.0);
+                float textScale=Math.min(1f,30f/Math.max(1,mc.font.width(seconds)));
+                graphics.pose().translate(x+17,y+16-4*textScale,1);
+                graphics.pose().scale(textScale,textScale,1);
+                graphics.drawString(mc.font,seconds,-mc.font.width(seconds)/2,0,0xFFFFFFFF,true);
+                graphics.flush();
+                graphics.pose().popPose();
+            }
         }
     }
     public static void panel(GuiGraphics graphics, int x, int y, int width, int height,

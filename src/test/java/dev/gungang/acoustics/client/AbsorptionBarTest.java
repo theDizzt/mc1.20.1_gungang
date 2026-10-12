@@ -22,6 +22,6 @@ class AbsorptionBarTest {
         var layers = HudHealthBars.compose(0.4f, 0.7f, 0, 0);
         assertEquals(0.4f, layers.health());
         assertEquals(0.7f, layers.healthTrail());
-        assertEquals(0xFFD6A06E, layers.colorAt(0.5f, 0xFFFFFFFF));
+        assertEquals(0xFF45494F, layers.colorAt(0.5f, 0xFFFFFFFF));
     }
 }
