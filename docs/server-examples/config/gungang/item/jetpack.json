@@ -1,0 +1,11 @@
+{
+  "speed": 0.85,
+  "durationSeconds": 3,
+  "collisionDamage": 25,
+  "knockback": 1.5,
+  "burnSeconds": 3,
+  "trailSeconds": 1,
+  "cooldownSeconds": 24,
+  "verticalFlight": false,
+  "burnDamage": 1
+}

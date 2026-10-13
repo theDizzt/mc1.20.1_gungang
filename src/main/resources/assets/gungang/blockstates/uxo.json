@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "active=true": {
+      "model": "gungang:block/uxo"
+    },
+    "active=false": {
+      "model": "gungang:block/empty"
+    }
+  }
+}

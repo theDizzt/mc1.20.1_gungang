@@ -1,5 +1,9 @@
 # GunGang 모드 명령어
 
+[README·문서 안내](../README.md) · [전적·XP·레벨 조회 및 수정 명령](PROGRESSION.md) · [설치물 정리 명령](MATCH-LIFECYCLE.md)
+
+`/gungang cleardeployables`(OP 2)는 전체 지뢰·방벽을 제거합니다. 경기 중 팀 참가자는 무기고 3블록 이내에서도 무기 선택을 사용할 수 있습니다. 일반 맵의 준비 시간은 30초이고, [노르망디](NORMANDY.md)는 45초이며 ALPHA는 자유 이동합니다.
+
 현재 코드에 등록된 서버·클라이언트 명령어 목록입니다. 설정 파일의 전체 형식은 [서버 설정 설명서](SERVER.md)를 참고하세요.
 
 ## 사용 조건

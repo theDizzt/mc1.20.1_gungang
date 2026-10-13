@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "active=true": {
+      "model": "gungang:block/cracked_glass_pane"
+    },
+    "active=false": {
+      "model": "gungang:block/empty"
+    }
+  }
+}

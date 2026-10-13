@@ -669,6 +669,7 @@ public final class LobbyManager {
         p.teleportTo(p.server.overworld(),HOME.getX(),HOME.getY(),HOME.getZ(),0,0);
     }
     private static void reset() {
+        GimmickEpoch.reset(server);
         close();GadgetManager.clearAll(server);CombatGadgets.reset(server);
         server.overworld().setDefaultSpawnPos(HOME,0);
         for(var p:server.getPlayerList().getPlayers()) {resetPlayer(p);equipment(p,false);}

@@ -1,0 +1,41 @@
+{
+  "textures": {
+    "side": "gungang:block/barrel_red",
+    "particle": "gungang:block/barrel_red"
+  },
+  "elements": [
+    {
+      "to": [
+        14,
+        8,
+        14
+      ],
+      "faces": {
+        "north": {
+          "texture": "#side"
+        },
+        "south": {
+          "texture": "#side"
+        },
+        "east": {
+          "texture": "#side"
+        },
+        "west": {
+          "texture": "#side"
+        },
+        "up": {
+          "texture": "#side"
+        },
+        "down": {
+          "texture": "#side"
+        }
+      },
+      "from": [
+        2,
+        0,
+        2
+      ]
+    }
+  ],
+  "parent": "minecraft:block/block"
+}

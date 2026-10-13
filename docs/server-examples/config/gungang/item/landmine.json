@@ -1,0 +1,9 @@
+{
+  "damage": 100,
+  "radius": 3,
+  "triggerRadius": 1.2,
+  "maxPlaced": 3,
+  "disarmSeconds": 5,
+  "range": 5,
+  "showHealthBar": false
+}

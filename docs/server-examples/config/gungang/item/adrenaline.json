@@ -1,0 +1,7 @@
+{
+  "healthCostPercent": 50,
+  "durationSeconds": 7,
+  "movementBonusPercent": 20,
+  "attackBonusPercent": 20,
+  "damageBonusPercent": 20
+}

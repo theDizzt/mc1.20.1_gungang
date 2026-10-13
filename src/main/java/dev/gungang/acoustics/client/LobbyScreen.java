@@ -2,8 +2,10 @@ package dev.gungang.acoustics.client;
 
 import dev.gungang.acoustics.server.LobbySnapshot;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 
 final class LobbyScreen extends ArenaScreen {
+    private static final int WAITING = 0xFFE0B860;
     private LobbySnapshot state;
     private boolean maps;
     private int page;
@@ -11,32 +13,35 @@ final class LobbyScreen extends ArenaScreen {
     private String previewMap;
     @Override public void onClose(){
         super.onClose();
-        minecraft.gui.setOverlayMessage(net.minecraft.network.chat.Component.literal(LobbyClient.LOBBY.getTranslatedKeyMessage().getString()+" 키 또는 /gungang lobby로 대기실 다시 열기"),false);
+        minecraft.gui.setOverlayMessage(Component.literal(LobbyClient.LOBBY.getTranslatedKeyMessage().getString()+" 키 또는 /gungang lobby로 대기실 다시 열기"),false);
     }
     LobbyScreen(LobbySnapshot state) { super("GUNGANG / MATCH LOBBY"); this.state = state; target = state.you();previewMap=state.selectedMap();PreviewCache.clear(); }
     void update(LobbySnapshot next) { state = next; if (state.members().stream().noneMatch(m -> m.id().equals(target))) target = state.you(); rebuildWidgets(); }
     private int neutralCapacity() {return height<300?1:2;}
     private int neutralTop() {return height-91-neutralCapacity()*24;}
     private int capacity() { return Math.max(1, maps?(height-186)/27:(neutralTop()-120)/24); }
+    private java.util.List<LobbySnapshot.Member> team(String team) { return state.members().stream().filter(m->m.team().equals(team)).toList(); }
+    private java.util.List<LobbySnapshot.Member> neutral() { return state.members().stream().filter(m->!m.team().equals("ALPHA")&&!m.team().equals("BRAVO")).toList(); }
     @Override protected void init() {
         int x = left() + 12, w = body() - 24, half = (w - 8) / 2;
         button("플레이어 / 팀", x, 57, half, 22, true, !maps ? ACCENT : MUTED, () -> { maps = false; page = 0; rebuildWidgets(); });
         button("맵 선택", x + half + 8, 57, half, 22, true, maps ? ACCENT : MUTED, () -> { maps = true; page = 0; rebuildWidgets(); });
-        var alpha=state.members().stream().filter(m->m.team().equals("ALPHA")).toList();
-        var bravo=state.members().stream().filter(m->m.team().equals("BRAVO")).toList();
-        var neutral=state.members().stream().filter(m->!m.team().equals("ALPHA")&&!m.team().equals("BRAVO")).toList();
+        var alpha=team("ALPHA");
+        var bravo=team("BRAVO");
+        var neutral=neutral();
         int count = maps ? state.maps().size() : Math.max(Math.max(alpha.size(),bravo.size()),((neutral.size()+neutralCapacity()-1)/neutralCapacity())*capacity());
         page = Math.min(page, Math.max(0, (count - 1) / capacity()));
         for (int i = page * capacity(); maps && i < Math.min(count, (page + 1) * capacity()); i++) {
             int y = 85 + (i - page * capacity()) * 27;
                 var map = state.maps().get(i);
-                button((state.selectedMap().equals(map.id()) ? "● " : "") + map.name(), x, y, Math.max(90,w/3), 24,
+                var label = state.selectedMap().equals(map.id()) ? Component.literal("● ").withStyle(s -> s.withColor(ACCENT & 0xFFFFFF)).append(Component.literal(map.name())) : Component.literal(map.name());
+                listButton(label, x, y, Math.max(90,w/3), 24,
                         true,map.id().equals(previewMap)?ACCENT:MUTED, () -> {previewMap=map.id();if(state.administrator())LobbyClient.action("map", map.id(), "");rebuildWidgets();});
         }
         if(!maps) {
-            members(alpha,x,100,half,LobbyClient.options.color("ALPHA"),capacity(),page*capacity());
-            members(bravo,x+half+8,100,half,LobbyClient.options.color("BRAVO"),capacity(),page*capacity());
-            members(neutral,x,neutralTop(),w,MUTED,neutralCapacity(),page*neutralCapacity());
+            members(alpha,x+4,100,half-8,LobbyClient.options.color("ALPHA"),capacity(),page*capacity());
+            members(bravo,x+half+12,100,half-8,LobbyClient.options.color("BRAVO"),capacity(),page*capacity());
+            members(neutral,x+4,neutralTop(),w-8,MUTED,neutralCapacity(),page*neutralCapacity());
         }
         int y = height - 90;
         button("‹", x, y, 28, 20, page > 0, MUTED, () -> { page--; rebuildWidgets(); });
@@ -55,49 +60,92 @@ final class LobbyScreen extends ArenaScreen {
         button("관전자", x + third + 6, height - 64, third, 20, !maps, MUTED, () -> LobbyClient.action("team", "SPECTATOR", target));
         }
         var self = state.members().stream().filter(m -> m.id().equals(state.you())).findFirst().orElse(null);
-        button(self != null && self.ready() ? "준비 취소" : "준비 완료", x, height - 38, w, 20,
-                self != null && (self.team().equals("ALPHA") || self.team().equals("BRAVO")) && !state.selectedMap().isEmpty(), ACCENT, () -> LobbyClient.action("ready", "", ""));
+        boolean canReady = self != null && (self.team().equals("ALPHA") || self.team().equals("BRAVO")) && !state.selectedMap().isEmpty();
+        Runnable ready = () -> LobbyClient.action("ready", "", "");
+        if (self != null && self.ready()) button("준비 취소", x, height - 38, w, 20, canReady, WAITING, ready);
+        else colorButton("준비 완료", x, height - 38, w, 20, canReady, ACCENT, ready);
     }
     private void members(java.util.List<LobbySnapshot.Member> list,int x,int y,int w,int color,int count,int offset) {
         for(int i=offset;i<Math.min(list.size(),offset+count);i++) {
             var member=list.get(i);
-            button((member.id().equals(target)?"› ":"")+member.name()+" · "+(member.ready()?"READY":member.team().equals("UNASSIGNED")?"미배정":member.team().equals("SPECTATOR")?"관전자":"대기"),x,y+(i-offset)*24,w,21,
-                    state.administrator()||member.id().equals(state.you()),color,()->{target=member.id();rebuildWidgets();});
+            String status=member.ready()?"READY":member.team().equals("UNASSIGNED")?"미배정":member.team().equals("SPECTATOR")?"관전자":"대기";
+            int statusColor=member.ready()?READY:member.team().equals("UNASSIGNED")?DIM:member.team().equals("SPECTATOR")?MUTED:WAITING;
+            var label=Component.empty();
+            if(member.id().equals(target))label.append(Component.literal("› ").withStyle(s->s.withColor(ACCENT&0xFFFFFF)));
+            label.append(Component.literal(member.name()));
+            if(member.id().equals(state.you()))label.append(Component.literal(" (나)").withStyle(s->s.withColor(ACCENT&0xFFFFFF)));
+            label.append(Component.literal(" · ").withStyle(s->s.withColor(DIM&0xFFFFFF)))
+                    .append(Component.literal(status).withStyle(s->s.withColor(statusColor&0xFFFFFF)));
+            listButton(label,x,y+(i-offset)*24,w,21,
+                    state.administrator()||member.id().equals(state.you()),member.id().equals(target)?color:MUTED,()->{target=member.id();rebuildWidgets();});
         }
     }
     @Override public void render(GuiGraphics g, int mouseX, int mouseY, float partial) {
-        String map = state.maps().stream().filter(m -> m.id().equals(state.selectedMap())).map(LobbySnapshot.MapView::name).findFirst().orElse("활성 맵 없음 · 서버 config/gungang/server/maps의 enabled 확인");
+        var selectedMap = state.maps().stream().filter(m -> m.id().equals(state.selectedMap())).map(LobbySnapshot.MapView::name).findFirst();
         String mode="DEATHMATCH".equals(state.selectedMode())?"팀 데스매치":"NORMANDY".equals(state.selectedMode())?"노르망디":"쟁탈전";
-        shell(g, map + " · "+mode+"  /  전원 준비 → "+("NORMANDY".equals(state.selectedMode())?45:30)+"초 준비");
+        var subtitle = Component.empty()
+                .append(Component.literal(selectedMap.orElse("활성 맵 없음 · 서버 config/gungang/server/maps의 enabled 확인")).withStyle(s -> s.withColor((selectedMap.isPresent() ? INK : 0xFFE08060) & 0xFFFFFF)))
+                .append(Component.literal(" · ").withStyle(s -> s.withColor(DIM & 0xFFFFFF)))
+                .append(Component.literal(mode).withStyle(s -> s.withColor(ACCENT & 0xFFFFFF)))
+                .append(Component.literal("  /  전원 준비 → "+("NORMANDY".equals(state.selectedMode())?45:30)+"초 준비"));
+        shell(g, subtitle);
         if(!maps) {
             int x=left()+12,w=body()-24,half=(w-8)/2;
-            g.drawString(font,"ALPHA",x+4,85,LobbyClient.options.color("ALPHA"),false);
-            g.drawString(font,"BRAVO",x+half+12,85,LobbyClient.options.color("BRAVO"),false);
-            g.drawString(font,"미배정 / 관전자",x+4,neutralTop()-13,MUTED,false);
+            teamCard(g,"ALPHA",team("ALPHA"),x,x+half,LobbyClient.options.color("ALPHA"));
+            teamCard(g,"BRAVO",team("BRAVO"),x+half+8,x+w,LobbyClient.options.color("BRAVO"));
+            var neutral=neutral();
+            int top=neutralTop()-17;
+            card(g,x,top,x+w,neutralTop()+neutralCapacity()*24-2);
+            int pages=pageCount();
+            cardHeader(g,x,top,x+w,"미배정 / 관전자",MUTED,neutral.size()+"명"+(pages>1?"  ·  페이지 "+(page+1)+"/"+pages:""));
+            if(neutral.isEmpty())g.drawString(font,"대기 중인 플레이어 없음",x+8,neutralTop()+6,DIM,false);
         }
         if (maps) {
             renderPreview(g);
             var selected = state.maps().stream().filter(m -> m.id().equals(state.selectedMap())).findFirst().orElse(null);
             if (selected != null) {
                 String description="DEATHMATCH".equals(state.selectedMode())?state.options().deathmatch().timeLimitSeconds()+"초 · 목표 "+state.options().deathmatch().winningKills()+"킬 · 동점 시 무승부":selected.description();
-                g.drawString(font, font.plainSubstrByWidth(description, Math.max(1,body() - 24)), left() + 12, height - 103, MUTED, false);
+                g.fill(left() + 12, height - 104, left() + 14, height - 94, ACCENT);
+                g.drawString(font, font.plainSubstrByWidth(description, Math.max(1,body() - 30)), left() + 18, height - 103, MUTED, false);
             }
         }
         super.render(g, mouseX, mouseY, partial);
     }
+    private int pageCount() {
+        int count=Math.max(Math.max(team("ALPHA").size(),team("BRAVO").size()),((neutral().size()+neutralCapacity()-1)/neutralCapacity())*capacity());
+        return Math.max(1,(count+capacity()-1)/capacity());
+    }
+    private void teamCard(GuiGraphics g,String name,java.util.List<LobbySnapshot.Member> list,int x1,int x2,int color) {
+        int top=81,bottom=100+capacity()*24-2;
+        card(g,x1,top,x2,bottom);
+        long ready=list.stream().filter(LobbySnapshot.Member::ready).count();
+        cardHeader(g,x1,top,x2,name,color,list.size()+"명 · 준비 "+ready+"/"+list.size());
+        if(list.isEmpty())g.drawString(font,"플레이어 없음",x1+8,106,DIM,false);
+    }
     private void renderPreview(GuiGraphics g) {
         var selected=state.maps().stream().filter(m->m.id().equals(previewMap)).findFirst().orElse(null);
-        if(selected==null)return;
         int x=left()+12+Math.max(90,(body()-24)/3)+8,right=left()+body()-12,w=right-x,top=85,bottom=height-110;
-        g.fill(x,top,right,bottom,0xFF101A28);
-        g.drawString(font,font.plainSubstrByWidth(selected.name()+" · "+selected.gameMode(),Math.max(1,w-12)),x+6,top+6,INK,false);
+        if(selected==null) {
+            if(bottom>top){card(g,x,top,right,bottom);g.drawString(font,"왼쪽 목록에서 맵을 선택하세요",x+8,top+8,DIM,false);}
+            return;
+        }
+        card(g,x,top,right,bottom);
+        g.fillGradient(x,top,right,top+18,0xFF1B293C,PANEL);
+        g.fill(x,top,right,top+1,ACCENT);
+        int tagX=right-6;
+        if(selected.id().equals(state.selectedMap())){String tag="현재 선택";tagX-=font.width(tag)+8;badge(g,tag,tagX,top+4,READY);tagX-=4;}
+        String modeTag=selected.gameMode();
+        if(modeTag!=null&&!modeTag.isEmpty()){tagX-=font.width(modeTag)+8;badge(g,modeTag,tagX,top+4,ACCENT);tagX-=4;}
+        g.drawString(font,font.plainSubstrByWidth(selected.name(),Math.max(1,tagX-x-8)),x+6,top+6,INK,false);
         var image=PreviewCache.image(selected);int imageY=top+22,availableH=bottom-imageY-5;
         if(image.texture()!=null&&availableH>0) {
             float scale=Math.min((w-12f)/image.width(),availableH/(float)image.height());
             int iw=Math.max(1,Math.round(image.width()*scale)),ih=Math.max(1,Math.round(image.height()*scale));
-            g.blit(image.texture(),x+(w-iw)/2,imageY+(availableH-ih)/2,iw,ih,0,0,image.width(),image.height(),image.width(),image.height());
+            int ix=x+(w-iw)/2,iy=imageY+(availableH-ih)/2;
+            g.fill(ix-1,iy-1,ix+iw+1,iy+ih+1,BORDER);
+            g.blit(image.texture(),ix,iy,iw,ih,0,0,image.width(),image.height(),image.width(),image.height());
         }else if(availableH>0) {
-            int y=imageY+4;for(var line:font.split(net.minecraft.network.chat.Component.literal(image.error()),Math.max(1,w-12))) {
+            int y=imageY+4;for(var line:font.split(Component.literal(image.error()),Math.max(1,w-12))) {
                 if(y+9>bottom)break;g.drawString(font,line,x+6,y,MUTED,false);y+=12;
             }
         }

@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "active=true": {
+      "model": "gungang:block/cracked_red_concrete"
+    },
+    "active=false": {
+      "model": "gungang:block/empty"
+    }
+  }
+}

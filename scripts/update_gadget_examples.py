@@ -24,7 +24,7 @@ for file in (SERVER/'sub_weapons').glob('*.json'):
     file.write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 configs={'landmine':dict(damage=100,radius=3,triggerRadius=1.2,maxPlaced=3,disarmSeconds=5,range=5,showHealthBar=False),
          'recovery_potion':dict(heal=50,durationSeconds=5),
-         'adrenaline':dict(healthCostPercent=50,durationSeconds=7,movementBonusPercent=20,attackBonusPercent=20),
+         'adrenaline':dict(healthCostPercent=50,durationSeconds=7,movementBonusPercent=20,attackBonusPercent=20,damageBonusPercent=20),
          'barrier':dict(health=200,range=5)}
 for kind,value in configs.items():
     path=SERVER.parent/'item'/f'{kind}.json'

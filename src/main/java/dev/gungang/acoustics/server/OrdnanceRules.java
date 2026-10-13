@@ -5,14 +5,14 @@ public final class OrdnanceRules {
     public static final int ORBITAL_COOLDOWN=240*20, ORBITAL_DELAY=5*20;
     public static final double FIRE_RADIUS=5, ORBITAL_RADIUS=24, TARGET_RANGE=64;
     public static float orbitalDamage(double distance) {
-        if(distance>ORBITAL_RADIUS)return 0;
-        return (float)(256-(256-84)*Math.max(0,distance)/ORBITAL_RADIUS);
+        var c=ExtraGadgetConfig.orbital;if(distance>c.radius())return 0;
+        return (float)(c.centerDamage()-(c.centerDamage()-c.edgeDamage())*Math.max(0,distance)/c.radius());
     }
     public static boolean inFire(double dx,double dy,double dz) {
-        return dx*dx+dz*dz<=FIRE_RADIUS*FIRE_RADIUS&&dy>=-1&&dy<=2;
+        return dx*dx+dz*dz<=ExtraGadgetConfig.molotov.radius()*ExtraGadgetConfig.molotov.radius()&&dy>=-1&&dy<=2;
     }
     public static boolean inBlast(double dx,double dy,double dz) {
-        return dx*dx+dy*dy+dz*dz<=ORBITAL_RADIUS*ORBITAL_RADIUS;
+        return dx*dx+dy*dy+dz*dz<=ExtraGadgetConfig.orbital.radius()*ExtraGadgetConfig.orbital.radius();
     }
     private OrdnanceRules() { }
 }

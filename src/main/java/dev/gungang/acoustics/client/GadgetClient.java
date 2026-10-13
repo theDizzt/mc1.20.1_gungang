@@ -16,21 +16,43 @@ public final class GadgetClient {
     private static String preview="";
     private static double range=5;
     private static boolean armed;
+    private static String expected="";
+    private static int previewSlot=-1;
+    public static void expect(String kind) {
+        var player=Minecraft.getInstance().player;
+        if(player!=null){expected=kind;previewSlot=player.getInventory().selected;}
+    }
+    private static boolean valid(String kind) {
+        var mc=Minecraft.getInstance();var player=mc.player;
+        return player!=null&&player.isAlive()&&!player.isSpectator()&&mc.screen==null
+                &&player.getInventory().selected==previewSlot
+                &&(CombatGadgets.is(player.getMainHandItem(),kind)||CombatGadgets.is(player.getOffhandItem(),kind));
+    }
+    public static boolean placing() {return !preview.isEmpty()&&valid(preview);}
+    private static void cancel() {
+        preview="";expected="";armed=false;
+        if(Minecraft.getInstance().getConnection()!=null)LobbyClient.action("cancelplace","","");
+    }
     @SubscribeEvent public static void movement(MovementInputUpdateEvent e) {
         if(SurvivalGadgets.jetting(e.getEntity()))e.getInput().jumping=false;
     }
-    public static void receive(String kind,double distance) {preview=kind;range=distance;armed=false;}
-    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut e) {preview="";SurvivalGadgets.clearClient();}
+    public static void receive(String kind,double distance) {
+        if(!kind.isEmpty()&&(!kind.equals(expected)||!valid(kind))){cancel();return;}
+        preview=kind;range=distance;armed=false;if(kind.isEmpty())expected="";
+    }
+    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut e) {preview="";expected="";previewSlot=-1;SurvivalGadgets.clearClient();}
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent e) {
         var mc=Minecraft.getInstance();
+        if(!expected.isEmpty()&&!valid(expected))cancel();
         if(e.phase==TickEvent.Phase.END&&!mc.options.keyUse.isDown()&&!OffhandMacro.USE.isDown())armed=true;
     }
     @SubscribeEvent public static void click(InputEvent.InteractionKeyMappingTriggered e) {
         if(SurvivalGadgets.jetting(Minecraft.getInstance().player)) {e.setCanceled(true);e.setSwingHand(false);return;}
         if(preview.isEmpty())return;
+        if(!valid(preview)){cancel();return;}
         if(e.isAttack()||e.isUseItem()) {
             e.setCanceled(true);e.setSwingHand(false);
-            if(e.isAttack()) {LobbyClient.action("cancelplace","","");preview="";}
+            if(e.isAttack()) {cancel();}
             else if(armed) {LobbyClient.action("place","","");armed=false;}
         }
     }

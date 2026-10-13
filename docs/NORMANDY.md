@@ -1,5 +1,7 @@
 # 노르망디 공방전
 
+[README·문서 안내](../README.md) · [서버 설정](SERVER.md) · [팀 데스매치](DEATHMATCH.md) · [전적·경험치](PROGRESSION.md)
+
 `config/gungang/server/maps/normandy.json`의 `enabled`를 `true`로 설정하고 `/gungang reload`를 실행하면 로비에서 선택할 수 있습니다. 모드는 이 파일을 최초 로딩 때 비활성 예제로 생성합니다. 노르망디 지형이 들어 있는 월드에서 사용하세요. 기존 파일은 덮어쓰지 않습니다.
 
 BRAVO가 공격, ALPHA가 방어합니다. 준비 45초 동안 ALPHA는 자유롭게 이동하면서 무기를 선택할 수 있고, BRAVO는 스폰 구역에서 무기를 선택합니다. 준비가 끝나면 공격팀이 출격하며, 15분 안에 A → B → C → D를 모두 확보하면 BRAVO가 승리합니다. 시간이 끝나면 ALPHA가 승리합니다. 연장전이나 거점 점령 시 시간 추가는 없습니다.

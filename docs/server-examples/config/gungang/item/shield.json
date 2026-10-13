@@ -1,0 +1,5 @@
+{
+  "capacity": 75,
+  "repairSeconds": 90,
+  "movementPenaltyPercent": 15
+}
