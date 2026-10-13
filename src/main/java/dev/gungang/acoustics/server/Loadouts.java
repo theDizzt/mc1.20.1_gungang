@@ -95,7 +95,7 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
         var definitions=List.of(
                 new Weapon("landmine","{id:'gungang:landmine',Count:1b}","지뢰","최대 3개 설치, 아군 피해 없음",null,"사용 후 우클릭 설치 / 좌클릭 취소. 자기 지뢰를 조준하고 사용 키를 5초 유지하면 철거합니다.","설치형"),
                 new Weapon("recovery_potion","{id:'gungang:recovery_potion',Count:1b}","회복약","5초 동안 총 50 회복",null,"보조무기 사용 키로 사용합니다.","지원"),
-                new Weapon("adrenaline","{id:'gungang:adrenaline',Count:1b}","전투자극제","최대 체력의 50% 소모, 7초 동안 이동/공격 속도 +20%",null,"보조무기 사용 키로 사용합니다. 체력이 비용보다 많아야 합니다.","지원"),
+                new Weapon("adrenaline","{id:'gungang:adrenaline',Count:1b}","전투자극제","최대 체력의 50% 소모, 7초 동안 이동/공격 속도 및 최종 피해 +20%",null,"보조무기 사용 키로 사용합니다. 체력이 비용보다 많아야 합니다.","지원"),
                 new Weapon("barrier","{id:'gungang:barrier',Count:1b}","방벽","3×3 나무 방벽, 체력 200, 최대 1개",null,"사용 후 우클릭 설치 / 좌클릭 취소.","설치형"));
         var existing=readCategory(directory);
         for(var weapon:definitions)if(existing.stream().noneMatch(w->w.id().equals(weapon.id())||(w.itemNbt().contains("gungang:"+weapon.id())||w.itemNbt().contains("gungang_acoustics:"+weapon.id()))))
@@ -107,7 +107,7 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
         var existing=readCategory(directory);
         for(var weapon:List.of(
                 new Weapon("96_infrared-scanner","{id:'gungang:infrared_scanner',Count:1b}","적외선 스캐너","적 위치를 10초간 팀에 공유합니다. 쿨타임 120초.",null,"사용 키로 스캔. 적 팀 색상 실루엣이 벽 너머로 표시됩니다.","지원",100d,100d,120d),
-                new Weapon("97_shield","{id:'gungang:shield',Count:1b}","방패","정면 피해 총 75 방어. 파손 후 90초 수리. 초과 피해는 체력에 적용됩니다.",null,"주 손 또는 보조 손에 들면 방어하며, 방패를 들고 있는 동안 무기를 사용할 수 없습니다.","방어",100d,100d,90d))) {
+                new Weapon("97_shield","{id:'gungang:shield',Count:1b}","방패","정면 피해 총 75 방어. 파손 후 90초 수리. 초과 피해는 체력에 적용됩니다.",null,"주손에 들 때만 방어하며 공격할 수 없습니다. 보조 손에 보관하면 주무기를 사용할 수 있습니다.","방어",100d,100d,90d))) {
             String item=weapon.id().startsWith("96_")?"infrared_scanner":"shield";
             if(existing.stream().noneMatch(w->w.id().equals(weapon.id())||w.itemNbt().contains("gungang:"+item)))
                 ConfigLayout.writeNew(directory.resolve(weapon.id()+".json"),ServerFiles.GSON.toJson(weapon));

@@ -13,7 +13,14 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
 @Mod.EventBusSubscriber(modid = GungangAcoustics.ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class ClientSetup {
+    @SubscribeEvent public static void layers(net.minecraftforge.client.event.EntityRenderersEvent.AddLayers event) {
+        for(String skin:event.getSkins()) {
+            net.minecraft.client.renderer.entity.player.PlayerRenderer renderer=event.getSkin(skin);
+            if(renderer!=null)renderer.addLayer(new ShieldRenderLayer(renderer));
+        }
+    }
     @SubscribeEvent public static void renderers(net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
+        event.registerEntityRenderer(dev.gungang.acoustics.server.GimmickBlocks.PUDDLE_OVERLAY.get(),PuddleRenderer::new);
         event.registerBlockEntityRenderer(dev.gungang.acoustics.server.StationBlocks.ENTITY.get(),StationRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.DEPLOYABLE.get(),DeployableRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.MOLOTOV_PROJECTILE.get(),net.minecraft.client.renderer.entity.ThrownItemRenderer::new);
@@ -44,10 +51,14 @@ public final class ClientSetup {
     }
     @SubscribeEvent
     public static void setup(FMLClientSetupEvent event) {
+        event.enqueueWork(()->{
+            net.minecraft.client.renderer.ItemBlockRenderTypes.setRenderLayer(dev.gungang.acoustics.server.GimmickBlocks.ACID_SOURCE.get(),net.minecraft.client.renderer.RenderType.translucent());
+            net.minecraft.client.renderer.ItemBlockRenderTypes.setRenderLayer(dev.gungang.acoustics.server.GimmickBlocks.ACID_FLOWING.get(),net.minecraft.client.renderer.RenderType.translucent());
+        });
         event.enqueueWork(()->net.minecraft.client.renderer.item.ItemProperties.register(
                 dev.gungang.acoustics.server.GadgetItems.SHIELD.get(),new net.minecraft.resources.ResourceLocation("gungang","blocking"),
                 (stack,level,entity,seed)->entity instanceof net.minecraft.world.entity.player.Player player
-                        &&(player.getMainHandItem()==stack||player.getOffhandItem()==stack)
+                        &&player.getMainHandItem()==stack
                         &&dev.gungang.acoustics.server.CombatGadgets.holdingShield(player)?1:0));
         ModList.get().getModContainerById(GungangAcoustics.ID).orElseThrow().registerExtensionPoint(
                 ConfigScreenHandler.ConfigScreenFactory.class,

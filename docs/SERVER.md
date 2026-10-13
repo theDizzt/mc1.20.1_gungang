@@ -1,5 +1,9 @@
 # GunGang 서버 설정과 로비
 
+[README·전체 문서 안내](../README.md) · [상호작용 블록·미리보기](STATIONS-AND-PREVIEWS.md) · [비무장 지대](SAFE-ZONES.md) · [아이템 설정](ITEMS.md)
+
+경기 중 팀 참가자의 무기 선택은 자기 팀 스폰·리스폰 대기 외에 **무기고 3블록 이내**에서도 허용합니다. 아래 스폰 중심 설명과 함께 적용되는 조건입니다.
+
 노르망디 순차 공격·방어 모드는 [노르망디 설정 안내](NORMANDY.md)를 참고하세요.
 
 [팀 데스매치 설정](DEATHMATCH.md) · [누적 전적·경험치·레벨과 관리자 명령어](PROGRESSION.md)
@@ -18,11 +22,15 @@ Minecraft 1.20.1 / Java 17 / Forge 47.3.22 이상에서 같은 JAR를 서버와 
 config/gungang/
   acoustics.json       # 서버 음향 설정
   server/
-    option.json             # 팀 RGB 색상과 리스폰 대기 시간
+    option.json             # 팀 RGB·리스폰·팀 데스매치·경험치 보상
+    safe_zones.json         # 비무장 지대
     maps/example.json       # 맵마다 개별 JSON
     weapons/01_bow.json     # 주무기마다 개별 JSON
     sub_weapons/01_sword.json # 보조무기마다 개별 JSON
     slot9.json              # 핫바 9번 기본 아이템 (null이면 지급 안 함)
+  item/                # 보조 아이템과 회복 팩 설정
+  player-db.json       # UUID별 누적 전적·경험치
+  xp.json              # 레벨별 누적 경험치 표
   fonts/               # 클라이언트의 커스텀 TTF 폴더
   exports/             # exportitem 명령으로 저장한 실제 아이템 NBT
   result/              # 경기 종료 시 날짜·맵·플레이어 전적 TXT
@@ -206,3 +214,6 @@ UI에서 관리자는 플레이어 행을 선택한 뒤 해당 플레이어의 �
 4. 기존 커맨드블록의 시작 버튼 대신 `/gungang lobby open`을 사용합니다.
 
 원본 `server_resource` 파일은 수정하지 않았습니다. 맵·총기 팩·커맨드블록·Mohist 플러그인까지 포함한 실제 멀티플레이 경기와 UI 배치는 최종 서버에서 확인해야 합니다.
+# 맵 환경·기믹 설정
+
+맵별 `weather`와 `timeOfDay`, 설치형 전장 기믹 및 `item` JSON 설정은 [기믹과 맵 환경](GIMMICKS.md)을 참고하세요. 기본값은 맑음·낮이며 TAB 통계 위에 경기 경과 시간이 표시됩니다.

@@ -12,7 +12,134 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID)
 public final class GadgetSmokeChecks {
+    private static void adrenalineAndPlacement(net.minecraft.server.level.ServerPlayer player) {
+        var level=player.serverLevel();
+        player.setItemInHand(InteractionHand.MAIN_HAND,new ItemStack(Items.IRON_SWORD));
+        for(var item:java.util.List.of(GadgetItems.LANDMINE.get(),GadgetItems.BARRIER.get(),GadgetItems.ORBITAL_STRIKE.get())) {
+            var stack=new ItemStack(item);player.setItemInHand(InteractionHand.OFF_HAND,stack);
+            check(stack.use(level,player,InteractionHand.OFF_HAND).getResult()==net.minecraft.world.InteractionResult.PASS,
+                    "Primary right click fallback must not activate a carried deployable");
+        }
+        player.setItemInHand(InteractionHand.OFF_HAND,ItemStack.EMPTY);
+        var placement=new ItemStack(GadgetItems.BARRIER.get());int slot=player.getInventory().selected;
+        player.setItemInHand(InteractionHand.MAIN_HAND,placement);
+        placement.use(level,player,InteractionHand.MAIN_HAND);
+        check(GadgetManager.placing(player),"Explicit main hand use opens preview");
+        player.setItemInHand(InteractionHand.MAIN_HAND,new ItemStack(Items.IRON_SWORD));player.setItemInHand(InteractionHand.OFF_HAND,placement);
+        check(GadgetManager.placing(player),"H macro hand restoration preserves intentional preview");
+        player.getInventory().selected=(slot+1)%9;
+        GadgetManager.tick(new TickEvent.PlayerTickEvent(TickEvent.Phase.END,player));
+        player.getInventory().selected=slot;
+        check(!GadgetManager.placing(player),"Changing slot clears preview permanently, even after returning");
+        player.setItemInHand(InteractionHand.OFF_HAND,ItemStack.EMPTY);
+        var arrow=new net.minecraft.world.entity.projectile.Arrow(level,player);
+        var sources=new java.util.ArrayList<>(java.util.List.of(level.damageSources().playerAttack(player),level.damageSources().arrow(arrow,player),
+                level.damageSources().explosion(arrow,player)));
+        if(net.minecraftforge.fml.ModList.get().isLoaded("tacz"))try {
+            var type=Class.forName("com.tacz.guns.init.ModDamageTypes$Sources");
+            for(String name:java.util.List.of("bullet","bulletVoid"))for(boolean pierce:new boolean[]{false,true}) {
+                var method=type.getMethod(name,net.minecraft.core.RegistryAccess.class,net.minecraft.world.entity.Entity.class,net.minecraft.world.entity.Entity.class,boolean.class);
+                sources.add((net.minecraft.world.damagesource.DamageSource)method.invoke(null,level.registryAccess(),arrow,player,pierce));
+            }
+        }catch(ReflectiveOperationException error){throw new AssertionError("TaCZ damage source check",error);}
+        float environmental=damageTaken(level,level.damageSources().generic());
+        float[] baseline=new float[sources.size()];
+        for(int i=0;i<sources.size();i++)baseline[i]=damageTaken(level,sources.get(i));
+        player.setHealth(player.getMaxHealth());
+        GadgetManager.use(player,new ItemStack(GadgetItems.ADRENALINE.get()),"adrenaline");
+        taczRawDamage(player);
+        for(int i=0;i<sources.size();i++)check(Math.abs(damageTaken(level,sources.get(i))-baseline[i]*1.2)<.001,
+                "Final damage including armor/resistance/absorption must increase exactly 20%: "+i);
+        check(Math.abs(damageTaken(level,level.damageSources().generic())-environmental)<.001,"Unowned environmental damage is unchanged");
+        GadgetManager.clear(player);
+        check(Math.abs(damageTaken(level,sources.get(0))-baseline[0])<.001,"Buff cleanup removes damage bonus");
+        System.out.println("GUNGANG_ADRENALINE_PLACEMENT_PASS sources="+sources.size());
+    }
+    private static float damageTaken(net.minecraft.server.level.ServerLevel level,net.minecraft.world.damagesource.DamageSource source) {
+        var victim=net.minecraft.world.entity.EntityType.COW.create(level);
+        victim.setPos(300,240,300);victim.getAttribute(Attributes.MAX_HEALTH).setBaseValue(100);victim.setHealth(100);
+        victim.getAttribute(Attributes.ARMOR).setBaseValue(10);
+        victim.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.DAMAGE_RESISTANCE,200,0));
+        victim.setAbsorptionAmount(2);
+        check(victim.hurt(source,20),"Damage pipeline must accept test hit");
+        float result=100-victim.getHealth();victim.discard();return result;
+    }
     private static void check(boolean condition,String message) {if(!condition)throw new AssertionError(message);}
+    private static void taczRawDamage(net.minecraft.server.level.ServerPlayer player) {
+        if(!net.minecraftforge.fml.ModList.get().isLoaded("tacz"))return;
+        try {
+            var type=Class.forName("com.tacz.guns.entity.EntityKineticBullet");
+            var bullet=(net.minecraft.world.entity.projectile.Projectile)type.getConstructor(net.minecraft.world.entity.EntityType.class,net.minecraft.world.level.Level.class).newInstance(type.getField("TYPE").get(null),player.level());
+            bullet.setOwner(player);
+            var start=type.getDeclaredField("startPos");start.setAccessible(true);start.set(bullet,net.minecraft.world.phys.Vec3.ZERO);
+            var pair=Class.forName("com.tacz.guns.resource.pojo.data.gun.ExtraDamage$DistanceDamagePair").getConstructor(float.class,float.class).newInstance(100f,9f);
+            var values=new java.util.LinkedList<>();values.add(pair);
+            var damage=type.getDeclaredField("damageAmount");damage.setAccessible(true);damage.set(bullet,values);
+            var distance=type.getDeclaredField("distanceAmount");distance.setAccessible(true);distance.setFloat(bullet,100);
+            float actual=((Number)type.getMethod("getDamage",net.minecraft.world.phys.Vec3.class).invoke(bullet,new net.minecraft.world.phys.Vec3(1,0,0))).floatValue();
+            check(Math.abs(actual-10.8f)<.001,"Actual TaCZ target damage must be 9 * 1.2, got "+actual);
+            var source=(net.minecraft.world.damagesource.DamageSource)Class.forName("com.tacz.guns.init.ModDamageTypes$Sources").getMethod("bullet",net.minecraft.core.RegistryAccess.class,net.minecraft.world.entity.Entity.class,net.minecraft.world.entity.Entity.class,boolean.class).invoke(null,player.level().registryAccess(),bullet,player,false);
+            var victim=net.minecraft.world.entity.EntityType.COW.create(player.level());victim.getAttribute(Attributes.MAX_HEALTH).setBaseValue(100);victim.setHealth(100);
+            check(victim.hurt(source,actual)&&Math.abs(victim.getHealth()-89.2f)<.001,"Living damage must not double multiply actual TaCZ damage: "+victim.getHealth());victim.discard();
+            System.out.println("GUNGANG_TACZ_ACTUAL_DAMAGE_PASS 9 -> "+actual);
+        }catch(ReflectiveOperationException e){throw new AssertionError(e);}
+    }
+    private static void feedbackFixes(net.minecraft.server.level.ServerLevel level,net.minecraft.server.level.ServerPlayer player){
+        GadgetManager.clear(player);player.getInventory().clearContent();player.setHealth(player.getMaxHealth());
+        var speed=player.getAttribute(Attributes.MOVEMENT_SPEED);double baseline=speed.getValue();
+        player.setItemInHand(InteractionHand.MAIN_HAND,new ItemStack(GadgetItems.SHIELD.get()));CombatGadgets.updateShieldMovement(player);
+        check(Math.abs(speed.getValue()-baseline*.85)<1e-6,"Held shield slows exactly 15 percent");
+        CombatGadgets.updateShieldMovement(player);check(Math.abs(speed.getValue()-baseline*.85)<1e-6,"Shield penalty never stacks");
+        player.setItemInHand(InteractionHand.OFF_HAND,player.getMainHandItem());player.setItemInHand(InteractionHand.MAIN_HAND,ItemStack.EMPTY);CombatGadgets.updateShieldMovement(player);
+        check(Math.abs(speed.getValue()-baseline)<1e-6,"Lowered shield restores speed");
+        var resistance=player.getAttribute(Attributes.KNOCKBACK_RESISTANCE);double old=resistance.getBaseValue();resistance.setBaseValue(1);player.setDeltaMovement(0,0,0);
+        SurvivalGadgets.jetImpact(player,new net.minecraft.world.phys.Vec3(0,0,1));
+        check(player.getDeltaMovement().z>=1.5&&player.getDeltaMovement().y>.3,"Jet skill impulse survives vanilla knockback resistance");
+        resistance.setBaseValue(old);player.setDeltaMovement(0,0,0);player.getInventory().clearContent();
+        var pos=new net.minecraft.core.BlockPos(270,240,270);level.getChunk(pos);var saved=level.getBlockState(pos);
+        try {
+            level.setBlock(pos,StationBlocks.SMALL.get().defaultBlockState(),3);var pack=(StationEntity)level.getBlockEntity(pos);player.setHealth(50);
+            check(SurvivalGadgets.startJet(player,new ItemStack(GadgetItems.JETPACK.get())),"Jet starts for cancelled healing test");pack.interact(player,true);
+            check(player.getHealth()==50&&pack.remaining()==0,"Rejected healing does not consume pack or start feedback");SurvivalGadgets.clear(player);
+            pack.interact(player,true);check(player.getHealth()==85&&pack.remaining()>0,"Successful pickup heals and enters cooldown");
+        }finally{SurvivalGadgets.clear(player);level.setBlock(pos,saved,3);}
+        System.out.println("GUNGANG_FEEDBACK_FIXES_PASS shield=85% jetImpulse=1.5 healPack=35");
+    }
+    private static void gimmicks(net.minecraft.server.level.ServerLevel level,net.minecraft.server.level.ServerPlayer player){
+        long oldDay=level.getDayTime();var template=ServerFiles.GSON.toJsonTree(ArenaMap.example()).getAsJsonObject();
+        for(String weather:java.util.List.of("clear","fog","rain","snow"))for(var time:java.util.Map.of("day",6000L,"dusk",12000L,"night",18000L,"dawn",23000L).entrySet()){
+            template.addProperty("weather",weather);template.addProperty("timeOfDay",time.getKey());var map=ServerFiles.GSON.fromJson(template,ArenaMap.class).validate();
+            var converted=DeathmatchRules.defaults().arena(map);check(converted.weather().equals(weather)&&converted.timeOfDay().equals(time.getKey()),"Deathmatch preserves map environment");
+            MapEnvironment.begin(level.getServer(),map);check(level.getDayTime()==time.getValue(),"Selected map time applies");MapEnvironment.restore();check(level.getDayTime()==oldDay,"Original map time restores");
+        }
+        var pos=new net.minecraft.core.BlockPos(260,240,260);level.getChunk(pos);
+        var saved=level.getBlockState(pos);var above=level.getBlockState(pos.above());
+        long now=level.getGameTime();
+        try {
+            for(var entry:GimmickBlocks.GIMMICKS.entrySet())if(entry.getKey().startsWith("cracked_")){
+                level.setBlock(pos,entry.getValue().get().defaultBlockState(),3);
+                var entity=GimmickEntity.at(level,pos);GimmickEntity.tick(level,pos,entity.getBlockState(),entity);
+                double hp=GimmickConfig.walls.get(entry.getKey()).health();entity.damage((float)(hp/2));
+                check(entity.getBlockState().getValue(GimmickBlock.ACTIVE),"Wall survives partial damage: "+entry.getKey());entity.damage((float)hp);
+                check(!entity.getBlockState().getValue(GimmickBlock.ACTIVE)&&entity.getBlockState().getCollisionShape(level,pos).isEmpty(),"Destroyed wall clears collision");
+                var tag=entity.saveWithoutMetadata();entity.load(tag);GimmickEpoch.reset(level.getServer());GimmickEntity.tick(level,pos,entity.getBlockState(),entity);
+                check(entity.getBlockState().getValue(GimmickBlock.ACTIVE)&&entity.health()==hp,"Saved wall resets to configured health");
+            }
+            var gas=GimmickBlocks.GAS.get();level.setBlock(pos,gas.defaultBlockState(),3);level.setBlock(pos.above(),gas.defaultBlockState().setValue(GimmickBlock.TOP,true),3);
+            GimmickEntity.hit(level,pos.above(),1);check(!level.getBlockState(pos).getValue(GimmickBlock.ACTIVE)&&!level.getBlockState(pos.above()).getValue(GimmickBlock.ACTIVE),"Upper barrel hit explodes both halves");
+            var entity=GimmickEntity.at(level,pos);level.getServer().getWorldData().overworldData().setGameTime(now+599);GimmickEntity.tick(level,pos,entity.getBlockState(),entity);
+            check(!entity.getBlockState().getValue(GimmickBlock.ACTIVE),"Barrel remains dormant before 30 seconds");level.getServer().getWorldData().overworldData().setGameTime(now+600);GimmickEntity.tick(level,pos,entity.getBlockState(),entity);
+            check(entity.getBlockState().getValue(GimmickBlock.ACTIVE)&&level.getBlockState(pos.above()).getValue(GimmickBlock.ACTIVE),"Barrel restores at 30 seconds");
+            level.removeBlock(pos.above(),false);check(level.getBlockState(pos).isAir(),"Removing top removes whole barrel");
+            player.removeAllEffects();GimmickBlocks.ACID_BLOCK.get().entityInside(GimmickBlocks.ACID_BLOCK.get().defaultBlockState(),level,pos,player);
+            check(player.getEffect(net.minecraft.world.effect.MobEffects.POISON).getDuration()==160,"Acid applies eight seconds poison");player.removeAllEffects();
+            check(GimmickBlocks.PUDDLE.get().defaultBlockState().getShape(level,pos).max(net.minecraft.core.Direction.Axis.Y)==.0625,"Puddle is 1/16 block tall");
+            player.setPos(260,240,260);player.setDeltaMovement(0,0,0);PuddleBlock.splash(level,player);
+            long first=player.getPersistentData().getLong("GunGangPuddleStep");level.getServer().getWorldData().overworldData().setGameTime(first+6);player.setPos(260.4,240,260);PuddleBlock.splash(level,player);
+            check(player.getPersistentData().getLong("GunGangPuddleStep")==first+6,"Walking position changes trigger puddle footsteps even without server velocity");
+            System.out.println("GUNGANG_GIMMICKS_PASS walls=19 barrel=30s acid=8s");
+        }finally{level.getServer().getWorldData().overworldData().setGameTime(now);level.setBlock(pos,saved,3);level.setBlock(pos.above(),above,3);}
+    }
     @SubscribeEvent public static void started(ServerStartedEvent event) {
         var server=event.getServer();server.execute(()->{
             try {
@@ -68,6 +195,9 @@ public final class GadgetSmokeChecks {
                 GadgetManager.use(player,new ItemStack(GadgetItems.ADRENALINE.get()),"adrenaline");
                 check(player.getHealth()==50,"Adrenaline cost");check(Math.abs(player.getAttributeValue(Attributes.MOVEMENT_SPEED)-speed*1.2)<.0001,"Adrenaline speed bonus");
                 GadgetManager.clear(player);check(Math.abs(player.getAttributeValue(Attributes.MOVEMENT_SPEED)-speed)<.0001,"Cleanup must remove only adrenaline modifiers");
+                adrenalineAndPlacement(player);
+                gimmicks(level,player);
+                feedbackFixes(level,player);
                 var barrier=GadgetItems.DEPLOYABLE.get().create(level);barrier.setPos(10,100,10);barrier.setup(player,true,false);level.addFreshEntity(barrier);
                 check(barrier.getHealth()==200&&barrier.getBoundingBox().getXsize()==3&&barrier.getBoundingBox().getYsize()==3,"Barrier dimensions and health");
                 barrier.hurt(level.damageSources().generic(),25);check(barrier.getHealth()==175,"Barrier takes damage");
@@ -196,8 +326,13 @@ public final class GadgetSmokeChecks {
             var shieldWeapon=new Loadouts.Weapon("97_shield","{id:'gungang:shield',Count:1b}","Shield","",null,"","",100d,100d,90d);
             var shield=shieldWeapon.stack();shield.getOrCreateTag().putInt("GunGangIssued",40);SecondaryRuntime.configure(player,shield,shieldWeapon);
             player.setItemInHand(InteractionHand.OFF_HAND,shield);
-            check(CombatGadgets.holdingShield(player),"Simply holding shield activates defense");
-            check(player.getMainHandItem().use(level,player,InteractionHand.MAIN_HAND).getResult()==net.minecraft.world.InteractionResult.FAIL,"Held shield prevents weapon use");
+            check(!CombatGadgets.holdingShield(player),"Offhand shield must not activate defense");
+            var carriedHit=new net.minecraftforge.event.entity.living.LivingHurtEvent(player,level.damageSources().playerAttack(enemy),25);
+            CombatGadgets.hurt(carriedHit);check(!carriedHit.isCanceled()&&carriedHit.getAmount()==25,"Offhand shield must not absorb damage");
+            check(player.getMainHandItem().use(level,player,InteractionHand.MAIN_HAND).getResult()!=net.minecraft.world.InteractionResult.FAIL,"Offhand shield allows primary use");
+            player.setItemInHand(InteractionHand.MAIN_HAND,shield);player.setItemInHand(InteractionHand.OFF_HAND,new ItemStack(Items.SNOWBALL));
+            check(CombatGadgets.holdingShield(player),"Main hand shield activates defense");
+            check(player.getOffhandItem().use(level,player,InteractionHand.OFF_HAND).getResult()==net.minecraft.world.InteractionResult.FAIL,"Active shield prevents other weapon use");
             var front=new net.minecraftforge.event.entity.living.LivingHurtEvent(player,level.damageSources().playerAttack(enemy),25);
             CombatGadgets.hurt(front);check(front.isCanceled()&&shield.getTag().getFloat("GunGangShieldHealth")==50,"Front hit consumes only 25 durability");
             GadgetManager.use(player,shield,"shield");check(shield.getTag().getFloat("GunGangShieldHealth")==50,"Use cannot repair unbroken shield");
@@ -213,6 +348,7 @@ public final class GadgetSmokeChecks {
             server.getWorldData().overworldData().setGameTime(time+1799);check(!CombatGadgets.holdingShield(player),"Shield cannot repair early");
             server.getWorldData().overworldData().setGameTime(time+1800);check(CombatGadgets.holdingShield(player),"Shield repairs after 90 seconds");
             check(CombatGadgets.hud(player).gauges().stream().anyMatch(g->g.kind().equals("shield")&&g.remaining()==75),"Shield durability is supplied to HUD");
+            player.setItemInHand(InteractionHand.MAIN_HAND,ItemStack.EMPTY);
             var scanWeapon=new Loadouts.Weapon("96_infrared-scanner","{id:'gungang:infrared_scanner',Count:1b}","Scanner","",null,"","",100d,100d,120d);
             var scanner=scanWeapon.stack();scanner.getOrCreateTag().putInt("GunGangIssued",40);SecondaryRuntime.configure(player,scanner,scanWeapon);player.setItemInHand(InteractionHand.OFF_HAND,scanner);
             GadgetManager.use(player,scanner,"infrared_scanner");
@@ -287,7 +423,10 @@ public final class GadgetSmokeChecks {
                 level.setBlock(pos,net.minecraft.world.level.block.Blocks.STONE.defaultBlockState(),3);
                 check(!GadgetManager.valid(player,pos,wall,false),"Occupied placement must remain rejected");
                 level.setBlock(pos,net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(),3);
-                stack.use(level,player,InteractionHand.OFF_HAND);
+                // Simulate H: temporarily use the gadget in main hand, then restore it to offhand.
+                player.setItemInHand(InteractionHand.MAIN_HAND,stack);player.setItemInHand(InteractionHand.OFF_HAND,ItemStack.EMPTY);
+                stack.use(level,player,InteractionHand.MAIN_HAND);
+                player.setItemInHand(InteractionHand.MAIN_HAND,new ItemStack(Items.STICK));player.setItemInHand(InteractionHand.OFF_HAND,stack);
                 check(SecondaryRuntime.remaining(player,stack)==0,"Preview must not start cooldown");
                 GadgetManager.action(player,"place");
                 check(DeployableLedger.get(level.getServer()).count(player.getUUID(),wall)==1,"Adventure placement must spawn and record deployable");

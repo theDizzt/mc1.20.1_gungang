@@ -31,7 +31,7 @@ public final class PreviewSmokeChecks {
                 stage=1;ticks=0;
             }else if(++ticks==30){
                 Path directory=Path.of("../build/ui-smoke");Files.createDirectories(directory);
-                try(var image=net.minecraft.client.Screenshot.takeScreenshot(mc.getMainRenderTarget())){image.writeToFile(directory.resolve(stage==1?"loadout.png":stage==2?"maps.png":stage==3?"teams.png":stage==4?"furniture.png":stage==5?"gadgets.png":"shield-pose.png"));}
+                try(var image=net.minecraft.client.Screenshot.takeScreenshot(mc.getMainRenderTarget())){image.writeToFile(directory.resolve(stage==1?"loadout.png":stage==2?"maps.png":stage==3?"teams.png":stage==4?"furniture.png":stage==5?"gadgets.png":stage==6?"shield-pose.png":"shield-first-person.png"));}
                 if(stage==1){
                     var view=new LobbySnapshot.MapView("preview","사찰 거점","전장 미리보기 테스트",600,"쟁탈전",true,"test.png");
                     var screen=new LobbyScreen(new LobbySnapshot(true,true,false,"tester","preview","LOBBY",0,List.of(view),List.of(),TeamOptions.defaults(),"CONTROL"));
@@ -49,9 +49,19 @@ public final class PreviewSmokeChecks {
                 }else if(stage==3){mc.setScreen(new FurnitureScreen());stage=4;ticks=0;}
                 else if(stage==4){mc.setScreen(new GadgetScreen());stage=5;ticks=0;}
                 else if(stage==5){mc.setScreen(new ShieldPoseScreen());stage=6;ticks=0;}
-                else {System.out.println("GUNGANG_PREVIEW_SMOKE_PASS");mc.stop();stage=7;}
+                else if(stage==6){mc.setScreen(new ShieldFirstPersonScreen());stage=7;ticks=0;}
+                else if(stage==7){mc.setScreen(new GimmickScreen());stage=8;ticks=0;}
+                else {System.out.println("GUNGANG_PREVIEW_SMOKE_PASS");mc.stop();stage=9;}
             }
         }catch(Throwable failure){failure.printStackTrace();System.out.println("GUNGANG_PREVIEW_SMOKE_FAIL");mc.stop();stage=3;}
+    }
+    private static final class GimmickScreen extends net.minecraft.client.gui.screens.Screen {
+        GimmickScreen(){super(net.minecraft.network.chat.Component.literal("Gimmicks"));}
+        @Override public void render(net.minecraft.client.gui.GuiGraphics g,int mx,int my,float partial){
+            g.fill(0,0,width,height,0xFF506478);
+            var items=new java.util.ArrayList<Item>();GimmickBlocks.GIMMICKS.values().forEach(b->items.add(b.get().asItem()));items.add(GimmickBlocks.PUDDLE_ITEM.get());items.add(GimmickBlocks.ACID_BUCKET.get());
+            for(int i=0;i<items.size();i++){int x=15+(i%8)*(width-30)/8,y=15+(i/8)*(height-30)/3;g.pose().pushPose();g.pose().translate(x,y,0);g.pose().scale(3,3,1);g.renderItem(new ItemStack(items.get(i)),0,0);g.pose().popPose();g.drawString(font,""+i,x,y+53,0xFFFFFFFF);}
+        }
     }
     private static final class GadgetScreen extends net.minecraft.client.gui.screens.Screen {
         GadgetScreen(){super(net.minecraft.network.chat.Component.literal("Gadget models"));}
@@ -78,20 +88,36 @@ public final class PreviewSmokeChecks {
         ShieldPoseScreen(){super(net.minecraft.network.chat.Component.literal("Shield hand poses"));}
         @Override public void render(net.minecraft.client.gui.GuiGraphics g,int mx,int my,float partial) {
             g.fill(0,0,width,height,0xFF243344);
-            g.drawString(font,"Actual player model + hand-layer transform: left / right hand",20,15,0xFFFFFFFF);
+            g.drawString(font,"Eye-anchored shield: front / rear view",20,15,0xFFFFFFFF);
             for(int i=0;i<2;i++) {
                 var pose=g.pose();g.flush();pose.pushPose();pose.translate(width*(i+.5)/2,height*.28,180);pose.scale(100,100,100);
-                pose.mulPose(com.mojang.math.Axis.XP.rotationDegrees(8));pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(i==0?150:210));
+                pose.mulPose(com.mojang.math.Axis.XP.rotationDegrees(8));pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(i==0?150:30));
                 var model=new net.minecraft.client.model.PlayerModel<net.minecraft.client.player.AbstractClientPlayer>(minecraft.getEntityModels().bakeLayer(net.minecraft.client.model.geom.ModelLayers.PLAYER),false);
+                model.young=false;ShieldRendering.poseArms(model);model.leftSleeve.copyFrom(model.leftArm);model.rightSleeve.copyFrom(model.rightArm);
                 var texture=new net.minecraft.resources.ResourceLocation("minecraft","textures/entity/player/wide/steve.png");
                 var buffers=g.bufferSource();com.mojang.blaze3d.platform.Lighting.setupFor3DItems();
                 model.renderToBuffer(pose,buffers.getBuffer(net.minecraft.client.renderer.RenderType.entityCutoutNoCull(texture)),15728880,net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,1,1,1,1);
-                boolean left=i==0;model.translateToHand(left?net.minecraft.world.entity.HumanoidArm.LEFT:net.minecraft.world.entity.HumanoidArm.RIGHT,pose);
-                pose.mulPose(com.mojang.math.Axis.XP.rotationDegrees(-90));pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(180));pose.translate((left?1:-1)/16f,.125,-.625);
-                minecraft.getItemRenderer().renderStatic(null,new ItemStack(GadgetItems.SHIELD.get()),left?ItemDisplayContext.THIRD_PERSON_LEFT_HAND:ItemDisplayContext.THIRD_PERSON_RIGHT_HAND,left,
-                        pose,buffers,null,15728880,net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,0);
+                model.head.translateAndRotate(pose);pose.translate(0,-.25,0);pose.scale(1,-1,-1);
+                ShieldRendering.atEye(pose,buffers,new ItemStack(GadgetItems.SHIELD.get()),15728880);
                 g.flush();pose.popPose();
             }
+        }
+    }
+    private static final class ShieldFirstPersonScreen extends net.minecraft.client.gui.screens.Screen {
+        ShieldFirstPersonScreen(){super(net.minecraft.network.chat.Component.literal("Shield first person"));}
+        @Override public void render(net.minecraft.client.gui.GuiGraphics g,int mx,int my,float partial) {
+            for(int y=0;y<height;y+=24)for(int x=0;x<width;x+=24)g.fill(x,y,x+24,y+24,((x+y)/24)%2==0?0xFF56758C:0xFFABC4D4);
+            g.flush();
+            var old=new org.joml.Matrix4f(com.mojang.blaze3d.systems.RenderSystem.getProjectionMatrix());
+            com.mojang.blaze3d.systems.RenderSystem.clear(org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT,net.minecraft.client.Minecraft.ON_OSX);
+            var view=com.mojang.blaze3d.systems.RenderSystem.getModelViewStack();view.pushPose();view.setIdentity();com.mojang.blaze3d.systems.RenderSystem.applyModelViewMatrix();
+            com.mojang.blaze3d.systems.RenderSystem.setProjectionMatrix(new org.joml.Matrix4f().perspective((float)Math.toRadians(70),(float)width/height,.05f,100),com.mojang.blaze3d.vertex.VertexSorting.DISTANCE_TO_ORIGIN);
+            var pose=new com.mojang.blaze3d.vertex.PoseStack();pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(180));
+            ShieldRendering.atEye(pose,g.bufferSource(),new ItemStack(GadgetItems.SHIELD.get()),15728880);g.flush();
+            com.mojang.blaze3d.systems.RenderSystem.setProjectionMatrix(old,com.mojang.blaze3d.vertex.VertexSorting.ORTHOGRAPHIC_Z);
+            view.popPose();com.mojang.blaze3d.systems.RenderSystem.applyModelViewMatrix();
+            g.drawString(font,"First-person shield at 70 FOV: sight line through glass",15,15,0xFFFFFFFF);
+            g.fill(width/2-5,height/2,width/2+6,height/2+1,0xFFFF4444);g.fill(width/2,height/2-5,width/2+1,height/2+6,0xFFFF4444);
         }
     }
     private static final class FurnitureScreen extends net.minecraft.client.gui.screens.Screen {

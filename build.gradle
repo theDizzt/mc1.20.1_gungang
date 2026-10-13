@@ -6,9 +6,15 @@ plugins {
 }
 
 group = 'dev.gungang'
-version = java.time.LocalDate.now(java.time.ZoneId.of('Asia/Seoul'))
-        .format(java.time.format.DateTimeFormatter.ofPattern('ddMMMyy', java.util.Locale.ENGLISH))
-        .toLowerCase(java.util.Locale.ROOT)
+def versionState = file('version.properties')
+def releaseProperties = new Properties()
+versionState.withInputStream { releaseProperties.load(it) }
+def nextUpdate = Integer.parseInt(releaseProperties.getProperty('update')) + 1
+def releaseDate = java.time.LocalDate.now(java.time.ZoneId.of('Asia/Seoul'))
+        .format(java.time.format.DateTimeFormatter.ofPattern('yyMMdd'))
+def releaseName = "u${nextUpdate}_${releaseDate}"
+// Forge rejects underscores in mods.toml versions; keep the requested label for the filename.
+version = "${nextUpdate}.${releaseDate}"
 base { archivesName = 'gungang-realistic_1.20.1' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 // Explicit development-only server smoke checks; never included in a normal build/JAR.
@@ -52,7 +58,7 @@ mixin {
 tasks.named('jar', Jar).configure {
     exclude 'dev/gungang/acoustics/server/GadgetSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/client/PreviewSmokeChecks*.class'
-    archiveFileName = "gungang-realistic_1.20.1_${project.version}.jar"
+    archiveFileName = "gungang-realistic_1.20.1_${releaseName}.jar"
     manifest { attributes(['MixinConfigs': 'gungang_acoustics.mixins.json']) }
     finalizedBy 'reobfJar'
 }
@@ -68,6 +74,19 @@ tasks.named('processResources', ProcessResources).configure {
 }
 test { useJUnitPlatform() }
 
+// Only a successful release build advances the persistent counter. Compile/test/run do not.
+// exportJar also waits for the copy to succeed before committing the counter.
+def commitRelease = {
+    def temp = file('version.properties.tmp')
+    temp.setText("# Last successful release build. The next build uses this number + 1.\nupdate=${nextUpdate}\n", 'UTF-8')
+    java.nio.file.Files.move(temp.toPath(), versionState.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    logger.lifecycle("Release ${releaseName}: saved update counter ${nextUpdate}")
+}
+tasks.named('build').configure {
+    dependsOn 'reobfJar'
+    doLast { if (!gradle.taskGraph.hasTask(':exportJar')) commitRelease() }
+}
+
 // Export only this build's installable, reobfuscated artifact (never stale/dev/source JARs).
 tasks.register('exportJar', Copy) {
     group = 'build'
@@ -75,4 +94,5 @@ tasks.register('exportJar', Copy) {
     dependsOn 'build', 'reobfJar'
     from tasks.named('jar', Jar).flatMap { it.archiveFile }
     into layout.projectDirectory.dir('dist')
+    doLast { commitRelease() }
 }

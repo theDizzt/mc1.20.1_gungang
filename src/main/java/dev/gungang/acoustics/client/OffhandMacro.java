@@ -32,6 +32,7 @@ public final class OffhandMacro {
     private static boolean click;
     private static boolean holdingUse;
     private static boolean gunAction;
+    private static boolean shieldHold;
     private static boolean previousAttackDown, previousUseDown;
 
     private static KeyMapping mapping(String name, int key) {
@@ -56,7 +57,10 @@ public final class OffhandMacro {
         boolean useEdge = useClick && !previousUseDown;
         previousAttackDown = attackDown;
         previousUseDown = useDown;
-        if (owner == null && (attackEdge || useEdge) && canStart(mc)) begin(mc, !attackEdge);
+        if (owner == null && (attackEdge || useEdge) && canStart(mc)) {
+            if(useEdge&&!attackEdge&&dev.gungang.acoustics.server.CombatGadgets.is(mc.player.getOffhandItem(),"shield"))return;
+            begin(mc, !attackEdge);
+        }
     }
 
     private static boolean drain(KeyMapping mapping) {
@@ -72,7 +76,8 @@ public final class OffhandMacro {
                 && !mc.player.isUsingItem() && !mc.gameMode.isDestroying()
                 && mc.player.containerMenu == mc.player.inventoryMenu
                 && !mc.player.getOffhandItem().isEmpty()
-                && !mc.options.keyAttack.isDown() && !mc.options.keyUse.isDown();
+                && ((!mc.options.keyAttack.isDown() && !mc.options.keyUse.isDown())
+                    || (ATTACK.isDown()&&dev.gungang.acoustics.server.CombatGadgets.is(mc.player.getOffhandItem(),"shield")));
     }
 
     private static void begin(Minecraft mc, boolean rightClick) {
@@ -81,6 +86,7 @@ public final class OffhandMacro {
         sequence = new MacroSequence();
         gunAction = false;
         use = rightClick;
+        shieldHold=!rightClick&&dev.gungang.acoustics.server.CombatGadgets.is(owner.getOffhandItem(),"shield");
         // Keep the server's selected slot current before the swap packet.
         owner.connection.send(new ServerboundSetCarriedItemPacket(originalSlot));
         swap(owner);
@@ -97,6 +103,10 @@ public final class OffhandMacro {
             return;
         }
         try {
+            if(shieldHold){
+                if(!ATTACK.isDown()||!dev.gungang.acoustics.server.CombatGadgets.is(owner.getMainHandItem(),"shield"))finish(mc);
+                return;
+            }
             MacroSequence.Step step = sequence.next(use && USE.isDown() && (gunAction || (holdingUse && owner.isUsingItem())));
             if (step == MacroSequence.Step.WAIT) return;
             if (step == MacroSequence.Step.RESTORE) { finish(mc); return; }
@@ -162,6 +172,7 @@ public final class OffhandMacro {
         if (holdingUse) mc.options.keyUse.setDown(physicalDown(mc, mc.options.keyUse));
         holdingUse = false;
         gunAction = false;
+        shieldHold = false;
         click = false;
         owner = null;
         sequence = null;

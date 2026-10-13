@@ -1,5 +1,7 @@
 # 경기 정리·회복·명령어형 보조무기
 
+[README·문서 안내](../README.md) · [서버 경기 흐름](SERVER.md) · [아이템 설정](ITEMS.md) · [명령어](COMMANDS.md)
+
 경기 준비 시작, 실제 전투 시작, 경기 종료에 모든 지뢰와 방벽을 제거합니다. 로드되지 않은 청크의 설치물 기록도 무효화하여 다시 로드될 때 제거합니다. 관리자 명령 `/gungang cleardeployables`로도 전체 제거할 수 있습니다.
 
 지뢰는 플레이어별 최대 3개(`item/landmine.json`의 `maxPlaced`로 더 낮게 제한 가능), 방벽은 플레이어별 1개입니다. 설치물 외곽선에는 설치 당시 팀 RGB 색상이 표시됩니다. 스코어보드 팀 Red는 ALPHA, Blue는 BRAVO 설정 색상을 따릅니다.

@@ -1,5 +1,7 @@
 # 누적 전적·경험치·레벨
 
+[README·문서 안내](../README.md) · [서버 설정·경기별 TXT 전적](SERVER.md) · [명령어](COMMANDS.md)
+
 통산 승리는 DB의 `wins`에 기록됩니다. 승리팀 참가자만 경기당 1승이 증가하며 패배·무승부·중단은 증가하지 않습니다. `/gungang stats`에 승리 횟수도 표시하고, 관리자는 `/gungang stats set <플레이어> wins <값>`으로 수정할 수 있습니다. 이전 DB에 `wins`가 없으면 0으로 읽으며 기존 전적은 유지합니다. 이전 경기의 승리 횟수를 자동으로 추정하지는 않습니다.
 
 서버가 `config/gungang/player-db.json`을 자동 생성합니다. 별도 DB 서버가 필요 없는 UUID 기반 로컬 JSON 데이터베이스입니다. 닉네임이 바뀌어도 UUID가 같으면 기록을 유지합니다. 저장은 임시 파일을 통한 교체 방식이며 직전 데이터는 `player-db.json.bak`에 보관합니다. 손상된 DB를 빈 파일로 덮어쓰지 않습니다.
@@ -17,7 +19,7 @@
 | `/gungang xp set <플레이어> <값>` | 관리자: 누적 경험치 지정 |
 | `/gungang xp add <플레이어> <값>` | 관리자: 경험치 가감(최종값은 0 이상) |
 
-조회 시 이름 생략은 본인입니다. DB에 있는 오프라인 플레이어는 이름 또는 UUID로 지정할 수 있습니다. 수정 필드는 `xp`, `matches`, `kills`, `deaths`, `damage`, `playSeconds`입니다. 예: `/gungang stats set dizzt3942 kills 100`. 전적 변경이 경험치를 자동 재계산하지는 않습니다. XP 변경은 접속자의 HUD에 즉시 반영됩니다. 수정 명령은 OP 권한 레벨 2 이상이 필요합니다.
+조회 시 이름 생략은 본인입니다. DB에 있는 오프라인 플레이어는 이름 또는 UUID로 지정할 수 있습니다. 수정 필드는 `xp`, `matches`, `wins`, `kills`, `deaths`, `damage`, `playSeconds`입니다. 예: `/gungang stats set dizzt3942 kills 100`. 전적 변경이 경험치를 자동 재계산하지는 않습니다. XP 변경은 접속자의 HUD에 즉시 반영됩니다. 수정 명령은 OP 권한 레벨 2 이상이 필요합니다.
 
 조회 결과는 `sendCommandFeedback`가 꺼져 있어도 명령 실행자의 채팅에 표시됩니다. `stats`, `xp`, `level`의 경험치는 현재 레벨 구간 기준으로 표시합니다. 예를 들어 누적 XP 141인 2레벨은 `경험치 60/120`이며, 최고 레벨은 `경험치 MAX`입니다.
 

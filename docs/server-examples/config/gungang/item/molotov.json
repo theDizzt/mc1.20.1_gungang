@@ -1,0 +1,7 @@
+{
+  "radius": 5,
+  "durationSeconds": 8,
+  "burnSeconds": 3,
+  "cooldownSeconds": 36,
+  "burnDamage": 1
+}

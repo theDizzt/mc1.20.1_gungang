@@ -1,5 +1,7 @@
 # 주무기 능력치와 보조 아이템
 
+[README·문서 안내](../README.md) · [무기 JSON·NBT](SERVER.md) · [명령어형 보조무기·경기 정리](MATCH-LIFECYCLE.md) · [회복 팩·미리보기](STATIONS-AND-PREVIEWS.md) · [방패 모델](../models/shield/README_KO.md)
+
 ## 생명 유지 장치·제트팩
 
 - **92 생명 유지 장치** (`gungang:life_support`, 네더의 별): 보조 손에 장착한 상태에서 치명상을 받으면 자동 발동합니다. 노란 추가 체력 30을 부여하고 0.1초마다 1씩 감소합니다. 3초 안에 일반 체력을 회복하면 생존하며, 회복하지 못하면 사망합니다. 활성화 중 몸에 팀 색상 발광을 표시하며 벽 뒤에서는 보이지 않습니다. 쿨타임은 발동부터 120초입니다.
@@ -17,10 +19,12 @@
 
 ## 적외선 스캐너·방패와 보조 HUD
 
+- 보조 손의 방패는 **G키(보조 손 공격 매크로)를 누르는 동안** 주손으로 들어 방어하고, 놓으면 보조 손으로 되돌립니다. 키 재지정도 따릅니다. 화면 열기·포커스 상실·슬롯 변경 시 해제합니다. 방어 중 이동속도는 15% 감소하며 `shield.json`의 `movementPenaltyPercent`로 변경합니다. H키로 방패를 토글하지 않습니다.
+- 생명유지장치의 임시 체력과 일반/재생 회복량은 본인·팀원 체력 숫자에 합산하며, 임시 체력은 계속 노란 막대로 구분합니다. 힐팩은 실제 수령자에게만 회복음을 재생합니다.
 - **96 적외선 스캐너** (`gungang:infrared_scanner`): 사용 시 같은 차원의 적 위치를 같은 팀에 10초간 공유합니다. 적 팀 색상의 실루엣을 벽 너머로 표시하며, 쿨타임은 120초입니다. 일반 엔티티 추적 거리 밖의 적 위치도 공유합니다.
-- **97 방패** (`gungang:shield`): 주 손 또는 보조 손에 들고 있으면 정면 180도에서 들어오는 피해를 총 75까지 흡수합니다. 내구도를 넘는 피해는 플레이어에게 적용되며 뒤쪽·옆 경계의 공격은 막지 못합니다. 파손된 순간부터 90초 후 자동 수리되고, 파손 전 수리나 재선택으로 내구도 초기화는 불가능합니다. 방어 중에는 근접·투척·총기 등 무기 사용을 차단합니다.
-- 방패 모델은 `models/shield`의 경찰 진압 방패를 사용합니다. 49개 큐브와 반투명 관측창을 유지하고, 양손의 손 변환에 맞춰 세워 몸 전면에 오도록 보정했습니다. 1인칭 크기·위치도 조정했습니다. `python scripts/import_shield_model.py`로 원본과 보정값을 다시 적용할 수 있습니다.
-- 두 장비의 선택용 `96_infrared-scanner.json`, `97_shield.json`은 업데이트 후 자동 생성합니다. 같은 ID나 아이템을 사용하는 설정이 있으면 덮어쓰지 않습니다. 이 두 장비의 쿨타임은 고정이며 방패는 파손 시에만 시작합니다.
+- **97 방패** (`gungang:shield`): **주손에 들었을 때만** 정면 180도에서 들어오는 피해를 총 75까지 흡수합니다. 보조 손에 보관하면 방어 효과와 공격 제한이 없으며 주무기를 사용할 수 있습니다. 내구도를 넘는 피해는 플레이어에게 적용되며 뒤쪽·옆 경계의 공격은 막지 못합니다. 파손된 순간부터 90초 후 자동 수리되고, 파손 전 수리나 재선택으로 내구도 초기화는 불가능합니다. 방어 중에는 근접·투척·총기 등 무기 사용을 차단합니다.
+- 방패 모델은 `models/shield`의 49개 큐브와 반투명 관측창을 유지합니다. 주손 방어 중에는 전용 렌더러가 1인칭 화면 중앙과 3인칭 시선 전방에 배치하며, 관측창 중심을 눈높이에 맞춥니다. 팔 흔들림과 좌우 주손 설정에 영향받지 않습니다. 보조 손 방패는 1인칭에서 숨겨 주무기 시야를 확보합니다. `python scripts/import_shield_model.py`는 모델 리소스를 재생성하며, 방어 중 배치는 `ShieldRendering`과 `ShieldRenderLayer`에서 처리합니다.
+- 두 장비의 선택용 `96_infrared-scanner.json`, `97_shield.json`은 업데이트 후 자동 생성합니다. 같은 ID나 아이템을 사용하는 설정이 있으면 덮어쓰지 않습니다. 쿨타임·수리 시간은 `item` 설정을 따르며 방패 수리는 파손 시에만 시작합니다.
 - 나침반 위의 밝은 파란 보조 게이지는 기존 체력바의 가로·세로 절반 크기입니다. 아드레날린·스캐너의 남은 지속시간 또는 들고 있는 방패의 내구도가 있을 때 표시합니다. 여러 효과가 겹치면 각각 표시합니다. 체력 피해 잔상은 어두운 회색입니다.
 - 핫바 오른쪽에 `지뢰: 0/3`, `방벽: 0/1`을 표시하며 설치 한도에 도달하면 빨간색이 됩니다. 다른 보조무기를 선택하면 자신의 설치물을 철거하고 미로드 설치물 기록도 무효화합니다.
 - 팀킬은 개인 킬·어시스트로 기록하지 않습니다. 팀 데스매치에서는 팀킬 시 상대 팀 점수에 1점을 추가합니다. 자살은 이 팀킬 가산 대상이 아닙니다.
@@ -70,7 +74,7 @@
 
 ## 설치 조작
 
-보조무기 사용 키(기본 **H**) 또는 아이템을 든 손의 우클릭으로 사용합니다. 지뢰·방벽은 설치 위치 테두리가 표시됩니다. 초록은 설치 가능, 빨강은 설치 불가입니다. 사용 키를 놓은 다음 **우클릭으로 설치**, **좌클릭으로 취소**합니다. 서버가 거리, 바닥, 공간, 설치 개수와 쿨타임을 다시 검증합니다.
+보조무기 사용 키(기본 **H**)로 사용합니다. 지뢰·방벽·궤도폭격을 직접 사용할 때는 주손에 꺼내 우클릭합니다. 보조 손에 보관한 설치형 아이템은 주무기 우클릭이 넘어와도 설치 모드를 열지 않습니다. 지뢰·방벽은 설치 위치 테두리가 표시됩니다. 초록은 설치 가능, 빨강은 설치 불가입니다. 사용 키를 놓은 다음 **우클릭으로 설치**, **좌클릭으로 취소**합니다. 슬롯 변경·해당 아이템 해제·사망·관전 전환 시 미리보기를 취소하고, 화면을 열 때에도 클라이언트가 취소합니다. 서버가 거리, 바닥, 공간, 설치 개수와 쿨타임을 다시 검증합니다.
 
 지뢰 철거는 설치자가 자기 지뢰를 조준하고 사용 키를 5초간 유지합니다. 조준이 바뀌거나 키를 놓으면 처음부터 다시 진행합니다. 방벽은 플레이어가 바라보는 방향에 수직인 3×3 나무벽이며, 실제 월드 블록을 덮어쓰지 않는 충돌 가능한 설치물입니다. 누구든 근접·투사체·총기로 피해를 줄 수 있습니다. 같은 설치자의 기존 방벽이 살아 있으면 두 번째 방벽을 만들 수 없습니다. 경기 종료·참여 해제 시 설치물을 정리합니다.
 
@@ -97,10 +101,12 @@
 `adrenaline.json`:
 
 ```json
-{"healthCostPercent":50,"durationSeconds":7,"movementBonusPercent":20,"attackBonusPercent":20}
+{"healthCostPercent":50,"durationSeconds":7,"movementBonusPercent":20,"attackBonusPercent":20,"damageBonusPercent":20}
 ```
 
 최대 체력의 50%를 즉시 소모합니다. 현재 체력이 비용 이하이면 사용을 거부하며 쿨타임도 시작하지 않습니다. 7초 동안 이동 속도와 Minecraft `attack_speed` 속성이 각각 20% 증가합니다. 재사용 시 지속시간을 갱신하며 속도 배율은 중첩하지 않습니다. 총기 모드가 자체 연사 속도를 사용하는 경우 `attack_speed`와 별개입니다.
+
+같은 시간 동안 **최종 체력 피해 +20%**도 적용합니다. 방어력·저항·흡수 체력을 계산한 뒤 남은 피해에 한 번 곱하며 근접, TaCZ 총기, 투사체, 지뢰·궤도폭격·제트팩 충돌과 모드가 소유자를 추적하는 화상에 공통 적용합니다. 적중 시 공격자의 버프가 활성 상태여야 하며 자기 피해와 소유자가 없는 환경 피해에는 적용하지 않습니다. `damageBonusPercent`는 기존 파일에 없어도 20으로 적용되며 0~500 범위에서 설정할 수 있습니다. 사망·관전·경기 정리·시간 만료 후에는 적용하지 않습니다. 기존 `attackBonusPercent`는 공격 속도 설정으로 유지합니다.
 
 `barrier.json`:
 
@@ -113,3 +119,21 @@
 ## 개발 검증
 
 `gradlew build`는 일반 회귀 테스트를 실행합니다. `gradlew runServer -PgungangSmoke --args="--nogui --world gadget-smoke"`는 별도 개발 월드에서 아이템 사용·쿨타임·회복·능력치·방벽 피해를 검사한 뒤 종료합니다. 개발 검사 코드는 배포 JAR에 포함되지 않습니다.
+# 전체 보조무기 JSON 설정
+
+서버 `config/gungang/item/`에 없는 파일을 자동 생성합니다. `/gungang reload`로 적용하며, `Seconds`는 초, `Ticks`는 틱(20틱=1초), 거리·반경은 블록 단위입니다. 아래 값은 새 파일의 기본값으로 기존 서버의 사용자 설정은 유지합니다. [전체 예제](server-examples/config/gungang/item/) · [전장 기믹 설정](GIMMICKS.md)
+
+| 파일 | 편집할 수 있는 효과 설정 |
+| --- | --- |
+| `molotov.json` | `radius=5`, `durationSeconds=8`, `burnSeconds=3`, `burnDamage=1`, `cooldownSeconds=36` |
+| `orbital_strike.json` | `radius=24`, `centerDamage=256`, `edgeDamage=84`, `delaySeconds=5`, `range=64`, `cooldownSeconds=240` |
+| `life_support.json` | `absorption=30`, `durationSeconds=3`, `drainAmount=1`, `drainIntervalSeconds=0.1`, `cooldownSeconds=120` |
+| `jetpack.json` | `speed=0.85`, `durationSeconds=3`, `collisionDamage=25`, `knockback=1.5`, `burnSeconds=3`, `burnDamage=1`, `trailSeconds=1`, `cooldownSeconds=24`, `verticalFlight=false` |
+| `infrared_scanner.json` | `durationSeconds=10`, `cooldownSeconds=120` |
+| `shield.json` | `capacity=75`, `repairSeconds=90`, `movementPenaltyPercent=15` |
+| `adrenaline.json` | `healthCostPercent=50`, `durationSeconds=7`, `movementBonusPercent=20`, `attackBonusPercent=20`, `damageBonusPercent=20` |
+| `landmine.json` | `damage=100`, `radius=3`, `triggerRadius=1.2`, `maxPlaced=3`, `disarmSeconds=5`, `range=5`, `showHealthBar=false` |
+| `barrier.json` | `health=200`, `range=5` |
+| `recovery_potion.json` | `heal=50`, `durationSeconds=5` |
+
+`burnDamage`는 점화 후 바닐라 화염 피해 1회분의 기본 피해입니다. 전투자극제는 방어 계산 후 최종 체력 피해를 강화하며, TaCZ 표적에 표시되는 피해도 배율을 반영합니다. 동일 피해에 두 번 곱하지 않습니다. `sub_weapons`는 지급·장착 설정이고 위 `item` 파일들은 효과 설정입니다.

@@ -1,0 +1,139 @@
+{
+  "render_type": "minecraft:translucent",
+  "textures": {
+    "side": "minecraft:block/glass",
+    "crack": "gungang:block/gimmick_cracks",
+    "particle": "minecraft:block/glass"
+  },
+  "elements": [
+    {
+      "to": [
+        9,
+        16,
+        16
+      ],
+      "faces": {
+        "north": {
+          "texture": "#side"
+        },
+        "south": {
+          "texture": "#side"
+        },
+        "east": {
+          "texture": "#side"
+        },
+        "west": {
+          "texture": "#side"
+        },
+        "up": {
+          "texture": "#side"
+        },
+        "down": {
+          "texture": "#side"
+        }
+      },
+      "from": [
+        7,
+        0,
+        0
+      ]
+    },
+    {
+      "to": [
+        9.01,
+        16.01,
+        16.01
+      ],
+      "faces": {
+        "north": {
+          "texture": "#crack"
+        },
+        "south": {
+          "texture": "#crack"
+        },
+        "east": {
+          "texture": "#crack"
+        },
+        "west": {
+          "texture": "#crack"
+        },
+        "up": {
+          "texture": "#crack"
+        },
+        "down": {
+          "texture": "#crack"
+        }
+      },
+      "from": [
+        6.99,
+        -0.01,
+        -0.01
+      ]
+    },
+    {
+      "to": [
+        16,
+        16,
+        9
+      ],
+      "faces": {
+        "north": {
+          "texture": "#side"
+        },
+        "south": {
+          "texture": "#side"
+        },
+        "east": {
+          "texture": "#side"
+        },
+        "west": {
+          "texture": "#side"
+        },
+        "up": {
+          "texture": "#side"
+        },
+        "down": {
+          "texture": "#side"
+        }
+      },
+      "from": [
+        0,
+        0,
+        7
+      ]
+    },
+    {
+      "to": [
+        16.01,
+        16.01,
+        9.01
+      ],
+      "faces": {
+        "north": {
+          "texture": "#crack"
+        },
+        "south": {
+          "texture": "#crack"
+        },
+        "east": {
+          "texture": "#crack"
+        },
+        "west": {
+          "texture": "#crack"
+        },
+        "up": {
+          "texture": "#crack"
+        },
+        "down": {
+          "texture": "#crack"
+        }
+      },
+      "from": [
+        -0.01,
+        -0.01,
+        6.99
+      ]
+    }
+  ],
+  "parent": "minecraft:block/block"
+}
