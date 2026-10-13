@@ -42,22 +42,33 @@ final class LoadoutScreen extends ArenaScreen {
         page=Math.min(page,Math.max(0,weapons().size()-capacity()));
         for(int i=page;i<Math.min(weapons().size(),page+capacity());i++){
             var weapon=weapons().get(i);String equipped=primary?state.primary():state.secondary();
-            String name=font.plainSubstrByWidth("["+weapon.category()+"] "+weapon.name(),Math.max(1,list-20));
-            var label=Component.literal(name).withStyle(equipped.equals(weapon.id())?net.minecraft.ChatFormatting.GREEN:net.minecraft.ChatFormatting.WHITE);
-            button(label,x,85+(i-page)*27,list-6,24,true,
+            boolean worn=equipped.equals(weapon.id());
+            var label=Component.empty();
+            if(worn)label.append(Component.literal("● ").withStyle(net.minecraft.ChatFormatting.GREEN));
+            label.append(Component.literal(weapon.category()+"  ").withStyle(s->s.withColor(DIM&0xFFFFFF)))
+                    .append(Component.literal(weapon.name()).withStyle(worn?net.minecraft.ChatFormatting.GREEN:net.minecraft.ChatFormatting.WHITE));
+            listButton(label,x,85+(i-page)*27,list-6,24,true,
                     weapon.id().equals(selected().id())?ACCENT:MUTED,()->clickWeapon(weapon.id()));
         }
-        button("선택한 무기 장착",detailX(),height-48,Math.max(40,w-list-82),22,state.allowed(),ACCENT,()->LobbyClient.action(primary?"primary":"secondary",selected().id(),""));
+        boolean worn=selected().id().equals(primary?state.primary():state.secondary());
+        Runnable equip=()->LobbyClient.action(primary?"primary":"secondary",selected().id(),"");
+        if(worn)button("장착 중인 무기",detailX(),height-48,Math.max(40,w-list-82),22,state.allowed(),READY,equip);
+        else colorButton("선택한 무기 장착",detailX(),height-48,Math.max(40,w-list-82),22,state.allowed(),ACCENT,equip);
         closeButton(x+w-64,height-48,64,22);
     }
     @Override public void render(GuiGraphics g,int mouseX,int mouseY,float partial){
         shell(g,state.team()+"  /  "+(state.preparationSeconds()>0?"출격까지 "+state.preparationSeconds()+"초":state.spawnHint()?"팀 스폰 구역":"무기 선택")+"  /  "+LobbyClient.LOADOUT.getTranslatedKeyMessage().getString()+"로 다시 열기");
         int x=left()+12,w=body()-24,dx=detailX(),right=x+w,dw=right-dx;
-        var weapon=selected();g.fill(dx,85,right,height-57,0xFF101A28);
-        var title=Component.literal(weapon.name()).withStyle(weapon.id().equals(primary?state.primary():state.secondary())?net.minecraft.ChatFormatting.GREEN:net.minecraft.ChatFormatting.WHITE)
-                .append(Component.literal(" [id: "+weapon.id()+"]").withStyle(net.minecraft.ChatFormatting.YELLOW));
-        g.drawString(font,net.minecraft.locale.Language.getInstance().getVisualOrder(font.substrByWidth(title,dw-12)),dx+6,91,INK,false);
-        g.drawString(font,font.plainSubstrByWidth(weapon.category()+" · 드래그 회전 / 휠 확대",dw-12),dx+6,104,MUTED,false);
+        var weapon=selected();boolean worn=weapon.id().equals(primary?state.primary():state.secondary());
+        card(g,dx,85,right,height-57);
+        g.fillGradient(dx,85,right,115,0xFF1B293C,PANEL);g.fill(dx,85,right,86,worn?READY:ACCENT);
+        int tagX=right-6;
+        if(worn){String tag="장착 중";tagX-=font.width(tag)+8;badge(g,tag,tagX,89,READY);tagX-=4;}
+        var title=Component.literal(weapon.name()).withStyle(worn?net.minecraft.ChatFormatting.GREEN:net.minecraft.ChatFormatting.WHITE)
+                .append(Component.literal(" [id: "+weapon.id()+"]").withStyle(s->s.withColor(0xC8B060)));
+        g.drawString(font,net.minecraft.locale.Language.getInstance().getVisualOrder(font.substrByWidth(title,Math.max(1,tagX-dx-10))),dx+6,91,INK,false);
+        int categoryWidth=badge(g,weapon.category(),dx+6,102,ACCENT);
+        g.drawString(font,font.plainSubstrByWidth("드래그 회전 / 휠 확대",Math.max(1,dw-categoryWidth-18)),dx+categoryWidth+12,104,DIM,false);
         preview(g,weapon,dx+4,117,dw-8,previewHeight());
         int top=125+previewHeight(),bottom=height-57;
         var rows=new ArrayList<Row>();
@@ -71,40 +82,62 @@ final class LoadoutScreen extends ArenaScreen {
                 stat(rows,"사거리",weapon.specs().range(),v->v.specs()==null?"":v.specs().range());
                 stat(rows,"연사력",weapon.specs().fireRate(),v->v.specs()==null?"":v.specs().fireRate());
             }
-            paragraph(rows,"막대: 목록 내 같은 단위의 최댓값 기준",dw-16);
+            paragraph(rows,"막대: 목록 내 같은 단위의 최댓값 기준",dw-16,true);
         }else rows.add(new Row("재사용 대기시간",weapon.cooldownSeconds()==0?"무제한":number(weapon.cooldownSeconds())+"초",-1,23));
-        paragraph(rows,weapon.description(),dw-16);paragraph(rows,"사용방법",dw-16);paragraph(rows,weapon.usage(),dw-16);
+        paragraph(rows,weapon.description(),dw-16);heading(rows,"사용방법");paragraph(rows,weapon.usage(),dw-16);
         int total=rows.stream().mapToInt(Row::height).sum();maxScroll=Math.max(0,total-(bottom-top));scroll=Math.min(scroll,maxScroll);
         g.enableScissor(dx,top,right,bottom);int y=top-scroll;
         for(var row:rows){
-            if(row.height()<=12)g.drawString(font,row.label(),dx+8,y,MUTED,false);
+            if(row.header()){g.fill(dx+8,y+1,dx+10,y+10,ACCENT);g.drawString(font,row.label(),dx+14,y+2,INK,false);}
+            else if(row.height()<=12)g.drawString(font,row.label(),dx+8,y,row.note()?DIM:MUTED,false);
             else {
                 g.drawString(font,row.label(),dx+8,y,INK,false);
                 String value=font.plainSubstrByWidth(row.value(),Math.max(1,dw-font.width(row.label())-28));
                 g.drawString(font,value,right-8-font.width(value),y,ACCENT,false);
-                g.fill(dx+8,y+13,right-8,y+17,0xFF29394D);
-                if(row.fraction()>=0)g.fill(dx+8,y+13,dx+8+Math.round((dw-16)*row.fraction()),y+17,ACCENT);
+                g.fill(dx+8,y+12,right-8,y+18,0xFF1E2B3B);g.fill(dx+9,y+13,right-9,y+17,0xFF29394D);
+                if(row.fraction()>=0){
+                    int fill=Math.round((dw-18)*Math.max(0,Math.min(1,row.fraction())));
+                    if(fill>0){
+                        g.fillGradient(dx+9,y+13,dx+9+fill,y+17,blend(ACCENT,0xFFFFFFFF,.25f),blend(ACCENT,0xFF000000,.2f));
+                        g.fill(dx+9+fill-1,y+12,dx+9+fill,y+18,INK);
+                    }
+                }
             }y+=row.height();
         }
         g.flush();g.disableScissor();
-        if(maxScroll>0){int h=Math.max(8,(bottom-top)*(bottom-top)/Math.max(1,total));int sy=top+(bottom-top-h)*scroll/maxScroll;g.fill(right-2,sy,right,sy+h,ACCENT);}
+        if(maxScroll>0){
+            int h=Math.max(8,(bottom-top)*(bottom-top)/Math.max(1,total));int sy=top+(bottom-top-h)*scroll/maxScroll;
+            g.fill(right-2,top,right,bottom,0xFF1E2B3B);g.fill(right-2,sy,right,sy+h,ACCENT);
+            if(scroll>0)g.fillGradient(dx,top,right-2,top+8,0xC0101A28,0x00101A28);
+            if(scroll<maxScroll)g.fillGradient(dx,bottom-8,right-2,bottom,0x00101A28,0xC0101A28);
+        }
         if(weapons().size()>capacity()){
             int track=capacity()*27-3,thumb=Math.max(12,track*capacity()/weapons().size()),ty=85+(track-thumb)*page/(weapons().size()-capacity());
-            g.fill(x+listWidth()-4,85,x+listWidth()-1,85+track,0xFF101A28);g.fill(x+listWidth()-4,ty,x+listWidth()-1,ty+thumb,ACCENT);
+            g.fill(x+listWidth()-4,85,x+listWidth()-1,85+track,0xFF1E2B3B);g.fill(x+listWidth()-4,ty,x+listWidth()-1,ty+thumb,ACCENT);
         }
         super.render(g,mouseX,mouseY,partial);
     }
-    private record Row(String label,String value,float fraction,int height) { }
+    private record Row(String label,String value,float fraction,int height,boolean header,boolean note) {
+        Row(String label,String value,float fraction,int height){this(label,value,fraction,height,false,false);}
+    }
     private void stat(List<Row> rows,String label,String value,Function<Loadouts.Weapon,String> accessor){rows.add(new Row(label,value,WeaponStatScale.fraction(value,weapons().stream().map(accessor).toList()),23));}
-    private void paragraph(List<Row> rows,String text,int width){
+    private void heading(List<Row> rows,String text){rows.add(new Row(text,"",-1,14,true,false));}
+    private void paragraph(List<Row> rows,String text,int width){paragraph(rows,text,width,false);}
+    private void paragraph(List<Row> rows,String text,int width,boolean note){
         for(String line:WeaponText.lines(text))for(var part:font.split(Component.literal(line),Math.max(1,width))) {
-            var out=new StringBuilder();part.accept((index,style,cp)->{out.appendCodePoint(cp);return true;});rows.add(new Row(out.toString(),"",-1,12));
+            var out=new StringBuilder();part.accept((index,style,cp)->{out.appendCodePoint(cp);return true;});rows.add(new Row(out.toString(),"",-1,12,false,note));
         }
         rows.add(new Row("","",-1,6));
     }
     private static String number(double value){return String.format(Locale.ROOT,value==Math.rint(value)?"%.0f":"%.1f",value);}
     private void preview(GuiGraphics g,Loadouts.Weapon weapon,int x,int y,int w,int h){
-        g.fill(x,y,x+w,y+h,0xFF19283A);var stack=PreviewCache.item(weapon.id(),primary);
+        g.fillGradient(x,y,x+w,y+h,0xFF1D2E44,0xFF132031);
+        for(int gx=x+w/2%16;gx<x+w;gx+=16)g.fill(gx,y,gx+1,y+h,0x0CFFFFFF);
+        for(int gy=y+h-1;gy>y;gy-=16)g.fill(x,gy,x+w,gy+1,0x0CFFFFFF);
+        int c=Math.min(8,Math.min(w,h)/4);
+        g.fill(x,y,x+c,y+1,ACCENT);g.fill(x,y,x+1,y+c,ACCENT);g.fill(x+w-c,y,x+w,y+1,ACCENT);g.fill(x+w-1,y,x+w,y+c,ACCENT);
+        g.fill(x,y+h-1,x+c,y+h,ACCENT);g.fill(x,y+h-c,x+1,y+h,ACCENT);g.fill(x+w-c,y+h-1,x+w,y+h,ACCENT);g.fill(x+w-1,y+h-c,x+w,y+h,ACCENT);
+        var stack=PreviewCache.item(weapon.id(),primary);
         if(stack==null||stack.isEmpty()){
             String message=stack==null?"모델 불러오는 중…":"표시할 아이템 모델이 없습니다";
             g.drawString(font,font.plainSubstrByWidth(message,Math.max(1,w-8)),x+4,y+h/2-4,MUTED,false);return;

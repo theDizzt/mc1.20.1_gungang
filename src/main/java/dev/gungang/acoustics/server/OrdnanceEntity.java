@@ -19,7 +19,7 @@ public final class OrdnanceEntity extends Entity {
     public boolean orbital() {return entityData.get(ORBITAL);}
     public void setup(Entity owner,boolean orbital) {
         this.owner=owner==null?null:owner.getUUID();entityData.set(ORBITAL,orbital);
-        expires=level().getGameTime()+(orbital?OrdnanceRules.ORBITAL_DELAY:OrdnanceRules.FIRE_DURATION);
+        expires=level().getGameTime()+(orbital?ExtraGadgetConfig.ticks(ExtraGadgetConfig.orbital.delaySeconds()):ExtraGadgetConfig.ticks(ExtraGadgetConfig.molotov.durationSeconds()));
     }
     @Override public void tick() {
         super.tick();
@@ -34,24 +34,25 @@ public final class OrdnanceEntity extends Entity {
             if(tickCount%5==0)for(int i=0;i<96;i++) {
                 double angle=i*Math.PI*2/96;
                 level.sendParticles(new net.minecraft.core.particles.DustParticleOptions(new org.joml.Vector3f(1,.05f,.8f),1.5f),
-                        getX()+Math.cos(angle)*OrdnanceRules.ORBITAL_RADIUS,getY()+.15,getZ()+Math.sin(angle)*OrdnanceRules.ORBITAL_RADIUS,1,0,.08,0,0);
+                        getX()+Math.cos(angle)*ExtraGadgetConfig.orbital.radius(),getY()+.15,getZ()+Math.sin(angle)*ExtraGadgetConfig.orbital.radius(),1,0,.08,0,0);
             }
             return;
         }
         if(tickCount%4==0) {
             for(int i=0;i<65;i++) {
-                double angle=random.nextDouble()*Math.PI*2,r=Math.sqrt(random.nextDouble())*OrdnanceRules.FIRE_RADIUS;
+                double angle=random.nextDouble()*Math.PI*2,r=Math.sqrt(random.nextDouble())*ExtraGadgetConfig.molotov.radius();
                 level.sendParticles(ParticleTypes.FLAME,getX()+Math.cos(angle)*r,getY()+.08,getZ()+Math.sin(angle)*r,1,0,.08,0,.015);
             }
         }
-        for(var victim:level.getEntitiesOfClass(LivingEntity.class,new AABB(getX()-5,getY()-1,getZ()-5,getX()+5,getY()+3,getZ()+5),e->e.isAlive()&&!e.isSpectator())) {
+        for(var victim:level.getEntitiesOfClass(LivingEntity.class,new AABB(getX()-ExtraGadgetConfig.molotov.radius(),getY()-1,getZ()-ExtraGadgetConfig.molotov.radius(),getX()+ExtraGadgetConfig.molotov.radius(),getY()+3,getZ()+ExtraGadgetConfig.molotov.radius()),e->e.isAlive()&&!e.isSpectator())) {
             if(!OrdnanceRules.inFire(victim.getX()-getX(),victim.getY()-getY(),victim.getZ()-getZ())||victim.fireImmune()||victim.isInWaterRainOrBubble()||SafeZones.contains(victim))continue;
-            victim.setSecondsOnFire(OrdnanceRules.BURN_SECONDS);
+            victim.setSecondsOnFire(ExtraGadgetConfig.molotov.burnSeconds());
+            AdrenalineDamage.burning(victim,owner,ExtraGadgetConfig.molotov.burnSeconds(),ExtraGadgetConfig.molotov.burnDamage());
         }
     }
     private void explode(ServerLevel level) {
         var source=level.damageSources().explosion(this,owner==null?null:level.getEntity(owner));
-        double radius=OrdnanceRules.ORBITAL_RADIUS;
+        double radius=ExtraGadgetConfig.orbital.radius();
         for(var victim:level.getEntitiesOfClass(LivingEntity.class,getBoundingBox().inflate(radius),e->e.isAlive()&&!e.isSpectator()))
             if(OrdnanceRules.inBlast(victim.getX()-getX(),victim.getY()-getY(),victim.getZ()-getZ()))
                 OrdnanceDamage.hurt(victim,source,OrdnanceRules.orbitalDamage(victim.position().distanceTo(position())));

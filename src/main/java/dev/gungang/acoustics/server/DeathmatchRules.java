@@ -15,7 +15,7 @@ public record DeathmatchRules(Integer timeLimitSeconds,Integer winningKills) {
         // No capture logic, floor recoloring or legacy objective function hooks in deathmatch.
         return new ArenaMap(source.id(),source.name(),source.description(),source.enabled(),timeLimitSeconds,
                 source.gameMode(),source.dimension(),source.alphaSpawn(),source.bravoSpawn(),source.spectatorSpawn(),
-                source.alphaArea(),source.bravoArea(),null,java.util.List.of(),java.util.List.of(),java.util.List.of());
+                source.alphaArea(),source.bravoArea(),null,java.util.List.of(),java.util.List.of(),java.util.List.of(),null,source.previewImage(),source.weather(),source.timeOfDay());
     }
     public String winner(int alpha,int bravo,boolean expired) {
         if(alpha>=winningKills)return "ALPHA";

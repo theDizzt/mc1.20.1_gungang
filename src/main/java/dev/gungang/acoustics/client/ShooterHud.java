@@ -68,7 +68,7 @@ public final class ShooterHud {
         float health = player.getHealth(), maximum = player.getMaxHealth();
         float fraction = HudHealth.fraction(health, maximum);
         int color = fraction <= 0.25f ? 0xFFFF9292 : fraction <= 0.5f ? 0xFFFFDC98 : 0xFFF5F5F0;
-        String value = HudHealth.label(health, maximum);
+        String value = HudHealth.label(health, maximum,player.getAbsorptionAmount());
         String mode = mc.gameMode != null && mc.gameMode.getPlayerMode() != net.minecraft.world.level.GameType.SURVIVAL
                 ? net.minecraft.network.chat.Component.translatable("gameMode." + mc.gameMode.getPlayerMode().getName()).getString() : "";
         int sideSpace = mode.isEmpty() ? 8 : Math.round(mc.font.width(mode) * 1.25f) + 12;

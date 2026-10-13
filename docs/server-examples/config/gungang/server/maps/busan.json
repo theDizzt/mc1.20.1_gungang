@@ -59,5 +59,7 @@
   },
   "onPrepare": [],
   "onStart": [],
-  "onEnd": []
+  "onEnd": [],
+  "weather": "clear",
+  "timeOfDay": "day"
 }

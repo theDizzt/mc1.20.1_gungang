@@ -26,16 +26,16 @@ public final class SecondaryRuntime {
         OWNERS.put(player.getCooldowns(),new java.lang.ref.WeakReference<>(player));
         var tag=stack.getOrCreateTag();tag.putString("GunGangSecondaryId",weapon.id());
         tag.putInt("GunGangCooldownTicks",(int)Math.ceil(weapon.cooldownSeconds()*20));
-        if(CombatGadgets.is(stack,"molotov"))tag.putInt("GunGangCooldownTicks",OrdnanceRules.MOLOTOV_COOLDOWN);
-        if(CombatGadgets.is(stack,"life_support"))tag.putInt("GunGangCooldownTicks",SurvivalRules.LIFE_COOLDOWN);
+        if(CombatGadgets.is(stack,"molotov"))tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(ExtraGadgetConfig.molotov.cooldownSeconds()));
+        if(CombatGadgets.is(stack,"life_support"))tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(ExtraGadgetConfig.life.cooldownSeconds()));
         if(CombatGadgets.is(stack,"jetpack")) {
-            tag.putInt("GunGangCooldownTicks",SurvivalRules.JET_COOLDOWN);
-            tag.putBoolean("GunGangJetpackVerticalFlight",weapon.jetpackVerticalFlight());
+            tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(ExtraGadgetConfig.jet.cooldownSeconds()));
+            tag.putBoolean("GunGangJetpackVerticalFlight",weapon.jetpackVerticalFlight()||ExtraGadgetConfig.jet.verticalFlight());
         }
         if(CombatGadgets.is(stack,"orbital_strike")) {
-            tag.putInt("GunGangCooldownTicks",OrdnanceRules.ORBITAL_COOLDOWN);
+            tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(ExtraGadgetConfig.orbital.cooldownSeconds()));
             if(!player.level().isClientSide)DEADLINES.computeIfAbsent(player.getUUID(),id->new HashMap<>())
-                    .computeIfAbsent(weapon.id(),id->player.level().getGameTime()+OrdnanceRules.ORBITAL_COOLDOWN);
+                    .computeIfAbsent(weapon.id(),id->player.level().getGameTime()+ExtraGadgetConfig.ticks(ExtraGadgetConfig.orbital.cooldownSeconds()));
         }
         tag.putLong("GunGangCooldownEnd",DEADLINES.getOrDefault(player.getUUID(),Map.of()).getOrDefault(weapon.id(),0L));
         CombatGadgets.configure(player,stack);
@@ -75,7 +75,7 @@ public final class SecondaryRuntime {
             var shooter=type.getMethod("getShooter");var item=type.getMethod("getGunItemStack");
             net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.LOWEST,false,type,event->{
                 try {
-                    if(shooter.invoke(event) instanceof Player player&&(CombatGadgets.holdingShield(player)||SurvivalGadgets.jetting(player))) {if(event.isCancelable())event.setCanceled(true);return;}
+                    if(shooter.invoke(event) instanceof Player player&&(CombatGadgets.holdingShield(player)||SurvivalGadgets.jetting(player)||GadgetManager.placing(player))) {if(event.isCancelable())event.setCanceled(true);return;}
                     if(shooter.invoke(event) instanceof Player player&&item.invoke(event) instanceof ItemStack stack&&secondary(stack)) {
                         if(!ready(player,stack)) {if(event.isCancelable())event.setCanceled(true);}
                         else commit(player,stack);

@@ -1,0 +1,8 @@
+{
+  "radius": 24,
+  "centerDamage": 256,
+  "edgeDamage": 84,
+  "delaySeconds": 5,
+  "range": 64,
+  "cooldownSeconds": 240
+}

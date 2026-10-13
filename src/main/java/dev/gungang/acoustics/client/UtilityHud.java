@@ -25,16 +25,10 @@ public final class UtilityHud {
             float remaining=gauge.remaining();if(gauge.timed())remaining-=Math.max(0,mc.level.getGameTime()-received+partial);
             if(remaining<=0)continue;
             if(gauge.kind().equals("shield")&&!CombatGadgets.holdingShield(mc.player))continue;
-            String name=switch(gauge.kind()){case "shield"->"방패";case "infrared_scanner"->"스캐너";default->"아드레날린";};
+            String name=switch(gauge.kind()){case "shield"->"방패";case "infrared_scanner"->"스캐너";case "jetpack"->"제트팩";default->"아드레날린";};
             String value=gauge.timed()?String.format(java.util.Locale.ROOT,"%.1fs",remaining/20f):HudHealth.number(remaining)+"/"+HudHealth.number(gauge.maximum());
             gauge(g,center,y,width,height,remaining,gauge.maximum(),name+" "+value,partial);
             y-=height+4;
-        }
-        var ability=SurvivalGadgets.clientState(mc.player);
-        if(ability!=null) {
-            float remaining=ability.jetEnd()-mc.level.getGameTime()-partial;
-            if(remaining>0)gauge(g,center,y,width,height,remaining,SurvivalRules.JET_TICKS,
-                    String.format(java.util.Locale.ROOT,"제트팩 %.1fs",remaining/20f),partial);
         }
     }
     private static void gauge(GuiGraphics g,int center,int y,int width,int height,float remaining,float maximum,String label,float partial) {

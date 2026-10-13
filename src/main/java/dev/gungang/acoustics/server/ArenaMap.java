@@ -5,8 +5,19 @@ public record ArenaMap(String id, String name, String description, boolean enabl
                        String gameMode, String dimension, Spawn alphaSpawn, Spawn bravoSpawn, Spawn spectatorSpawn,
                        Area alphaArea, Area bravoArea, Capture capture, java.util.List<String> onPrepare,
                        java.util.List<String> onStart, java.util.List<String> onEnd, NormandyRules normandy,
-                       @com.google.gson.annotations.SerializedName(value="previewImage",alternate={"preview"}) String previewImage) {
-    public ArenaMap { previewImage=previewImage==null?"":previewImage.strip(); }
+                       @com.google.gson.annotations.SerializedName(value="previewImage",alternate={"preview"}) String previewImage,
+                       String weather,String timeOfDay) {
+    public ArenaMap {
+        previewImage=previewImage==null?"":previewImage.strip();
+        weather=weather==null?"clear":weather.strip().toLowerCase(java.util.Locale.ROOT);
+        timeOfDay=timeOfDay==null?"day":timeOfDay.strip().toLowerCase(java.util.Locale.ROOT);
+    }
+    public ArenaMap(String id,String name,String description,boolean enabled,int timeLimitSeconds,String gameMode,String dimension,
+                    Spawn alphaSpawn,Spawn bravoSpawn,Spawn spectatorSpawn,Area alphaArea,Area bravoArea,Capture capture,
+                    java.util.List<String> onPrepare,java.util.List<String> onStart,java.util.List<String> onEnd,NormandyRules normandy,String previewImage) {
+        this(id,name,description,enabled,timeLimitSeconds,gameMode,dimension,alphaSpawn,bravoSpawn,spectatorSpawn,
+                alphaArea,bravoArea,capture,onPrepare,onStart,onEnd,normandy,previewImage,"clear","day");
+    }
     public ArenaMap(String id,String name,String description,boolean enabled,int timeLimitSeconds,String gameMode,String dimension,
                     Spawn alphaSpawn,Spawn bravoSpawn,Spawn spectatorSpawn,Area alphaArea,Area bravoArea,Capture capture,
                     java.util.List<String> onPrepare,java.util.List<String> onStart,java.util.List<String> onEnd,NormandyRules normandy) {
@@ -47,6 +58,8 @@ public record ArenaMap(String id, String name, String description, boolean enabl
         }
     }
     public ArenaMap validate() {
+        if(!java.util.Set.of("clear","fog","rain","snow").contains(weather)||!java.util.Set.of("day","dusk","night","dawn").contains(timeOfDay))
+            throw new IllegalArgumentException("Invalid map weather/timeOfDay: "+id);
         if(!previewImage.isEmpty()&&!MapPreviewFiles.validName(previewImage))throw new IllegalArgumentException("Invalid preview image filename: "+previewImage);
         if (id == null || !id.matches("[a-z0-9_-]{1,48}") || name == null || name.isBlank() || name.length() > 80
                 || description == null || description.length() > 1000 || timeLimitSeconds < 0 || timeLimitSeconds > 86400
