@@ -22,7 +22,10 @@ public final class StationEntity extends BlockEntity {
             if(!stepping||remaining()>0||player.getHealth()>=player.getMaxHealth())return;
             var config=block.kind==StationBlock.Kind.SMALL?GadgetConfig.smallHealthPack:GadgetConfig.largeHealthPack;
             if(config.heal()<=0)return;
-            player.heal((float)config.heal());readyAt=now+(long)Math.ceil(config.cooldownSeconds()*20);
+            float before=player.getHealth();player.heal((float)config.heal());
+            if(player.getHealth()<=before)return;
+            player.playNotifySound(net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP,net.minecraft.sounds.SoundSource.PLAYERS,.8f,1.2f);
+            readyAt=now+(long)Math.ceil(config.cooldownSeconds()*20);
             level.setBlock(worldPosition,getBlockState().setValue(StationBlock.COOLING,remaining()>0),3);sync();return;
         }
         if(stepping){Long previous=touches.put(player.getUUID(),now);if(previous!=null&&now-previous<10)return;}

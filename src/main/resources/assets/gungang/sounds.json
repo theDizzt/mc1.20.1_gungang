@@ -1,0 +1,10 @@
+{
+  "puddle_step": {
+    "sounds": [
+      {
+        "name": "minecraft:entity.generic.splash",
+        "type": "event"
+      }
+    ]
+  }
+}

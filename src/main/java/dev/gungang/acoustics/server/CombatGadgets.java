@@ -22,19 +22,27 @@ public final class CombatGadgets {
     public record Target(UUID id,double x,double y,double z,float yaw,boolean crouching,int color) { }
     public record ScanView(List<Target> targets) { }
     private record Scan(String team,String dimension,long end) { }
-    private static final class Shield {float health=ShieldRules.CAPACITY;long repairEnd;}
+    private static final class Shield {float health=(float)ExtraGadgetConfig.shield.capacity();long repairEnd;}
     private static final Map<UUID,Shield> SHIELDS=new HashMap<>();
     private static final Map<UUID,Scan> SCANS=new HashMap<>();
     private static final Map<UUID,Long> SCAN_READY=new HashMap<>();
     private static final Map<UUID,String> LAST_HUD=new HashMap<>(),LAST_SCAN=new HashMap<>();
+    private static final UUID SHIELD_SLOW=UUID.fromString("bf8dc095-4b54-495a-8f07-f821e859e41b");
+    public static void updateShieldMovement(ServerPlayer p){
+        var speed=p.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED);if(speed==null)return;
+        var existing=speed.getModifier(SHIELD_SLOW);double amount=-ExtraGadgetConfig.shield.movementPenaltyPercent()/100;
+        boolean raised=holdingShield(p)&&!LobbyManager.respawning(p.getUUID());
+        if(existing!=null&&(!raised||existing.getAmount()!=amount))speed.removeModifier(SHIELD_SLOW);
+        if(raised&&speed.getModifier(SHIELD_SLOW)==null)speed.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(SHIELD_SLOW,"GunGang shield movement",amount,net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.MULTIPLY_TOTAL));
+    }
     public static boolean is(ItemStack stack,String kind) {return stack.getItem() instanceof GadgetItem item&&item.kind.equals(kind);}
     private static ItemStack heldShield(Player p) {
         if(is(p.getMainHandItem(),"shield"))return p.getMainHandItem();
-        return is(p.getOffhandItem(),"shield")?p.getOffhandItem():ItemStack.EMPTY;
+        return ItemStack.EMPTY;
     }
     private static Shield shield(ServerPlayer p) {
         var shield=SHIELDS.computeIfAbsent(p.getUUID(),id->new Shield());
-        if(shield.health<=0&&p.level().getGameTime()>=shield.repairEnd) {shield.health=ShieldRules.CAPACITY;shield.repairEnd=0;}
+        if(shield.health<=0&&p.level().getGameTime()>=shield.repairEnd) {shield.health=(float)ExtraGadgetConfig.shield.capacity();shield.repairEnd=0;}
         return shield;
     }
     public static boolean holdingShield(Player p) {
@@ -48,22 +56,22 @@ public final class CombatGadgets {
         long now=p.level().getGameTime();
         if(now<SCAN_READY.getOrDefault(p.getUUID(),0L))return true;
         if(p.getTeam()==null)return true;
-        SCANS.put(p.getUUID(),new Scan(p.getTeam().getName(),p.level().dimension().location().toString(),now+SCAN_TICKS));
-        SCAN_READY.put(p.getUUID(),now+SCAN_COOLDOWN);
-        var tag=stack.getOrCreateTag();tag.putInt("GunGangCooldownTicks",SCAN_COOLDOWN);tag.putLong("GunGangCooldownEnd",now+SCAN_COOLDOWN);
+        SCANS.put(p.getUUID(),new Scan(p.getTeam().getName(),p.level().dimension().location().toString(),now+ExtraGadgetConfig.ticks(ExtraGadgetConfig.scanner.durationSeconds())));
+        SCAN_READY.put(p.getUUID(),now+ExtraGadgetConfig.ticks(ExtraGadgetConfig.scanner.cooldownSeconds()));
+        var tag=stack.getOrCreateTag();tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(ExtraGadgetConfig.scanner.cooldownSeconds()));tag.putLong("GunGangCooldownEnd",now+ExtraGadgetConfig.ticks(ExtraGadgetConfig.scanner.cooldownSeconds()));
         SecondaryRuntime.commit(p,stack);p.inventoryMenu.broadcastChanges();return true;
     }
     public static void configure(Player p,ItemStack stack) {
         if(!(p instanceof ServerPlayer server))return;
         if(is(stack,"shield"))writeShield(server,stack);
         if(is(stack,"infrared_scanner")) {
-            var tag=stack.getOrCreateTag();tag.putInt("GunGangCooldownTicks",SCAN_COOLDOWN);
+            var tag=stack.getOrCreateTag();tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(ExtraGadgetConfig.scanner.cooldownSeconds()));
             tag.putLong("GunGangCooldownEnd",SCAN_READY.getOrDefault(p.getUUID(),0L));
         }
     }
     private static void writeShield(ServerPlayer p,ItemStack stack) {
         var shield=shield(p);var tag=stack.getOrCreateTag();tag.putFloat("GunGangShieldHealth",shield.health);
-        tag.putInt("GunGangCooldownTicks",REPAIR_TICKS);tag.putLong("GunGangCooldownEnd",shield.repairEnd);
+        tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(ExtraGadgetConfig.shield.repairSeconds()));tag.putLong("GunGangCooldownEnd",shield.repairEnd);
     }
     private static void syncShield(ServerPlayer p) {
         boolean found=false;
@@ -79,7 +87,7 @@ public final class CombatGadgets {
         else if(delta.horizontalDistanceSqr()<1e-8&&event.getSource().getEntity()!=null)delta=event.getSource().getEntity().position().subtract(p.position());
         var look=p.getLookAngle();if(!ShieldRules.inFront(look.x,look.z,delta.x,delta.z))return;
         var shield=shield(p);var hit=ShieldRules.absorb(shield.health,event.getAmount());shield.health=hit.durability();
-        if(shield.health==0)shield.repairEnd=p.level().getGameTime()+REPAIR_TICKS;
+        if(shield.health==0)shield.repairEnd=p.level().getGameTime()+ExtraGadgetConfig.ticks(ExtraGadgetConfig.shield.repairSeconds());
         event.setAmount(hit.damage());if(hit.damage()==0)event.setCanceled(true);
         p.level().playSound(null,p.blockPosition(),shield.health==0?net.minecraft.sounds.SoundEvents.SHIELD_BREAK:net.minecraft.sounds.SoundEvents.SHIELD_BLOCK,net.minecraft.sounds.SoundSource.PLAYERS,1,1);
         syncShield(p);
@@ -108,18 +116,20 @@ public final class CombatGadgets {
     }
     public static Hud hud(ServerPlayer p) {
         var gauges=new ArrayList<Gauge>();long now=p.level().getGameTime();
-        if(holdingShield(p))gauges.add(new Gauge("shield",shield(p).health,ShieldRules.CAPACITY,false));
-        var scan=SCANS.get(p.getUUID());if(scan!=null&&scan.end()>now)gauges.add(new Gauge("infrared_scanner",scan.end()-now,SCAN_TICKS,true));
+        long jet=SurvivalGadgets.jetRemaining(p);if(jet>0)gauges.add(new Gauge("jetpack",jet,ExtraGadgetConfig.ticks(ExtraGadgetConfig.jet.durationSeconds()),true));
+        if(holdingShield(p))gauges.add(new Gauge("shield",shield(p).health,(float)ExtraGadgetConfig.shield.capacity(),false));
+        var scan=SCANS.get(p.getUUID());if(scan!=null&&scan.end()>now)gauges.add(new Gauge("infrared_scanner",scan.end()-now,ExtraGadgetConfig.ticks(ExtraGadgetConfig.scanner.durationSeconds()),true));
         long boost=GadgetManager.boostRemaining(p);if(boost>0)gauges.add(new Gauge("adrenaline",boost,(float)(GadgetConfig.adrenaline.durationSeconds()*20),true));
         var ledger=DeployableLedger.get(p.server);String equipped="";
         for(int i=0;i<p.getInventory().getContainerSize();i++) {
             var stack=p.getInventory().getItem(i);
             if(stack.getItem() instanceof GadgetItem item&&(item.kind.equals("landmine")||item.kind.equals("barrier"))) {equipped=item.kind;break;}
         }
-        return new Hud(gauges,(int)ledger.count(p.getUUID(),false),(int)ledger.count(p.getUUID(),true),Math.min(3,GadgetConfig.mine.maxPlaced()),equipped);
+        return new Hud(gauges,(int)ledger.count(p.getUUID(),false),(int)ledger.count(p.getUUID(),true),GadgetConfig.mine.maxPlaced(),equipped);
     }
     @SubscribeEvent public static void tick(TickEvent.PlayerTickEvent event) {
-        if(event.phase!=TickEvent.Phase.END||!(event.player instanceof ServerPlayer p)||p.tickCount%4!=0)return;
+        if(event.phase!=TickEvent.Phase.END||!(event.player instanceof ServerPlayer p))return;
+        updateShieldMovement(p);if(p.tickCount%4!=0)return;
         SCANS.entrySet().removeIf(entry->entry.getValue().end()<=p.level().getGameTime());
         if(!p.isAlive()||p.isSpectator()||LobbyManager.respawning(p.getUUID()))SCANS.remove(p.getUUID());
         syncShield(p);
@@ -127,13 +137,14 @@ public final class CombatGadgets {
         if(!hud.equals(LAST_HUD.put(p.getUUID(),hud)))GungangNetwork.send(p,new GungangNetwork.Utility(hud));
         if(!scan.equals(LAST_SCAN.put(p.getUUID(),scan)))GungangNetwork.send(p,new GungangNetwork.Scan(scan));
     }
-    public static void clear(ServerPlayer p) {SHIELDS.remove(p.getUUID());SCANS.remove(p.getUUID());SCAN_READY.remove(p.getUUID());LAST_HUD.remove(p.getUUID());LAST_SCAN.remove(p.getUUID());}
+    public static void clear(ServerPlayer p) {p.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED).removeModifier(SHIELD_SLOW);SHIELDS.remove(p.getUUID());SCANS.remove(p.getUUID());SCAN_READY.remove(p.getUUID());LAST_HUD.remove(p.getUUID());LAST_SCAN.remove(p.getUUID());}
     public static void reset(net.minecraft.server.MinecraftServer server) {
         SurvivalGadgets.reset(server);
         SHIELDS.clear();SCANS.clear();SCAN_READY.clear();LAST_HUD.clear();LAST_SCAN.clear();
         for(var p:server.getPlayerList().getPlayers()) {
+            p.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED).removeModifier(SHIELD_SLOW);
             GungangNetwork.send(p,new GungangNetwork.Scan(ServerFiles.GSON.toJson(new ScanView(List.of()))));
-            GungangNetwork.send(p,new GungangNetwork.Utility(ServerFiles.GSON.toJson(new Hud(List.of(),0,0,Math.min(3,GadgetConfig.mine.maxPlaced()),""))));
+            GungangNetwork.send(p,new GungangNetwork.Utility(ServerFiles.GSON.toJson(new Hud(List.of(),0,0,GadgetConfig.mine.maxPlaced(),""))));
         }
     }
     @SubscribeEvent public static void logout(PlayerEvent.PlayerLoggedOutEvent event) {if(event.getEntity() instanceof ServerPlayer p)clear(p);}

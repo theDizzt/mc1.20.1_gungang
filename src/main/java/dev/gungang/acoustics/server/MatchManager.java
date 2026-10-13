@@ -27,6 +27,8 @@ public final class MatchManager {
     private static final CaptureFloor floor = new CaptureFloor();
     private static final CapturePresence presence = new CapturePresence();
     public static void prepare(MinecraftServer s, ArenaMap arena, DeathmatchRules teamDeathmatch) {
+        GimmickEpoch.reset(s);
+        MapEnvironment.begin(s,arena);
         deathmatch=teamDeathmatch;
         server=s; map=arena; ledger=new MatchLedger(); capture=new CaptureGame(); ticks=0; running=false;
         normandy=arena.normandy()==null?null:new NormandyGame(arena.normandy());
@@ -38,7 +40,7 @@ public final class MatchManager {
         send(snapshot(false,"",LobbyManager.preparationSeconds(arena)));
         LogUtils.getLogger().info("[GunGang] MATCH PREPARE date={} map={} ({}) dimension={} timeLimitSeconds={}",started,map.name(),map.id(),map.dimension(),map.timeLimitSeconds());
     }
-    public static void start() { running=true; started=ZonedDateTime.now(); LogUtils.getLogger().info("[GunGang] MATCH START date={} map={} ({})",started,map.name(),map.id()); }
+    public static void start() { GimmickEpoch.reset(server);running=true; started=ZonedDateTime.now(); LogUtils.getLogger().info("[GunGang] MATCH START date={} map={} ({})",started,map.name(),map.id()); }
     public static void tick(int preparationSeconds) {
         if(map==null)return;
         if(running) {
@@ -95,7 +97,7 @@ public final class MatchManager {
         var point=map.capture()==null?null:new MatchSnapshot.Capture(map.capture().name(),capture.progress(),contested,capture.scoringOwner(),map.capture().winningScore());
         if(normandy!=null) point=new MatchSnapshot.Capture(normandy.point().name(),-normandy.percent(),contested,-1,4,"NORMANDY",normandy.stage());
         if(deathmatch!=null) point=new MatchSnapshot.Capture("",0,false,0,deathmatch.winningKills(),"DEATHMATCH",0);
-        return new MatchSnapshot(!result,result,map.name(),running?"RUNNING":"PREPARING",seconds,!running||map.timeLimitSeconds()>0,winner,alphaScore(),bravoScore(),ledger.rows(),point,LobbyManager.options(),LobbyManager.respawns());
+        return new MatchSnapshot(!result,result,map.name(),running?"RUNNING":"PREPARING",seconds,!running||map.timeLimitSeconds()>0,winner,alphaScore(),bravoScore(),ledger.rows(),point,LobbyManager.options(),LobbyManager.respawns(),ticks/20,map.weather(),map.dimension());
     }
     private static int alphaScore() { return deathmatch!=null?ledger.kills("ALPHA"):normandy==null?capture.alphaScore():4-normandy.stage(); }
     private static int bravoScore() { return deathmatch!=null?ledger.kills("BRAVO"):normandy==null?capture.bravoScore():normandy.stage(); }
@@ -113,6 +115,8 @@ public final class MatchManager {
     private static void send(MatchSnapshot value) { var packet=new GungangNetwork.Match(ServerFiles.GSON.toJson(value)); for(var p:server.getPlayerList().getPlayers())GungangNetwork.send(p,packet); }
     public static void end(String winner) {
         if(map==null)return;
+        MapEnvironment.restore();
+        GimmickEpoch.reset(server);
         var result=snapshot(true,winner,0); var ended=ZonedDateTime.now();
         ProgressionService.finish(server,result);
         LogUtils.getLogger().info("[GunGang] MATCH END date={} started={} map={} ({}) dimension={} winner={} score={}:{} playTime={}",ended,started,map.name(),map.id(),map.dimension(),winner,alphaScore(),bravoScore(),format(ticks/20));

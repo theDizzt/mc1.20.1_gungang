@@ -78,11 +78,11 @@ public final class TeamHud {
                     var layers = HudHealthBars.layers(p, partialTick);
                     float fraction = layers.absorptionEnd();
                     HudHealthBars.render(g, x + 35, y + 17, 78, 12, layers, 0xFFF5F5F0);
-                    HudText.health(g, HudHealth.label(p.getHealth(), p.getMaxHealth()), x + 36, y + 16, 76, 14, 0xFFFFFFFF, 0.9f);
+                    HudText.health(g, HudHealth.label(p.getHealth(), p.getMaxHealth(),p.getAbsorptionAmount()), x + 36, y + 16, 76, 14, 0xFFFFFFFF, 0.9f);
                     float scale = (float) (2.0 / mc.getWindow().getGuiScale());
                     g.enableScissor(Math.round((x + 35) * scale), Math.round((y + 17) * scale),
                             Math.round((x + 35 + 78 * fraction) * scale), Math.round((y + 29) * scale));
-                    HudText.health(g, HudHealth.label(p.getHealth(), p.getMaxHealth()), x + 36, y + 16, 76, 14, 0xFF111820, 0.9f);
+                    HudText.health(g, HudHealth.label(p.getHealth(), p.getMaxHealth(),p.getAbsorptionAmount()), x + 36, y + 16, 76, 14, 0xFF111820, 0.9f);
                     g.disableScissor();
                     g.renderItem(p.getMainHandItem(), x + 121, y + 11);
                 } else {

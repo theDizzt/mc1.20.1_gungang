@@ -22,6 +22,7 @@ public final class MatchHud {
     public static boolean active() { return state!=null&&state.active(); }
     public static void receive(String json) {
         state=ServerFiles.GSON.fromJson(json,MatchSnapshot.class);
+        MapEnvironmentClient.receive(state);
         RespawnPortrait.sync(state.respawns());
         pendingResult=null;resultDelay=0;
         if(state.result()) {
@@ -50,7 +51,7 @@ public final class MatchHud {
             mc.setScreen(new Results(result));
         }
     }
-    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut e) { state=null; page=0;pendingResult=null;resultDelay=0; }
+    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut e) { state=null; page=0;pendingResult=null;resultDelay=0;MapEnvironmentClient.receive(null); }
     @SubscribeEvent public static void hide(RenderGuiOverlayEvent.Pre e) {
         if(state!=null&&state.active()&&e.getOverlay().id().equals(VanillaGuiOverlay.PLAYER_LIST.id())) e.setCanceled(true);
     }
@@ -65,7 +66,11 @@ public final class MatchHud {
         int y;
         if(deathmatch)y=DeathmatchHud.draw(g,state);
         else {y=ControlPointHud.draw(g,state)+2;MatchTimerHud.draw(g,MatchReport.time(state.seconds()),y);}
-        if(mc.screen==null&&mc.options.keyPlayerList.isDown()) table(g,state,Math.max(4,(g.guiWidth()-480)/2),y+22,Math.min(480,g.guiWidth()-8),g.guiHeight()-y-35,page);
+        if(mc.screen==null&&mc.options.keyPlayerList.isDown()) {
+            String elapsed="경과 시간 · "+MatchReport.time(state.elapsedSeconds());
+            g.drawString(mc.font,elapsed,(g.guiWidth()-mc.font.width(elapsed))/2,y+21,0xFFFFFFFF,true);
+            table(g,state,Math.max(4,(g.guiWidth()-480)/2),y+35,Math.min(480,g.guiWidth()-8),g.guiHeight()-y-48,page);
+        }
     }
     static int table(GuiGraphics g,MatchSnapshot value,int x,int y,int width,int height,int requestedPage) {
         var font=Minecraft.getInstance().font;int capacity=Math.max(1,(height-28)/28),pages=tablePages(value,height),p=Math.min(requestedPage,pages-1);
@@ -79,7 +84,7 @@ public final class MatchHud {
             for(int i=0;i<capacity&&p*capacity+i<rows.size();i++) {
                 var row=rows.get(p*capacity+i);int ry=y+26+i*28;
                 g.drawString(font,font.plainSubstrByWidth(row.name(),half-16),left+8,ry,0xFFFFFFFF,false);
-                String stats=String.format(Locale.ROOT,"%d/%d/%d · DMG %.0f",row.kills(),row.deaths(),row.assists(),row.damage());
+                String stats=String.format(Locale.ROOT,"%d/%d/%d · DMG %.1f",row.kills(),row.deaths(),row.assists(),row.damage());
                 g.drawString(font,font.plainSubstrByWidth(stats,half-16),left+8,ry+12,0xFF9AAABD,false);
             }
         }

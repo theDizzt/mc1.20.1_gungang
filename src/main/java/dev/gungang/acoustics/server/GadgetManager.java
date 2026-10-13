@@ -34,7 +34,8 @@ public final class GadgetManager {
     }
     private record Healing(int remaining,float perTick) { }
     private record Boost(long end) { }
-    private static final Map<UUID,String> PREVIEW=new HashMap<>();
+    private record Preview(String kind,int slot) { }
+    private static final Map<UUID,Preview> PREVIEW=new HashMap<>();
     private static final Map<UUID,List<Healing>> HEALING=new HashMap<>();
     private static final Map<UUID,Boost> BOOST=new HashMap<>();
     private static final Map<UUID,DeployableEntity> PLACED=new HashMap<>();
@@ -51,7 +52,7 @@ public final class GadgetManager {
         if(kind.equals("jetpack")) {SurvivalGadgets.startJet(p,stack);return;}
         if(CombatGadgets.use(p,stack,kind))return;
         if(kind.equals("landmine")||kind.equals("barrier")||kind.equals("orbital_strike")) {
-            PREVIEW.put(p.getUUID(),kind);GungangNetwork.send(p,new GungangNetwork.Gadget(kind));return;
+            PREVIEW.put(p.getUUID(),new Preview(kind,p.getInventory().selected));GungangNetwork.send(p,new GungangNetwork.Gadget(kind));return;
         }
         if(kind.equals("molotov")) {
             var projectile=GadgetItems.MOLOTOV_PROJECTILE.get().create(p.serverLevel());if(projectile==null)return;
@@ -100,14 +101,15 @@ public final class GadgetManager {
     }
     public static void action(ServerPlayer p,String action) {
         if(SurvivalGadgets.jetting(p)) {cancel(p);return;}
-        String kind=PREVIEW.get(p.getUUID());
+        var preview=PREVIEW.get(p.getUUID());
+        String kind=preview==null?null:preview.kind();
         if(action.equals("cancelplace")) {cancel(p);return;}
-        if(kind==null||!p.isAlive()||p.isSpectator()) {cancel(p);return;}
+        if(kind==null||!validPreview(p,preview)) {cancel(p);return;}
         ItemStack stack=p.getMainHandItem().getItem() instanceof GadgetItem item&&item.kind.equals(kind)?p.getMainHandItem():p.getOffhandItem();
         if(!(stack.getItem() instanceof GadgetItem item)||!item.kind.equals(kind)||!SecondaryRuntime.ready(p,stack)) {cancel(p);return;}
         boolean wall=kind.equals("barrier"),east=p.getDirection().getAxis()==Direction.Axis.X;
         if(kind.equals("orbital_strike")) {
-            var pos=target(p,OrdnanceRules.TARGET_RANGE);
+            var pos=target(p,ExtraGadgetConfig.orbital.range());
             if(!valid(p,pos,false,false)) {p.displayClientMessage(Component.literal("이 위치에는 폭격을 지정할 수 없습니다."),true);return;}
             var strike=GadgetItems.ORDNANCE.get().create(p.serverLevel());if(strike==null)return;
             strike.setPos(pos.getX()+.5,pos.getY(),pos.getZ()+.5);strike.setup(p,true);
@@ -121,7 +123,7 @@ public final class GadgetManager {
         if(!valid(p,pos,wall,east)) {p.displayClientMessage(Component.literal("이 위치에는 설치할 수 없습니다."),true);return;}
         PLACED.values().removeIf(DeployableEntity::isRemoved);
         long count=DeployableLedger.get(p.server).count(p.getUUID(),wall);
-        if(count>=(wall?1:Math.min(3,GadgetConfig.mine.maxPlaced()))) {p.displayClientMessage(Component.literal(wall?"기존 방벽이 남아 있습니다.":"설치 가능한 지뢰 개수를 초과했습니다."),true);return;}
+        if(count>=(wall?1:GadgetConfig.mine.maxPlaced())) {p.displayClientMessage(Component.literal(wall?"기존 방벽이 남아 있습니다.":"설치 가능한 지뢰 개수를 초과했습니다."),true);return;}
         var entity=GadgetItems.DEPLOYABLE.get().create(p.serverLevel());if(entity==null)return;
         entity.setPos(pos.getX()+.5,pos.getY(),pos.getZ()+.5);entity.setup(p,wall,east);
         if(p.serverLevel().addFreshEntity(entity)) {track(entity);SecondaryRuntime.commit(p,stack);cancel(p);}else entity.discard();
@@ -132,6 +134,14 @@ public final class GadgetManager {
                 .min(Comparator.comparingDouble(p::distanceToSqr)).orElse(null);
     }
     private static void cancel(ServerPlayer p) {PREVIEW.remove(p.getUUID());GungangNetwork.send(p,new GungangNetwork.Gadget(""));}
+    private static boolean validPreview(ServerPlayer p,Preview preview) {
+        return p.isAlive()&&!p.isSpectator()&&p.getInventory().selected==preview.slot()
+                &&(CombatGadgets.is(p.getMainHandItem(),preview.kind())||CombatGadgets.is(p.getOffhandItem(),preview.kind()));
+    }
+    public static boolean placing(Player player) {
+        if(!(player instanceof ServerPlayer p))return false;
+        var preview=PREVIEW.get(p.getUUID());return preview!=null&&validPreview(p,preview);
+    }
     public static void clear(ServerPlayer p) {
         SurvivalGadgets.clear(p);
         cancel(p);HEALING.remove(p.getUUID());BOOST.remove(p.getUUID());
@@ -157,6 +167,7 @@ public final class GadgetManager {
     }
     @SubscribeEvent public static void tick(TickEvent.PlayerTickEvent event) {
         if(event.phase!=TickEvent.Phase.END||!(event.player instanceof ServerPlayer p))return;
+        var preview=PREVIEW.get(p.getUUID());if(preview!=null&&!validPreview(p,preview))cancel(p);
         if(!p.isAlive()||p.isSpectator()) {HEALING.remove(p.getUUID());if(PREVIEW.containsKey(p.getUUID()))cancel(p);}
         var heals=HEALING.get(p.getUUID());
         if(heals!=null) {var next=new ArrayList<Healing>();for(var h:heals) {p.heal(h.perTick());if(h.remaining()>1)next.add(new Healing(h.remaining()-1,h.perTick()));}if(next.isEmpty())HEALING.remove(p.getUUID());else HEALING.put(p.getUUID(),next);}

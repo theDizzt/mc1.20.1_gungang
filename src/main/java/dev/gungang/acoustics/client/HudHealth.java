@@ -14,5 +14,10 @@ public final class HudHealth {
         return String.format(Locale.ROOT, "%.0f", Math.ceil(value));
     }
     public static String label(float health, float maximum) { return number(health); }
+    public static String label(float health,float maximum,float absorption) {
+        float total=Math.max(0,health)+Math.max(0,absorption);
+        // Life support keeps 0.001 HP internally; avoid rounding that sentinel up to an extra HP.
+        return number(total>0?Math.max(health>0?1:0,total-.0011f):0);
+    }
     private HudHealth() { }
 }

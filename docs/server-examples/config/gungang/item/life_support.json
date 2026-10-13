@@ -1,0 +1,7 @@
+{
+  "absorption": 30,
+  "durationSeconds": 3,
+  "drainAmount": 1,
+  "drainIntervalSeconds": 0.1,
+  "cooldownSeconds": 120
+}

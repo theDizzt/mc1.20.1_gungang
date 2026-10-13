@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "active=true,top=false": {
+      "model": "gungang:block/gas_barrel"
+    },
+    "active=true,top=true": {
+      "model": "gungang:block/gas_barrel_top"
+    },
+    "active=false": {
+      "model": "gungang:block/empty"
+    }
+  }
+}

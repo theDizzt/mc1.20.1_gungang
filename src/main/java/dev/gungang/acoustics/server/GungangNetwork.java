@@ -27,7 +27,7 @@ public final class GungangNetwork {
     public record MapPreview(String id,byte[] png,String error) { }
     public record WeaponPreview(String id,net.minecraft.world.item.ItemStack stack) { }
     public record Gadget(String preview,double range) {
-        public Gadget(String preview) {this(preview,preview.equals("orbital_strike")?OrdnanceRules.TARGET_RANGE:preview.equals("barrier")?GadgetConfig.barrier.range():GadgetConfig.mine.range());}
+        public Gadget(String preview) {this(preview,preview.equals("orbital_strike")?ExtraGadgetConfig.orbital.range():preview.equals("barrier")?GadgetConfig.barrier.range():GadgetConfig.mine.range());}
     }
     public record Action(String action, String value, String target) { }
     public static void register() {

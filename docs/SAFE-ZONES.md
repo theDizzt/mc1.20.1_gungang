@@ -1,5 +1,7 @@
 # 비무장 지대
 
+[README·문서 안내](../README.md) · [서버 설정](SERVER.md) · [아이템 제한](ITEMS.md) · [상호작용 블록](STATIONS-AND-PREVIEWS.md)
+
 `config/gungang/server/safe_zones.json`의 `zones` 배열에 안전지대를 추가합니다. 최대 128곳을 지정할 수 있습니다. 서버 설정이 클라이언트에 자동 전달됩니다.
 
 ```json
