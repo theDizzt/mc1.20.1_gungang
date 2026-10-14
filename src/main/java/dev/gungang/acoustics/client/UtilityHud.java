@@ -25,7 +25,7 @@ public final class UtilityHud {
             float remaining=gauge.remaining();if(gauge.timed())remaining-=Math.max(0,mc.level.getGameTime()-received+partial);
             if(remaining<=0)continue;
             if(gauge.kind().equals("shield")&&!CombatGadgets.holdingShield(mc.player))continue;
-            String name=switch(gauge.kind()){case "shield"->"방패";case "infrared_scanner"->"스캐너";case "jetpack"->"제트팩";default->"아드레날린";};
+            String name=switch(gauge.kind()){case "bomb_plant"->"폭탄 설치";case "bomb_defuse"->"폭탄 해체";case "shield"->"방패";case "infrared_scanner"->"스캐너";case "jetpack"->"제트팩";default->"아드레날린";};
             String value=gauge.timed()?String.format(java.util.Locale.ROOT,"%.1fs",remaining/20f):HudHealth.number(remaining)+"/"+HudHealth.number(gauge.maximum());
             gauge(g,center,y,width,height,remaining,gauge.maximum(),name+" "+value,partial);
             y-=height+4;

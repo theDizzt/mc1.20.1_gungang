@@ -1,0 +1,82 @@
+{
+  "id": "06",
+  "name": "이탈리아",
+  "description": "폭탄전 / 팀 데스매치 · A 또는 B 영역 바닥에 폭탄 설치",
+  "enabled": true,
+  "timeLimitSeconds": 210,
+  "gameMode": "adventure",
+  "dimension": "minecraft:overworld",
+  "spectatorSpawn": {
+    "x": -127,
+    "y": 80,
+    "z": -387,
+    "yaw": 0,
+    "pitch": 0
+  },
+  "bomb": {
+    "rounds": 5,
+    "swapEveryRounds": 1,
+    "preparationSeconds": 30,
+    "attackSpawn": {
+      "x": -145.5,
+      "y": 12,
+      "z": -286.5,
+      "yaw": 180,
+      "pitch": 0
+    },
+    "attackArea": {
+      "minX": -164,
+      "minY": 11,
+      "minZ": -301,
+      "maxX": -128,
+      "maxY": 36,
+      "maxZ": -273
+    },
+    "defenseSpawn": {
+      "x": -118.5,
+      "y": 13,
+      "z": -486.5,
+      "yaw": 0,
+      "pitch": 0
+    },
+    "defenseArea": {
+      "minX": -137,
+      "minY": 12,
+      "minZ": -501,
+      "maxX": -101,
+      "maxY": 37,
+      "maxZ": -473
+    },
+    "areaA": {
+      "minX": -203,
+      "minY": 6,
+      "minZ": -429,
+      "maxX": -177,
+      "maxY": 37,
+      "maxZ": -407
+    },
+    "areaB": {
+      "minX": -75,
+      "minY": 12,
+      "minZ": -423,
+      "maxX": -54,
+      "maxY": 12,
+      "maxZ": -400
+    }
+  },
+  "onPrepare": [],
+  "onStart": [],
+  "onEnd": [],
+  "deathZones": [],
+  "previewImage": "",
+  "weather": "clear",
+  "timeOfDay": "day",
+  "previewArea": {
+    "minX": -230,
+    "minY": 2,
+    "minZ": -504,
+    "maxX": -24,
+    "maxY": 117,
+    "maxZ": -271
+  }
+}

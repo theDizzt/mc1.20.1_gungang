@@ -26,7 +26,7 @@ public final class StationBlocks {
         bus.addListener(StationBlocks::creative);
     }
     private static void creative(net.minecraftforge.event.BuildCreativeModeTabContentsEvent e) {
-        if(e.getTabKey()==CreativeModeTabs.FUNCTIONAL_BLOCKS)
+        if(e.getTabKey().equals(GungangCreativeTabs.BLOCKS.getKey()))
             for(var block:java.util.List.of(WAR_TABLE,ARMORY,ALPHA,BRAVO,SMALL,LARGE))e.accept(block.get());
     }
 }

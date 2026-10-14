@@ -106,6 +106,7 @@ public final class GadgetSmokeChecks {
         System.out.println("GUNGANG_FEEDBACK_FIXES_PASS shield=85% jetImpulse=1.5 healPack=35");
     }
     private static void gimmicks(net.minecraft.server.level.ServerLevel level,net.minecraft.server.level.ServerPlayer player){
+        acidAndNozzle(level,player);
         long oldDay=level.getDayTime();var template=ServerFiles.GSON.toJsonTree(ArenaMap.example()).getAsJsonObject();
         for(String weather:java.util.List.of("clear","fog","rain","snow"))for(var time:java.util.Map.of("day",6000L,"dusk",12000L,"night",18000L,"dawn",23000L).entrySet()){
             template.addProperty("weather",weather);template.addProperty("timeOfDay",time.getKey());var map=ServerFiles.GSON.fromJson(template,ArenaMap.class).validate();
@@ -140,8 +141,66 @@ public final class GadgetSmokeChecks {
             System.out.println("GUNGANG_GIMMICKS_PASS walls=19 barrel=30s acid=8s");
         }finally{level.getServer().getWorldData().overworldData().setGameTime(now);level.setBlock(pos,saved,3);level.setBlock(pos.above(),above,3);}
     }
+    private static void acidAndNozzle(net.minecraft.server.level.ServerLevel level,net.minecraft.server.level.ServerPlayer player){
+        var pos=new net.minecraft.core.BlockPos(280,240,280);
+        var saved=new java.util.LinkedHashMap<net.minecraft.core.BlockPos,net.minecraft.world.level.block.state.BlockState>();
+        for(int x=-1;x<=1;x++)for(int y=-1;y<=4;y++)for(int z=-1;z<=1;z++){
+            var at=pos.offset(x,y,z);level.getChunk(at);saved.put(at,level.getBlockState(at));
+            level.setBlock(at,y==-1?net.minecraft.world.level.block.Blocks.STONE.defaultBlockState():net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(),3);
+        }
+        var oldPosition=player.position();float oldPitch=player.getXRot(),oldYaw=player.getYRot();
+        try{
+            player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+            player.setPos(pos.getX()+.5,pos.getY()+1,pos.getZ()+.5);player.setXRot(90);player.setYRot(0);
+            level.setBlock(pos,GimmickBlocks.ACID_BLOCK.get().defaultBlockState(),3);
+            player.setItemInHand(InteractionHand.MAIN_HAND,new ItemStack(Items.BUCKET));
+            var filled=Items.BUCKET.use(level,player,InteractionHand.MAIN_HAND);
+            check(filled.getObject().is(GimmickBlocks.ACID_BUCKET.get())&&level.getFluidState(pos).isEmpty(),"Vanilla bucket picks up acid source");
+            player.setItemInHand(InteractionHand.MAIN_HAND,filled.getObject());
+            var emptied=GimmickBlocks.ACID_BUCKET.get().use(level,player,InteractionHand.MAIN_HAND);
+            check(emptied.getObject().is(Items.BUCKET)&&level.getFluidState(pos).isSource(),"Pouring acid returns vanilla bucket");
+            var flowing=GimmickBlocks.ACID_BLOCK.get().defaultBlockState().setValue(net.minecraft.world.level.block.LiquidBlock.LEVEL,3);
+            level.setBlock(pos,flowing,3);player.setItemInHand(InteractionHand.MAIN_HAND,new ItemStack(Items.BUCKET));
+            check(Items.BUCKET.use(level,player,InteractionHand.MAIN_HAND).getObject().is(Items.BUCKET),"Flowing acid cannot be collected as a source");
+            var nozzle=(NozzleBlock)GimmickBlocks.NOZZLE.get();
+            for(var fluid:java.util.List.of(net.minecraft.world.level.material.Fluids.WATER,net.minecraft.world.level.material.Fluids.LAVA,GimmickBlocks.ACID_SOURCE.get())){
+                level.setBlock(pos,fluid.defaultFluidState().createLegacyBlock(),3);
+                var stack=new ItemStack(nozzle);player.setItemInHand(InteractionHand.MAIN_HAND,stack);
+                var context=new net.minecraft.world.item.context.BlockPlaceContext(player,InteractionHand.MAIN_HAND,stack,
+                        new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(pos),net.minecraft.core.Direction.UP,pos,false));
+                check(((BlockItem)nozzle.asItem()).place(context).consumesAction(),"Nozzle places inside fluid");
+                check(level.getBlockState(pos).is(nozzle)&&level.getFluidState(pos).getType().isSame(fluid),"Nozzle preserves contained fluid");
+                fluid.tick(level,pos,level.getFluidState(pos));
+                check(level.getBlockState(pos).is(nozzle),"Fluid tick must not replace nozzle");
+                player.setItemInHand(InteractionHand.MAIN_HAND,new ItemStack(Items.BUCKET));
+                var bucket=Items.BUCKET.use(level,player,InteractionHand.MAIN_HAND).getObject();
+                check(bucket.is(fluid.getBucket())&&level.getBlockState(pos).is(nozzle)&&level.getFluidState(pos).isEmpty(),"Bucket drains only fluid from nozzle");
+                player.setItemInHand(InteractionHand.MAIN_HAND,bucket);
+                var empty=bucket.getItem().use(level,player,InteractionHand.MAIN_HAND).getObject();
+                check(empty.is(Items.BUCKET)&&level.getBlockState(pos).is(nozzle)&&level.getFluidState(pos).getType().isSame(fluid),"Bucket fills nozzle without replacing it");
+                if(fluid==GimmickBlocks.ACID_SOURCE.get()){
+                    player.removeAllEffects();nozzle.entityInside(level.getBlockState(pos),level,pos,player);
+                    check(player.hasEffect(net.minecraft.world.effect.MobEffects.POISON),"Acid inside nozzle still poisons");player.removeAllEffects();
+                }
+                level.destroyBlock(pos,false);
+                check(!level.getBlockState(pos).is(nozzle)&&level.getFluidState(pos).getType().isSame(fluid),"Removing nozzle preserves fluid");
+                for(var at:saved.keySet())if(at.getY()>=pos.getY())level.setBlock(at,net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(),3);
+            }
+            System.out.println("GUNGANG_ACID_NOZZLE_PASS bucket=roundtrip fluids=water,lava,acid");
+        }finally{
+            saved.forEach((at,state)->level.setBlock(at,state,3));player.setPos(oldPosition);player.setXRot(oldPitch);player.setYRot(oldYaw);player.setItemInHand(InteractionHand.MAIN_HAND,ItemStack.EMPTY);
+        }
+    }
     @SubscribeEvent public static void started(ServerStartedEvent event) {
         var server=event.getServer();server.execute(()->{
+            if("1".equals(System.getenv("GUNGANG_BOMB_SMOKE_ONLY"))){
+                try{GadgetSmokeChecksBomb.run(server);}catch(Throwable failure){failure.printStackTrace();System.out.println("GUNGANG_BOMB_SMOKE_FAIL");}
+                server.halt(false);return;
+            }
+            if("1".equals(System.getenv("GUNGANG_MAP_SMOKE_ONLY"))){
+                try{GadgetSmokeChecksMap.run(server);}catch(Throwable failure){failure.printStackTrace();System.out.println("GUNGANG_MAP_SMOKE_FAIL");}
+                server.halt(false);return;
+            }
             try {
                 var level=server.overworld();var player=FakePlayerFactory.getMinecraft(level);player.setPos(0,100,0);
                 ProgressionService.login(new net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent(player));
@@ -305,6 +364,8 @@ public final class GadgetSmokeChecks {
                 furniture(level,player);
                 ordnance(level,player);
                 lobbyReentry(server,player);
+                GadgetSmokeChecksBomb.run(server);
+                GadgetSmokeChecksMap.run(server);
                 LoadoutAttributes.clear(player);
                 System.out.println("GUNGANG_GADGET_SMOKE_PASS");
             } catch(Throwable failure) {failure.printStackTrace();System.out.println("GUNGANG_GADGET_SMOKE_FAIL");}

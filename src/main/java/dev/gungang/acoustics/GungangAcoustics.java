@@ -9,6 +9,7 @@ public final class GungangAcoustics {
     public static final String ID = "gungang_acoustics";
 
     public GungangAcoustics() {
+        dev.gungang.acoustics.server.GungangCreativeTabs.register(net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext.get().getModEventBus());
         dev.gungang.acoustics.server.GimmickBlocks.register(net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext.get().getModEventBus());
         dev.gungang.acoustics.server.GimmickEvents.registerTacz();
         dev.gungang.acoustics.server.StationBlocks.register(net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext.get().getModEventBus());

@@ -5,7 +5,7 @@ import dev.gungang.acoustics.server.TeamOptions;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 
-/** Two score wings and a radial objective meter, independent of vanilla boss bars. */
+/** Two flat score plates and a radial objective meter, independent of vanilla boss bars. */
 final class ControlPointHud {
     static int draw(GuiGraphics g, MatchSnapshot state) {
         var point=state.point();
@@ -25,7 +25,7 @@ final class ControlPointHud {
         g.pose().pushPose(); g.pose().translate(0,18,0); g.pose().scale(0.9f,0.9f,1);
         centered(g,Math.round(Math.abs(point.progress()))+"%",0,0,0xFFFFFFFF);
         g.pose().popPose();
-        if(point.contested()) { g.fill(-4,46,4,48,0xFFFFD36A); }
+        if(point.contested()) { g.fill(-6,46,6,48,0xC8FFD36A); }
         g.pose().popPose();
         return top+Math.round(48*scale);
     }
@@ -48,7 +48,7 @@ final class ControlPointHud {
             if(current) {
                 g.pose().pushPose();g.pose().translate(x,25,0);g.pose().scale(0.9f,0.9f,1);
                 centered(g,Math.round(progress)+"%",0,0,0xFFFFFFFF);g.pose().popPose();
-                if(point.contested())g.fill(x-4,46,x+4,48,0xFFFFD36A);
+                if(point.contested())g.fill(x-6,46,x+6,48,0xC8FFD36A);
             }
             left+=radius*2+6;
         }
@@ -56,18 +56,21 @@ final class ControlPointHud {
         return top+Math.round(48*scale);
     }
     private static void ring(GuiGraphics g,int cx,int cy,int size,float progress,int tint,boolean contested) {
-        int thickness=size==22?4:2;
-        int inner=size-thickness-2;
+        boolean large=size==22;
+        int band=large?4:3,outer=size,inner=size-band,disc=inner-2;
         float fraction=Math.max(0,Math.min(1,progress/100f));
-        // Clockwise progress starts at twelve o'clock; the dark center stays readable.
+        int rgb=tint&0xFFFFFF,track=contested?0x70FFD36A:0x38FFFFFF;
+        // Glass disc, a transparent gap, then a translucent track with the opaque arc on top.
+        // Runs of equal colour per scanline keep the fill count low.
         for(int y=-size;y<=size;y++) {
             int run=-size,previous=0;
             for(int x=-size;x<=size+1;x++) {
                 double radius=Math.sqrt(x*x+y*y);
-                int color=radius>size?0:radius>=inner?0xFF465264:0xEB101A27;
-                if(radius>=inner+1&&radius<size-1) {
+                int color=0;
+                if(radius<=disc) color=radius>disc-1?0x30FFFFFF:0x9E0B121C;
+                else if(radius>=inner&&radius<=outer) {
                     double angle=(Math.atan2(x,-y)+Math.PI*2)%(Math.PI*2);
-                    color=angle/(Math.PI*2)<fraction?tint:contested?0xFFFFD36A:0xFF465264;
+                    color=angle/(Math.PI*2)<fraction?(radius>outer-1?(rgb|0xB4000000):(rgb|0xFF000000)):track;
                 }
                 if(color!=previous) {
                     if(previous!=0) g.fill(cx+run,cy+y,cx+x,cy+y+1,previous);
@@ -75,32 +78,27 @@ final class ControlPointHud {
                 }
             }
         }
+        if(fraction>0&&fraction<1) {
+            // Bright tip marks the leading edge of the arc.
+            double angle=fraction*Math.PI*2,mid=(inner+outer)/2.0;
+            int tx=cx+(int)Math.round(Math.sin(angle)*mid),ty=cy-(int)Math.round(Math.cos(angle)*mid),r=large?2:1;
+            g.fill(tx-r,ty-r,tx+r,ty+r,0xFFFFFFFF);
+        }
     }
     private static void wing(GuiGraphics g,boolean left,int color,int score,int goal,boolean owner) {
         float fraction=Math.max(0,Math.min(1,score/(float)Math.max(1,goal)));
-        int fillEnd=24+Math.round(72*fraction);
-        for(int y=8;y<=36;y++) {
-            int dy=y-22;
-            int inner=(int)Math.ceil(Math.sqrt(24*24-dy*dy));
-            int outer=96-Math.abs(dy);
-            // Disjoint spans preserve the existing translucent background without layering it.
-            if(y==8||y==36) span(g,left,inner,outer,y,0xFF465264);
-            else {
-                int a=inner+1,b=outer-2,filled=Math.max(a,Math.min(b,fillEnd));
-                span(g,left,inner,a,y,0xFF465264);
-                span(g,left,b,outer,y,0xFF465264);
-                span(g,left,a,filled,y,(color&0xFFFFFF)|0xDE000000);
-                span(g,left,filled,b,y,0xDE101A27);
-            }
-            if(owner) span(g,left,outer+3,outer+6,y,color);
-        }
-        g.pose().pushPose(); g.pose().translate(left?-57:57,16,0); g.pose().scale(1.5f,1.5f,1);
-        centered(g,String.valueOf(score),0,0,0xFFFFFFFF);
-        g.pose().popPose();
-    }
-    private static void span(GuiGraphics g,boolean left,int from,int to,int y,int color) {
-        if(to<=from)return;
-        g.fill(left?-to:from,y,left?-from:to,y+1,color);
+        int inner=27,outer=98,y1=10,y2=34,x1=left?-outer:inner,x2=left?-inner:outer;
+        DeathmatchHud.plate(g,x1,y1,x2,y2,color,left,owner);
+        // Score progress replaces the plate underline: dim track, team-coloured fill from the centre.
+        int fill=Math.round((x2-x1)*fraction);
+        g.fill(x1,y2-2,x2,y2,0xFF2A3A50);
+        g.fill(left?x2-fill:x1,y2-2,left?x2:x1+fill,y2,color|0xFF000000);
+        var font=Minecraft.getInstance().font;String text=String.valueOf(score);
+        float size=Math.min(1.7f,30f/Math.max(1,font.width(text)));int width=Math.round(font.width(text)*size);
+        DeathmatchHud.score(g,left?0:1,score,text,(left?x2-7-width:x1+7)+width/2f,y1+11,size,owner);
+        int edge=left?x1+7:x2-7;
+        DeathmatchHud.small(g,left?"ALPHA":"BRAVO",edge,y1+5,.7f,0xFFFFFFFF,false,left);
+        DeathmatchHud.small(g,"/ "+goal,edge,y1+13,.6f,DeathmatchHud.MUTED,false,left);
     }
     private static void centered(GuiGraphics g,String text,int x,int y,int color) {
         var font=Minecraft.getInstance().font;

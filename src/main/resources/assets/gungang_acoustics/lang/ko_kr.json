@@ -1,4 +1,6 @@
 {
+  "itemGroup.gungang.blocks": "GunGang 블록",
+  "itemGroup.gungang.items": "GunGang 아이템",
   "key.gungang.lobby": "대기실 다시 열기",
   "key.gungang.loadout": "스폰 구역 무기 선택",
   "key.categories.gungang": "GunGang",
@@ -30,7 +32,6 @@
   "gungang.options.hudOffsetY.tip": "화면 아래에서의 거리(0~4096). 1단위는 실제 화면 2픽셀이며 값이 클수록 위로 이동합니다.",
   "gungang.options.minimumEffectVolume": "효과음 최소 음량(%)",
   "gungang.options.minimumEffectVolume.tip": "0~100%, 기본 16%. 벽 차폐에 의한 음량 감소의 하한입니다. 거리 감쇠와 원래 음량·음소거는 유지됩니다.",
-  "gungang.key.category": "GunGangRealistic · 왼손 아이템",
   "gungang.key.offhand.attack": "왼손 아이템 좌클릭 후 복귀",
   "gungang.key.offhand.use": "왼손 아이템 우클릭 후 복귀",
   "gungang.options.keyBindings": "왼손 매크로 키 설정 열기 (기본 G / H)",
@@ -134,6 +135,9 @@
   "block.gungang.cracked_green_concrete": "초록색 금이 간 콘크리트",
   "block.gungang.cracked_red_concrete": "빨간색 금이 간 콘크리트",
   "block.gungang.cracked_black_concrete": "검은색 금이 간 콘크리트",
-  "item.gungang.acid_bucket": "산성 용액 양동이",
-  "fluid_type.gungang.acid": "산성 용액"
+  "item.gungang.acid_bucket": "산성 액체가 든 양동이",
+  "fluid_type.gungang.acid": "산성 용액",
+  "item.gungang.bomb": "폭탄",
+  "item.gungang.defuser": "폭탄 해체기",
+  "block.gungang.planted_bomb": "설치된 폭탄"
 }

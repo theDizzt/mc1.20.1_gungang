@@ -4,7 +4,15 @@ import java.util.List;
 
 public record MatchSnapshot(boolean active, boolean result, String map, String phase, int seconds, boolean countdown,
                             String winner, int alphaScore, int bravoScore, List<Row> players,
-                            Capture point, TeamOptions options, List<Respawn> respawns,int elapsedSeconds,String weather,String dimension) {
+                            Capture point, TeamOptions options, List<Respawn> respawns,int elapsedSeconds,String weather,String dimension,BombMatch.View bomb,String timeOfDay) {
+    public MatchSnapshot(boolean active,boolean result,String map,String phase,int seconds,boolean countdown,String winner,
+                         int alphaScore,int bravoScore,List<Row> players,Capture point,TeamOptions options,List<Respawn> respawns,int elapsedSeconds,String weather,String dimension,BombMatch.View bomb){
+        this(active,result,map,phase,seconds,countdown,winner,alphaScore,bravoScore,players,point,options,respawns,elapsedSeconds,weather,dimension,bomb,"day");
+    }
+    public MatchSnapshot(boolean active,boolean result,String map,String phase,int seconds,boolean countdown,String winner,
+                         int alphaScore,int bravoScore,List<Row> players,Capture point,TeamOptions options,List<Respawn> respawns,int elapsedSeconds,String weather,String dimension){
+        this(active,result,map,phase,seconds,countdown,winner,alphaScore,bravoScore,players,point,options,respawns,elapsedSeconds,weather,dimension,null);
+    }
     public MatchSnapshot(boolean active,boolean result,String map,String phase,int seconds,boolean countdown,String winner,
                          int alphaScore,int bravoScore,List<Row> players,Capture point,TeamOptions options,List<Respawn> respawns) {
         this(active,result,map,phase,seconds,countdown,winner,alphaScore,bravoScore,players,point,options,respawns,result?seconds:0,"clear","");

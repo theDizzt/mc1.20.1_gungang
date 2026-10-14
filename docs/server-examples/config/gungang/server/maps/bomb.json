@@ -1,0 +1,77 @@
+{
+  "id": "bomb",
+  "name": "폭탄전",
+  "description": "5라운드 · 3선승 · 매 라운드 공수 교대",
+  "enabled": false,
+  "timeLimitSeconds": 210,
+  "gameMode": "adventure",
+  "dimension": "minecraft:overworld",
+  "spectatorSpawn": {
+    "x": 20.5,
+    "y": 80,
+    "z": 0.5,
+    "yaw": 0,
+    "pitch": 30
+  },
+  "bomb": {
+    "rounds": 5,
+    "swapEveryRounds": 1,
+    "preparationSeconds": 30,
+    "attackSpawn": {
+      "x": 0.5,
+      "y": 65,
+      "z": 0.5,
+      "yaw": 0,
+      "pitch": 0
+    },
+    "attackArea": {
+      "minX": -5,
+      "minY": 64,
+      "minZ": -5,
+      "maxX": 5,
+      "maxY": 72,
+      "maxZ": 5
+    },
+    "defenseSpawn": {
+      "x": 40.5,
+      "y": 65,
+      "z": 0.5,
+      "yaw": 180,
+      "pitch": 0
+    },
+    "defenseArea": {
+      "minX": 35,
+      "minY": 64,
+      "minZ": -5,
+      "maxX": 45,
+      "maxY": 72,
+      "maxZ": 5
+    },
+    "pointA": {
+      "x": 20,
+      "y": 65,
+      "z": -10
+    },
+    "pointB": {
+      "x": 20,
+      "y": 65,
+      "z": 10
+    }
+  },
+  "onPrepare": [],
+  "onStart": [],
+  "onEnd": [],
+  "weather": "clear",
+  "timeOfDay": "day",
+  "previewImage": "",
+  "deathZones": [
+    {
+      "minX": -100,
+      "minY": -64,
+      "minZ": -100,
+      "maxX": 100,
+      "maxY": 0,
+      "maxZ": 100
+    }
+  ]
+}

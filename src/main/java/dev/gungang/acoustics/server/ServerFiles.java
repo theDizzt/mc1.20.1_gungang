@@ -31,6 +31,7 @@ public final class ServerFiles {
         Files.createDirectories(mapsDirectory.resolve("preview"));
         if (firstRun) ConfigLayout.writeNew(mapsDirectory.resolve("example.json"), GSON.toJson(ArenaMap.example()));
         ConfigLayout.writeNew(mapsDirectory.resolve("normandy.json"), GSON.toJson(NormandyRules.example()));
+        ConfigLayout.writeNew(mapsDirectory.resolve("bomb.json"), GSON.toJson(BombRules.example()));
         List<ArenaMap> maps = new ArrayList<>();
         Set<String> ids = new HashSet<>();
         try (var paths = Files.list(mapsDirectory)) {
@@ -45,6 +46,7 @@ public final class ServerFiles {
             }
         }
         com.mojang.logging.LogUtils.getLogger().info("[GunGang] Loaded {} enabled maps from {}", maps.size(), mapsDirectory.toAbsolutePath().normalize());
+        maps.sort(java.util.Comparator.comparing(ArenaMap::id));
         return List.copyOf(maps);
     }
     private static String read(Path path) throws IOException {
