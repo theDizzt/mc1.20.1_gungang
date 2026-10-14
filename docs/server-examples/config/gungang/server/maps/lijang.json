@@ -1,5 +1,5 @@
 {
-  "id": "lijang",
+  "id": "02",
   "name": "된장타워",
   "description": "제공된 Gungame 데이터팩의 스폰 좌표. 스폰 구역 경계를 확인하고 enabled를 켜세요.",
   "enabled": false,
@@ -61,5 +61,13 @@
   "onStart": [],
   "onEnd": [],
   "weather": "clear",
-  "timeOfDay": "day"
+  "timeOfDay": "day",
+  "previewArea": {
+    "minX": -229,
+    "minY": 2,
+    "minZ": -255,
+    "maxX": -147,
+    "maxY": 45,
+    "maxZ": -95
+  }
 }

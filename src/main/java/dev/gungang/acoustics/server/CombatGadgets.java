@@ -116,6 +116,7 @@ public final class CombatGadgets {
     }
     public static Hud hud(ServerPlayer p) {
         var gauges=new ArrayList<Gauge>();long now=p.level().getGameTime();
+        if(MatchManager.bomb()!=null){var gauge=MatchManager.bomb().gauge(p);if(gauge!=null)gauges.add(gauge);}
         long jet=SurvivalGadgets.jetRemaining(p);if(jet>0)gauges.add(new Gauge("jetpack",jet,ExtraGadgetConfig.ticks(ExtraGadgetConfig.jet.durationSeconds()),true));
         if(holdingShield(p))gauges.add(new Gauge("shield",shield(p).health,(float)ExtraGadgetConfig.shield.capacity(),false));
         var scan=SCANS.get(p.getUUID());if(scan!=null&&scan.end()>now)gauges.add(new Gauge("infrared_scanner",scan.end()-now,ExtraGadgetConfig.ticks(ExtraGadgetConfig.scanner.durationSeconds()),true));

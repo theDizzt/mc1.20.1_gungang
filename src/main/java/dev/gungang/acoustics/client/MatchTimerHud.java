@@ -1,5 +1,6 @@
 package dev.gungang.acoustics.client;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import dev.gungang.acoustics.GungangAcoustics;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
@@ -15,6 +16,13 @@ final class MatchTimerHud {
         g.pose().pushPose();
         g.pose().translate(Math.round(centerX-text.length()*5),y,0);
         g.pose().scale(1/3f,1/3f,1);
+        // Soft drop shadow one GUI pixel down-right (3 atlas pixels) replaces the old backing box.
+        RenderSystem.enableBlend();
+        g.setColor(0,0,0,.6f);
+        for(int i=0;i<text.length();i++) {
+            int glyph="0123456789:".indexOf(text.charAt(i));
+            if(glyph>=0)g.blit(ATLAS,i*30+3,3,glyph*30,0,30,48,330,48);
+        }
         for(int row=0;row<48;row+=3) {
             float t=Math.max(0,Math.min(1,(row-6)/36f));
             g.setColor((180-125*t)/255f,(255-60*t)/255f,(170-125*t)/255f,1);

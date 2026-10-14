@@ -12,14 +12,18 @@
 | `cracked_glass` / `cracked_glass_pane` | 파괴 가능한 유리/유리판, `health: 60` / `40` |
 | `cracked_<색상>_concrete` | 바닐라 16색 콘크리트 각각 별도 설정, `health: 200` |
 | `puddle` | 흐르지 않는 1/16 높이 물. `soundVolume: 0.7`, `soundIntervalTicks: 6` |
-| `acid` / `acid_bucket` | 빛나는 연두색 유체와 양동이. 효과는 `acid.json`에서 `poisonSeconds: 8`, `amplifier: 0` |
-| `nozzle` | 얇은 쇠 기둥, 위로 물 입자 분사. `height: 3`, `particlesPerSecond: 40` |
+| `acid` / `acid_bucket` | 빛나는 연두색 유체. 일반 빈 양동이로 원천을 퍼 담으면 `산성 액체가 든 양동이`가 되며, 비우면 일반 양동이로 돌아옵니다. 크리에이티브 탭에는 산성 양동이를 표시하지 않습니다. 효과는 `acid.json`에서 `poisonSeconds: 8`, `amplifier: 0` |
+| `nozzle` | 물·용암·산성액체와 같은 칸에 설치 가능한 얇은 쇠 기둥. 바닐라 물 잠김처럼 해당 칸에 원천을 보존하며, 빈 양동이로 액체만 회수하거나 채울 수 있습니다. 위로 물 입자 분사. `height: 3`, `particlesPerSecond: 40` |
 
 폭발은 팀을 구분하지 않고 반경 안 플레이어에게 동일한 기본 피해를 줍니다. 방어구 등 피해 감소는 적용됩니다. 주변 지형을 없애지 않습니다. 재생성 시간은 서버 게임 시간 기준입니다.
 
 벽은 근접 공격·화살·TaCZ 총알로 피해를 받고, HP가 소진되면 외형과 충돌이 사라집니다. `/gungang reset`, 경기 준비·종료 시 설치 위치와 HP를 복구합니다. 청크가 내려가 있던 벽도 다시 로드될 때 복구됩니다. 크리에이티브로 직접 제거한 블록은 복구하지 않습니다. `/gungang cleardeployables`는 기믹을 복구하지 않습니다.
 
 웅덩이 아이템으로 울타리·유리·유리판을 클릭하면 해당 블록을 유지한 채 겹쳐 설치합니다. 겹친 웅덩이는 크리에이티브 공격으로 제거할 수 있습니다. 첨벙 소리는 모드의 발소리 음량·차폐 설정을 따릅니다.
+
+산성액체 원천은 맵 제작 시 `/setblock ~ ~ ~ gungang:acid`로 배치할 수 있습니다. 저장된 양동이의 호환성과 담긴 상태 표현을 위해 `gungang:acid_bucket` ID는 유지합니다.
+
+Oculus/Iris에서는 활성 쉐이더팩의 물 재질 ID를 산성액체에 연결합니다. 팩이 산성액체 전용 재질을 지정했다면 그 설정을 우선합니다. 실제 반사·굴절·색상은 쉐이더팩에 따라 달라집니다. OptiFine 등 다른 쉐이더 구현은 팩의 `shaders/block.properties`에서 `minecraft:water`가 속한 `block.<번호>` 항목에 `gungang:acid`를 추가해야 합니다.
 
 ## 맵 날씨와 시간
 

@@ -1,8 +1,8 @@
 {
   "render_type": "minecraft:translucent",
   "textures": {
-    "side": "gungang:block/puddle_water",
-    "particle": "gungang:block/puddle_water"
+    "side": "minecraft:block/water_still",
+    "particle": "minecraft:block/water_still"
   },
   "elements": [
     {
@@ -13,22 +13,22 @@
       ],
       "faces": {
         "north": {
-          "texture": "#side"
+          "texture": "#side", "tintindex": 0
         },
         "south": {
-          "texture": "#side"
+          "texture": "#side", "tintindex": 0
         },
         "east": {
-          "texture": "#side"
+          "texture": "#side", "tintindex": 0
         },
         "west": {
-          "texture": "#side"
+          "texture": "#side", "tintindex": 0
         },
         "up": {
-          "texture": "#side"
+          "texture": "#side", "tintindex": 0
         },
         "down": {
-          "texture": "#side"
+          "texture": "#side", "tintindex": 0
         }
       },
       "from": [

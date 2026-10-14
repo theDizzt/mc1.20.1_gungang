@@ -36,13 +36,18 @@ abstract class ArenaScreen extends Screen {
     void shell(GuiGraphics g, String subtitle) {
         shell(g, Component.literal(subtitle));
     }
+    /** Lets the world show faintly through the backdrop and panel (match results). */
+    boolean seeThrough() { return false; }
     void shell(GuiGraphics g, Component subtitle) {
-        int l=left(),r=l+body(),bottom=height-10;
-        g.fillGradient(0, 0, width, height, 0xEA070C16, 0xF20C1422);
-        g.fill(l + 3, 17, r + 3, bottom + 3, 0x66000000);
-        g.fill(l - 1, 13, r + 1, bottom + 1, BORDER);
-        g.fill(l, 14, r, bottom, 0xF0152030);
-        g.fillGradient(l, 16, r, 54, 0xFF1B293C, 0xF0152030);
+        int l=left(),r=l+body(),bottom=height-10;boolean clear=seeThrough();
+        g.fillGradient(0, 0, width, height, clear?0x60070C16:0xEA070C16, clear?0x800C1422:0xF20C1422);
+        if(clear){g.fill(r, 17, r + 3, bottom + 3, 0x40000000);g.fill(l + 3, bottom + 1, r, bottom + 3, 0x40000000);}
+        else g.fill(l + 3, 17, r + 3, bottom + 3, 0x66000000);
+        // Draw the border as a frame so a translucent panel is not tinted by it.
+        g.fill(l - 1, 13, r + 1, 14, BORDER);g.fill(l - 1, bottom, r + 1, bottom + 1, BORDER);
+        g.fill(l - 1, 14, l, bottom, BORDER);g.fill(r, 14, r + 1, bottom, BORDER);
+        g.fill(l, 14, r, bottom, clear?0x8C152030:0xF0152030);
+        g.fillGradient(l, 16, r, 54, clear?0xB41B293C:0xFF1B293C, clear?0x8C152030:0xF0152030);
         g.fill(l, 14, r, 16, ACCENT);
         g.fill(l + 12, 25, l + 14, 35, ACCENT);
         g.drawString(font, title, l + 19, 26, INK, false);
