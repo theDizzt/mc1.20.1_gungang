@@ -6,11 +6,31 @@ public record ArenaMap(String id, String name, String description, boolean enabl
                        Area alphaArea, Area bravoArea, Capture capture, java.util.List<String> onPrepare,
                        java.util.List<String> onStart, java.util.List<String> onEnd, NormandyRules normandy,
                        @com.google.gson.annotations.SerializedName(value="previewImage",alternate={"preview"}) String previewImage,
-                       String weather,String timeOfDay) {
+                       String weather,String timeOfDay,BombRules bomb,java.util.List<DeathZone> deathZones,MapPreviewArea previewArea) {
+    public ArenaMap(String id,String name,String description,boolean enabled,int timeLimitSeconds,String gameMode,String dimension,
+                    Spawn alphaSpawn,Spawn bravoSpawn,Spawn spectatorSpawn,Area alphaArea,Area bravoArea,Capture capture,
+                    java.util.List<String> onPrepare,java.util.List<String> onStart,java.util.List<String> onEnd,NormandyRules normandy,String previewImage,String weather,String timeOfDay,BombRules bomb,java.util.List<DeathZone> deathZones){
+        this(id,name,description,enabled,timeLimitSeconds,gameMode,dimension,alphaSpawn,bravoSpawn,spectatorSpawn,alphaArea,bravoArea,capture,onPrepare,onStart,onEnd,normandy,previewImage,weather,timeOfDay,bomb,deathZones,null);
+    }
     public ArenaMap {
+        deathZones=deathZones==null?java.util.List.of():java.util.List.copyOf(deathZones);
+        if(bomb!=null){
+            alphaSpawn=bomb.attackSpawn();bravoSpawn=bomb.defenseSpawn();alphaArea=bomb.attackArea();bravoArea=bomb.defenseArea();
+            if(timeLimitSeconds==0)timeLimitSeconds=210;
+        }
         previewImage=previewImage==null?"":previewImage.strip();
         weather=weather==null?"clear":weather.strip().toLowerCase(java.util.Locale.ROOT);
         timeOfDay=timeOfDay==null?"day":timeOfDay.strip().toLowerCase(java.util.Locale.ROOT);
+    }
+    public ArenaMap(String id,String name,String description,boolean enabled,int timeLimitSeconds,String gameMode,String dimension,
+                    Spawn alphaSpawn,Spawn bravoSpawn,Spawn spectatorSpawn,Area alphaArea,Area bravoArea,Capture capture,
+                    java.util.List<String> onPrepare,java.util.List<String> onStart,java.util.List<String> onEnd,NormandyRules normandy,String previewImage,String weather,String timeOfDay,BombRules bomb){
+        this(id,name,description,enabled,timeLimitSeconds,gameMode,dimension,alphaSpawn,bravoSpawn,spectatorSpawn,alphaArea,bravoArea,capture,onPrepare,onStart,onEnd,normandy,previewImage,weather,timeOfDay,bomb,java.util.List.of());
+    }
+    public ArenaMap(String id,String name,String description,boolean enabled,int timeLimitSeconds,String gameMode,String dimension,
+                    Spawn alphaSpawn,Spawn bravoSpawn,Spawn spectatorSpawn,Area alphaArea,Area bravoArea,Capture capture,
+                    java.util.List<String> onPrepare,java.util.List<String> onStart,java.util.List<String> onEnd,NormandyRules normandy,String previewImage,String weather,String timeOfDay){
+        this(id,name,description,enabled,timeLimitSeconds,gameMode,dimension,alphaSpawn,bravoSpawn,spectatorSpawn,alphaArea,bravoArea,capture,onPrepare,onStart,onEnd,normandy,previewImage,weather,timeOfDay,null);
     }
     public ArenaMap(String id,String name,String description,boolean enabled,int timeLimitSeconds,String gameMode,String dimension,
                     Spawn alphaSpawn,Spawn bravoSpawn,Spawn spectatorSpawn,Area alphaArea,Area bravoArea,Capture capture,
@@ -58,6 +78,9 @@ public record ArenaMap(String id, String name, String description, boolean enabl
         }
     }
     public ArenaMap validate() {
+        if(previewArea!=null)previewArea.validate();
+        if(deathZones.size()>128)throw new IllegalArgumentException("At most 128 death zones per map");
+        deathZones.forEach(DeathZone::validate);
         if(!java.util.Set.of("clear","fog","rain","snow").contains(weather)||!java.util.Set.of("day","dusk","night","dawn").contains(timeOfDay))
             throw new IllegalArgumentException("Invalid map weather/timeOfDay: "+id);
         if(!previewImage.isEmpty()&&!MapPreviewFiles.validName(previewImage))throw new IllegalArgumentException("Invalid preview image filename: "+previewImage);
@@ -70,6 +93,7 @@ public record ArenaMap(String id, String name, String description, boolean enabl
         alphaSpawn.validate(); bravoSpawn.validate(); spectatorSpawn.validate();
         alphaArea.validate(alphaSpawn); bravoArea.validate(bravoSpawn);
         if (capture != null) capture.validate();
+        if(bomb!=null){bomb.validate();if(capture!=null||normandy!=null||timeLimitSeconds<1)throw new IllegalArgumentException("Bomb mode cannot have capture/Normandy rules");}
         if (normandy != null) {
             normandy.validate();
             if (capture != null || timeLimitSeconds == 0) throw new IllegalArgumentException("Normandy requires a time limit and no capture rules");

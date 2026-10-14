@@ -1,0 +1,9651 @@
+{
+  "meta": {
+    "format_version": "4.10",
+    "model_format": "java_block",
+    "box_uv": false
+  },
+  "name": "Red Gas Drum 16x24x16",
+  "model_identifier": "red_gas_drum",
+  "resolution": {
+    "width": 128,
+    "height": 128
+  },
+  "elements": [
+    {
+      "name": "Body red shell_01",
+      "type": "cube",
+      "uuid": "006cccfb-6640-5b80-9667-dde8c102c578",
+      "from": [
+        1,
+        0.9,
+        4.5
+      ],
+      "to": [
+        2,
+        23.12,
+        11.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 0,
+      "faces": {
+        "north": {
+          "uv": [
+            1,
+            0.88,
+            2,
+            23.1
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            30,
+            0.88,
+            31,
+            23.1
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            52.5,
+            0.88,
+            59.5,
+            23.1
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            36.5,
+            0.88,
+            43.5,
+            23.1
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            65,
+            4.5,
+            66,
+            11.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            65,
+            20.5,
+            66,
+            27.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Body red shell_02",
+      "type": "cube",
+      "uuid": "53ba25b2-79d4-511a-b9ba-8b6db940dd86",
+      "from": [
+        2,
+        0.9,
+        3.0
+      ],
+      "to": [
+        3,
+        23.12,
+        13.0
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 0,
+      "faces": {
+        "north": {
+          "uv": [
+            2,
+            0.88,
+            3,
+            23.1
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            29,
+            0.88,
+            30,
+            23.1
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            51.0,
+            0.88,
+            61.0,
+            23.1
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            35.0,
+            0.88,
+            45.0,
+            23.1
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            66,
+            3.0,
+            67,
+            13.0
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            66,
+            19.0,
+            67,
+            29.0
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Body red shell_03",
+      "type": "cube",
+      "uuid": "de2541a9-915f-5e99-b902-6ad1a9d7d6d9",
+      "from": [
+        3,
+        0.9,
+        2.25
+      ],
+      "to": [
+        4,
+        23.12,
+        13.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 0,
+      "faces": {
+        "north": {
+          "uv": [
+            3,
+            0.88,
+            4,
+            23.1
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            28,
+            0.88,
+            29,
+            23.1
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            50.25,
+            0.88,
+            61.75,
+            23.1
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            34.25,
+            0.88,
+            45.75,
+            23.1
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            67,
+            2.25,
+            68,
+            13.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            67,
+            18.25,
+            68,
+            29.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Body red shell_04",
+      "type": "cube",
+      "uuid": "5d85b4b0-7d50-56e4-baff-e90b6465463d",
+      "from": [
+        4,
+        0.9,
+        1.5
+      ],
+      "to": [
+        5,
+        23.12,
+        14.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 0,
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            0.88,
+            5,
+            23.1
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            27,
+            0.88,
+            28,
+            23.1
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            49.5,
+            0.88,
+            62.5,
+            23.1
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            33.5,
+            0.88,
+            46.5,
+            23.1
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            68,
+            1.5,
+            69,
+            14.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            68,
+            17.5,
+            69,
+            30.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Body red shell_05",
+      "type": "cube",
+      "uuid": "0f3104bb-fed8-5bb9-a885-45c74665ef0e",
+      "from": [
+        5,
+        0.9,
+        1.0
+      ],
+      "to": [
+        6,
+        23.12,
+        15.0
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 0,
+      "faces": {
+        "north": {
+          "uv": [
+            5,
+            0.88,
+            6,
+            23.1
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            26,
+            0.88,
+            27,
+            23.1
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            49.0,
+            0.88,
+            63.0,
+            23.1
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            33.0,
+            0.88,
+            47.0,
+            23.1
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            69,
+            1.0,
+            70,
+            15.0
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            69,
+            17.0,
+            70,
+            31.0
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Body red shell_06",
+      "type": "cube",
+      "uuid": "a16ea8d6-2583-538c-a5ed-849de67953a9",
+      "from": [
+        6,
+        0.9,
+        0.75
+      ],
+      "to": [
+        7,
+        23.12,
+        15.25
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 0,
+      "faces": {
+        "north": {
+          "uv": [
+            6,
+            0.88,
+            7,
+            23.1
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            25,
+            0.88,
+            26,
+            23.1
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            48.75,
+            0.88,
+            63.25,
+            23.1
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            32.75,
+            0.88,
+            47.25,
+            23.1
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            70,
+            0.75,
+            71,
+            15.25
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            70,
+            16.75,
+            71,
+            31.25
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Body red shell_07",
+      "type": "cube",
+      "uuid": "06105490-5185-5d39-9a08-2578797054ce",
+      "from": [
+        7,
+        0.9,
+        0.75
+      ],
+      "to": [
+        8,
+        23.12,
+        15.25
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 0,
+      "faces": {
+        "north": {
+          "uv": [
+            7,
+            0.88,
+            8,
+            23.1
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            24,
+            0.88,
+            25,
+            23.1
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            48.75,
+            0.88,
+            63.25,
+            23.1
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            32.75,
+            0.88,
+            47.25,
+            23.1
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            71,
+            0.75,
+            72,
+            15.25
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            71,
+            16.75,
+            72,
+            31.25
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Body red shell_08",
+      "type": "cube",
+      "uuid": "a99dc1d1-6619-5ef9-ace1-c7aa48b73612",
+      "from": [
+        8,
+        0.9,
+        0.75
+      ],
+      "to": [
+        9,
+        23.12,
+        15.25
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 0,
+      "faces": {
+        "north": {
+          "uv": [
+            8,
+            0.88,
+            9,
+            23.1
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            23,
+            0.88,
+            24,
+            23.1
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            48.75,
+            0.88,
+            63.25,
+            23.1
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            32.75,
+            0.88,
+            47.25,
+            23.1
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            72,
+            0.75,
+            73,
+            15.25
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            72,
+            16.75,
+            73,
+            31.25
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Body red shell_09",
+      "type": "cube",
+      "uuid": "cd752122-aa7b-5f62-adeb-101e6cfbdb20",
+      "from": [
+        9,
+        0.9,
+        0.75
+      ],
+      "to": [
+        10,
+        23.12,
+        15.25
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 0,
+      "faces": {
+        "north": {
+          "uv": [
+            9,
+            0.88,
+            10,
+            23.1
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            22,
+            0.88,
+            23,
+            23.1
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            48.75,
+            0.88,
+            63.25,
+            23.1
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            32.75,
+            0.88,
+            47.25,
+            23.1
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            73,
+            0.75,
+            74,
+            15.25
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            73,
+            16.75,
+            74,
+            31.25
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Body red shell_10",
+      "type": "cube",
+      "uuid": "45abecaa-15db-5416-a143-8ae62da994c0",
+      "from": [
+        10,
+        0.9,
+        1.0
+      ],
+      "to": [
+        11,
+        23.12,
+        15.0
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 0,
+      "faces": {
+        "north": {
+          "uv": [
+            10,
+            0.88,
+            11,
+            23.1
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            21,
+            0.88,
+            22,
+            23.1
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            49.0,
+            0.88,
+            63.0,
+            23.1
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            33.0,
+            0.88,
+            47.0,
+            23.1
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            74,
+            1.0,
+            75,
+            15.0
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            74,
+            17.0,
+            75,
+            31.0
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Body red shell_11",
+      "type": "cube",
+      "uuid": "e266d8fc-6d56-568f-aa52-b27262a24c4a",
+      "from": [
+        11,
+        0.9,
+        1.5
+      ],
+      "to": [
+        12,
+        23.12,
+        14.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 0,
+      "faces": {
+        "north": {
+          "uv": [
+            11,
+            0.88,
+            12,
+            23.1
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            20,
+            0.88,
+            21,
+            23.1
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            49.5,
+            0.88,
+            62.5,
+            23.1
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            33.5,
+            0.88,
+            46.5,
+            23.1
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            75,
+            1.5,
+            76,
+            14.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            75,
+            17.5,
+            76,
+            30.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Body red shell_12",
+      "type": "cube",
+      "uuid": "28a14a88-6f4f-598c-b1e5-22e6f0f82356",
+      "from": [
+        12,
+        0.9,
+        2.25
+      ],
+      "to": [
+        13,
+        23.12,
+        13.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 0,
+      "faces": {
+        "north": {
+          "uv": [
+            12,
+            0.88,
+            13,
+            23.1
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            19,
+            0.88,
+            20,
+            23.1
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            50.25,
+            0.88,
+            61.75,
+            23.1
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            34.25,
+            0.88,
+            45.75,
+            23.1
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            76,
+            2.25,
+            77,
+            13.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            76,
+            18.25,
+            77,
+            29.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Body red shell_13",
+      "type": "cube",
+      "uuid": "5b447bbc-d371-5e9e-a895-bc22ddfdf958",
+      "from": [
+        13,
+        0.9,
+        3.0
+      ],
+      "to": [
+        14,
+        23.12,
+        13.0
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 0,
+      "faces": {
+        "north": {
+          "uv": [
+            13,
+            0.88,
+            14,
+            23.1
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            18,
+            0.88,
+            19,
+            23.1
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            51.0,
+            0.88,
+            61.0,
+            23.1
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            35.0,
+            0.88,
+            45.0,
+            23.1
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            77,
+            3.0,
+            78,
+            13.0
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            77,
+            19.0,
+            78,
+            29.0
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Body red shell_14",
+      "type": "cube",
+      "uuid": "541d1b9f-289d-54f2-8344-138e261ae8bd",
+      "from": [
+        14,
+        0.9,
+        4.5
+      ],
+      "to": [
+        15,
+        23.12,
+        11.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 0,
+      "faces": {
+        "north": {
+          "uv": [
+            14,
+            0.88,
+            15,
+            23.1
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            17,
+            0.88,
+            18,
+            23.1
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            52.5,
+            0.88,
+            59.5,
+            23.1
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            36.5,
+            0.88,
+            43.5,
+            23.1
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            78,
+            4.5,
+            79,
+            11.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            78,
+            20.5,
+            79,
+            27.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Bottom rim_00",
+      "type": "cube",
+      "uuid": "f65c9f2a-cca4-5025-bc6a-b4ae831dc69d",
+      "from": [
+        0,
+        0,
+        5.25
+      ],
+      "to": [
+        1,
+        1.2,
+        10.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            80,
+            22.8,
+            81,
+            24
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            95,
+            22.8,
+            96,
+            24
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            85.25,
+            22.8,
+            90.75,
+            24
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            85.25,
+            22.8,
+            90.75,
+            24
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            64,
+            5.25,
+            65,
+            10.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            64,
+            21.25,
+            65,
+            26.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Bottom rim_01",
+      "type": "cube",
+      "uuid": "31801b1d-2b39-5fdb-b44d-2e2bb4deb838",
+      "from": [
+        1,
+        0,
+        3.25
+      ],
+      "to": [
+        2,
+        1.2,
+        12.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            81,
+            22.8,
+            82,
+            24
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            94,
+            22.8,
+            95,
+            24
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            83.25,
+            22.8,
+            92.75,
+            24
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            83.25,
+            22.8,
+            92.75,
+            24
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            65,
+            3.25,
+            66,
+            12.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            65,
+            19.25,
+            66,
+            28.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Bottom rim_02",
+      "type": "cube",
+      "uuid": "1c5b384f-89f0-5252-8154-f4953323bbc5",
+      "from": [
+        2,
+        0,
+        2.25
+      ],
+      "to": [
+        3,
+        1.2,
+        13.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            82,
+            22.8,
+            83,
+            24
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            93,
+            22.8,
+            94,
+            24
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            82.25,
+            22.8,
+            93.75,
+            24
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            82.25,
+            22.8,
+            93.75,
+            24
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            66,
+            2.25,
+            67,
+            13.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            66,
+            18.25,
+            67,
+            29.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Bottom rim_03",
+      "type": "cube",
+      "uuid": "f6d492ab-e5a6-5fce-b5fb-84ae2eab67b4",
+      "from": [
+        3,
+        0,
+        1.5
+      ],
+      "to": [
+        4,
+        1.2,
+        14.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            83,
+            22.8,
+            84,
+            24
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            92,
+            22.8,
+            93,
+            24
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            81.5,
+            22.8,
+            94.5,
+            24
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            81.5,
+            22.8,
+            94.5,
+            24
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            67,
+            1.5,
+            68,
+            14.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            67,
+            17.5,
+            68,
+            30.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Bottom rim_04",
+      "type": "cube",
+      "uuid": "7b247adf-f138-5add-854e-8c8267f76824",
+      "from": [
+        4,
+        0,
+        0.75
+      ],
+      "to": [
+        5,
+        1.2,
+        15.25
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            84,
+            22.8,
+            85,
+            24
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            91,
+            22.8,
+            92,
+            24
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.75,
+            22.8,
+            95.25,
+            24
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.75,
+            22.8,
+            95.25,
+            24
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            68,
+            0.75,
+            69,
+            15.25
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            68,
+            16.75,
+            69,
+            31.25
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Bottom rim_05",
+      "type": "cube",
+      "uuid": "b302a7c5-2f6c-566a-a2f1-9f19ab5f175c",
+      "from": [
+        5,
+        0,
+        0.5
+      ],
+      "to": [
+        6,
+        1.2,
+        15.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            85,
+            22.8,
+            86,
+            24
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            90,
+            22.8,
+            91,
+            24
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.5,
+            22.8,
+            95.5,
+            24
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.5,
+            22.8,
+            95.5,
+            24
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            69,
+            0.5,
+            70,
+            15.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            69,
+            16.5,
+            70,
+            31.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Bottom rim_06",
+      "type": "cube",
+      "uuid": "cc203dbd-c40c-5a14-8bdc-40040341b7fe",
+      "from": [
+        6,
+        0,
+        0.25
+      ],
+      "to": [
+        7,
+        1.2,
+        15.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            86,
+            22.8,
+            87,
+            24
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            89,
+            22.8,
+            90,
+            24
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.25,
+            22.8,
+            95.75,
+            24
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.25,
+            22.8,
+            95.75,
+            24
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            70,
+            0.25,
+            71,
+            15.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            70,
+            16.25,
+            71,
+            31.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Bottom rim_07",
+      "type": "cube",
+      "uuid": "a36e16f3-b59e-57a3-91be-ebacd9336d55",
+      "from": [
+        7,
+        0,
+        0.0
+      ],
+      "to": [
+        8,
+        1.2,
+        16.0
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            87,
+            22.8,
+            88,
+            24
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            88,
+            22.8,
+            89,
+            24
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.0,
+            22.8,
+            96.0,
+            24
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.0,
+            22.8,
+            96.0,
+            24
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            71,
+            0.0,
+            72,
+            16.0
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            71,
+            16.0,
+            72,
+            32.0
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Bottom rim_08",
+      "type": "cube",
+      "uuid": "54804d10-3c19-59df-b90b-4f85b3d09130",
+      "from": [
+        8,
+        0,
+        0.0
+      ],
+      "to": [
+        9,
+        1.2,
+        16.0
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            88,
+            22.8,
+            89,
+            24
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            87,
+            22.8,
+            88,
+            24
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.0,
+            22.8,
+            96.0,
+            24
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.0,
+            22.8,
+            96.0,
+            24
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            72,
+            0.0,
+            73,
+            16.0
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            72,
+            16.0,
+            73,
+            32.0
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Bottom rim_09",
+      "type": "cube",
+      "uuid": "5004768a-e860-58e1-b696-dc3808ff5e21",
+      "from": [
+        9,
+        0,
+        0.25
+      ],
+      "to": [
+        10,
+        1.2,
+        15.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            89,
+            22.8,
+            90,
+            24
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            86,
+            22.8,
+            87,
+            24
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.25,
+            22.8,
+            95.75,
+            24
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.25,
+            22.8,
+            95.75,
+            24
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            73,
+            0.25,
+            74,
+            15.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            73,
+            16.25,
+            74,
+            31.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Bottom rim_10",
+      "type": "cube",
+      "uuid": "fd6060aa-942d-5731-87f6-0714b3803bdb",
+      "from": [
+        10,
+        0,
+        0.5
+      ],
+      "to": [
+        11,
+        1.2,
+        15.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            90,
+            22.8,
+            91,
+            24
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            85,
+            22.8,
+            86,
+            24
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.5,
+            22.8,
+            95.5,
+            24
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.5,
+            22.8,
+            95.5,
+            24
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            74,
+            0.5,
+            75,
+            15.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            74,
+            16.5,
+            75,
+            31.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Bottom rim_11",
+      "type": "cube",
+      "uuid": "7cf2f382-d99c-57a4-a939-67658c352184",
+      "from": [
+        11,
+        0,
+        0.75
+      ],
+      "to": [
+        12,
+        1.2,
+        15.25
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            91,
+            22.8,
+            92,
+            24
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            84,
+            22.8,
+            85,
+            24
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.75,
+            22.8,
+            95.25,
+            24
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.75,
+            22.8,
+            95.25,
+            24
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            75,
+            0.75,
+            76,
+            15.25
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            75,
+            16.75,
+            76,
+            31.25
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Bottom rim_12",
+      "type": "cube",
+      "uuid": "cd72606f-6ad3-5a22-864e-f5490ff8f217",
+      "from": [
+        12,
+        0,
+        1.5
+      ],
+      "to": [
+        13,
+        1.2,
+        14.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            92,
+            22.8,
+            93,
+            24
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            83,
+            22.8,
+            84,
+            24
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            81.5,
+            22.8,
+            94.5,
+            24
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            81.5,
+            22.8,
+            94.5,
+            24
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            76,
+            1.5,
+            77,
+            14.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            76,
+            17.5,
+            77,
+            30.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Bottom rim_13",
+      "type": "cube",
+      "uuid": "5475c6a5-295e-569b-8bcf-035da1d71f93",
+      "from": [
+        13,
+        0,
+        2.25
+      ],
+      "to": [
+        14,
+        1.2,
+        13.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            93,
+            22.8,
+            94,
+            24
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            82,
+            22.8,
+            83,
+            24
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            82.25,
+            22.8,
+            93.75,
+            24
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            82.25,
+            22.8,
+            93.75,
+            24
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            77,
+            2.25,
+            78,
+            13.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            77,
+            18.25,
+            78,
+            29.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Bottom rim_14",
+      "type": "cube",
+      "uuid": "321a5a50-3b4a-5820-ac61-780fa5d119eb",
+      "from": [
+        14,
+        0,
+        3.25
+      ],
+      "to": [
+        15,
+        1.2,
+        12.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            94,
+            22.8,
+            95,
+            24
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            81,
+            22.8,
+            82,
+            24
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            83.25,
+            22.8,
+            92.75,
+            24
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            83.25,
+            22.8,
+            92.75,
+            24
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            78,
+            3.25,
+            79,
+            12.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            78,
+            19.25,
+            79,
+            28.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Bottom rim_15",
+      "type": "cube",
+      "uuid": "0fb038e5-dc9a-50fa-ad79-05b63bf9bb46",
+      "from": [
+        15,
+        0,
+        5.25
+      ],
+      "to": [
+        16,
+        1.2,
+        10.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            95,
+            22.8,
+            96,
+            24
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            80,
+            22.8,
+            81,
+            24
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            85.25,
+            22.8,
+            90.75,
+            24
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            85.25,
+            22.8,
+            90.75,
+            24
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            79,
+            5.25,
+            80,
+            10.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            79,
+            21.25,
+            80,
+            26.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Lower metal hoop_00",
+      "type": "cube",
+      "uuid": "3667da23-525f-56ed-84a9-b66ab2ac68fa",
+      "from": [
+        0,
+        7.15,
+        5.25
+      ],
+      "to": [
+        1,
+        8.05,
+        10.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            80,
+            15.95,
+            81,
+            16.85
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            95,
+            15.95,
+            96,
+            16.85
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            85.25,
+            15.95,
+            90.75,
+            16.85
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            85.25,
+            15.95,
+            90.75,
+            16.85
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            64,
+            5.25,
+            65,
+            10.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            64,
+            21.25,
+            65,
+            26.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Lower metal hoop_01",
+      "type": "cube",
+      "uuid": "2c71a241-7951-5304-a0fa-0699ba390cec",
+      "from": [
+        1,
+        7.15,
+        3.25
+      ],
+      "to": [
+        2,
+        8.05,
+        12.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            81,
+            15.95,
+            82,
+            16.85
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            94,
+            15.95,
+            95,
+            16.85
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            83.25,
+            15.95,
+            92.75,
+            16.85
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            83.25,
+            15.95,
+            92.75,
+            16.85
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            65,
+            3.25,
+            66,
+            12.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            65,
+            19.25,
+            66,
+            28.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Lower metal hoop_02",
+      "type": "cube",
+      "uuid": "515460c3-7758-5068-98b3-98a08417479f",
+      "from": [
+        2,
+        7.15,
+        2.25
+      ],
+      "to": [
+        3,
+        8.05,
+        13.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            82,
+            15.95,
+            83,
+            16.85
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            93,
+            15.95,
+            94,
+            16.85
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            82.25,
+            15.95,
+            93.75,
+            16.85
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            82.25,
+            15.95,
+            93.75,
+            16.85
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            66,
+            2.25,
+            67,
+            13.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            66,
+            18.25,
+            67,
+            29.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Lower metal hoop_03",
+      "type": "cube",
+      "uuid": "6186f7dd-9555-5aa5-a60a-97bf081fdb27",
+      "from": [
+        3,
+        7.15,
+        1.5
+      ],
+      "to": [
+        4,
+        8.05,
+        14.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            83,
+            15.95,
+            84,
+            16.85
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            92,
+            15.95,
+            93,
+            16.85
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            81.5,
+            15.95,
+            94.5,
+            16.85
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            81.5,
+            15.95,
+            94.5,
+            16.85
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            67,
+            1.5,
+            68,
+            14.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            67,
+            17.5,
+            68,
+            30.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Lower metal hoop_04",
+      "type": "cube",
+      "uuid": "fe2ee127-fce7-51ef-8402-3aa8fae8aec2",
+      "from": [
+        4,
+        7.15,
+        0.75
+      ],
+      "to": [
+        5,
+        8.05,
+        15.25
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            84,
+            15.95,
+            85,
+            16.85
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            91,
+            15.95,
+            92,
+            16.85
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.75,
+            15.95,
+            95.25,
+            16.85
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.75,
+            15.95,
+            95.25,
+            16.85
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            68,
+            0.75,
+            69,
+            15.25
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            68,
+            16.75,
+            69,
+            31.25
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Lower metal hoop_05",
+      "type": "cube",
+      "uuid": "23df7da6-9778-5e64-9f7b-ae419fca29f4",
+      "from": [
+        5,
+        7.15,
+        0.5
+      ],
+      "to": [
+        6,
+        8.05,
+        15.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            85,
+            15.95,
+            86,
+            16.85
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            90,
+            15.95,
+            91,
+            16.85
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.5,
+            15.95,
+            95.5,
+            16.85
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.5,
+            15.95,
+            95.5,
+            16.85
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            69,
+            0.5,
+            70,
+            15.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            69,
+            16.5,
+            70,
+            31.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Lower metal hoop_06",
+      "type": "cube",
+      "uuid": "c3a550c4-e3a5-5151-a153-4b2f0bcfea6f",
+      "from": [
+        6,
+        7.15,
+        0.25
+      ],
+      "to": [
+        7,
+        8.05,
+        15.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            86,
+            15.95,
+            87,
+            16.85
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            89,
+            15.95,
+            90,
+            16.85
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.25,
+            15.95,
+            95.75,
+            16.85
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.25,
+            15.95,
+            95.75,
+            16.85
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            70,
+            0.25,
+            71,
+            15.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            70,
+            16.25,
+            71,
+            31.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Lower metal hoop_07",
+      "type": "cube",
+      "uuid": "7dccb5ac-e8fe-5aa8-8059-e6301d140896",
+      "from": [
+        7,
+        7.15,
+        0.0
+      ],
+      "to": [
+        8,
+        8.05,
+        16.0
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            87,
+            15.95,
+            88,
+            16.85
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            88,
+            15.95,
+            89,
+            16.85
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.0,
+            15.95,
+            96.0,
+            16.85
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.0,
+            15.95,
+            96.0,
+            16.85
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            71,
+            0.0,
+            72,
+            16.0
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            71,
+            16.0,
+            72,
+            32.0
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Lower metal hoop_08",
+      "type": "cube",
+      "uuid": "a2195ab1-3766-56cf-8a60-03c3fb5efd8b",
+      "from": [
+        8,
+        7.15,
+        0.0
+      ],
+      "to": [
+        9,
+        8.05,
+        16.0
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            88,
+            15.95,
+            89,
+            16.85
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            87,
+            15.95,
+            88,
+            16.85
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.0,
+            15.95,
+            96.0,
+            16.85
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.0,
+            15.95,
+            96.0,
+            16.85
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            72,
+            0.0,
+            73,
+            16.0
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            72,
+            16.0,
+            73,
+            32.0
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Lower metal hoop_09",
+      "type": "cube",
+      "uuid": "facbd276-334e-5b3f-bef9-f3ae2c7908a0",
+      "from": [
+        9,
+        7.15,
+        0.25
+      ],
+      "to": [
+        10,
+        8.05,
+        15.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            89,
+            15.95,
+            90,
+            16.85
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            86,
+            15.95,
+            87,
+            16.85
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.25,
+            15.95,
+            95.75,
+            16.85
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.25,
+            15.95,
+            95.75,
+            16.85
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            73,
+            0.25,
+            74,
+            15.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            73,
+            16.25,
+            74,
+            31.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Lower metal hoop_10",
+      "type": "cube",
+      "uuid": "f707d24b-adc1-5f82-a081-c0c128727c72",
+      "from": [
+        10,
+        7.15,
+        0.5
+      ],
+      "to": [
+        11,
+        8.05,
+        15.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            90,
+            15.95,
+            91,
+            16.85
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            85,
+            15.95,
+            86,
+            16.85
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.5,
+            15.95,
+            95.5,
+            16.85
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.5,
+            15.95,
+            95.5,
+            16.85
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            74,
+            0.5,
+            75,
+            15.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            74,
+            16.5,
+            75,
+            31.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Lower metal hoop_11",
+      "type": "cube",
+      "uuid": "1f599879-c988-5b8d-a99e-54b3e5a64d22",
+      "from": [
+        11,
+        7.15,
+        0.75
+      ],
+      "to": [
+        12,
+        8.05,
+        15.25
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            91,
+            15.95,
+            92,
+            16.85
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            84,
+            15.95,
+            85,
+            16.85
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.75,
+            15.95,
+            95.25,
+            16.85
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.75,
+            15.95,
+            95.25,
+            16.85
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            75,
+            0.75,
+            76,
+            15.25
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            75,
+            16.75,
+            76,
+            31.25
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Lower metal hoop_12",
+      "type": "cube",
+      "uuid": "0c13fa25-644f-541c-aaa5-f43b6d3be82c",
+      "from": [
+        12,
+        7.15,
+        1.5
+      ],
+      "to": [
+        13,
+        8.05,
+        14.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            92,
+            15.95,
+            93,
+            16.85
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            83,
+            15.95,
+            84,
+            16.85
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            81.5,
+            15.95,
+            94.5,
+            16.85
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            81.5,
+            15.95,
+            94.5,
+            16.85
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            76,
+            1.5,
+            77,
+            14.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            76,
+            17.5,
+            77,
+            30.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Lower metal hoop_13",
+      "type": "cube",
+      "uuid": "d1f07c93-ece5-5c75-b7b8-99b00ea63bc7",
+      "from": [
+        13,
+        7.15,
+        2.25
+      ],
+      "to": [
+        14,
+        8.05,
+        13.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            93,
+            15.95,
+            94,
+            16.85
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            82,
+            15.95,
+            83,
+            16.85
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            82.25,
+            15.95,
+            93.75,
+            16.85
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            82.25,
+            15.95,
+            93.75,
+            16.85
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            77,
+            2.25,
+            78,
+            13.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            77,
+            18.25,
+            78,
+            29.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Lower metal hoop_14",
+      "type": "cube",
+      "uuid": "1ad74896-35f3-593a-9c6e-bf9cb7e5119a",
+      "from": [
+        14,
+        7.15,
+        3.25
+      ],
+      "to": [
+        15,
+        8.05,
+        12.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            94,
+            15.95,
+            95,
+            16.85
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            81,
+            15.95,
+            82,
+            16.85
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            83.25,
+            15.95,
+            92.75,
+            16.85
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            83.25,
+            15.95,
+            92.75,
+            16.85
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            78,
+            3.25,
+            79,
+            12.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            78,
+            19.25,
+            79,
+            28.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Lower metal hoop_15",
+      "type": "cube",
+      "uuid": "12fc13ef-89ea-5787-ba6a-6355e3120934",
+      "from": [
+        15,
+        7.15,
+        5.25
+      ],
+      "to": [
+        16,
+        8.05,
+        10.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            95,
+            15.95,
+            96,
+            16.85
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            80,
+            15.95,
+            81,
+            16.85
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            85.25,
+            15.95,
+            90.75,
+            16.85
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            85.25,
+            15.95,
+            90.75,
+            16.85
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            79,
+            5.25,
+            80,
+            10.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            79,
+            21.25,
+            80,
+            26.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Upper metal hoop_00",
+      "type": "cube",
+      "uuid": "ad9e7a8c-aa39-58b9-bcca-13711a93d7bf",
+      "from": [
+        0,
+        16.25,
+        5.25
+      ],
+      "to": [
+        1,
+        17.15,
+        10.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            80,
+            6.85,
+            81,
+            7.75
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            95,
+            6.85,
+            96,
+            7.75
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            85.25,
+            6.85,
+            90.75,
+            7.75
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            85.25,
+            6.85,
+            90.75,
+            7.75
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            64,
+            5.25,
+            65,
+            10.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            64,
+            21.25,
+            65,
+            26.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Upper metal hoop_01",
+      "type": "cube",
+      "uuid": "3bbe27f2-ad5c-588b-93c2-b0479b3739e0",
+      "from": [
+        1,
+        16.25,
+        3.25
+      ],
+      "to": [
+        2,
+        17.15,
+        12.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            81,
+            6.85,
+            82,
+            7.75
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            94,
+            6.85,
+            95,
+            7.75
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            83.25,
+            6.85,
+            92.75,
+            7.75
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            83.25,
+            6.85,
+            92.75,
+            7.75
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            65,
+            3.25,
+            66,
+            12.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            65,
+            19.25,
+            66,
+            28.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Upper metal hoop_02",
+      "type": "cube",
+      "uuid": "a14d7269-8c0a-5d1a-9f6b-65e65b0cfdf6",
+      "from": [
+        2,
+        16.25,
+        2.25
+      ],
+      "to": [
+        3,
+        17.15,
+        13.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            82,
+            6.85,
+            83,
+            7.75
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            93,
+            6.85,
+            94,
+            7.75
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            82.25,
+            6.85,
+            93.75,
+            7.75
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            82.25,
+            6.85,
+            93.75,
+            7.75
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            66,
+            2.25,
+            67,
+            13.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            66,
+            18.25,
+            67,
+            29.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Upper metal hoop_03",
+      "type": "cube",
+      "uuid": "db86cabd-703c-5f8b-9d5e-ff2b358776e0",
+      "from": [
+        3,
+        16.25,
+        1.5
+      ],
+      "to": [
+        4,
+        17.15,
+        14.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            83,
+            6.85,
+            84,
+            7.75
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            92,
+            6.85,
+            93,
+            7.75
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            81.5,
+            6.85,
+            94.5,
+            7.75
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            81.5,
+            6.85,
+            94.5,
+            7.75
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            67,
+            1.5,
+            68,
+            14.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            67,
+            17.5,
+            68,
+            30.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Upper metal hoop_04",
+      "type": "cube",
+      "uuid": "a452bbef-dd6b-53b0-955a-dab34cad7ea1",
+      "from": [
+        4,
+        16.25,
+        0.75
+      ],
+      "to": [
+        5,
+        17.15,
+        15.25
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            84,
+            6.85,
+            85,
+            7.75
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            91,
+            6.85,
+            92,
+            7.75
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.75,
+            6.85,
+            95.25,
+            7.75
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.75,
+            6.85,
+            95.25,
+            7.75
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            68,
+            0.75,
+            69,
+            15.25
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            68,
+            16.75,
+            69,
+            31.25
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Upper metal hoop_05",
+      "type": "cube",
+      "uuid": "7b572d22-d8c1-5921-91d4-781dec4913a7",
+      "from": [
+        5,
+        16.25,
+        0.5
+      ],
+      "to": [
+        6,
+        17.15,
+        15.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            85,
+            6.85,
+            86,
+            7.75
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            90,
+            6.85,
+            91,
+            7.75
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.5,
+            6.85,
+            95.5,
+            7.75
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.5,
+            6.85,
+            95.5,
+            7.75
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            69,
+            0.5,
+            70,
+            15.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            69,
+            16.5,
+            70,
+            31.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Upper metal hoop_06",
+      "type": "cube",
+      "uuid": "55874593-5f19-5da1-8f01-bf95ad93a0b4",
+      "from": [
+        6,
+        16.25,
+        0.25
+      ],
+      "to": [
+        7,
+        17.15,
+        15.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            86,
+            6.85,
+            87,
+            7.75
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            89,
+            6.85,
+            90,
+            7.75
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.25,
+            6.85,
+            95.75,
+            7.75
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.25,
+            6.85,
+            95.75,
+            7.75
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            70,
+            0.25,
+            71,
+            15.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            70,
+            16.25,
+            71,
+            31.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Upper metal hoop_07",
+      "type": "cube",
+      "uuid": "42caf009-bb3b-5c95-a3a3-db15fd3092da",
+      "from": [
+        7,
+        16.25,
+        0.0
+      ],
+      "to": [
+        8,
+        17.15,
+        16.0
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            87,
+            6.85,
+            88,
+            7.75
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            88,
+            6.85,
+            89,
+            7.75
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.0,
+            6.85,
+            96.0,
+            7.75
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.0,
+            6.85,
+            96.0,
+            7.75
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            71,
+            0.0,
+            72,
+            16.0
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            71,
+            16.0,
+            72,
+            32.0
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Upper metal hoop_08",
+      "type": "cube",
+      "uuid": "f4c027c0-90a6-5af8-9ec8-6f1cb95d2ad5",
+      "from": [
+        8,
+        16.25,
+        0.0
+      ],
+      "to": [
+        9,
+        17.15,
+        16.0
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            88,
+            6.85,
+            89,
+            7.75
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            87,
+            6.85,
+            88,
+            7.75
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.0,
+            6.85,
+            96.0,
+            7.75
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.0,
+            6.85,
+            96.0,
+            7.75
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            72,
+            0.0,
+            73,
+            16.0
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            72,
+            16.0,
+            73,
+            32.0
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Upper metal hoop_09",
+      "type": "cube",
+      "uuid": "854ebc3e-7e91-5ae7-b481-c78d3e103112",
+      "from": [
+        9,
+        16.25,
+        0.25
+      ],
+      "to": [
+        10,
+        17.15,
+        15.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            89,
+            6.85,
+            90,
+            7.75
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            86,
+            6.85,
+            87,
+            7.75
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.25,
+            6.85,
+            95.75,
+            7.75
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.25,
+            6.85,
+            95.75,
+            7.75
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            73,
+            0.25,
+            74,
+            15.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            73,
+            16.25,
+            74,
+            31.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Upper metal hoop_10",
+      "type": "cube",
+      "uuid": "700adac1-a500-5271-ab2b-1fadbab0224f",
+      "from": [
+        10,
+        16.25,
+        0.5
+      ],
+      "to": [
+        11,
+        17.15,
+        15.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            90,
+            6.85,
+            91,
+            7.75
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            85,
+            6.85,
+            86,
+            7.75
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.5,
+            6.85,
+            95.5,
+            7.75
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.5,
+            6.85,
+            95.5,
+            7.75
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            74,
+            0.5,
+            75,
+            15.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            74,
+            16.5,
+            75,
+            31.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Upper metal hoop_11",
+      "type": "cube",
+      "uuid": "5a5c3457-710d-5a64-9c6d-565ab3a2e0a0",
+      "from": [
+        11,
+        16.25,
+        0.75
+      ],
+      "to": [
+        12,
+        17.15,
+        15.25
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            91,
+            6.85,
+            92,
+            7.75
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            84,
+            6.85,
+            85,
+            7.75
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.75,
+            6.85,
+            95.25,
+            7.75
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.75,
+            6.85,
+            95.25,
+            7.75
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            75,
+            0.75,
+            76,
+            15.25
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            75,
+            16.75,
+            76,
+            31.25
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Upper metal hoop_12",
+      "type": "cube",
+      "uuid": "99f2c630-c317-53a7-9412-a0e2f8eb0a85",
+      "from": [
+        12,
+        16.25,
+        1.5
+      ],
+      "to": [
+        13,
+        17.15,
+        14.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            92,
+            6.85,
+            93,
+            7.75
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            83,
+            6.85,
+            84,
+            7.75
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            81.5,
+            6.85,
+            94.5,
+            7.75
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            81.5,
+            6.85,
+            94.5,
+            7.75
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            76,
+            1.5,
+            77,
+            14.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            76,
+            17.5,
+            77,
+            30.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Upper metal hoop_13",
+      "type": "cube",
+      "uuid": "9a6b62be-bb97-5c1f-ab9d-e0fa9c8cb491",
+      "from": [
+        13,
+        16.25,
+        2.25
+      ],
+      "to": [
+        14,
+        17.15,
+        13.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            93,
+            6.85,
+            94,
+            7.75
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            82,
+            6.85,
+            83,
+            7.75
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            82.25,
+            6.85,
+            93.75,
+            7.75
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            82.25,
+            6.85,
+            93.75,
+            7.75
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            77,
+            2.25,
+            78,
+            13.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            77,
+            18.25,
+            78,
+            29.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Upper metal hoop_14",
+      "type": "cube",
+      "uuid": "473efb65-7abb-5010-8e8b-bbbda6396832",
+      "from": [
+        14,
+        16.25,
+        3.25
+      ],
+      "to": [
+        15,
+        17.15,
+        12.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            94,
+            6.85,
+            95,
+            7.75
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            81,
+            6.85,
+            82,
+            7.75
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            83.25,
+            6.85,
+            92.75,
+            7.75
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            83.25,
+            6.85,
+            92.75,
+            7.75
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            78,
+            3.25,
+            79,
+            12.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            78,
+            19.25,
+            79,
+            28.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Upper metal hoop_15",
+      "type": "cube",
+      "uuid": "508bf731-9d1e-5bcf-a9cf-31a6235c9459",
+      "from": [
+        15,
+        16.25,
+        5.25
+      ],
+      "to": [
+        16,
+        17.15,
+        10.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            95,
+            6.85,
+            96,
+            7.75
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            80,
+            6.85,
+            81,
+            7.75
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            85.25,
+            6.85,
+            90.75,
+            7.75
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            85.25,
+            6.85,
+            90.75,
+            7.75
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            79,
+            5.25,
+            80,
+            10.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            79,
+            21.25,
+            80,
+            26.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim ring edge_00",
+      "type": "cube",
+      "uuid": "a6bb83a4-cf8d-5879-8d4a-e1ccb336ada3",
+      "from": [
+        0,
+        23.1,
+        5.25
+      ],
+      "to": [
+        1,
+        24,
+        10.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            80,
+            0,
+            81,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            95,
+            0,
+            96,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            85.25,
+            0,
+            90.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            85.25,
+            0,
+            90.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            64,
+            5.25,
+            65,
+            10.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            64,
+            21.25,
+            65,
+            26.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim near edge_01",
+      "type": "cube",
+      "uuid": "cb979a03-ea06-5974-a2dd-f9c2bbdb8ac6",
+      "from": [
+        1,
+        23.1,
+        3.25
+      ],
+      "to": [
+        2,
+        24,
+        5.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            81,
+            0,
+            82,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            94,
+            0,
+            95,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            83.25,
+            0,
+            85.5,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            90.5,
+            0,
+            92.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            65,
+            3.25,
+            66,
+            5.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            65,
+            19.25,
+            66,
+            21.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim far edge_01",
+      "type": "cube",
+      "uuid": "74bcc406-0c39-5327-bb85-17e0aeff587f",
+      "from": [
+        1,
+        23.1,
+        10.5
+      ],
+      "to": [
+        2,
+        24,
+        12.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            81,
+            0,
+            82,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            94,
+            0,
+            95,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            90.5,
+            0,
+            92.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            83.25,
+            0,
+            85.5,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            65,
+            10.5,
+            66,
+            12.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            65,
+            26.5,
+            66,
+            28.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim near edge_02",
+      "type": "cube",
+      "uuid": "3ab7f192-bdcc-5017-a912-406dd850f35e",
+      "from": [
+        2,
+        23.1,
+        2.25
+      ],
+      "to": [
+        3,
+        24,
+        3.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            82,
+            0,
+            83,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            93,
+            0,
+            94,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            82.25,
+            0,
+            83.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            92.25,
+            0,
+            93.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            66,
+            2.25,
+            67,
+            3.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            66,
+            18.25,
+            67,
+            19.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim far edge_02",
+      "type": "cube",
+      "uuid": "c98eb5b1-6ac9-5c94-8014-53336bf6df4b",
+      "from": [
+        2,
+        23.1,
+        12.25
+      ],
+      "to": [
+        3,
+        24,
+        13.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            82,
+            0,
+            83,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            93,
+            0,
+            94,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            92.25,
+            0,
+            93.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            82.25,
+            0,
+            83.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            66,
+            12.25,
+            67,
+            13.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            66,
+            28.25,
+            67,
+            29.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim near edge_03",
+      "type": "cube",
+      "uuid": "74f0a65b-aa66-5a45-9027-f95a615181c3",
+      "from": [
+        3,
+        23.1,
+        1.5
+      ],
+      "to": [
+        4,
+        24,
+        2.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            83,
+            0,
+            84,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            92,
+            0,
+            93,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            81.5,
+            0,
+            82.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            93.25,
+            0,
+            94.5,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            67,
+            1.5,
+            68,
+            2.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            67,
+            17.5,
+            68,
+            18.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim far edge_03",
+      "type": "cube",
+      "uuid": "f396927e-887d-5fca-8a2f-ee84aa6fb656",
+      "from": [
+        3,
+        23.1,
+        13.25
+      ],
+      "to": [
+        4,
+        24,
+        14.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            83,
+            0,
+            84,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            92,
+            0,
+            93,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            93.25,
+            0,
+            94.5,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            81.5,
+            0,
+            82.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            67,
+            13.25,
+            68,
+            14.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            67,
+            29.25,
+            68,
+            30.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim near edge_04",
+      "type": "cube",
+      "uuid": "76b988af-19b0-5de0-8342-b30c93b206bb",
+      "from": [
+        4,
+        23.1,
+        0.75
+      ],
+      "to": [
+        5,
+        24,
+        2.0
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            84,
+            0,
+            85,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            91,
+            0,
+            92,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.75,
+            0,
+            82.0,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            94.0,
+            0,
+            95.25,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            68,
+            0.75,
+            69,
+            2.0
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            68,
+            16.75,
+            69,
+            18.0
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim far edge_04",
+      "type": "cube",
+      "uuid": "7f38dd57-d2a3-594f-8665-d08824979efb",
+      "from": [
+        4,
+        23.1,
+        14.0
+      ],
+      "to": [
+        5,
+        24,
+        15.25
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            84,
+            0,
+            85,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            91,
+            0,
+            92,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            94.0,
+            0,
+            95.25,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.75,
+            0,
+            82.0,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            68,
+            14.0,
+            69,
+            15.25
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            68,
+            30.0,
+            69,
+            31.25
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim near edge_05",
+      "type": "cube",
+      "uuid": "363a3596-7d9a-572f-9360-0fe56ff13391",
+      "from": [
+        5,
+        23.1,
+        0.5
+      ],
+      "to": [
+        6,
+        24,
+        1.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            85,
+            0,
+            86,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            90,
+            0,
+            91,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.5,
+            0,
+            81.5,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            94.5,
+            0,
+            95.5,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            69,
+            0.5,
+            70,
+            1.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            69,
+            16.5,
+            70,
+            17.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim far edge_05",
+      "type": "cube",
+      "uuid": "5d31665f-59d2-5ae7-be76-eb421df704e1",
+      "from": [
+        5,
+        23.1,
+        14.5
+      ],
+      "to": [
+        6,
+        24,
+        15.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            85,
+            0,
+            86,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            90,
+            0,
+            91,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            94.5,
+            0,
+            95.5,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.5,
+            0,
+            81.5,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            69,
+            14.5,
+            70,
+            15.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            69,
+            30.5,
+            70,
+            31.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim near edge_06",
+      "type": "cube",
+      "uuid": "20a3fbae-8a85-50df-8510-a07ca327168b",
+      "from": [
+        6,
+        23.1,
+        0.25
+      ],
+      "to": [
+        7,
+        24,
+        1.25
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            86,
+            0,
+            87,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            89,
+            0,
+            90,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.25,
+            0,
+            81.25,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            94.75,
+            0,
+            95.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            70,
+            0.25,
+            71,
+            1.25
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            70,
+            16.25,
+            71,
+            17.25
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim far edge_06",
+      "type": "cube",
+      "uuid": "fa9d91bb-b556-5bba-bc93-546dc1bbdc1d",
+      "from": [
+        6,
+        23.1,
+        14.75
+      ],
+      "to": [
+        7,
+        24,
+        15.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            86,
+            0,
+            87,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            89,
+            0,
+            90,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            94.75,
+            0,
+            95.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.25,
+            0,
+            81.25,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            70,
+            14.75,
+            71,
+            15.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            70,
+            30.75,
+            71,
+            31.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim near edge_07",
+      "type": "cube",
+      "uuid": "4d6a7695-8bfd-5e42-a4c3-30558f1b9c24",
+      "from": [
+        7,
+        23.1,
+        0.0
+      ],
+      "to": [
+        8,
+        24,
+        1.0
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            87,
+            0,
+            88,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            88,
+            0,
+            89,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.0,
+            0,
+            81.0,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            95.0,
+            0,
+            96.0,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            71,
+            0.0,
+            72,
+            1.0
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            71,
+            16.0,
+            72,
+            17.0
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim far edge_07",
+      "type": "cube",
+      "uuid": "8234cfd3-a035-5384-a641-536ea7139210",
+      "from": [
+        7,
+        23.1,
+        15.0
+      ],
+      "to": [
+        8,
+        24,
+        16.0
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            87,
+            0,
+            88,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            88,
+            0,
+            89,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            95.0,
+            0,
+            96.0,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.0,
+            0,
+            81.0,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            71,
+            15.0,
+            72,
+            16.0
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            71,
+            31.0,
+            72,
+            32.0
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim near edge_08",
+      "type": "cube",
+      "uuid": "2d43099c-45de-5989-b008-82ab8c9dff92",
+      "from": [
+        8,
+        23.1,
+        0.0
+      ],
+      "to": [
+        9,
+        24,
+        1.0
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            88,
+            0,
+            89,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            87,
+            0,
+            88,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.0,
+            0,
+            81.0,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            95.0,
+            0,
+            96.0,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            72,
+            0.0,
+            73,
+            1.0
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            72,
+            16.0,
+            73,
+            17.0
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim far edge_08",
+      "type": "cube",
+      "uuid": "3b1ae77a-2f93-59f1-b111-b02985805f6c",
+      "from": [
+        8,
+        23.1,
+        15.0
+      ],
+      "to": [
+        9,
+        24,
+        16.0
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            88,
+            0,
+            89,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            87,
+            0,
+            88,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            95.0,
+            0,
+            96.0,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.0,
+            0,
+            81.0,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            72,
+            15.0,
+            73,
+            16.0
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            72,
+            31.0,
+            73,
+            32.0
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim near edge_09",
+      "type": "cube",
+      "uuid": "2557b18b-a375-583b-b73a-525e8bbf926d",
+      "from": [
+        9,
+        23.1,
+        0.25
+      ],
+      "to": [
+        10,
+        24,
+        1.25
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            89,
+            0,
+            90,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            86,
+            0,
+            87,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.25,
+            0,
+            81.25,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            94.75,
+            0,
+            95.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            73,
+            0.25,
+            74,
+            1.25
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            73,
+            16.25,
+            74,
+            17.25
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim far edge_09",
+      "type": "cube",
+      "uuid": "d373bad9-2c5c-5f91-8d3c-498e4df3177d",
+      "from": [
+        9,
+        23.1,
+        14.75
+      ],
+      "to": [
+        10,
+        24,
+        15.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            89,
+            0,
+            90,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            86,
+            0,
+            87,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            94.75,
+            0,
+            95.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.25,
+            0,
+            81.25,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            73,
+            14.75,
+            74,
+            15.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            73,
+            30.75,
+            74,
+            31.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim near edge_10",
+      "type": "cube",
+      "uuid": "9ca311ad-164a-5eb7-888a-754d652b32b2",
+      "from": [
+        10,
+        23.1,
+        0.5
+      ],
+      "to": [
+        11,
+        24,
+        1.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            90,
+            0,
+            91,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            85,
+            0,
+            86,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.5,
+            0,
+            81.5,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            94.5,
+            0,
+            95.5,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            74,
+            0.5,
+            75,
+            1.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            74,
+            16.5,
+            75,
+            17.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim far edge_10",
+      "type": "cube",
+      "uuid": "fb2e3455-01e5-58d0-a70b-91343c67fbc4",
+      "from": [
+        10,
+        23.1,
+        14.5
+      ],
+      "to": [
+        11,
+        24,
+        15.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            90,
+            0,
+            91,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            85,
+            0,
+            86,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            94.5,
+            0,
+            95.5,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.5,
+            0,
+            81.5,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            74,
+            14.5,
+            75,
+            15.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            74,
+            30.5,
+            75,
+            31.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim near edge_11",
+      "type": "cube",
+      "uuid": "7df4c3de-e7b3-574d-b7bb-782ed650cc6c",
+      "from": [
+        11,
+        23.1,
+        0.75
+      ],
+      "to": [
+        12,
+        24,
+        2.0
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            91,
+            0,
+            92,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            84,
+            0,
+            85,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.75,
+            0,
+            82.0,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            94.0,
+            0,
+            95.25,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            75,
+            0.75,
+            76,
+            2.0
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            75,
+            16.75,
+            76,
+            18.0
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim far edge_11",
+      "type": "cube",
+      "uuid": "0c00acda-d747-56dc-82eb-11261e92d14e",
+      "from": [
+        11,
+        23.1,
+        14.0
+      ],
+      "to": [
+        12,
+        24,
+        15.25
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            91,
+            0,
+            92,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            84,
+            0,
+            85,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            94.0,
+            0,
+            95.25,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.75,
+            0,
+            82.0,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            75,
+            14.0,
+            76,
+            15.25
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            75,
+            30.0,
+            76,
+            31.25
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim near edge_12",
+      "type": "cube",
+      "uuid": "e732fae2-3d42-5470-8dae-53fc556754e8",
+      "from": [
+        12,
+        23.1,
+        1.5
+      ],
+      "to": [
+        13,
+        24,
+        2.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            92,
+            0,
+            93,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            83,
+            0,
+            84,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            81.5,
+            0,
+            82.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            93.25,
+            0,
+            94.5,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            76,
+            1.5,
+            77,
+            2.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            76,
+            17.5,
+            77,
+            18.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim far edge_12",
+      "type": "cube",
+      "uuid": "fac54097-23cd-5b0a-988c-d6ce99f51f63",
+      "from": [
+        12,
+        23.1,
+        13.25
+      ],
+      "to": [
+        13,
+        24,
+        14.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            92,
+            0,
+            93,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            83,
+            0,
+            84,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            93.25,
+            0,
+            94.5,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            81.5,
+            0,
+            82.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            76,
+            13.25,
+            77,
+            14.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            76,
+            29.25,
+            77,
+            30.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim near edge_13",
+      "type": "cube",
+      "uuid": "c0d0cd7c-30c8-5087-a89e-c6bcb6072277",
+      "from": [
+        13,
+        23.1,
+        2.25
+      ],
+      "to": [
+        14,
+        24,
+        3.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            93,
+            0,
+            94,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            82,
+            0,
+            83,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            82.25,
+            0,
+            83.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            92.25,
+            0,
+            93.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            77,
+            2.25,
+            78,
+            3.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            77,
+            18.25,
+            78,
+            19.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim far edge_13",
+      "type": "cube",
+      "uuid": "ac9dfafe-e936-57be-854e-6de332d409c7",
+      "from": [
+        13,
+        23.1,
+        12.25
+      ],
+      "to": [
+        14,
+        24,
+        13.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            93,
+            0,
+            94,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            82,
+            0,
+            83,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            92.25,
+            0,
+            93.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            82.25,
+            0,
+            83.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            77,
+            12.25,
+            78,
+            13.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            77,
+            28.25,
+            78,
+            29.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim near edge_14",
+      "type": "cube",
+      "uuid": "8453bd88-ec89-5155-b356-c941009620f9",
+      "from": [
+        14,
+        23.1,
+        3.25
+      ],
+      "to": [
+        15,
+        24,
+        5.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            94,
+            0,
+            95,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            81,
+            0,
+            82,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            83.25,
+            0,
+            85.5,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            90.5,
+            0,
+            92.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            78,
+            3.25,
+            79,
+            5.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            78,
+            19.25,
+            79,
+            21.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim far edge_14",
+      "type": "cube",
+      "uuid": "61376cbe-b636-5cff-9e06-21b4f2d2ea33",
+      "from": [
+        14,
+        23.1,
+        10.5
+      ],
+      "to": [
+        15,
+        24,
+        12.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            94,
+            0,
+            95,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            81,
+            0,
+            82,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            90.5,
+            0,
+            92.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            83.25,
+            0,
+            85.5,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            78,
+            10.5,
+            79,
+            12.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            78,
+            26.5,
+            79,
+            28.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Top rim ring edge_15",
+      "type": "cube",
+      "uuid": "7bc953e5-4d2d-5522-8995-3065c2b1e2fe",
+      "from": [
+        15,
+        23.1,
+        5.25
+      ],
+      "to": [
+        16,
+        24,
+        10.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 4,
+      "faces": {
+        "north": {
+          "uv": [
+            95,
+            0,
+            96,
+            0.9
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            80,
+            0,
+            81,
+            0.9
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            85.25,
+            0,
+            90.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            85.25,
+            0,
+            90.75,
+            0.9
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            79,
+            5.25,
+            80,
+            10.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            79,
+            21.25,
+            80,
+            26.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Recessed lid_01",
+      "type": "cube",
+      "uuid": "9722c609-ffc9-548c-8056-2c944b5f8308",
+      "from": [
+        1,
+        22.96,
+        5.0
+      ],
+      "to": [
+        2,
+        23.32,
+        11.0
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 5,
+      "faces": {
+        "north": {
+          "uv": [
+            81,
+            0.68,
+            82,
+            1.04
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            94,
+            0.68,
+            95,
+            1.04
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            85.0,
+            0.68,
+            91.0,
+            1.04
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            85.0,
+            0.68,
+            91.0,
+            1.04
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            65,
+            5.0,
+            66,
+            11.0
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            65,
+            21.0,
+            66,
+            27.0
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Recessed lid_02",
+      "type": "cube",
+      "uuid": "c220547e-ae6f-5ace-bd3b-eff126093dca",
+      "from": [
+        2,
+        22.96,
+        3.25
+      ],
+      "to": [
+        3,
+        23.32,
+        12.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 5,
+      "faces": {
+        "north": {
+          "uv": [
+            82,
+            0.68,
+            83,
+            1.04
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            93,
+            0.68,
+            94,
+            1.04
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            83.25,
+            0.68,
+            92.75,
+            1.04
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            83.25,
+            0.68,
+            92.75,
+            1.04
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            66,
+            3.25,
+            67,
+            12.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            66,
+            19.25,
+            67,
+            28.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Recessed lid_03",
+      "type": "cube",
+      "uuid": "bf8dd282-d590-5e4b-8ad9-6372e9c97b2a",
+      "from": [
+        3,
+        22.96,
+        2.5
+      ],
+      "to": [
+        4,
+        23.32,
+        13.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 5,
+      "faces": {
+        "north": {
+          "uv": [
+            83,
+            0.68,
+            84,
+            1.04
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            92,
+            0.68,
+            93,
+            1.04
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            82.5,
+            0.68,
+            93.5,
+            1.04
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            82.5,
+            0.68,
+            93.5,
+            1.04
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            67,
+            2.5,
+            68,
+            13.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            67,
+            18.5,
+            68,
+            29.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Recessed lid_04",
+      "type": "cube",
+      "uuid": "94577979-4cbe-5fbf-8744-bfec8dc795a5",
+      "from": [
+        4,
+        22.96,
+        1.75
+      ],
+      "to": [
+        5,
+        23.32,
+        14.25
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 5,
+      "faces": {
+        "north": {
+          "uv": [
+            84,
+            0.68,
+            85,
+            1.04
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            91,
+            0.68,
+            92,
+            1.04
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            81.75,
+            0.68,
+            94.25,
+            1.04
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            81.75,
+            0.68,
+            94.25,
+            1.04
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            68,
+            1.75,
+            69,
+            14.25
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            68,
+            17.75,
+            69,
+            30.25
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Recessed lid_05",
+      "type": "cube",
+      "uuid": "5a61f66c-11b2-591a-9737-0d972f85f897",
+      "from": [
+        5,
+        22.96,
+        1.25
+      ],
+      "to": [
+        6,
+        23.32,
+        14.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 5,
+      "faces": {
+        "north": {
+          "uv": [
+            85,
+            0.68,
+            86,
+            1.04
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            90,
+            0.68,
+            91,
+            1.04
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            81.25,
+            0.68,
+            94.75,
+            1.04
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            81.25,
+            0.68,
+            94.75,
+            1.04
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            69,
+            1.25,
+            70,
+            14.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            69,
+            17.25,
+            70,
+            30.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Recessed lid_06",
+      "type": "cube",
+      "uuid": "8de701aa-f912-51f0-a726-d15584949de6",
+      "from": [
+        6,
+        22.96,
+        1.0
+      ],
+      "to": [
+        7,
+        23.32,
+        15.0
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 5,
+      "faces": {
+        "north": {
+          "uv": [
+            86,
+            0.68,
+            87,
+            1.04
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            89,
+            0.68,
+            90,
+            1.04
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            81.0,
+            0.68,
+            95.0,
+            1.04
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            81.0,
+            0.68,
+            95.0,
+            1.04
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            70,
+            1.0,
+            71,
+            15.0
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            70,
+            17.0,
+            71,
+            31.0
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Recessed lid_07",
+      "type": "cube",
+      "uuid": "612d96c2-6302-5930-b1ff-f59813dc41f0",
+      "from": [
+        7,
+        22.96,
+        0.75
+      ],
+      "to": [
+        8,
+        23.32,
+        15.25
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 5,
+      "faces": {
+        "north": {
+          "uv": [
+            87,
+            0.68,
+            88,
+            1.04
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            88,
+            0.68,
+            89,
+            1.04
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.75,
+            0.68,
+            95.25,
+            1.04
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.75,
+            0.68,
+            95.25,
+            1.04
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            71,
+            0.75,
+            72,
+            15.25
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            71,
+            16.75,
+            72,
+            31.25
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Recessed lid_08",
+      "type": "cube",
+      "uuid": "c4dba106-7f8d-5163-b2de-8b7cae4a9c6a",
+      "from": [
+        8,
+        22.96,
+        0.75
+      ],
+      "to": [
+        9,
+        23.32,
+        15.25
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 5,
+      "faces": {
+        "north": {
+          "uv": [
+            88,
+            0.68,
+            89,
+            1.04
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            87,
+            0.68,
+            88,
+            1.04
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            80.75,
+            0.68,
+            95.25,
+            1.04
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            80.75,
+            0.68,
+            95.25,
+            1.04
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            72,
+            0.75,
+            73,
+            15.25
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            72,
+            16.75,
+            73,
+            31.25
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Recessed lid_09",
+      "type": "cube",
+      "uuid": "2668d0b1-5dfc-52c2-85c0-597d33c992b0",
+      "from": [
+        9,
+        22.96,
+        1.0
+      ],
+      "to": [
+        10,
+        23.32,
+        15.0
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 5,
+      "faces": {
+        "north": {
+          "uv": [
+            89,
+            0.68,
+            90,
+            1.04
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            86,
+            0.68,
+            87,
+            1.04
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            81.0,
+            0.68,
+            95.0,
+            1.04
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            81.0,
+            0.68,
+            95.0,
+            1.04
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            73,
+            1.0,
+            74,
+            15.0
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            73,
+            17.0,
+            74,
+            31.0
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Recessed lid_10",
+      "type": "cube",
+      "uuid": "938783bb-5f08-5077-84f3-5e2c5a3e7c87",
+      "from": [
+        10,
+        22.96,
+        1.25
+      ],
+      "to": [
+        11,
+        23.32,
+        14.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 5,
+      "faces": {
+        "north": {
+          "uv": [
+            90,
+            0.68,
+            91,
+            1.04
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            85,
+            0.68,
+            86,
+            1.04
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            81.25,
+            0.68,
+            94.75,
+            1.04
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            81.25,
+            0.68,
+            94.75,
+            1.04
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            74,
+            1.25,
+            75,
+            14.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            74,
+            17.25,
+            75,
+            30.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Recessed lid_11",
+      "type": "cube",
+      "uuid": "132adc7b-24ec-5b93-a0e5-af28e43accf1",
+      "from": [
+        11,
+        22.96,
+        1.75
+      ],
+      "to": [
+        12,
+        23.32,
+        14.25
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 5,
+      "faces": {
+        "north": {
+          "uv": [
+            91,
+            0.68,
+            92,
+            1.04
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            84,
+            0.68,
+            85,
+            1.04
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            81.75,
+            0.68,
+            94.25,
+            1.04
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            81.75,
+            0.68,
+            94.25,
+            1.04
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            75,
+            1.75,
+            76,
+            14.25
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            75,
+            17.75,
+            76,
+            30.25
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Recessed lid_12",
+      "type": "cube",
+      "uuid": "27fc359b-fb2a-5835-b2cc-57f5e871e2ea",
+      "from": [
+        12,
+        22.96,
+        2.5
+      ],
+      "to": [
+        13,
+        23.32,
+        13.5
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 5,
+      "faces": {
+        "north": {
+          "uv": [
+            92,
+            0.68,
+            93,
+            1.04
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            83,
+            0.68,
+            84,
+            1.04
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            82.5,
+            0.68,
+            93.5,
+            1.04
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            82.5,
+            0.68,
+            93.5,
+            1.04
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            76,
+            2.5,
+            77,
+            13.5
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            76,
+            18.5,
+            77,
+            29.5
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Recessed lid_13",
+      "type": "cube",
+      "uuid": "441de3e3-87c2-5f06-9e63-c03855e5f108",
+      "from": [
+        13,
+        22.96,
+        3.25
+      ],
+      "to": [
+        14,
+        23.32,
+        12.75
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 5,
+      "faces": {
+        "north": {
+          "uv": [
+            93,
+            0.68,
+            94,
+            1.04
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            82,
+            0.68,
+            83,
+            1.04
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            83.25,
+            0.68,
+            92.75,
+            1.04
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            83.25,
+            0.68,
+            92.75,
+            1.04
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            77,
+            3.25,
+            78,
+            12.75
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            77,
+            19.25,
+            78,
+            28.75
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Recessed lid_14",
+      "type": "cube",
+      "uuid": "bc6ffef9-4b62-579f-a7f2-e5fbb5a2a297",
+      "from": [
+        14,
+        22.96,
+        5.0
+      ],
+      "to": [
+        15,
+        23.32,
+        11.0
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 5,
+      "faces": {
+        "north": {
+          "uv": [
+            94,
+            0.68,
+            95,
+            1.04
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            81,
+            0.68,
+            82,
+            1.04
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            85.0,
+            0.68,
+            91.0,
+            1.04
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            85.0,
+            0.68,
+            91.0,
+            1.04
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            78,
+            5.0,
+            79,
+            11.0
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            78,
+            21.0,
+            79,
+            27.0
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Filler plug rim",
+      "type": "cube",
+      "uuid": "e77a5f33-5d07-5361-96ae-3f3a9c7d041d",
+      "from": [
+        10.0,
+        23.32,
+        6.5
+      ],
+      "to": [
+        12.9,
+        23.58,
+        9.4
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 6,
+      "faces": {
+        "north": {
+          "uv": [
+            96,
+            0,
+            100,
+            12
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            100,
+            0,
+            104,
+            12
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            104,
+            0,
+            108,
+            12
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            108,
+            0,
+            112,
+            12
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            112,
+            0,
+            116,
+            12
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            116,
+            0,
+            120,
+            12
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Filler plug nut",
+      "type": "cube",
+      "uuid": "a630aad8-f53a-52b0-9fbc-1f68bac55478",
+      "from": [
+        10.5,
+        23.58,
+        7.0
+      ],
+      "to": [
+        12.4,
+        23.96,
+        8.9
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 6,
+      "faces": {
+        "north": {
+          "uv": [
+            96,
+            0,
+            100,
+            12
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            100,
+            0,
+            104,
+            12
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            104,
+            0,
+            108,
+            12
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            108,
+            0,
+            112,
+            12
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            112,
+            0,
+            116,
+            12
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            116,
+            0,
+            120,
+            12
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
+      "name": "Flammable gas warning sign",
+      "type": "cube",
+      "uuid": "3096db22-c228-5d4b-8412-dde40db323f8",
+      "from": [
+        4.0,
+        8.6,
+        0.15
+      ],
+      "to": [
+        12.0,
+        16.0,
+        0.52
+      ],
+      "origin": [
+        8,
+        12,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "box_uv": false,
+      "autouv": 0,
+      "color": 7,
+      "faces": {
+        "north": {
+          "uv": [
+            96,
+            48,
+            112,
+            64
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            96,
+            48,
+            112,
+            64
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            96,
+            48,
+            97,
+            64
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            111,
+            48,
+            112,
+            64
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            96,
+            48,
+            112,
+            49
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            96,
+            63,
+            112,
+            64
+          ],
+          "texture": 0
+        }
+      }
+    }
+  ],
+  "outliner": [
+    {
+      "name": "01 | Red painted drum shell",
+      "origin": [
+        8,
+        0,
+        8
+      ],
+      "uuid": "cd38d933-803b-5c36-bfcb-44ad22b6023b",
+      "color": 0,
+      "export": true,
+      "isOpen": true,
+      "locked": false,
+      "visibility": true,
+      "children": [
+        "006cccfb-6640-5b80-9667-dde8c102c578",
+        "53ba25b2-79d4-511a-b9ba-8b6db940dd86",
+        "de2541a9-915f-5e99-b902-6ad1a9d7d6d9",
+        "5d85b4b0-7d50-56e4-baff-e90b6465463d",
+        "0f3104bb-fed8-5bb9-a885-45c74665ef0e",
+        "a16ea8d6-2583-538c-a5ed-849de67953a9",
+        "06105490-5185-5d39-9a08-2578797054ce",
+        "a99dc1d1-6619-5ef9-ace1-c7aa48b73612",
+        "cd752122-aa7b-5f62-adeb-101e6cfbdb20",
+        "45abecaa-15db-5416-a143-8ae62da994c0",
+        "e266d8fc-6d56-568f-aa52-b27262a24c4a",
+        "28a14a88-6f4f-598c-b1e5-22e6f0f82356",
+        "5b447bbc-d371-5e9e-a895-bc22ddfdf958",
+        "541d1b9f-289d-54f2-8344-138e261ae8bd"
+      ]
+    },
+    {
+      "name": "02 | Lower rolled rim",
+      "origin": [
+        8,
+        0,
+        8
+      ],
+      "uuid": "c3dd24d9-9488-57f7-aad4-25ee712a918d",
+      "color": 1,
+      "export": true,
+      "isOpen": false,
+      "locked": false,
+      "visibility": true,
+      "children": [
+        "f65c9f2a-cca4-5025-bc6a-b4ae831dc69d",
+        "31801b1d-2b39-5fdb-b44d-2e2bb4deb838",
+        "1c5b384f-89f0-5252-8154-f4953323bbc5",
+        "f6d492ab-e5a6-5fce-b5fb-84ae2eab67b4",
+        "7b247adf-f138-5add-854e-8c8267f76824",
+        "b302a7c5-2f6c-566a-a2f1-9f19ab5f175c",
+        "cc203dbd-c40c-5a14-8bdc-40040341b7fe",
+        "a36e16f3-b59e-57a3-91be-ebacd9336d55",
+        "54804d10-3c19-59df-b90b-4f85b3d09130",
+        "5004768a-e860-58e1-b696-dc3808ff5e21",
+        "fd6060aa-942d-5731-87f6-0714b3803bdb",
+        "7cf2f382-d99c-57a4-a939-67658c352184",
+        "cd72606f-6ad3-5a22-864e-f5490ff8f217",
+        "5475c6a5-295e-569b-8bcf-035da1d71f93",
+        "321a5a50-3b4a-5820-ac61-780fa5d119eb",
+        "0fb038e5-dc9a-50fa-ad79-05b63bf9bb46"
+      ]
+    },
+    {
+      "name": "03 | Reinforcing hoop A",
+      "origin": [
+        8,
+        0,
+        8
+      ],
+      "uuid": "cf003eba-1598-5f66-9781-2c9fd32b7198",
+      "color": 2,
+      "export": true,
+      "isOpen": false,
+      "locked": false,
+      "visibility": true,
+      "children": [
+        "3667da23-525f-56ed-84a9-b66ab2ac68fa",
+        "2c71a241-7951-5304-a0fa-0699ba390cec",
+        "515460c3-7758-5068-98b3-98a08417479f",
+        "6186f7dd-9555-5aa5-a60a-97bf081fdb27",
+        "fe2ee127-fce7-51ef-8402-3aa8fae8aec2",
+        "23df7da6-9778-5e64-9f7b-ae419fca29f4",
+        "c3a550c4-e3a5-5151-a153-4b2f0bcfea6f",
+        "7dccb5ac-e8fe-5aa8-8059-e6301d140896",
+        "a2195ab1-3766-56cf-8a60-03c3fb5efd8b",
+        "facbd276-334e-5b3f-bef9-f3ae2c7908a0",
+        "f707d24b-adc1-5f82-a081-c0c128727c72",
+        "1f599879-c988-5b8d-a99e-54b3e5a64d22",
+        "0c13fa25-644f-541c-aaa5-f43b6d3be82c",
+        "d1f07c93-ece5-5c75-b7b8-99b00ea63bc7",
+        "1ad74896-35f3-593a-9c6e-bf9cb7e5119a",
+        "12fc13ef-89ea-5787-ba6a-6355e3120934"
+      ]
+    },
+    {
+      "name": "04 | Reinforcing hoop B",
+      "origin": [
+        8,
+        0,
+        8
+      ],
+      "uuid": "42a55c16-9136-5e67-ba9a-58386c138a75",
+      "color": 3,
+      "export": true,
+      "isOpen": false,
+      "locked": false,
+      "visibility": true,
+      "children": [
+        "ad9e7a8c-aa39-58b9-bcca-13711a93d7bf",
+        "3bbe27f2-ad5c-588b-93c2-b0479b3739e0",
+        "a14d7269-8c0a-5d1a-9f6b-65e65b0cfdf6",
+        "db86cabd-703c-5f8b-9d5e-ff2b358776e0",
+        "a452bbef-dd6b-53b0-955a-dab34cad7ea1",
+        "7b572d22-d8c1-5921-91d4-781dec4913a7",
+        "55874593-5f19-5da1-8f01-bf95ad93a0b4",
+        "42caf009-bb3b-5c95-a3a3-db15fd3092da",
+        "f4c027c0-90a6-5af8-9ec8-6f1cb95d2ad5",
+        "854ebc3e-7e91-5ae7-b481-c78d3e103112",
+        "700adac1-a500-5271-ab2b-1fadbab0224f",
+        "5a5c3457-710d-5a64-9c6d-565ab3a2e0a0",
+        "99f2c630-c317-53a7-9412-a0e2f8eb0a85",
+        "9a6b62be-bb97-5c1f-ab9d-e0fa9c8cb491",
+        "473efb65-7abb-5010-8e8b-bbbda6396832",
+        "508bf731-9d1e-5bcf-a9cf-31a6235c9459"
+      ]
+    },
+    {
+      "name": "05 | Upper rolled rim",
+      "origin": [
+        8,
+        0,
+        8
+      ],
+      "uuid": "082e24ea-f103-5d97-8d11-308a2648422b",
+      "color": 4,
+      "export": true,
+      "isOpen": false,
+      "locked": false,
+      "visibility": true,
+      "children": [
+        "a6bb83a4-cf8d-5879-8d4a-e1ccb336ada3",
+        "cb979a03-ea06-5974-a2dd-f9c2bbdb8ac6",
+        "74bcc406-0c39-5327-bb85-17e0aeff587f",
+        "3ab7f192-bdcc-5017-a912-406dd850f35e",
+        "c98eb5b1-6ac9-5c94-8014-53336bf6df4b",
+        "74f0a65b-aa66-5a45-9027-f95a615181c3",
+        "f396927e-887d-5fca-8a2f-ee84aa6fb656",
+        "76b988af-19b0-5de0-8342-b30c93b206bb",
+        "7f38dd57-d2a3-594f-8665-d08824979efb",
+        "363a3596-7d9a-572f-9360-0fe56ff13391",
+        "5d31665f-59d2-5ae7-be76-eb421df704e1",
+        "20a3fbae-8a85-50df-8510-a07ca327168b",
+        "fa9d91bb-b556-5bba-bc93-546dc1bbdc1d",
+        "4d6a7695-8bfd-5e42-a4c3-30558f1b9c24",
+        "8234cfd3-a035-5384-a641-536ea7139210",
+        "2d43099c-45de-5989-b008-82ab8c9dff92",
+        "3b1ae77a-2f93-59f1-b111-b02985805f6c",
+        "2557b18b-a375-583b-b73a-525e8bbf926d",
+        "d373bad9-2c5c-5f91-8d3c-498e4df3177d",
+        "9ca311ad-164a-5eb7-888a-754d652b32b2",
+        "fb2e3455-01e5-58d0-a70b-91343c67fbc4",
+        "7df4c3de-e7b3-574d-b7bb-782ed650cc6c",
+        "0c00acda-d747-56dc-82eb-11261e92d14e",
+        "e732fae2-3d42-5470-8dae-53fc556754e8",
+        "fac54097-23cd-5b0a-988c-d6ce99f51f63",
+        "c0d0cd7c-30c8-5087-a89e-c6bcb6072277",
+        "ac9dfafe-e936-57be-854e-6de332d409c7",
+        "8453bd88-ec89-5155-b356-c941009620f9",
+        "61376cbe-b636-5cff-9e06-21b4f2d2ea33",
+        "7bc953e5-4d2d-5522-8995-3065c2b1e2fe"
+      ]
+    },
+    {
+      "name": "06 | Recessed steel lid",
+      "origin": [
+        8,
+        0,
+        8
+      ],
+      "uuid": "5a07a985-bc44-5837-8719-dc1713a02285",
+      "color": 5,
+      "export": true,
+      "isOpen": false,
+      "locked": false,
+      "visibility": true,
+      "children": [
+        "9722c609-ffc9-548c-8056-2c944b5f8308",
+        "c220547e-ae6f-5ace-bd3b-eff126093dca",
+        "bf8dd282-d590-5e4b-8ad9-6372e9c97b2a",
+        "94577979-4cbe-5fbf-8744-bfec8dc795a5",
+        "5a61f66c-11b2-591a-9737-0d972f85f897",
+        "8de701aa-f912-51f0-a726-d15584949de6",
+        "612d96c2-6302-5930-b1ff-f59813dc41f0",
+        "c4dba106-7f8d-5163-b2de-8b7cae4a9c6a",
+        "2668d0b1-5dfc-52c2-85c0-597d33c992b0",
+        "938783bb-5f08-5077-84f3-5e2c5a3e7c87",
+        "132adc7b-24ec-5b93-a0e5-af28e43accf1",
+        "27fc359b-fb2a-5835-b2cc-57f5e871e2ea",
+        "441de3e3-87c2-5f06-9e63-c03855e5f108",
+        "bc6ffef9-4b62-579f-a7f2-e5fbb5a2a297"
+      ]
+    },
+    {
+      "name": "07 | Filler plug",
+      "origin": [
+        8,
+        0,
+        8
+      ],
+      "uuid": "20943522-623b-543a-9f93-5231fd4cbca3",
+      "color": 6,
+      "export": true,
+      "isOpen": false,
+      "locked": false,
+      "visibility": true,
+      "children": [
+        "e77a5f33-5d07-5361-96ae-3f3a9c7d041d",
+        "a630aad8-f53a-52b0-9fbc-1f68bac55478"
+      ]
+    },
+    {
+      "name": "08 | Hazard warning plaque",
+      "origin": [
+        8,
+        0,
+        8
+      ],
+      "uuid": "75820bbc-0d81-5714-a004-61d71d0f6afd",
+      "color": 7,
+      "export": true,
+      "isOpen": false,
+      "locked": false,
+      "visibility": true,
+      "children": [
+        "3096db22-c228-5d4b-8412-dde40db323f8"
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "path": "red_gas_drum_texture.png",
+      "name": "red_gas_drum_texture.png",
+      "folder": "",
+      "namespace": "yourmod",
+      "id": "0",
+      "particle": false,
+      "render_mode": "default",
+      "visible": true,
+      "mode": "bitmap",
+      "saved": true,
+      "uuid": "fc855118-e159-5d0d-b586-38cb54b3d4a3",
+      "source": "data:image/png;base64,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"
+    }
+  ],
+  "display": {
+    "thirdperson_righthand": {
+      "rotation": [
+        75,
+        45,
+        0
+      ],
+      "translation": [
+        0,
+        2.5,
+        0
+      ],
+      "scale": [
+        0.35,
+        0.35,
+        0.35
+      ]
+    },
+    "thirdperson_lefthand": {
+      "rotation": [
+        75,
+        45,
+        0
+      ],
+      "translation": [
+        0,
+        2.5,
+        0
+      ],
+      "scale": [
+        0.35,
+        0.35,
+        0.35
+      ]
+    },
+    "firstperson_righthand": {
+      "rotation": [
+        0,
+        45,
+        0
+      ],
+      "translation": [
+        0,
+        1,
+        0
+      ],
+      "scale": [
+        0.45,
+        0.45,
+        0.45
+      ]
+    },
+    "firstperson_lefthand": {
+      "rotation": [
+        0,
+        225,
+        0
+      ],
+      "translation": [
+        0,
+        1,
+        0
+      ],
+      "scale": [
+        0.45,
+        0.45,
+        0.45
+      ]
+    },
+    "ground": {
+      "translation": [
+        0,
+        2.5,
+        0
+      ],
+      "scale": [
+        0.28,
+        0.28,
+        0.28
+      ]
+    },
+    "gui": {
+      "rotation": [
+        25,
+        45,
+        0
+      ],
+      "translation": [
+        0,
+        -3.0,
+        0
+      ],
+      "scale": [
+        0.53,
+        0.53,
+        0.53
+      ]
+    },
+    "fixed": {
+      "rotation": [
+        0,
+        180,
+        0
+      ],
+      "translation": [
+        0,
+        -2.4,
+        0
+      ],
+      "scale": [
+        0.58,
+        0.58,
+        0.58
+      ]
+    }
+  }
+}

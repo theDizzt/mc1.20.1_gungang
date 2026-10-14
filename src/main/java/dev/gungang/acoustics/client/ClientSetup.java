@@ -27,10 +27,13 @@ public final class ClientSetup {
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.ORDNANCE.get(),OrdnanceRenderer::new);
     }
     @SubscribeEvent public static void blockColors(net.minecraftforge.client.event.RegisterColorHandlersEvent.Block event) {
+        event.register((state,level,pos,tint)->level!=null&&pos!=null?net.minecraft.client.renderer.BiomeColors.getAverageWaterColor(level,pos):0x3F76E4,dev.gungang.acoustics.server.GimmickBlocks.PUDDLE.get());
         event.register((state,level,pos,tint)->LobbyClient.options.color("ALPHA"),dev.gungang.acoustics.server.StationBlocks.ALPHA.get());
         event.register((state,level,pos,tint)->LobbyClient.options.color("BRAVO"),dev.gungang.acoustics.server.StationBlocks.BRAVO.get());
     }
     @SubscribeEvent public static void itemColors(net.minecraftforge.client.event.RegisterColorHandlersEvent.Item event) {
+        event.register(new net.minecraftforge.client.model.DynamicFluidContainerModel.Colors(),dev.gungang.acoustics.server.GimmickBlocks.ACID_BUCKET.get());
+        event.register((stack,tint)->0x3F76E4,dev.gungang.acoustics.server.GimmickBlocks.PUDDLE.get());
         event.register((stack,tint)->tint==0?0xCC2020:0xFFFFFF,dev.gungang.acoustics.server.GadgetItems.MOLOTOV.get());
         event.register((stack,tint)->tint==0?0xFFE033:0xFFFFFF,dev.gungang.acoustics.server.GadgetItems.ADRENALINE.get());
         event.register((stack,tint)->LobbyClient.options.color("ALPHA"),dev.gungang.acoustics.server.StationBlocks.ALPHA.get());

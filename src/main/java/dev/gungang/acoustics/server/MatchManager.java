@@ -20,6 +20,18 @@ public final class MatchManager {
     private static CaptureGame capture;
     private static NormandyGame normandy;
     private static DeathmatchRules deathmatch;
+    private static BombMatch bomb;
+    public static BombMatch bomb(){return bomb;}
+    public static void deathZone(ServerPlayer player){
+        if(map==null||!java.util.Set.of("ALPHA","BRAVO").contains(LobbyManager.team(player.getUUID()))||player.isSpectator()||!player.isAlive())return;
+        boolean died;
+        if(bomb!=null){
+            if(bomb.dead(player.getUUID())||bomb.game.phase()==BombGame.Phase.ROUND_END)return;
+            bomb.eliminate(player);died=true;
+            for(var p:server.getPlayerList().getPlayers())p.sendSystemMessage(net.minecraft.network.chat.Component.literal(player.getGameProfile().getName()+" 님이 데스존에서 자살했습니다."));
+        }else died=LobbyManager.beginRespawn(player,null,true);
+        if(died)ledger.death(player.getUUID(),player.getUUID(),server.getTickCount(),deathmatch!=null);
+    }
     private static boolean contested;
     private static ZonedDateTime started;
     private static boolean running;
@@ -32,6 +44,7 @@ public final class MatchManager {
         deathmatch=teamDeathmatch;
         server=s; map=arena; ledger=new MatchLedger(); capture=new CaptureGame(); ticks=0; running=false;
         normandy=arena.normandy()==null?null:new NormandyGame(arena.normandy());
+        bomb=arena.bomb()==null?null:new BombMatch(s,arena);
         presence.clear(); contested=false;
         started=ZonedDateTime.now();
         for (var p:s.getPlayerList().getPlayers()) ledger.add(p.getUUID(),p.getGameProfile().getName(),LobbyManager.team(p.getUUID()));
@@ -40,9 +53,15 @@ public final class MatchManager {
         send(snapshot(false,"",LobbyManager.preparationSeconds(arena)));
         LogUtils.getLogger().info("[GunGang] MATCH PREPARE date={} map={} ({}) dimension={} timeLimitSeconds={}",started,map.name(),map.id(),map.dimension(),map.timeLimitSeconds());
     }
-    public static void start() { GimmickEpoch.reset(server);running=true; started=ZonedDateTime.now(); LogUtils.getLogger().info("[GunGang] MATCH START date={} map={} ({})",started,map.name(),map.id()); }
+    public static void start() { GimmickEpoch.reset(server);if(!running)started=ZonedDateTime.now();running=true; LogUtils.getLogger().info("[GunGang] MATCH START date={} map={} ({})",started,map.name(),map.id()); }
     public static void tick(int preparationSeconds) {
         if(map==null)return;
+        if(bomb!=null){
+            if(running){ticks++;for(var p:server.getPlayerList().getPlayers())if(!LobbyManager.team(p.getUUID()).equals("SPECTATOR"))ledger.played(p.getUUID());}
+            bomb.tick();
+            if(map!=null&&server.getTickCount()%4==0)send(snapshot(false,"",preparationSeconds));
+            return;
+        }
         if(running) {
             ticks++;
             if(deathmatch!=null) {
@@ -97,10 +116,11 @@ public final class MatchManager {
         var point=map.capture()==null?null:new MatchSnapshot.Capture(map.capture().name(),capture.progress(),contested,capture.scoringOwner(),map.capture().winningScore());
         if(normandy!=null) point=new MatchSnapshot.Capture(normandy.point().name(),-normandy.percent(),contested,-1,4,"NORMANDY",normandy.stage());
         if(deathmatch!=null) point=new MatchSnapshot.Capture("",0,false,0,deathmatch.winningKills(),"DEATHMATCH",0);
-        return new MatchSnapshot(!result,result,map.name(),running?"RUNNING":"PREPARING",seconds,!running||map.timeLimitSeconds()>0,winner,alphaScore(),bravoScore(),ledger.rows(),point,LobbyManager.options(),LobbyManager.respawns(),ticks/20,map.weather(),map.dimension());
+        if(bomb!=null){point=new MatchSnapshot.Capture("",0,false,0,map.bomb().winsRequired(),"BOMB",bomb.game.round());if(!result)seconds=(bomb.game.remainingTicks()+19)/20;}
+        return new MatchSnapshot(!result,result,map.name(),bomb!=null?bomb.game.phase().name():running?"RUNNING":"PREPARING",seconds,!running||map.timeLimitSeconds()>0,winner,alphaScore(),bravoScore(),ledger.rows(),point,LobbyManager.options(),LobbyManager.respawns(),ticks/20,map.weather(),map.dimension(),bomb==null?null:bomb.view(),map.timeOfDay());
     }
-    private static int alphaScore() { return deathmatch!=null?ledger.kills("ALPHA"):normandy==null?capture.alphaScore():4-normandy.stage(); }
-    private static int bravoScore() { return deathmatch!=null?ledger.kills("BRAVO"):normandy==null?capture.bravoScore():normandy.stage(); }
+    private static int alphaScore() { return bomb!=null?bomb.game.alphaScore():deathmatch!=null?ledger.kills("ALPHA"):normandy==null?capture.alphaScore():4-normandy.stage(); }
+    private static int bravoScore() { return bomb!=null?bomb.game.bravoScore():deathmatch!=null?ledger.kills("BRAVO"):normandy==null?capture.bravoScore():normandy.stage(); }
     public static ArenaMap.Spawn attackSpawn() { return normandy==null?null:normandy.point().attackSpawn(); }
     private static void markObjective() {
         var p=normandy.point(); var c=p.center();
@@ -124,7 +144,7 @@ public final class MatchManager {
             Path file=MatchReport.save(ServerFiles.root().resolve("result"),map,result,started,ended);
             LogUtils.getLogger().info("[GunGang] Result saved: {}",file.toAbsolutePath());
         } catch(Exception error) { LogUtils.getLogger().error("[GunGang] Could not save match result",error); }
-        floor.reset();NormandyBeacon.get(server).restore(server);presence.clear(); send(result); map=null; running=false;
+        floor.reset();NormandyBeacon.get(server).restore(server);presence.clear(); send(result);if(bomb!=null)bomb.close();bomb=null; map=null; running=false;
     }
     public static String format(int seconds) { return MatchReport.time(seconds); }
     @SubscribeEvent(priority=EventPriority.LOWEST) public static void damage(LivingDamageEvent event) {
@@ -135,6 +155,15 @@ public final class MatchManager {
     @SubscribeEvent(priority=EventPriority.LOWEST) public static void death(LivingDeathEvent event) {
         if(!running||map==null||event.isCanceled())return;
         if(event.getEntity() instanceof ServerPlayer victim) {
+            if(bomb!=null){
+                if(!java.util.Set.of("ALPHA","BRAVO").contains(LobbyManager.team(victim.getUUID())))return;
+                if(bomb.dead(victim.getUUID())||!bomb.activePlay()){victim.setHealth(victim.getMaxHealth());event.setCanceled(true);return;}
+                var killer=event.getSource().getEntity() instanceof ServerPlayer p?p:null;
+                ledger.death(victim.getUUID(),killer==null?null:killer.getUUID(),server.getTickCount(),false);
+                var message=victim.getCombatTracker().getDeathMessage();bomb.eliminate(victim);event.setCanceled(true);
+                for(var p:server.getPlayerList().getPlayers())p.sendSystemMessage(message);
+                return;
+            }
             if(LobbyManager.respawning(victim.getUUID())) {
                 victim.setHealth(victim.getMaxHealth()); event.setCanceled(true); return;
             }

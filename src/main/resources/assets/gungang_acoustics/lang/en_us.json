@@ -1,4 +1,6 @@
 {
+  "itemGroup.gungang.blocks": "GunGang Blocks",
+  "itemGroup.gungang.items": "GunGang Items",
   "key.gungang.lobby": "Reopen match lobby",
   "key.gungang.loadout": "Spawn-area loadout selection",
   "key.categories.gungang": "GunGang",
@@ -30,7 +32,6 @@
   "gungang.options.hudOffsetY.tip": "Distance from the bottom edge (0–4096). One unit is two framebuffer pixels. Higher moves up.",
   "gungang.options.minimumEffectVolume": "Minimum sound volume (%)",
   "gungang.options.minimumEffectVolume.tip": "0–100%, default 16%. Floor for wall transmission. Distance, source volume and mute controls remain effective.",
-  "gungang.key.category": "GunGangRealistic - Offhand Items",
   "gungang.key.offhand.attack": "Offhand attack and return",
   "gungang.key.offhand.use": "Offhand use and return",
   "gungang.options.keyBindings": "Offhand key bindings (default G / H)",
@@ -134,6 +135,9 @@
   "block.gungang.cracked_green_concrete": "Cracked Green Concrete",
   "block.gungang.cracked_red_concrete": "Cracked Red Concrete",
   "block.gungang.cracked_black_concrete": "Cracked Black Concrete",
-  "item.gungang.acid_bucket": "Acid Bucket",
-  "fluid_type.gungang.acid": "Acid"
+  "item.gungang.acid_bucket": "Bucket of Acid",
+  "fluid_type.gungang.acid": "Acid",
+  "item.gungang.bomb": "Bomb",
+  "item.gungang.defuser": "Defuser",
+  "block.gungang.planted_bomb": "Planted Bomb"
 }

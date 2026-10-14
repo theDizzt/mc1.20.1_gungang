@@ -22,6 +22,7 @@ public final class PreviewSmokeChecks {
         try {
             if(stage==0){
                 if(!(mc.screen instanceof TitleScreen)||mc.getOverlay()!=null)return;
+                if(!OffhandMacro.USE.getCategory().equals(LobbyClient.LOBBY.getCategory())||!OffhandMacro.ATTACK.getCategory().equals(LobbyClient.LOBBY.getCategory()))throw new AssertionError("Offhand keys must share the GunGang category");
                 mc.options.guiScale().set(2);mc.resizeDisplay();
                 var bow=new Loadouts.Weapon("bow","{id:'minecraft:bow',Count:1b}","훈련용 활","드래그로 실제 아이템 모델을 확인합니다.",new Loadouts.Specs("30","85%","높음","60m","수동"),"사용 키를 누른 뒤 놓아 발사합니다.","활",100d,100d,0d);
                 var crossbow=new Loadouts.Weapon("crossbow","{id:'minecraft:crossbow',Count:1b}","석궁","",new Loadouts.Specs("60","70%","보통","80m","수동"),"","석궁",150d,80d,0d);
@@ -31,16 +32,18 @@ public final class PreviewSmokeChecks {
                 stage=1;ticks=0;
             }else if(++ticks==30){
                 Path directory=Path.of("../build/ui-smoke");Files.createDirectories(directory);
-                try(var image=net.minecraft.client.Screenshot.takeScreenshot(mc.getMainRenderTarget())){image.writeToFile(directory.resolve(stage==1?"loadout.png":stage==2?"maps.png":stage==3?"teams.png":stage==4?"furniture.png":stage==5?"gadgets.png":stage==6?"shield-pose.png":"shield-first-person.png"));}
+                try(var image=net.minecraft.client.Screenshot.takeScreenshot(mc.getMainRenderTarget())){image.writeToFile(directory.resolve(stage==1?"loadout.png":stage==2?"maps.png":stage==3?"teams.png":stage==4?"furniture.png":stage==5?"gadgets.png":stage==6?"shield-pose.png":stage==7?"shield-first-person.png":stage==8?"gimmicks.png":"bomb.png"));}
                 if(stage==1){
-                    var view=new LobbySnapshot.MapView("preview","사찰 거점","전장 미리보기 테스트",600,"쟁탈전",true,"test.png");
-                    var screen=new LobbyScreen(new LobbySnapshot(true,true,false,"tester","preview","LOBBY",0,List.of(view),List.of(),TeamOptions.defaults(),"CONTROL"));
+                    var view=new LobbySnapshot.MapView("01","일리오스","전장 미리보기 테스트",600,"쟁탈전",true,"test.png");
+                    var screen=new LobbyScreen(new LobbySnapshot(true,true,false,"tester","01","LOBBY",0,List.of(view),List.of(),TeamOptions.defaults(),"CONTROL"));
                     mc.setScreen(screen);
                     try(var image=new com.mojang.blaze3d.platform.NativeImage(320,180,false)){
                         for(int y=0;y<180;y++)for(int x=0;x<320;x++)image.setPixelRGBA(x,y,0xFF000000|((x*255/320)<<16)|((y*255/180)<<8)|0x30);
-                        PreviewCache.map(new GungangNetwork.MapPreview("preview",image.asByteArray(),""));
+                        PreviewCache.map(new GungangNetwork.MapPreview("01",image.asByteArray(),""));
                     }
                     screen.mouseClicked(screen.left()+screen.body()-30,65,0);
+                    var generated=directory.resolve("generated-map.png");
+                    if(Files.exists(generated))PreviewCache.map(new GungangNetwork.MapPreview("01",Files.readAllBytes(generated),""));
                     stage=2;ticks=0;
                 }else if(stage==2){
                     var view=new LobbySnapshot.MapView("preview","사찰 거점","전장 미리보기 테스트",600,"쟁탈전",true,"test.png");
@@ -51,9 +54,25 @@ public final class PreviewSmokeChecks {
                 else if(stage==5){mc.setScreen(new ShieldPoseScreen());stage=6;ticks=0;}
                 else if(stage==6){mc.setScreen(new ShieldFirstPersonScreen());stage=7;ticks=0;}
                 else if(stage==7){mc.setScreen(new GimmickScreen());stage=8;ticks=0;}
+                else if(stage==8){mc.setScreen(new BombScreen());stage=9;ticks=0;}
                 else {System.out.println("GUNGANG_PREVIEW_SMOKE_PASS");mc.stop();stage=9;}
             }
         }catch(Throwable failure){failure.printStackTrace();System.out.println("GUNGANG_PREVIEW_SMOKE_FAIL");mc.stop();stage=3;}
+    }
+    private static final class BombScreen extends net.minecraft.client.gui.screens.Screen {
+        BombScreen(){super(net.minecraft.network.chat.Component.literal("Bomb mode preview"));}
+        @Override public void render(net.minecraft.client.gui.GuiGraphics g,int mx,int my,float partial){
+            g.fill(0,0,width,height,0xFF283440);
+            var rules=BombRules.defaults();var view=new BombMatch.View(1,5,"ALPHA","RUNNING",rules.pointA(),rules.pointB(),"A",900,"minecraft:overworld");
+            var snapshot=new MatchSnapshot(true,false,"폭탄전","RUNNING",210,true,"",2,1,List.of(),new MatchSnapshot.Capture("",0,false,0,3,"BOMB",1),TeamOptions.defaults(),List.of(),0,"clear","minecraft:overworld",view);
+            DeathmatchHud.draw(g,snapshot);
+            var items=List.of(GadgetItems.BOMB.get(),GadgetItems.DEFUSER.get());
+            for(int i=0;i<items.size();i++){
+                int x=width*(i*2+1)/4;
+                g.pose().pushPose();g.pose().translate(x-48,height/2-48,0);g.pose().scale(6,6,1);g.renderItem(new ItemStack(items.get(i)),0,0);g.pose().popPose();
+                String text=i==0?"98 · 폭탄":"99 · 폭탄 해체기";g.drawString(font,text,x-font.width(text)/2,height/2+65,0xFFFFFFFF);
+            }
+        }
     }
     private static final class GimmickScreen extends net.minecraft.client.gui.screens.Screen {
         GimmickScreen(){super(net.minecraft.network.chat.Component.literal("Gimmicks"));}
