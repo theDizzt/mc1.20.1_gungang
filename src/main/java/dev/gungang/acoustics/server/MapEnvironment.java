@@ -19,10 +19,22 @@ public final class MapEnvironment {
         if(level==null)return;
         var data=server.getWorldData().overworldData();oldTime=level.getDayTime();clear=data.getClearWeatherTime();rain=data.getRainTime();thunder=data.getThunderTime();raining=data.isRaining();thundering=data.isThundering();
         time=switch(map.timeOfDay()){case "dusk"->12000;case "night"->18000;case "dawn"->23000;default->6000;};
-        wet=map.weather().equals("rain")||map.weather().equals("snow");apply();
+        wet=map.weather().equals("rain")||map.weather().equals("snow");apply();sync(level,true);
     }
-    private static void apply(){if(level!=null){level.setDayTime(time);level.setWeatherParameters(wet?0:6000,6000,wet,false);}}
-    public static void restore(){if(level!=null){level.setDayTime(oldTime);var d=level.getServer().getWorldData().overworldData();d.setClearWeatherTime(clear);d.setRainTime(rain);d.setThunderTime(thunder);d.setRaining(raining);d.setThundering(thundering);level=null;}}
+    private static void apply(){if(level!=null){level.setDayTime(time);level.setWeatherParameters(wet?0:6000,6000,wet,false);level.setRainLevel(wet?1:0);level.setThunderLevel(0);if(level.getServer().getTickCount()%20==0)sync(level,true);}}
+    private static void sync(ServerLevel target,boolean frozen){
+        for(var player:target.players()){
+            player.connection.send(new net.minecraft.network.protocol.game.ClientboundSetTimePacket(target.getGameTime(),target.getDayTime(),!frozen&&target.getGameRules().getBoolean(net.minecraft.world.level.GameRules.RULE_DAYLIGHT)));
+            player.connection.send(new net.minecraft.network.protocol.game.ClientboundGameEventPacket(target.isRaining()?net.minecraft.network.protocol.game.ClientboundGameEventPacket.START_RAINING:net.minecraft.network.protocol.game.ClientboundGameEventPacket.STOP_RAINING,0));
+            player.connection.send(new net.minecraft.network.protocol.game.ClientboundGameEventPacket(net.minecraft.network.protocol.game.ClientboundGameEventPacket.RAIN_LEVEL_CHANGE,target.getRainLevel(1)));
+            player.connection.send(new net.minecraft.network.protocol.game.ClientboundGameEventPacket(net.minecraft.network.protocol.game.ClientboundGameEventPacket.THUNDER_LEVEL_CHANGE,target.getThunderLevel(1)));
+        }
+    }
+    public static void resetDefaults(MinecraftServer server){
+        restore();
+        for(var world:server.getAllLevels()){world.setDayTime(6000);world.setWeatherParameters(6000,0,false,false);world.setRainLevel(0);world.setThunderLevel(0);sync(world,false);}
+    }
+    public static void restore(){if(level!=null){level.setDayTime(oldTime);var d=level.getServer().getWorldData().overworldData();d.setClearWeatherTime(clear);d.setRainTime(rain);d.setThunderTime(thunder);d.setRaining(raining);d.setThundering(thundering);level.setRainLevel(raining?1:0);level.setThunderLevel(thundering?1:0);sync(level,false);level=null;}}
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent event){if(event.phase==TickEvent.Phase.END)apply();}
     @SubscribeEvent public static void stop(net.minecraftforge.event.server.ServerStoppingEvent event){restore();}
     private MapEnvironment(){}

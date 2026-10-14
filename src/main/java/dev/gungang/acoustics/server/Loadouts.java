@@ -85,9 +85,12 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
         ensureGadgets(directory.resolve("sub_weapons"));
         ensureCombatGadgets(directory.resolve("sub_weapons"));
         ensureOrdnance(directory.resolve("sub_weapons"));
+        BombEquipment.load(directory.resolve("sub_weapons"));
         Loadouts result = new Loadouts(readCategory(directory.resolve("weapons")), readCategory(directory.resolve("sub_weapons")),
                 Files.exists(slot9) ? ServerFiles.GSON.fromJson(read(slot9, 65536), Weapon.class) : null);
         validate(result);
+        result=new Loadouts(result.primary().stream().filter(w->!BombEquipment.reserved(w)).toList(),result.secondary().stream().filter(w->!BombEquipment.reserved(w)).toList(),result.slot9());
+        if(result.primary().isEmpty()||result.secondary().isEmpty())throw new IllegalArgumentException("Configure at least one selectable weapon per category");
         return result;
     }
     private static void ensureGadgets(Path directory) throws java.io.IOException {

@@ -34,7 +34,9 @@ final class LobbyScreen extends ArenaScreen {
         for (int i = page * capacity(); maps && i < Math.min(count, (page + 1) * capacity()); i++) {
             int y = 85 + (i - page * capacity()) * 27;
                 var map = state.maps().get(i);
-                var label = state.selectedMap().equals(map.id()) ? Component.literal("● ").withStyle(s -> s.withColor(ACCENT & 0xFFFFFF)).append(Component.literal(map.name())) : Component.literal(map.name());
+                var label = Component.empty();
+                if(state.selectedMap().equals(map.id()))label.append(Component.literal("● ").withStyle(s->s.withColor(ACCENT&0xFFFFFF)));
+                label.append(Component.literal(map.id()+"  ").withStyle(s->s.withColor(0xC8B060))).append(Component.literal(map.name()));
                 listButton(label, x, y, Math.max(90,w/3), 24,
                         true,map.id().equals(previewMap)?ACCENT:MUTED, () -> {previewMap=map.id();if(state.administrator())LobbyClient.action("map", map.id(), "");rebuildWidgets();});
         }
@@ -52,7 +54,8 @@ final class LobbyScreen extends ArenaScreen {
         if(maps) {
             var selected=state.maps().stream().filter(m->m.id().equals(state.selectedMap())).findFirst().orElse(null);
             boolean allowed=state.administrator()&&selected!=null&&selected.deathmatch();
-            button("쟁탈전",x,height-64,half,20,allowed,"CONTROL".equals(state.selectedMode())?ACCENT:MUTED,()->LobbyClient.action("mode","CONTROL",""));
+            String objectiveMode=selected!=null&&selected.bomb()?"BOMB":"CONTROL";
+            button(objectiveMode.equals("BOMB")?"폭탄전":"쟁탈전",x,height-64,half,20,allowed&&!selected.deathmatchOnly(),objectiveMode.equals(state.selectedMode())?ACCENT:MUTED,()->LobbyClient.action("mode",objectiveMode,""));
             button("팀 데스매치",x+half+8,height-64,half,20,allowed,"DEATHMATCH".equals(state.selectedMode())?ACCENT:MUTED,()->LobbyClient.action("mode","DEATHMATCH",""));
         } else {
         colorButton("Team ALPHA", x, height - 64, third, 20, !maps, LobbyClient.options.color("ALPHA"), () -> LobbyClient.action("team", "ALPHA", target));
@@ -82,7 +85,7 @@ final class LobbyScreen extends ArenaScreen {
     }
     @Override public void render(GuiGraphics g, int mouseX, int mouseY, float partial) {
         var selectedMap = state.maps().stream().filter(m -> m.id().equals(state.selectedMap())).map(LobbySnapshot.MapView::name).findFirst();
-        String mode="DEATHMATCH".equals(state.selectedMode())?"팀 데스매치":"NORMANDY".equals(state.selectedMode())?"노르망디":"쟁탈전";
+        String mode="BOMB".equals(state.selectedMode())?"폭탄전":"DEATHMATCH".equals(state.selectedMode())?"팀 데스매치":"NORMANDY".equals(state.selectedMode())?"노르망디":"쟁탈전";
         var subtitle = Component.empty()
                 .append(Component.literal(selectedMap.orElse("활성 맵 없음 · 서버 config/gungang/server/maps의 enabled 확인")).withStyle(s -> s.withColor((selectedMap.isPresent() ? INK : 0xFFE08060) & 0xFFFFFF)))
                 .append(Component.literal(" · ").withStyle(s -> s.withColor(DIM & 0xFFFFFF)))

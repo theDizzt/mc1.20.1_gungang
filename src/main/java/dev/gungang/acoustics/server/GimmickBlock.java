@@ -12,7 +12,7 @@ import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.*;
 import net.minecraft.world.phys.shapes.*;
 
-public final class GimmickBlock extends BaseEntityBlock {
+public class GimmickBlock extends BaseEntityBlock {
     public static final BooleanProperty ACTIVE=BooleanProperty.create("active"),TOP=BooleanProperty.create("top");
     public final String id;
     public GimmickBlock(String id){super(Properties.of().strength(-1,3600000).noOcclusion().isViewBlocking((s,l,p)->false).isSuffocating((s,l,p)->false).sound(id.contains("glass")?SoundType.GLASS:id.contains("planks")?SoundType.WOOD:SoundType.METAL));this.id=id;registerDefaultState(stateDefinition.any().setValue(ACTIVE,true).setValue(TOP,false));}

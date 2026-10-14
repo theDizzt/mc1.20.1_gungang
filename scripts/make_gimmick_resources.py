@@ -20,9 +20,6 @@ cracks=Image.new('RGBA',(16,16));d=ImageDraw.Draw(cracks)
 for points in [[(4,0),(6,4),(5,7),(8,10),(7,15)],[(6,4),(11,5),(15,3)],[(5,7),(1,10),(0,14)],[(8,10),(12,12),(15,11)]]:
     d.line(points,fill=(25,24,21,210),width=1)
 texture('gimmick_cracks',cracks)
-water=Image.new('RGBA',(16,16),(57,125,211,150));wd=ImageDraw.Draw(water)
-for y in [2,7,12]:wd.line((2,y,12,y),fill=(129,192,240,145));wd.line((4,y+1,14,y+1),fill=(83,157,226,150))
-texture('puddle_water',water)
 for name,color in [('barrel_red',(155,33,24,255)),('uxo_green',(83,87,48,255)),('nozzle_metal',(116,127,133,255))]:
     im=Image.new('RGBA',(16,16),color);d=ImageDraw.Draw(im)
     d.line((0,1,15,1),fill=(40,43,40,255));d.line((0,14,15,14),fill=(40,43,40,255))
@@ -35,7 +32,9 @@ models={
  'gas_barrel':dict(textures={'side':'gungang:block/barrel_red','particle':'gungang:block/barrel_red'},elements=[element([2,0,2],[14,16,14])]),
  'gas_barrel_top':dict(textures={'side':'gungang:block/barrel_red','particle':'gungang:block/barrel_red'},elements=[element([2,0,2],[14,8,14])]),
  'nozzle':dict(textures={'side':'gungang:block/nozzle_metal','particle':'gungang:block/nozzle_metal'},elements=[element([6,0,6],[10,16,10]),element([5,0,5],[11,2,11]),element([5,14,5],[11,16,11])]),
- 'puddle':dict(render_type='minecraft:translucent',textures={'side':'gungang:block/puddle_water','particle':'gungang:block/puddle_water'},elements=[element([0,0,0],[16,1,16])])}
+ 'puddle':dict(render_type='minecraft:translucent',textures={'side':'minecraft:block/water_still','particle':'minecraft:block/water_still'},elements=[element([0,0,0],[16,1,16])])}
+for face in models['puddle']['elements'][0]['faces'].values():
+    face['tintindex']=0
 walls={'cracked_oak_planks':'oak_planks','cracked_glass':'glass','cracked_glass_pane':'glass',**{'cracked_'+c+'_concrete':c+'_concrete' for c in COLORS}}
 for name,base in walls.items():
     boxes=[([0,0,0],[16,16,16])] if name!='cracked_glass_pane' else [([7,0,0],[9,16,16]),([0,0,7],[16,16,9])]
@@ -54,9 +53,7 @@ for name,model in models.items():
     write(ROOT/f'src/main/resources/data/gungang/loot_tables/blocks/{name}.json',{'type':'minecraft:block','pools':[{'rolls':1,'entries':[{'type':'minecraft:item','name':'gungang:'+name}],'conditions':[{'condition':'minecraft:survives_explosion'}]}]})
 write(ASSETS/'models/block/empty.json',{'textures':{'particle':'minecraft:block/water_still'},'elements':[]})
 write(ASSETS/'blockstates/acid.json',{'variants':{'':{'model':'gungang:block/empty'}}})
-im=Image.new('RGBA',(16,16));d=ImageDraw.Draw(im);d.polygon([(2,5),(13,5),(11,14),(4,14)],fill=(130,145,147),outline=(50,60,60));d.rectangle((3,5,12,7),fill=(158,255,50));d.arc((3,0,12,10),180,360,fill=(180,190,190),width=2)
-path=ASSETS/'textures/item/acid_bucket.png';path.parent.mkdir(parents=True,exist_ok=True);im.save(path)
-write(ASSETS/'models/item/acid_bucket.json',{'parent':'minecraft:item/generated','textures':{'layer0':'gungang:item/acid_bucket'}})
+write(ASSETS/'models/item/acid_bucket.json',{'parent':'forge:item/bucket','loader':'forge:fluid_container','fluid':'gungang:acid'})
 soundpath=ASSETS/'sounds.json';sounds=json.loads(soundpath.read_text()) if soundpath.exists() else {};sounds['puddle_step']={'sounds':[{'name':'minecraft:entity.generic.splash','type':'event'}]};write(soundpath,sounds)
 write(ROOT/'src/main/resources/data/minecraft/tags/fluids/water.json',{'replace':False,'values':['gungang:acid','gungang:flowing_acid']})
 names={'uxo':'불발 지뢰 (UXO)','gas_barrel':'가스통','nozzle':'노즐','puddle':'웅덩이','acid':'산성 용액','cracked_oak_planks':'금이 간 나무판자','cracked_glass':'깨진 유리','cracked_glass_pane':'깨진 유리판'}
@@ -65,7 +62,7 @@ names.update({'cracked_'+c+'_concrete':k+' 금이 간 콘크리트' for c,k in z
 for lang in ['ko_kr','en_us']:
     path=ROOT/f'src/main/resources/assets/gungang_acoustics/lang/{lang}.json';data=json.loads(path.read_text(encoding='utf-8'))
     for name,ko in names.items():data['block.gungang.'+name]=ko if lang=='ko_kr' else name.replace('_',' ').title()
-    data['item.gungang.acid_bucket']='산성 용액 양동이' if lang=='ko_kr' else 'Acid Bucket';data['fluid_type.gungang.acid']='산성 용액' if lang=='ko_kr' else 'Acid';write(path,data)
+    data['item.gungang.acid_bucket']='산성 액체가 든 양동이' if lang=='ko_kr' else 'Bucket of Acid';data['fluid_type.gungang.acid']='산성 용액' if lang=='ko_kr' else 'Acid';write(path,data)
 
 configs={
  'molotov':dict(radius=5,durationSeconds=8,burnSeconds=3,cooldownSeconds=36,burnDamage=1),
@@ -87,4 +84,6 @@ for folder in [ROOT/'server_resource/config/gungang',ROOT/'docs/server-examples/
         write(path,current)
     for path in (folder/'server/maps').glob('*.json'):
         current=json.loads(path.read_text(encoding='utf-8-sig'));current.setdefault('weather','clear');current.setdefault('timeOfDay','day');write(path,current)
+from import_gas_model import import_model as import_gas_model
+import_gas_model()
 print('Generated gimmick models, textures, translations and',len(configs),'item settings (existing values preserved).')

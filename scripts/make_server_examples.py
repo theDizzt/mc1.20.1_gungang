@@ -78,7 +78,7 @@ def examples():
             return dict(minX=x-4, minY=y-1, minZ=z-4, maxX=x+5, maxY=y+5, maxZ=z+5)
 
         write(OUT / f"config/gungang/server/maps/{key}.json", dict(
-            id=key, name=name, description="제공된 Gungame 데이터팩의 스폰 좌표. 스폰 구역 경계를 확인하고 enabled를 켜세요.",
+            id={"ilios":"01","lijang":"02","busan":"04"}[key], name=name, description="제공된 Gungame 데이터팩의 스폰 좌표. 스폰 구역 경계를 확인하고 enabled를 켜세요.",
             enabled=False, timeLimitSeconds=600, gameMode="adventure", dimension="minecraft:overworld",
             alphaSpawn=spawn(alpha), bravoSpawn=spawn(bravo), spectatorSpawn=dict(x=13.5,y=95,z=-25.5,yaw=90,pitch=0),
             alphaArea=area(alpha), bravoArea=area(bravo),

@@ -1,5 +1,5 @@
 {
-  "id": "busan",
+  "id": "04",
   "name": "사찰",
   "description": "제공된 Gungame 데이터팩의 스폰 좌표. 스폰 구역 경계를 확인하고 enabled를 켜세요.",
   "enabled": false,
@@ -61,5 +61,13 @@
   "onStart": [],
   "onEnd": [],
   "weather": "clear",
-  "timeOfDay": "day"
+  "timeOfDay": "day",
+  "previewArea": {
+    "minX": 125,
+    "minY": 2,
+    "minZ": -112,
+    "maxX": 285,
+    "maxY": 75,
+    "maxZ": 157
+  }
 }

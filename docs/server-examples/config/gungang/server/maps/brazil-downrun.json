@@ -1,0 +1,61 @@
+{
+  "id": "05",
+  "name": "브라질-다운런",
+  "description": "팀 데스매치 전용 맵. 추후 게임 모드 추가 예정.",
+  "enabled": true,
+  "timeLimitSeconds": 1200,
+  "gameMode": "adventure",
+  "dimension": "minecraft:overworld",
+  "alphaSpawn": {
+    "x": 243,
+    "y": 17.5,
+    "z": 371,
+    "yaw": -90,
+    "pitch": 0
+  },
+  "bravoSpawn": {
+    "x": 400.5,
+    "y": 19.5,
+    "z": 396.5,
+    "yaw": 90,
+    "pitch": 0
+  },
+  "spectatorSpawn": {
+    "x": 321.75,
+    "y": 35,
+    "z": 383.75,
+    "yaw": 0,
+    "pitch": 30
+  },
+  "alphaArea": {
+    "minX": 238,
+    "minY": 16,
+    "minZ": 367,
+    "maxX": 248,
+    "maxY": 19,
+    "maxZ": 375
+  },
+  "bravoArea": {
+    "minX": 396,
+    "minY": 18,
+    "minZ": 392,
+    "maxX": 405,
+    "maxY": 21,
+    "maxZ": 401
+  },
+  "onPrepare": [],
+  "onStart": [],
+  "onEnd": [],
+  "deathZones": [],
+  "previewImage": "",
+  "previewArea": {
+    "minX": 196,
+    "minY": 14,
+    "minZ": 262,
+    "maxX": 427,
+    "maxY": 49,
+    "maxZ": 436
+  },
+  "weather": "clear",
+  "timeOfDay": "day"
+}

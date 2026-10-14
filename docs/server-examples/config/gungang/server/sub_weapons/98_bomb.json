@@ -1,0 +1,11 @@
+{
+  "id": "98",
+  "itemNbt": "{id:'gungang:bomb',Count:1b}",
+  "name": "폭탄",
+  "description": "폭탄전에서 무작위 담당자에게만 지급됩니다.",
+  "usage": "대상을 조준하고 우클릭을 유지합니다.",
+  "category": "폭탄전 전용",
+  "cooldownSeconds": 0,
+  "plantSeconds": 4,
+  "fuseSeconds": 45
+}
