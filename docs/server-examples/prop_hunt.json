@@ -1,0 +1,17 @@
+{
+  "id": "prop_hunt",
+  "name": "숨바꼭질",
+  "description": "맵 스폰과 술래 대기실 좌표를 수정한 뒤 활성화하세요.",
+  "enabled": false,
+  "timeLimitSeconds": 600,
+  "gameMode": "adventure",
+  "dimension": "minecraft:overworld",
+  "alphaSpawn": {"x": 0.5, "y": 65, "z": 0.5, "yaw": 0, "pitch": 0},
+  "bravoSpawn": {"x": 40.5, "y": 65, "z": 0.5, "yaw": 180, "pitch": 0},
+  "spectatorSpawn": {"x": 20.5, "y": 80, "z": 0.5, "yaw": 0, "pitch": 30},
+  "alphaArea": {"minX": -5, "minY": 64, "minZ": -5, "maxX": 5, "maxY": 72, "maxZ": 5},
+  "bravoArea": {"minX": 35, "minY": 64, "minZ": -5, "maxX": 45, "maxY": 72, "maxZ": 5},
+  "weather": "clear", "timeOfDay": "day",
+  "onPrepare": [], "onStart": [], "onEnd": [],
+  "propHunt": {"shotgun": ""}
+}

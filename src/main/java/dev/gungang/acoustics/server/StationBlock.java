@@ -25,7 +25,13 @@ public class StationBlock extends BaseEntityBlock {
     @Override public RenderShape getRenderShape(BlockState state){return RenderShape.MODEL;}
     @Override public BlockEntity newBlockEntity(BlockPos pos,BlockState state){return new StationEntity(pos,state);}
     @Override public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level,BlockState state,BlockEntityType<T> type){return level.isClientSide?null:createTickerHelper(type,StationBlocks.ENTITY.get(),StationEntity::tick);}
+    /** War tables, armories and team blocks stay inert for prop hunt players during the match; health packs keep working. */
+    public boolean locked(Player player){
+        if(healthPack())return false;var match=MatchManager.propHunt();
+        return match!=null&&match.participant(player.getUUID());
+    }
     @Override public InteractionResult use(BlockState state,Level level,BlockPos pos,Player player,InteractionHand hand,BlockHitResult hit){
+        if(!level.isClientSide&&locked(player))return InteractionResult.FAIL;
         if(player instanceof ServerPlayer p&&interactionEntity(level,pos,state) instanceof StationEntity station)station.interact(p,false);
         return InteractionResult.sidedSuccess(level.isClientSide);
     }

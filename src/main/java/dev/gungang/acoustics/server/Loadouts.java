@@ -10,8 +10,9 @@ import net.minecraft.network.chat.Component;
 public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot9) {
     public record Specs(String damage, String accuracy, String stability, String range, String fireRate) { }
     public record Weapon(String id, @com.google.gson.annotations.SerializedName(value="itemNbt",alternate={"nbt"}) String itemNbt, String name, String description, Specs specs, String usage, String category,
-                         Double maxHealth, Double movementSpeed, Double cooldownSeconds, String command, boolean jetpackVerticalFlight) {
+                         Double maxHealth, Double movementSpeed, Double cooldownSeconds, String command, boolean jetpackVerticalFlight, String releaseDate) {
         public Weapon {
+            releaseDate=ArenaMap.releaseDate(releaseDate,id);
             itemNbt=itemNbt==null?"":itemNbt;
             command=command==null?"":command.strip();
             if(command.startsWith("/"))command=command.substring(1);
@@ -22,6 +23,9 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
             cooldownSeconds=cooldownSeconds==null?0:cooldownSeconds;
             if(!Double.isFinite(maxHealth)||maxHealth<1||maxHealth>1024||!Double.isFinite(movementSpeed)||movementSpeed<1||movementSpeed>1000
                     ||!Double.isFinite(cooldownSeconds)||cooldownSeconds<0||cooldownSeconds>3600) throw new IllegalArgumentException("Invalid weapon health, speed or cooldown: "+id);
+        }
+        public Weapon(String id,String itemNbt,String name,String description,Specs specs,String usage,String category,Double maxHealth,Double movementSpeed,Double cooldownSeconds,String command,boolean jetpackVerticalFlight) {
+            this(id,itemNbt,name,description,specs,usage,category,maxHealth,movementSpeed,cooldownSeconds,command,jetpackVerticalFlight,"");
         }
         public Weapon(String id,String itemNbt,String name,String description,Specs specs,String usage,String category,Double maxHealth,Double movementSpeed,Double cooldownSeconds,String command) {
             this(id,itemNbt,name,description,specs,usage,category,maxHealth,movementSpeed,cooldownSeconds,command,false);
@@ -61,7 +65,7 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
                 if (value == null || value.length() > 80) throw new IllegalArgumentException("Invalid weapon specs: " + id);
             stack();
         }
-        public Weapon view() { return new Weapon(id, "", name, description, specs, usage, category,maxHealth,movementSpeed,cooldownSeconds); }
+        public Weapon view() { return new Weapon(id, "", name, description, specs, usage, category,maxHealth,movementSpeed,cooldownSeconds,"",false,releaseDate); }
     }
     public Loadouts view() { return new Loadouts(primary.stream().map(Weapon::view).toList(), secondary.stream().map(Weapon::view).toList(), slot9 == null ? null : slot9.view()); }
     public static Loadouts load() throws java.io.IOException {

@@ -40,7 +40,7 @@ public final class LobbyClient {
     }
     public static void equipment(String json) {
         var next = ServerFiles.GSON.fromJson(json, EquipmentSnapshot.class);
-        if (next.catalog() == null && equipment != null) next = new EquipmentSnapshot(next.allowed(), next.show(), next.team(), next.primary(), next.secondary(), next.preparationSeconds(), equipment.catalog(),next.spawnHint());
+        if (next.catalog() == null && equipment != null) next = next.withCatalog(equipment.catalog());
         equipment = next;
         Minecraft mc = Minecraft.getInstance();
         if (!next.allowed()) { requestedUntil = 0; if (mc.screen instanceof LoadoutScreen) mc.setScreen(null); }

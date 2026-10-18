@@ -1,5 +1,9 @@
 {
   "capacity": 75,
   "repairSeconds": 90,
-  "movementPenaltyPercent": 15
+  "movementPenaltyPercent": 15,
+  "outOfCombatRegen": true,
+  "regenDelaySeconds": 5,
+  "regenPerSecond": 5,
+  "meleeReductionPercent": 20
 }

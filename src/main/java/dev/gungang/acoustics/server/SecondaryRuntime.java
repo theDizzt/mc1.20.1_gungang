@@ -43,7 +43,7 @@ public final class SecondaryRuntime {
     public static long remaining(Player player,ItemStack stack) {
         return secondary(stack)&&stack.getTag().getInt("GunGangCooldownTicks")>0?Math.max(0,stack.getTag().getLong("GunGangCooldownEnd")-player.level().getGameTime()):0;
     }
-    public static boolean ready(Player player,ItemStack stack) { return remaining(player,stack)==0; }
+    public static boolean ready(Player player,ItemStack stack) { return !FreeForAllMatch.blocked(player)&&remaining(player,stack)==0; }
     public static void commit(Player player,ItemStack stack) {
         if(!secondary(stack)||player.level().isClientSide)return;
         var tag=stack.getOrCreateTag();long end=player.level().getGameTime()+tag.getInt("GunGangCooldownTicks");
@@ -52,6 +52,7 @@ public final class SecondaryRuntime {
         player.inventoryMenu.broadcastChanges();
     }
     public static <T> T use(ItemStack stack,LivingEntity entity,Supplier<T> action,T blocked) {
+        if(FreeForAllMatch.blocked(entity))return blocked;
         if(SurvivalGadgets.jetting(entity))return blocked;
         if(entity instanceof Player p&&CombatGadgets.holdingShield(p)&&!CombatGadgets.is(stack,"shield"))return blocked;
         if(SafeZones.contains(entity)&&SafeZones.offensive(stack))return blocked;
@@ -75,7 +76,7 @@ public final class SecondaryRuntime {
             var shooter=type.getMethod("getShooter");var item=type.getMethod("getGunItemStack");
             net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.LOWEST,false,type,event->{
                 try {
-                    if(shooter.invoke(event) instanceof Player player&&(CombatGadgets.holdingShield(player)||SurvivalGadgets.jetting(player)||GadgetManager.placing(player))) {if(event.isCancelable())event.setCanceled(true);return;}
+                    if(shooter.invoke(event) instanceof Player player&&(FreeForAllMatch.blocked(player)||CombatGadgets.holdingShield(player)||SurvivalGadgets.jetting(player)||GadgetManager.placing(player))) {if(event.isCancelable())event.setCanceled(true);return;}
                     if(shooter.invoke(event) instanceof Player player&&item.invoke(event) instanceof ItemStack stack&&secondary(stack)) {
                         if(!ready(player,stack)) {if(event.isCancelable())event.setCanceled(true);}
                         else commit(player,stack);
@@ -106,5 +107,16 @@ public final class SecondaryRuntime {
     }
     @SubscribeEvent public static void logout(PlayerEvent.PlayerLoggedOutEvent e) { DEADLINES.remove(e.getEntity().getUUID());OWNERS.remove(e.getEntity().getCooldowns()); }
     public static void clear(Player p) { DEADLINES.remove(p.getUUID()); }
+    /** /gungang cooldown reset: secondary/gadget deadlines, the item tags the HUD reads, and vanilla item cooldowns. */
+    public static void resetCooldowns(net.minecraft.server.level.ServerPlayer p) {
+        DEADLINES.remove(p.getUUID());CombatGadgets.resetScan(p);
+        var inventory=p.getInventory();
+        for(int i=0;i<inventory.getContainerSize();i++) {
+            var stack=inventory.getItem(i);if(stack.isEmpty())continue;
+            p.getCooldowns().removeCooldown(stack.getItem());
+            if(stack.getTag()!=null&&stack.getTag().contains("GunGangCooldownEnd"))stack.getTag().putLong("GunGangCooldownEnd",0);
+        }
+        p.inventoryMenu.broadcastChanges();
+    }
     private SecondaryRuntime() { }
 }

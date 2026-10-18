@@ -15,20 +15,26 @@ public final class PlayerDatabase {
     public PlayerDatabase(Path file) throws IOException {
         this.file=file;
         if(Files.exists(file)) {
-            var data=JSON.fromJson(Files.readString(file),Data.class);
+            String text=Files.readString(file);
+            var data=JSON.fromJson(text,Data.class);
             if(data==null||data.version()!=1||data.players()==null)throw new IOException("Invalid player database: "+file);
             for(var row:data.players())if(row==null||rows.putIfAbsent(row.id(),row)!=null)throw new IOException("Duplicate or invalid player record");
+            // Add the preset fields to records saved by older versions; every other value is rewritten unchanged (old file kept as .bak).
+            boolean upgrade=false;
+            for(var row:com.google.gson.JsonParser.parseString(text).getAsJsonObject().getAsJsonArray("players"))
+                upgrade|=!row.getAsJsonObject().has("presets")||!row.getAsJsonObject().has("defaultPreset");
+            if(upgrade) {commit(rows);com.mojang.logging.LogUtils.getLogger().info("[GunGang] Added preset fields to {}",file);}
         } else commit(rows);
     }
     public Collection<PlayerRecord> all() {return List.copyOf(rows.values());}
     public PlayerRecord get(String id,String name) {return rows.getOrDefault(id,PlayerRecord.empty(id,name));}
     public void update(PlayerRecord row) throws IOException {var next=new LinkedHashMap<>(rows);next.put(row.id(),row);commit(next);}
     public Map<String,Integer> match(List<MatchSnapshot.Row> result,String winner,ExperienceRules rules) throws IOException {
-        var eligible=result.stream().filter(r->Set.of("ALPHA","BRAVO").contains(r.team())&&(r.playSeconds()>0||r.kills()>0||r.deaths()>0||r.damage()>0)).toList();
+        var eligible=result.stream().filter(r->(Set.of("ALPHA","BRAVO").contains(r.team())||r.team().equals(r.id()))&&(r.playSeconds()>0||r.kills()>0||r.deaths()>0||r.damage()>0)).toList();
         Map<String,Double> totals=new HashMap<>();
         for(var r:eligible)totals.merge(r.team(),rules.contribution(r),Double::sum);
         Map<String,Integer> rewards=new LinkedHashMap<>();var next=new LinkedHashMap<>(rows);
-        boolean reward=Set.of("ALPHA","BRAVO","DRAW").contains(winner);
+        boolean reward=Set.of("ALPHA","BRAVO","DRAW").contains(winner)||eligible.stream().anyMatch(r->r.id().equals(winner));
         for(var r:eligible) {
             int xp=reward?rules.reward(winner.equals(r.team()),rules.contribution(r),totals.getOrDefault(r.team(),0d)):0;
             next.put(r.id(),get(r.id(),r.name()).match(r,xp,winner.equals(r.team())));rewards.put(r.id(),xp);

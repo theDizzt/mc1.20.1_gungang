@@ -1,0 +1,42 @@
+{
+  "render_type": "minecraft:translucent",
+  "textures": {
+    "side": "gungang:block/acid_still",
+    "particle": "gungang:block/acid_still"
+  },
+  "elements": [
+    {
+      "to": [
+        16,
+        1,
+        16
+      ],
+      "faces": {
+        "north": {
+          "texture": "#side"
+        },
+        "south": {
+          "texture": "#side"
+        },
+        "east": {
+          "texture": "#side"
+        },
+        "west": {
+          "texture": "#side"
+        },
+        "up": {
+          "texture": "#side"
+        },
+        "down": {
+          "texture": "#side"
+        }
+      },
+      "from": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "parent": "minecraft:block/block"
+}

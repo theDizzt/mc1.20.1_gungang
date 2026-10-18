@@ -18,6 +18,7 @@ public final class StationEntity extends BlockEntity {
     public void interact(ServerPlayer player,boolean stepping){
         if(level==null||!player.isAlive()||player.isSpectator()||LobbyManager.respawning(player.getUUID()))return;
         var block=(StationBlock)getBlockState().getBlock();long now=level.getGameTime();
+        if(block.locked(player))return;
         if(block.healthPack()) {
             if(!stepping||remaining()>0||player.getHealth()>=player.getMaxHealth())return;
             var config=block.kind==StationBlock.Kind.SMALL?GadgetConfig.smallHealthPack:GadgetConfig.largeHealthPack;

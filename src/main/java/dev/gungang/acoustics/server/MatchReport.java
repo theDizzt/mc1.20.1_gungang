@@ -15,6 +15,7 @@ public final class MatchReport {
         int modeEnd=text.indexOf("\nTime limit:");
         text.insert(modeEnd,"\nMatch mode: "+(result.point()==null?"CUSTOM":result.point().mode()));
         for(var r:result.players()) text.append(String.format(Locale.ROOT,"%s | %s | %s | %d / %d / %d | %.1f | %s%n",r.name(),r.id(),r.team(),r.kills(),r.deaths(),r.assists(),r.damage(),time(r.playSeconds())));
+        if(map.freeForAll()!=null){text.append("\n개인전 순위 | 플레이어 | 점수\n");int rank=0;for(var r:result.players())text.append(++rank).append(" | ").append(r.name()).append(" | ").append(r.score()).append("\n");}
         Files.createDirectories(directory);
         Path file=directory.resolve(started.format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"))+"_"+map.id()+"_"+UUID.randomUUID()+".txt");
         Files.writeString(file,text,StandardCharsets.UTF_8,StandardOpenOption.CREATE_NEW);

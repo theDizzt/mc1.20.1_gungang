@@ -10,6 +10,7 @@ public final class GadgetItems {
     private static final DeferredRegister<Item> ITEMS=DeferredRegister.create(ForgeRegistries.ITEMS,"gungang");
     private static final DeferredRegister<EntityType<?>> ENTITIES=DeferredRegister.create(ForgeRegistries.ENTITY_TYPES,GungangAcoustics.ID);
     public static final RegistryObject<Item> BOMB=ITEMS.register("bomb",()->new BombItem(false));
+    public static final RegistryObject<Item> SPATIAL_WAND=ITEMS.register("spatial_wand",SpatialWand::new);
     public static final RegistryObject<Item> DEFUSER=ITEMS.register("defuser",()->new BombItem(true));
     public static final RegistryObject<Item> LANDMINE=ITEMS.register("landmine",()->new GadgetItem("landmine"));
     public static final RegistryObject<Item> RECOVERY=ITEMS.register("recovery_potion",()->new GadgetItem("recovery_potion"));

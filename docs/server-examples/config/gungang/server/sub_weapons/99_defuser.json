@@ -2,9 +2,9 @@
   "id": "99",
   "itemNbt": "{id:'gungang:defuser',Count:1b}",
   "name": "폭탄 해체기",
-  "description": "폭탄전에서 무작위 담당자에게만 지급됩니다.",
-  "usage": "대상을 조준하고 우클릭을 유지합니다.",
+  "description": "아이템으로 지급하지 않습니다. 이 파일은 시간 설정용입니다.",
+  "usage": "방어팀 누구나 설치된 폭탄을 조준하고 E를 유지해 해체합니다.",
   "category": "폭탄전 전용",
   "cooldownSeconds": 0,
-  "defuseSeconds": 7
+  "defuseSeconds": 10
 }

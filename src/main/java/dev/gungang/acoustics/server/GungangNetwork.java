@@ -11,10 +11,10 @@ import net.minecraftforge.network.simple.SimpleChannel;
 
 public final class GungangNetwork {
     private static boolean accepts(String version) {
-        return version.equals("1") || version.equals(NetworkRegistry.ABSENT) || version.equals(NetworkRegistry.ACCEPTVANILLA);
+        return version.equals("2") || version.equals(NetworkRegistry.ABSENT) || version.equals(NetworkRegistry.ACCEPTVANILLA);
     }
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-            new ResourceLocation(GungangAcoustics.ID, "server"), () -> "1", GungangNetwork::accepts, GungangNetwork::accepts);
+            new ResourceLocation(GungangAcoustics.ID, "server"), () -> "2", GungangNetwork::accepts, GungangNetwork::accepts);
     public record Acoustics(String json) { }
     public record Lobby(String json) { }
     public record Equipment(String json) { }
@@ -30,7 +30,15 @@ public final class GungangNetwork {
         public Gadget(String preview) {this(preview,preview.equals("orbital_strike")?ExtraGadgetConfig.orbital.range():preview.equals("barrier")?GadgetConfig.barrier.range():GadgetConfig.mine.range());}
     }
     public record Action(String action, String value, String target) { }
+    public record Hud(boolean enabled) { }
+    public record PropHunt(String json) {}
     public static void register() {
+        CHANNEL.registerMessage(14,PropHunt.class,(p,b)->b.writeUtf(p.json,262144),b->new PropHunt(b.readUtf(262144)),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.PropHuntClient.receive(p.json)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(13,Hud.class,(p,b)->b.writeBoolean(p.enabled),b->new Hud(b.readBoolean()),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.HudVisibility.receive(p.enabled)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(12,Ability.class,(p,b)->{b.writeUUID(p.state.player());b.writeLong(p.state.lifeEnd());b.writeLong(p.state.jetEnd());b.writeInt(p.state.color());},
                 b->new Ability(new SurvivalGadgets.View(b.readUUID(),b.readLong(),b.readLong(),b.readInt())),(p,context)->{
                     var ctx=context.get();ctx.enqueueWork(()->SurvivalGadgets.receive(p.state));ctx.setPacketHandled(true);
