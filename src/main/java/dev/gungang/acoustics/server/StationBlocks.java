@@ -16,6 +16,8 @@ public final class StationBlocks {
     public static final RegistryObject<StationBlock> BRAVO=station("bravo_team",StationBlock.Kind.BRAVO);
     public static final RegistryObject<StationBlock> SMALL=station("small_health_pack",StationBlock.Kind.SMALL);
     public static final RegistryObject<StationBlock> LARGE=station("large_health_pack",StationBlock.Kind.LARGE);
+    public static final RegistryObject<SpawnGateBlock> ALPHA_GATE=gate("alpha_spawn_gate","ALPHA"),BRAVO_GATE=gate("bravo_spawn_gate","BRAVO");
+    private static RegistryObject<SpawnGateBlock> gate(String id,String team){var block=BLOCKS.register(id,()->new SpawnGateBlock(team));ITEMS.register(id,()->new BlockItem(block.get(),new Item.Properties()));return block;}
     public static final RegistryObject<BlockEntityType<StationEntity>> ENTITY=ENTITIES.register("station",()->BlockEntityType.Builder.of(StationEntity::new,WAR_TABLE.get(),ARMORY.get(),ALPHA.get(),BRAVO.get(),SMALL.get(),LARGE.get()).build(null));
     private static RegistryObject<StationBlock> station(String id,StationBlock.Kind kind) {
         var block=BLOCKS.register(id,()->kind==StationBlock.Kind.WAR_TABLE||kind==StationBlock.Kind.ARMORY?new FurnitureBlock(kind):new StationBlock(kind));
@@ -23,10 +25,5 @@ public final class StationBlocks {
     }
     public static void register(IEventBus bus) {
         BLOCKS.register(bus);ITEMS.register(bus);ENTITIES.register(bus);
-        bus.addListener(StationBlocks::creative);
-    }
-    private static void creative(net.minecraftforge.event.BuildCreativeModeTabContentsEvent e) {
-        if(e.getTabKey().equals(GungangCreativeTabs.BLOCKS.getKey()))
-            for(var block:java.util.List.of(WAR_TABLE,ARMORY,ALPHA,BRAVO,SMALL,LARGE))e.accept(block.get());
     }
 }

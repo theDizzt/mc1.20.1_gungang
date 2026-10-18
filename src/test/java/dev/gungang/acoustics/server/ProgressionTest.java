@@ -49,6 +49,27 @@ class ProgressionTest {
         db.match(rows,"ALPHA",ExperienceRules.defaults());assertEquals(2,db.get(a,"a").matches());
         assertTrue(Files.exists(directory.resolve("player-db.json.bak")));
     }
+    @Test void legacyRecordsGainPresetFieldsWithoutChangingStats() throws Exception {
+        Path file=directory.resolve("legacy.json");String id=UUID.randomUUID().toString();
+        Files.writeString(file,"{\"version\":1,\"players\":[{\"id\":\""+id+"\",\"name\":\"old\",\"experience\":300,\"matches\":4,\"kills\":9,\"deaths\":3,\"damage\":120.5,\"playSeconds\":900,\"wins\":2}]}");
+        var db=new PlayerDatabase(file);var row=db.get(id,"old");
+        assertEquals(new PlayerRecord(id,"old",300,4,9,3,120.5,900,2),row);assertTrue(row.presets().isEmpty());
+        String text=Files.readString(file);assertTrue(text.contains("\"presets\"")&&text.contains("\"defaultPreset\""));
+        assertTrue(Files.readString(directory.resolve("legacy.json.bak")).contains("\"experience\":300"));
+    }
+    @Test void presetsPersistRenameDeleteAndDefault() throws Exception {
+        Path file=directory.resolve("presets.json");var db=new PlayerDatabase(file);String id=UUID.randomUUID().toString();
+        var r=PlayerRecord.empty(id,"p").withPreset(new PlayerRecord.Preset(2,"","ak","landmine")).withPreset(new PlayerRecord.Preset(1,"Rush","smg","shield")).withDefault(2);
+        db.update(r);var saved=new PlayerDatabase(file).get(id,"p");
+        assertEquals(List.of(1,2),saved.presets().stream().map(PlayerRecord.Preset::slot).toList());
+        assertEquals("프리셋 2",saved.preset(2).name());assertEquals("ak",saved.defaultLoadout().primary());
+        saved=saved.withPreset(new PlayerRecord.Preset(2,"Long",saved.preset(2).primary(),saved.preset(2).secondary()));
+        assertEquals("Long",saved.defaultLoadout().name());
+        saved=saved.withoutPreset(2);assertNull(saved.defaultLoadout());assertEquals(0,saved.defaultPreset());
+        assertThrows(IllegalArgumentException.class,()->new PlayerRecord.Preset(6,"x","ak","shield"));
+        assertThrows(IllegalArgumentException.class,()->new PlayerRecord.Preset(1,"x".repeat(21),"ak","shield"));
+        assertThrows(IllegalArgumentException.class,()->new PlayerRecord.Preset(1,"x","AK 47","shield"));
+    }
     @Test void abortHasNoXpSpectatorsAndNonParticipantsAreExcluded() throws Exception {
         var db=new PlayerDatabase(directory.resolve("db.json"));String a=UUID.randomUUID().toString(),s=UUID.randomUUID().toString(),empty=UUID.randomUUID().toString();
         db.match(List.of(row(a,"ALPHA",1,1,100,50),row(s,"SPECTATOR",0,0,0,50),row(empty,"BRAVO",0,0,0,0)),"ABORTED",ExperienceRules.defaults());

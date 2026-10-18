@@ -23,7 +23,7 @@ public final class ShooterHud {
 
     public static boolean visible(Minecraft mc) {
         return mc.player != null && mc.level != null
-                && !mc.options.hideGui && AcousticConfig.SHOOTER_HUD.get();
+                && !mc.options.hideGui && HudVisibility.enabled() && AcousticConfig.SHOOTER_HUD.get();
     }
 
     @SubscribeEvent
@@ -53,7 +53,8 @@ public final class ShooterHud {
         int x = Math.min(AcousticConfig.HUD_OFFSET_X.get(), Math.max(0, screenWidth - WIDTH));
         int y = Math.max(0, screenHeight - HEIGHT - AcousticConfig.HUD_OFFSET_Y.get());
         gui.setupOverlayRenderState(true, false);
-        graphics.fill(x, y + 2, x + 62, y + 64, TeamHud.teamColor(player));
+        int team = TeamHud.teamColor(player);
+        portrait(graphics, x, y + 2, 62, team);
         PlayerFaceRenderer.draw(graphics, player.getSkinTextureLocation(), x + 3, y + 5, 56,
                 player.isModelPartShown(PlayerModelPart.HAT), false);
         RespawnPortrait.render(graphics, player.getUUID(), x + 3, y + 5, 56);
@@ -61,8 +62,8 @@ public final class ShooterHud {
         ProgressionHud.draw(graphics,detailX,y+7,WIDTH-68);
         HudText.draw(graphics, player.getName().getString(), detailX, y + 19, WIDTH - 68, 0xFFFFFFFF);
         // Slot 1 is always inventory index 0, independent of the player's selected slot.
-        slot(graphics, player.getInventory().getItem(0), detailX, y + 32, player.getInventory().selected == 0);
-        slot(graphics, player.getOffhandItem(), detailX + 38, y + 32, false);
+        slot(graphics, player.getInventory().getItem(0), detailX, y + 32, player.getInventory().selected == 0, team);
+        slot(graphics, player.getOffhandItem(), detailX + 38, y + 32, false, team);
         UtilityHud.placements(graphics,x+WIDTH+8,y+35);
 
         float health = player.getHealth(), maximum = player.getMaxHealth();
@@ -79,13 +80,28 @@ public final class ShooterHud {
         if (barX < x + WIDTH + 8 + UtilityHud.placementWidth() && barX + barWidth > x)
             barY = Math.max(0, y - HEALTH_HEIGHT - 8);
         CompassHud.render(graphics, barX + barWidth / 2, barY, barWidth, partialTick);
+        // Above the compass heading (or right above the bar when the compass is off).
+        int captionY = AcousticConfig.COMPASS.get() ? barY - 44 : barY - 14;
+        // Any mode: name of the player whose camera is being watched; the disguise caption stacks above it.
+        var watched = PropHuntClient.watched();
+        var info = watched == null || watched.equals(player.getUUID()) || mc.getConnection() == null ? null : mc.getConnection().getPlayerInfo(watched);
+        if (info != null) {
+            graphics.drawCenteredString(mc.font, "관전 중: " + info.getProfile().getName(), barX + barWidth / 2, captionY, 0xFFFFFFFF);
+            captionY -= 11;
+        }
+        String disguise = PropHuntClient.caption();
+        if (disguise != null) {
+            int captionColor = disguise.equals("술래") ? PropHuntHud.SEEKER : PropHuntHud.HIDER;
+            graphics.drawCenteredString(mc.font, disguise, barX + barWidth / 2, captionY, captionColor);
+        }
         UtilityHud.gauges(graphics,barX+barWidth/2,barY,barWidth/2,HEALTH_HEIGHT/2,partialTick);
-        panel(graphics, barX, barY, barWidth, HEALTH_HEIGHT, 0xFF60696D, 0x8029353E);
+        card(graphics, barX, barY, barWidth, HEALTH_HEIGHT, BAR_EDGE, SURFACE, 0);
         var layers = HudHealthBars.layers(player, partialTick);
         float displayed = layers.absorptionEnd();
         float filled = (barWidth - 2) * displayed;
         HudHealthBars.render(graphics, barX + 1, barY + 1, barWidth - 2, HEALTH_HEIGHT - 2, layers, color);
         HudHealthBars.stripes(graphics, barX + 1, barY + 1, barWidth - 2, HEALTH_HEIGHT - 2, displayed, (player.tickCount + partialTick) / 20.0);
+        finish(graphics, barX + 1, barY + 1, barWidth - 2, HEALTH_HEIGHT - 2, displayed);
         int airPercent = Math.round(100f * Math.max(0, Math.min(player.getMaxAirSupply(), player.getAirSupply()))
                 / Math.max(1, player.getMaxAirSupply()));
         String airLabel = airPercent + "%";
@@ -139,9 +155,12 @@ public final class ShooterHud {
         graphics.pose().popPose();
     }
 
-    private static void slot(GuiGraphics graphics, ItemStack stack, int x, int y, boolean selected) {
+    private static void slot(GuiGraphics graphics, ItemStack stack, int x, int y, boolean selected, int team) {
         Minecraft mc = Minecraft.getInstance();
-        panel(graphics, x, y, 34, 32, selected ? 0xFFF3F5F6 : 0xFF68737B, 0x801C2833);
+        if (selected) {
+            card(graphics, x, y, 34, 32, team | 0xFF000000, SURFACE, team | 0xFF000000);
+            graphics.fillGradient(x + 1, y + 2, x + 33, y + 29, team & 0xFFFFFF, (team & 0xFFFFFF) | 0x40000000);
+        } else card(graphics, x, y, 34, 32, EDGE, SURFACE, 0);
         if (!stack.isEmpty()) {
             graphics.pose().pushPose();
             graphics.pose().translate(x + 5, y + 4, 0);
@@ -166,6 +185,24 @@ public final class ShooterHud {
                 graphics.pose().popPose();
             }
         }
+    }
+    static final int SURFACE = 0xFF0B121C, EDGE = 0xFF2A3A50, BAR_EDGE = 0xFF465264;
+    /** Opaque card: soft edge, faint top highlight and an optional accent underline inside the border. */
+    static void card(GuiGraphics g, int x, int y, int width, int height, int edge, int background, int accent) {
+        panel(g, x, y, width, height, edge, background);
+        g.fill(x + 1, y + 1, x + width - 1, y + 2, 0x14FFFFFF);
+        if (accent != 0) g.fill(x + 1, y + height - 3, x + width - 1, y + height - 1, accent);
+    }
+    /** Portrait frame: dark tile with a team tint fading in toward the bottom and a solid team underline below the face inset. */
+    static void portrait(GuiGraphics g, int x, int y, int size, int team) {
+        int rgb = team & 0xFFFFFF, line = size >= 40 ? 2 : 1;
+        panel(g, x, y, size, size, team | 0xFF000000, SURFACE);
+        g.fillGradient(x + 1, y + 1, x + size - 1, y + size - 1, rgb | 0x10000000, rgb | 0x58000000);
+        g.fill(x + 1, y + size - 1 - line, x + size - 1, y + size - 1, team | 0xFF000000);
+    }
+    /** Gloss line on the filled part, drawn over a bar fill. */
+    static void finish(GuiGraphics g, int x, int y, int width, int height, float fraction) {
+        HudHealthBars.fill(g, x, y, width, 1, Math.max(0, Math.min(1, fraction)), 0x40FFFFFF);
     }
     public static void panel(GuiGraphics graphics, int x, int y, int width, int height,
                               int border, int background) {

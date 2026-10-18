@@ -18,18 +18,20 @@ public final class GadgetClient {
     private static boolean armed;
     private static String expected="";
     private static int previewSlot=-1;
+    /** Only an H macro preview may keep going once the item is back in the offhand; a main-hand one ends when the item leaves that hand. */
+    private static boolean previewOffhand;
     public static void expect(String kind) {
         var player=Minecraft.getInstance().player;
-        if(player!=null){expected=kind;previewSlot=player.getInventory().selected;}
+        if(player!=null){expected=kind;previewSlot=player.getInventory().selected;previewOffhand=OffhandMacro.executingClick();}
     }
     private static boolean valid(String kind) {
         var mc=Minecraft.getInstance();var player=mc.player;
         return player!=null&&player.isAlive()&&!player.isSpectator()&&mc.screen==null
                 &&player.getInventory().selected==previewSlot
-                &&(CombatGadgets.is(player.getMainHandItem(),kind)||CombatGadgets.is(player.getOffhandItem(),kind));
+                &&(CombatGadgets.is(player.getMainHandItem(),kind)||previewOffhand&&CombatGadgets.is(player.getOffhandItem(),kind));
     }
     public static boolean placing() {return !preview.isEmpty()&&valid(preview);}
-    private static void cancel() {
+    public static void cancel() {
         preview="";expected="";armed=false;
         if(Minecraft.getInstance().getConnection()!=null)LobbyClient.action("cancelplace","","");
     }
@@ -44,6 +46,8 @@ public final class GadgetClient {
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent e) {
         var mc=Minecraft.getInstance();
         if(!expected.isEmpty()&&!valid(expected))cancel();
+        // A gun in the main hand can swallow the attack click before it reaches click() below.
+        else if(placing()&&mc.options.keyAttack.isDown())cancel();
         if(e.phase==TickEvent.Phase.END&&!mc.options.keyUse.isDown()&&!OffhandMacro.USE.isDown())armed=true;
     }
     @SubscribeEvent public static void click(InputEvent.InteractionKeyMappingTriggered e) {
@@ -57,8 +61,8 @@ public final class GadgetClient {
         }
     }
     @SubscribeEvent public static void hint(RenderGuiEvent.Post e) {
-        if(preview.isEmpty())return;var mc=Minecraft.getInstance();if(mc.screen!=null||mc.options.hideGui)return;
-        String text="우클릭 설치 · 좌클릭 취소";var g=e.getGuiGraphics();
+        if(preview.isEmpty())return;var mc=Minecraft.getInstance();if(mc.screen!=null||mc.options.hideGui||!HudVisibility.enabled())return;
+        String text="우클릭 설치 · 좌클릭/보조 손 키 취소";var g=e.getGuiGraphics();
         g.drawString(mc.font,text,(g.guiWidth()-mc.font.width(text))/2,g.guiHeight()/2+25,0xFFFFFFFF,true);
     }
     @SubscribeEvent public static void world(RenderLevelStageEvent e) {

@@ -33,6 +33,16 @@ public final class ProgressionService {
         var record=database.get(player.getUUID().toString(),player.getGameProfile().getName());
         GungangNetwork.send(player,new GungangNetwork.Progression(ServerFiles.GSON.toJson(table.progress(record.experience()))));
     }
+    static PlayerRecord record(ServerPlayer player) {
+        if(database==null)throw new IllegalStateException("플레이어 DB가 로드되지 않았습니다.");
+        return database.get(player.getUUID().toString(),player.getGameProfile().getName());
+    }
+    static void store(PlayerRecord record) throws java.io.IOException {
+        if(database==null)throw new IllegalStateException("플레이어 DB가 로드되지 않았습니다.");
+        database.update(record);
+    }
+    /** Preset applied at match start, or null when none is set or the database is unavailable. */
+    static PlayerRecord.Preset defaultPreset(ServerPlayer player) {return database==null?null:record(player).defaultLoadout();}
     @SubscribeEvent public static void login(PlayerEvent.PlayerLoggedInEvent event) {
         if(!(event.getEntity() instanceof ServerPlayer p)||database==null)return;
         try {database.update(database.get(p.getUUID().toString(),p.getGameProfile().getName()).named(p.getGameProfile().getName()));sync(p);}

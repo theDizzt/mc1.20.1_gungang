@@ -22,7 +22,8 @@ public final class TargetHealthBar {
     public static void render(RenderLevelStageEvent event) {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) return;
         Minecraft mc = Minecraft.getInstance();
-        if (!ShooterHud.visible(mc) || mc.getCameraEntity() == null) return;
+        // Prop hunt: overhead bars would give hidden players away.
+        if (!ShooterHud.visible(mc) || mc.getCameraEntity() == null || PropHuntClient.active()) return;
         Vec3 eye = event.getCamera().getPosition();
         for (var entity : mc.level.entitiesForRendering()) {
             if (!(entity instanceof LivingEntity target) || !target.isAlive() || target == mc.player

@@ -10,13 +10,18 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.*;
 
-/** Server-authoritative objective ownership and world interactions. */
+/** Server-authoritative objective and world interactions. Any living attacker plants with E inside A/B, any living defender defuses with E on the bomb. */
 @net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid=dev.gungang.acoustics.GungangAcoustics.ID)
 public final class BombMatch {
     public record View(int round,int totalRounds,String attacker,String phase,BombRules.Point pointA,BombRules.Point pointB,
-                       String plantedSite,int fuseTicks,String dimension,List<String> deadPlayers,BombRules.Site areaA,BombRules.Site areaB,BombRules.Point plantedPosition){
+                       String plantedSite,int fuseTicks,String dimension,List<String> deadPlayers,BombRules.Site areaA,BombRules.Site areaB,BombRules.Point plantedPosition,List<Mate> mates,String mapId,MapPreviewArea previewArea){
+        public View(int round,int totalRounds,String attacker,String phase,BombRules.Point pointA,BombRules.Point pointB,String plantedSite,int fuseTicks,String dimension,List<String> deadPlayers,BombRules.Site areaA,BombRules.Site areaB,BombRules.Point plantedPosition){this(round,totalRounds,attacker,phase,pointA,pointB,plantedSite,fuseTicks,dimension,deadPlayers,areaA,areaB,plantedPosition,List.of(),"",null);}
+        /** Same view with only the given team's members, so the TAB minimap never reveals enemies. */
+        public View forTeam(String team){return new View(round,totalRounds,attacker,phase,pointA,pointB,plantedSite,fuseTicks,dimension,deadPlayers,areaA,areaB,plantedPosition,mates==null?List.of():mates.stream().filter(m->m.team().equals(team)).toList(),mapId,previewArea);}
         public View(int round,int totalRounds,String attacker,String phase,BombRules.Point pointA,BombRules.Point pointB,String plantedSite,int fuseTicks,String dimension){this(round,totalRounds,attacker,phase,pointA,pointB,plantedSite,fuseTicks,dimension,List.of(),null,null,null);}
     }
+    /** A living player for the TAB minimap; each team receives only its own. */
+    public record Mate(String team,String id,double x,double z,float yaw){}
     private record Use(boolean defuser,String site,BlockPos position,Vec3 origin,long start){}
     private record Aim(String site,BlockPos position){}
     private final MinecraftServer server;
@@ -27,7 +32,6 @@ public final class BombMatch {
     private final Set<UUID> dead=new HashSet<>();
     private final Map<UUID,UUID> watching=new HashMap<>();
     private final Map<UUID,Use> uses=new HashMap<>();
-    private UUID bomber,defuser;
     private String plantedSite="";
     private BlockPos plantedPosition;
     private BlockState replaced;
@@ -38,25 +42,20 @@ public final class BombMatch {
         for(var point:List.of(arena.bomb().pointA(),arena.bomb().pointB()))if(point.y()<=level.getMinBuildHeight()||point.y()>=level.getMaxBuildHeight())throw new IllegalArgumentException("Bomb site Y is outside the dimension");
     }
     public boolean dead(UUID id){return dead.contains(id);}
-    public boolean assigned(UUID id){return id.equals(bomber)||id.equals(defuser);}
     public boolean activePlay(){return game.phase()==BombGame.Phase.RUNNING;}
     public ArenaMap.Spawn spawn(String team){return team.equals(game.attacker())?arena.bomb().attackSpawn():arena.bomb().defenseSpawn();}
     public ArenaMap.Area area(String team){return team.equals(game.attacker())?arena.bomb().attackArea():arena.bomb().defenseArea();}
     private List<ServerPlayer> alive(String team){return server.getPlayerList().getPlayers().stream().filter(p->LobbyManager.team(p.getUUID()).equals(team)&&p.isAlive()&&!p.isSpectator()&&!dead(p.getUUID())&&p.level()==level).toList();}
-    public void assignEquipment(boolean reroll){
-        if(reroll){bomber=select(game.attacker());defuser=select(game.defender());}
-        if(!game.planted())give(bomber,false);
-        give(defuser,true);
-        for(var p:server.getPlayerList().getPlayers())if(LobbyManager.team(p.getUUID()).equals("ALPHA")||LobbyManager.team(p.getUUID()).equals("BRAVO"))
-            p.sendSystemMessage(Component.literal("ROUND "+game.round()+" · "+(LobbyManager.team(p.getUUID()).equals(game.attacker())?"공격팀":"방어팀")+" · "+arena.bomb().winsRequired()+"선승"));
-    }
-    private UUID select(String team){var candidates=new ArrayList<>(alive(team));Collections.shuffle(candidates);return candidates.isEmpty()?null:candidates.get(0).getUUID();}
-    private void give(UUID id,boolean tool){if(id==null)return;var p=server.getPlayerList().getPlayer(id);if(p!=null){LobbyManager.giveBombEquipment(p,tool);p.sendSystemMessage(Component.literal(tool?"폭탄 해체기를 받았습니다.":"폭탄을 받았습니다. A 또는 B에 설치하세요."));}}
-    private void transfer(){
-        if(!game.planted()&&alive(game.attacker()).stream().noneMatch(p->p.getUUID().equals(bomber))){bomber=select(game.attacker());give(bomber,false);}
-        if(alive(game.defender()).stream().noneMatch(p->p.getUUID().equals(defuser))){defuser=select(game.defender());give(defuser,true);}
+    public void announceRound(){
+        for(var p:server.getPlayerList().getPlayers()){
+            String team=LobbyManager.team(p.getUUID());if(!team.equals("ALPHA")&&!team.equals("BRAVO"))continue;
+            boolean attack=team.equals(game.attacker());
+            p.sendSystemMessage(Component.literal("ROUND "+game.round()+" · "+(attack?"공격팀":"방어팀")+" · "+arena.bomb().winsRequired()+"선승"+(arena.bomb().rounds()%2==0?" · 동점 시 무승부":"")
+                    +(attack?" · A/B 영역에서 E를 "+timing.plantSeconds()+"초 눌러 폭탄 설치":" · 설치된 폭탄을 조준하고 E를 "+timing.defuseSeconds()+"초 눌러 해체")));
+        }
     }
     public void eliminate(ServerPlayer p){
+        if(dead(p.getUUID()))return;
         dead.add(p.getUUID());cancelUse(p);p.stopUsingItem();removeObjectives(p);
         p.setHealth(p.getMaxHealth());p.removeAllEffects();p.clearFire();p.fallDistance=0;p.setGameMode(GameType.SPECTATOR);
         updateSpectator(p,0);
@@ -91,22 +90,27 @@ public final class BombMatch {
     }
     public void tick(){
         for(var id:dead){var viewer=server.getPlayerList().getPlayer(id);if(viewer!=null)updateSpectator(viewer,0);}
-        uses.entrySet().removeIf(e->{var p=server.getPlayerList().getPlayer(e.getKey());return p==null||!p.isUsingItem()||!eligible(p,e.getValue().defuser);});
+        // E is held on the client; each server tick advances (or cancels) the plant/defuse.
+        for(var id:List.copyOf(uses.keySet())){
+            var use=uses.get(id);if(use==null)continue;
+            var p=server.getPlayerList().getPlayer(id);if(p==null){uses.remove(id);continue;}
+            continueUse(p,use.defuser);
+        }
         var before=game.phase();
         if(before==BombGame.Phase.PREPARING){
             for(var p:alive(game.attacker()))if(!inside(p,arena.bomb().attackArea()))LobbyManager.bombTeleport(p);
         }
-        if(before==BombGame.Phase.RUNNING||before==BombGame.Phase.PREPARING)transfer();
         game.tick(alive(game.attacker()).size(),alive(game.defender()).size());
         if(game.phase()!=before){
             if(game.phase()==BombGame.Phase.RUNNING)LobbyManager.startBombRound();
             else if(game.phase()==BombGame.Phase.ROUND_END)roundEnded();
-            else if(game.phase()==BombGame.Phase.PREPARING){cleanupBomb();dead.clear();watching.clear();uses.clear();LobbyManager.prepareBombRound();assignEquipment(true);}
+            else if(game.phase()==BombGame.Phase.PREPARING){cleanupBomb();dead.clear();watching.clear();uses.clear();LobbyManager.prepareBombRound();announceRound();}
             else if(game.phase()==BombGame.Phase.FINISHED)LobbyManager.finish(game.winner());
         }
     }
     private static boolean inside(ServerPlayer p,ArenaMap.Area area){var b=p.getBoundingBox();return area.contains(b.minX,b.minY,b.minZ)&&area.contains(b.maxX,b.maxY,b.maxZ);}
     private void roundEnded(){
+        BombDrops.clear(server);
         uses.clear();
         if(game.reason().equals("EXPLODED")){
             var pos=plantedPosition;
@@ -123,25 +127,31 @@ public final class BombMatch {
     }
     private boolean eligible(ServerPlayer p,boolean tool){
         return activePlay()&&p.level()==level&&p.isAlive()&&!p.isSpectator()&&!dead(p.getUUID())
-                &&p.getUUID().equals(tool?defuser:bomber)&&LobbyManager.team(p.getUUID()).equals(tool?game.defender():game.attacker())
-                &&p.getMainHandItem().is(tool?GadgetItems.DEFUSER.get():GadgetItems.BOMB.get())&&(tool?game.planted():!game.planted());
+                &&LobbyManager.team(p.getUUID()).equals(tool?game.defender():game.attacker())&&(tool?game.planted():!game.planted());
     }
-    private BlockPos point(String site){var p=site.equals("A")?arena.bomb().pointA():arena.bomb().pointB();return new BlockPos(p.x(),p.y(),p.z());}
+    /** E pressed (down) or released by a client; the role follows the player's side this round. */
+    public void key(ServerPlayer p,boolean down){
+        if(!down){cancelUse(p);return;}
+        if(uses.containsKey(p.getUUID()))return;
+        beginUse(p,LobbyManager.team(p.getUUID()).equals(game.defender()));
+    }
     private Aim aimed(ServerPlayer p,boolean tool){
+        if(!tool)return plantAt(p);
         var hit=p.pick(4.5,1,false);if(!(hit instanceof BlockHitResult block)||hit.getType()!=HitResult.Type.BLOCK)return null;
-        if(tool)return plantedPosition!=null&&block.getBlockPos().equals(plantedPosition)&&level.getBlockState(plantedPosition).is(GimmickBlocks.BOMB.get())?new Aim(plantedSite,plantedPosition):null;
-        if(block.getDirection()!=net.minecraft.core.Direction.UP)return null;
-        var floor=block.getBlockPos();var placement=floor.above();if(!level.getBlockState(placement).isAir()||placement.getY()>=level.getMaxBuildHeight())return null;
-        for(String site:List.of("A","B")){
-            var area=site.equals("A")?arena.bomb().areaA():arena.bomb().areaB();
-            if(area!=null?area.contains(floor.getX(),floor.getY(),floor.getZ()):placement.equals(point(site)))return new Aim(site,placement);
-        }
-        return null;
+        return plantedPosition!=null&&block.getBlockPos().equals(plantedPosition)&&level.getBlockState(plantedPosition).is(GimmickBlocks.BOMB.get())?new Aim(plantedSite,plantedPosition):null;
+    }
+    /** Planting uses the floor under the player's feet, not the crosshair. */
+    private Aim plantAt(ServerPlayer p){
+        if(!p.onGround())return null;
+        var place=BombRules.standing(level,p.getOnPos());var placement=place.cell();if(!place.ok()||placement.getY()>=level.getMaxBuildHeight())return null;
+        var b=arena.bomb();String site=BombRules.siteAt(b.areaA(),b.areaB(),b.pointA(),b.pointB(),placement.getX(),placement.getY()-1,placement.getZ());
+        return site==null?null:new Aim(site,placement);
     }
     public boolean beginUse(ServerPlayer p,boolean tool){
+        if(!tool&&game.planted()&&LobbyManager.team(p.getUUID()).equals(game.attacker())){p.displayClientMessage(Component.literal("폭탄이 이미 "+plantedSite+" 지점에 설치되었습니다."),true);return false;}
         if(!eligible(p,tool))return false;
         var aim=aimed(p,tool);
-        if(aim==null){p.displayClientMessage(Component.literal(tool?"설치된 폭탄을 조준하세요.":"A 또는 B 설치 영역의 바닥을 조준하세요."),true);return false;}
+        if(aim==null){p.displayClientMessage(Component.literal(tool?"설치된 폭탄을 조준하세요.":"A 또는 B 설치 영역의 바닥에 서서 사용하세요."),true);return false;}
         uses.put(p.getUUID(),new Use(tool,aim.site,aim.position,p.position(),level.getGameTime()));return true;
     }
     public boolean continueUse(ServerPlayer p,boolean tool){
@@ -155,10 +165,17 @@ public final class BombMatch {
         uses.remove(p.getUUID());
         if(tool){if(game.defuse())roundEnded();}
         else {
+            if(game.planted())return false; // a teammate finished first on the same tick
             var pos=use.position;replaced=level.getBlockState(pos);
-            if(!replaced.isAir()||!level.setBlock(pos,GimmickBlocks.BOMB.get().defaultBlockState(),3))return false;
+            if(!BombRules.open(replaced)||!level.setBlock(pos,GimmickBlocks.BOMB.get().defaultBlockState(),3))return false;
             if(game.plant(timing.fuseTicks())){
                 plantedSite=use.site;plantedPosition=pos;removeObjectives(p);
+                // One bomb per round: stop every other plant in progress and take the remaining bombs away.
+                uses.values().removeIf(other->!other.defuser);BombDrops.clear(server);
+                for(var mate:alive(game.attacker())){
+                    removeObjectives(mate);
+                    if(mate!=p)mate.displayClientMessage(Component.literal(p.getGameProfile().getName()+" 님이 "+use.site+" 지점에 폭탄을 설치했습니다 · 더 이상 설치할 수 없습니다"),true);
+                }
                 for(var player:server.getPlayerList().getPlayers())player.sendSystemMessage(Component.literal(use.site+" 지점 폭탄 설치 · "+timing.fuseSeconds()+"초"));
             }
         }
@@ -166,11 +183,16 @@ public final class BombMatch {
     }
     public void cancelUse(ServerPlayer p){uses.remove(p.getUUID());}
     public CombatGadgets.Gauge gauge(ServerPlayer p){
-        var use=uses.get(p.getUUID());if(use==null||!p.isUsingItem())return null;
+        var use=uses.get(p.getUUID());if(use==null)return null;
         int total=use.defuser?timing.defuseTicks():timing.plantTicks();
         return new CombatGadgets.Gauge(use.defuser?"bomb_defuse":"bomb_plant",Math.max(0,total-(level.getGameTime()-use.start)),total,true);
     }
-    public View view(){return new View(game.round(),arena.bomb().rounds(),game.attacker(),game.phase().name(),arena.bomb().pointA(),arena.bomb().pointB(),plantedSite,game.fuseTicks(),arena.dimension(),dead.stream().map(UUID::toString).sorted().toList(),arena.bomb().areaA(),arena.bomb().areaB(),plantedPosition==null?null:new BombRules.Point(plantedPosition.getX(),plantedPosition.getY(),plantedPosition.getZ()));}
+    public View view(){return new View(game.round(),arena.bomb().rounds(),game.attacker(),game.phase().name(),arena.bomb().pointA(),arena.bomb().pointB(),plantedSite,game.fuseTicks(),arena.dimension(),dead.stream().map(UUID::toString).sorted().toList(),arena.bomb().areaA(),arena.bomb().areaB(),plantedPosition==null?null:new BombRules.Point(plantedPosition.getX(),plantedPosition.getY(),plantedPosition.getZ()),mates(),arena.id(),arena.previewArea());}
+    private List<Mate> mates(){
+        var mates=new ArrayList<Mate>();
+        for(String team:List.of("ALPHA","BRAVO"))for(var p:alive(team))mates.add(new Mate(team,p.getUUID().toString(),p.getX(),p.getZ(),p.getYRot()));
+        return mates;
+    }
     private static void removeObjectives(ServerPlayer p){
         for(int i=0;i<p.getInventory().getContainerSize();i++)if(p.getInventory().getItem(i).getItem() instanceof BombItem)p.getInventory().setItem(i,ItemStack.EMPTY);
         p.inventoryMenu.broadcastChanges();
@@ -179,7 +201,7 @@ public final class BombMatch {
         if(plantedPosition!=null){var pos=plantedPosition;if(level.getBlockState(pos).is(GimmickBlocks.BOMB.get()))level.setBlock(pos,replaced==null?net.minecraft.world.level.block.Blocks.AIR.defaultBlockState():replaced,3);}
         plantedSite="";plantedPosition=null;replaced=null;
     }
-    public void close(){cleanupBomb();uses.clear();dead.clear();watching.clear();for(var p:server.getPlayerList().getPlayers()){p.setCamera(p);p.stopUsingItem();removeObjectives(p);}}
+    public void close(){BombDrops.clear(server);cleanupBomb();uses.clear();dead.clear();watching.clear();for(var p:server.getPlayerList().getPlayers()){p.setCamera(p);p.stopUsingItem();removeObjectives(p);}}
     @net.minecraftforge.eventbus.api.SubscribeEvent public static void breaking(net.minecraftforge.event.level.BlockEvent.BreakEvent event){
         if(event.getState().is(GimmickBlocks.BOMB.get()))event.setCanceled(true);
     }

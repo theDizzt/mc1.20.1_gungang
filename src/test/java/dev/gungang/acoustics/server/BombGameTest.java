@@ -53,7 +53,32 @@ class BombGameTest {
         var tdm=DeathmatchRules.defaults().arena(source).validate();assertNull(tdm.bomb());assertNull(tdm.capture());
         assertEquals(source.bomb().attackSpawn(),tdm.alphaSpawn());assertEquals(source.bomb().defenseSpawn(),tdm.bravoSpawn());assertEquals(1200,tdm.timeLimitSeconds());
     }
+    private static BombRules rounds(int rounds){var r=BombRules.defaults();return new BombRules(rounds,1,30,r.attackSpawn(),r.attackArea(),r.defenseSpawn(),r.defenseArea(),r.pointA(),r.pointB());}
+    /** Plays one round; the given team wins by eliminating the other side. */
+    private void play(BombGame g,String winner){
+        start(g);boolean attack=g.attacker().equals(winner);g.tick(attack?1:0,attack?0:1);
+        for(int i=0;i<60;i++)g.tick(1,1);
+    }
     @Test void invalidRoundCountRejected(){
-        var r=BombRules.defaults();assertThrows(IllegalArgumentException.class,()->new BombRules(4,1,30,r.attackSpawn(),r.attackArea(),r.defenseSpawn(),r.defenseArea(),r.pointA(),r.pointB()).validate());
+        assertThrows(IllegalArgumentException.class,()->rounds(0).validate());
+        assertThrows(IllegalArgumentException.class,()->rounds(100).validate());
+        assertDoesNotThrow(()->rounds(4).validate());
+    }
+    @Test void evenRoundsTieIsDraw(){
+        var g=new BombGame(rounds(6),210,true);assertEquals(4,rounds(6).winsRequired());
+        for(int round=1;round<=6;round++)play(g,round%2==0?"ALPHA":"BRAVO");
+        assertEquals(3,g.alphaScore());assertEquals(3,g.bravoScore());
+        assertEquals("DRAW",g.winner());assertEquals(BombGame.Phase.FINISHED,g.phase());assertEquals(6,g.round());
+    }
+    @Test void evenRoundsStillEndEarly(){
+        var g=new BombGame(rounds(6),210,true);
+        for(int round=1;round<=4;round++)play(g,"BRAVO");
+        assertEquals("BRAVO",g.winner());assertEquals(BombGame.Phase.FINISHED,g.phase());assertEquals(4,g.round());
+    }
+    @Test void evenRoundsUnevenFinalScore(){
+        var g=new BombGame(rounds(6),210,true);
+        for(String team:new String[]{"ALPHA","ALPHA","BRAVO","BRAVO","ALPHA"})play(g,team);
+        assertEquals("",g.winner());assertEquals(BombGame.Phase.PREPARING,g.phase());
+        play(g,"ALPHA");assertEquals("ALPHA",g.winner());
     }
 }

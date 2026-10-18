@@ -33,6 +33,7 @@ models={
  'gas_barrel_top':dict(textures={'side':'gungang:block/barrel_red','particle':'gungang:block/barrel_red'},elements=[element([2,0,2],[14,8,14])]),
  'nozzle':dict(textures={'side':'gungang:block/nozzle_metal','particle':'gungang:block/nozzle_metal'},elements=[element([6,0,6],[10,16,10]),element([5,0,5],[11,2,11]),element([5,14,5],[11,16,11])]),
  'puddle':dict(render_type='minecraft:translucent',textures={'side':'minecraft:block/water_still','particle':'minecraft:block/water_still'},elements=[element([0,0,0],[16,1,16])])}
+models['acid_puddle']=dict(render_type='minecraft:translucent',textures={'side':'gungang:block/acid_still','particle':'gungang:block/acid_still'},elements=[element([0,0,0],[16,1,16])])
 for face in models['puddle']['elements'][0]['faces'].values():
     face['tintindex']=0
 walls={'cracked_oak_planks':'oak_planks','cracked_glass':'glass','cracked_glass_pane':'glass',**{'cracked_'+c+'_concrete':c+'_concrete' for c in COLORS}}
@@ -45,18 +46,22 @@ for name,base in walls.items():
 for name,model in models.items():
     model['parent']='minecraft:block/block';write(ASSETS/f'models/block/{name}.json',model)
     if name=='gas_barrel_top':continue
-    if name=='puddle':state={'variants':{'':{'model':'gungang:block/puddle'}}}
+    if name in('puddle','acid_puddle'):state={'variants':{'':{'model':'gungang:block/'+name}}}
     elif name=='gas_barrel':state={'variants':{'active=true,top=false':{'model':'gungang:block/gas_barrel'},'active=true,top=true':{'model':'gungang:block/gas_barrel_top'},'active=false':{'model':'gungang:block/empty'}}}
     else:state={'variants':{'active=true':{'model':'gungang:block/'+name},'active=false':{'model':'gungang:block/empty'}}}
     write(ASSETS/f'blockstates/{name}.json',state)
     write(ASSETS/f'models/item/{name}.json',{'parent':'gungang:block/'+name})
     write(ROOT/f'src/main/resources/data/gungang/loot_tables/blocks/{name}.json',{'type':'minecraft:block','pools':[{'rolls':1,'entries':[{'type':'minecraft:item','name':'gungang:'+name}],'conditions':[{'condition':'minecraft:survives_explosion'}]}]})
+# The acid nozzle reuses the nozzle model; only its spray particles differ.
+write(ASSETS/'blockstates/acid_nozzle.json',{'variants':{'active=true':{'model':'gungang:block/nozzle'},'active=false':{'model':'gungang:block/empty'}}})
+write(ASSETS/'models/item/acid_nozzle.json',{'parent':'gungang:block/nozzle'})
+write(ROOT/'src/main/resources/data/gungang/loot_tables/blocks/acid_nozzle.json',{'type':'minecraft:block','pools':[{'rolls':1,'entries':[{'type':'minecraft:item','name':'gungang:acid_nozzle'}],'conditions':[{'condition':'minecraft:survives_explosion'}]}]})
 write(ASSETS/'models/block/empty.json',{'textures':{'particle':'minecraft:block/water_still'},'elements':[]})
 write(ASSETS/'blockstates/acid.json',{'variants':{'':{'model':'gungang:block/empty'}}})
 write(ASSETS/'models/item/acid_bucket.json',{'parent':'forge:item/bucket','loader':'forge:fluid_container','fluid':'gungang:acid'})
 soundpath=ASSETS/'sounds.json';sounds=json.loads(soundpath.read_text()) if soundpath.exists() else {};sounds['puddle_step']={'sounds':[{'name':'minecraft:entity.generic.splash','type':'event'}]};write(soundpath,sounds)
 write(ROOT/'src/main/resources/data/minecraft/tags/fluids/water.json',{'replace':False,'values':['gungang:acid','gungang:flowing_acid']})
-names={'uxo':'불발 지뢰 (UXO)','gas_barrel':'가스통','nozzle':'노즐','puddle':'웅덩이','acid':'산성 용액','cracked_oak_planks':'금이 간 나무판자','cracked_glass':'깨진 유리','cracked_glass_pane':'깨진 유리판'}
+names={'uxo':'불발 지뢰 (UXO)','gas_barrel':'가스통','nozzle':'노즐','acid_nozzle':'산성 노즐','puddle':'웅덩이','acid_puddle':'산성 웅덩이','acid':'산성 용액','cracked_oak_planks':'금이 간 나무판자','cracked_glass':'깨진 유리','cracked_glass_pane':'깨진 유리판'}
 ko_colors=['하얀색','주황색','자홍색','하늘색','노란색','연두색','분홍색','회색','회백색','청록색','보라색','파란색','갈색','초록색','빨간색','검은색']
 names.update({'cracked_'+c+'_concrete':k+' 금이 간 콘크리트' for c,k in zip(COLORS,ko_colors)})
 for lang in ['ko_kr','en_us']:
@@ -75,7 +80,8 @@ configs={
  'barrier':dict(health=200,range=5),'recovery_potion':dict(heal=50,durationSeconds=5),
  'small_health_pack':dict(heal=35,cooldownSeconds=10),'large_health_pack':dict(heal=70,cooldownSeconds=15),
  'uxo':dict(damage=80,radius=5,respawnSeconds=30),'gas_barrel':dict(damage=80,radius=5,respawnSeconds=30),
- 'puddle':dict(soundVolume=.7,soundIntervalTicks=6),'acid':dict(poisonSeconds=8,amplifier=0),'nozzle':dict(height=3,particlesPerSecond=40)}
+ 'puddle':dict(soundVolume=.7,soundIntervalTicks=6),'acid':dict(poisonSeconds=8,amplifier=0),'nozzle':dict(height=3,particlesPerSecond=40),
+ 'acid_nozzle':dict(height=3,particlesPerSecond=40,damage=2,damageIntervalTicks=10)}
 configs.update({name:dict(health=40 if 'pane' in name else 60 if 'glass' in name else 100 if 'planks' in name else 200) for name in walls})
 for folder in [ROOT/'server_resource/config/gungang',ROOT/'docs/server-examples/config/gungang']:
     for name,defaults in configs.items():

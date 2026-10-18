@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class TaczShootInputMixin {
     @Inject(method = "autoShoot", at = @At("HEAD"), cancellable = true, require = 0)
     private static void gungang$macroInput(TickEvent.ClientTickEvent event, CallbackInfo ci) {
-        if (OffhandMacro.ownsGunInput()||dev.gungang.acoustics.client.GadgetClient.placing()||dev.gungang.acoustics.server.SafeZones.contains(net.minecraft.client.Minecraft.getInstance().player)
+        if (dev.gungang.acoustics.client.FreeForAllHud.blocked()||OffhandMacro.ownsGunInput()||dev.gungang.acoustics.client.GadgetClient.placing()||dev.gungang.acoustics.server.SafeZones.contains(net.minecraft.client.Minecraft.getInstance().player)
                 ||dev.gungang.acoustics.server.CombatGadgets.holdingShield(net.minecraft.client.Minecraft.getInstance().player)) ci.cancel();
     }
 }

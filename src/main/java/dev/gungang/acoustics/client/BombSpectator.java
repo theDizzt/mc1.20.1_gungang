@@ -40,7 +40,7 @@ public final class BombSpectator {
         var input=event.getInput();input.shiftKeyDown=false;input.jumping=false;input.forwardImpulse=0;input.leftImpulse=0;
     }
     @SubscribeEvent public static void render(RenderGuiEvent.Post event){
-        var mc=Minecraft.getInstance();if(!active()||mc.options.hideGui||mc.screen!=null)return;
+        var mc=Minecraft.getInstance();if(!active()||mc.options.hideGui||mc.screen!=null||!HudVisibility.enabled())return;
         var camera=mc.getCameraEntity();var g=event.getGuiGraphics();
         String label=camera!=null&&camera!=mc.player?"관전: "+camera.getDisplayName().getString():"생존 팀원 없음 · 다음 라운드 대기";
         String help="휠 위 / 아래: 팀원 변경";int width=Math.max(mc.font.width(label),mc.font.width(help))+16;

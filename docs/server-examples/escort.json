@@ -1,0 +1,37 @@
+{
+  "id": "escort_example",
+  "name": "금광 호위",
+  "description": "ALPHA는 금광 수레를 호위하고 BRAVO는 저지합니다. 좌표와 경로 블록을 설치한 뒤 활성화하세요.",
+  "enabled": false,
+  "timeLimitSeconds": 240,
+  "gameMode": "adventure",
+  "dimension": "minecraft:overworld",
+  "alphaSpawn": {"x": 0.5, "y": 65, "z": 0.5, "yaw": 0, "pitch": 0},
+  "bravoSpawn": {"x": 60.5, "y": 65, "z": 0.5, "yaw": 180, "pitch": 0},
+  "spectatorSpawn": {"x": 30.5, "y": 80, "z": 0.5, "yaw": 0, "pitch": 30},
+  "alphaArea": {"minX": -5, "minY": 64, "minZ": -5, "maxX": 5, "maxY": 72, "maxZ": 5},
+  "bravoArea": {"minX": 55, "minY": 64, "minZ": -5, "maxX": 65, "maxY": 72, "maxZ": 5},
+  "weather": "clear",
+  "timeOfDay": "day",
+  "onPrepare": [],
+  "onStart": [],
+  "onEnd": [],
+  "escort": {
+    "scanArea": {"minX": -5, "minY": 64, "minZ": 5, "maxX": 85, "maxY": 75, "maxZ": 35},
+    "linkDistance": 16,
+    "speed": 1.0,
+    "extraPlayerMultiplier": 0.25,
+    "maxMultiplier": 2.0,
+    "radius": 5.0,
+    "checkpointStopSeconds": 5,
+    "checkpointBonusSeconds": 180,
+    "rollbackDelaySeconds": 10,
+    "rollbackSpeed": 0.5,
+    "rollbackSections": [0, 1],
+    "healIntervalTicks": 40,
+    "healAmount": 1.0,
+    "respawns": [
+      {"checkpoint": 1, "alpha": {"x": 24.5, "y": 65, "z": 0.5, "yaw": 0, "pitch": 0}, "bravo": {"x": 70.5, "y": 65, "z": 0.5, "yaw": 180, "pitch": 0}}
+    ]
+  }
+}

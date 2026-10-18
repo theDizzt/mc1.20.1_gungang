@@ -16,10 +16,14 @@ public final class ProgressionHud {
     @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event) {progress=XpTable.defaults().progress(0);}
     static void draw(GuiGraphics g,int x,int y,int width) {
         var font=Minecraft.getInstance().font;String level=String.valueOf(progress.level());
-        g.drawString(font,level,x,y,0xFFFFFFFF,true);
-        int left=x+font.width(level)+4,right=x+width;
-        g.fill(left,y+5,right,y+8,0x80465264);
-        g.fill(left,y+5,left+Math.round((right-left)*progress.fraction()),y+8,0xFFFFFFFF);
+        // Compact "LV n" tag followed by a slim track; the fill fades from mint into white.
+        g.pose().pushPose();g.pose().translate(x,y+2,0);g.pose().scale(.6f,.6f,1);
+        g.drawString(font,"LV",0,0,0xFF70CDBF,true);g.pose().popPose();
+        int tag=x+Math.round(font.width("LV")*.6f)+2;
+        g.drawString(font,level,tag,y,0xFFFFFFFF,true);
+        int left=tag+font.width(level)+4,right=x+width,filled=Math.round((right-left)*progress.fraction());
+        g.fill(left,y+5,right,y+7,0x50FFFFFF);
+        for(int i=0;i<filled;i+=2)g.fill(left+i,y+5,left+Math.min(filled,i+2),y+7,ArenaScreen.blend(0xFF70CDBF,0xFFFFFFFF,i/(float)Math.max(1,right-left)));
     }
     private ProgressionHud() { }
 }

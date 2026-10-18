@@ -22,6 +22,11 @@ public final class PreviewCache {
         if(!MAPS.containsKey(map.id()))request("map:"+map.id(),"mapPreview",map.id(),"");
         return MAPS.getOrDefault(map.id(),new MapImage(null,0,0,"전장 이미지 불러오는 중…"));
     }
+    /** Generated map image by map ID (the in-match TAB minimap); requested once and then cached. */
+    public static MapImage image(String id){
+        if(!MAPS.containsKey(id))request("map:"+id,"mapPreview",id,"");
+        return MAPS.get(id);
+    }
     public static ItemStack item(String id,boolean primary){
         String group=primary?"primary":"secondary",key=group+":"+id;
         if(!WEAPONS.containsKey(key))request(key,"weaponPreview",id,group);

@@ -17,6 +17,9 @@ public abstract class TaczDamageMixin {
     private void gungang$damage(Vec3 position,CallbackInfoReturnable<Float> cir) {
         var bullet=(Projectile)(Object)this;
         if(bullet.level().isClientSide)return;
+        if(dev.gungang.acoustics.server.SpawnGateProtection.bulletBlocked(bullet,position)){
+            bullet.getPersistentData().putBoolean(dev.gungang.acoustics.server.SpawnGateProtection.BLOCKED,true);bullet.discard();cir.setReturnValue(0f);return;
+        }
         double multiplier=AdrenalineDamage.multiplier(bullet.getOwner());
         bullet.getPersistentData().putDouble("GunGangRawDamageMultiplier",multiplier);
         cir.setReturnValue((float)(cir.getReturnValue()*multiplier));
