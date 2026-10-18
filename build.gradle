@@ -20,6 +20,7 @@ java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 // Explicit development-only server smoke checks; never included in a normal build/JAR.
 if (project.hasProperty('gungangSmoke')) sourceSets.main.java.srcDir('src/smoke/java')
 if (project.hasProperty('gungangClientSmoke')) sourceSets.main.java.srcDir('src/clientSmoke/java')
+if (project.hasProperty('gungangPropSmoke')) sourceSets.main.java.srcDir('src/propSmoke/java')
 
 minecraft {
     mappings channel: 'official', version: '1.20.1'
@@ -31,7 +32,7 @@ minecraft {
             mods { gungang_acoustics { source sourceSets.main } }
         }
         server {
-            workingDirectory project.file('run-server')
+            workingDirectory project.file(project.hasProperty('gungangPropSmoke') ? 'build/prop-smoke-run' : project.hasProperty('gungangBombSmoke') ? 'build/bomb-smoke-run' : 'run-server')
             args '--nogui'
             mods { gungang_acoustics { source sourceSets.main } }
         }
@@ -58,6 +59,7 @@ mixin {
 tasks.named('jar', Jar).configure {
     exclude 'dev/gungang/acoustics/server/GadgetSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/client/PreviewSmokeChecks*.class'
+    exclude 'dev/gungang/acoustics/server/PropSmokeChecks*.class'
     archiveFileName = "gungang-realistic_1.20.1_${releaseName}.jar"
     manifest { attributes(['MixinConfigs': 'gungang_acoustics.mixins.json']) }
     finalizedBy 'reobfJar'

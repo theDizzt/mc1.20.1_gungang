@@ -13,17 +13,27 @@ final class DeathmatchHud {
         var options=state.options()==null?TeamOptions.defaults():state.options();
         var bomb=state.bomb();int alpha=state.alphaScore(),bravo=state.bravoScore();
         g.pose().pushPose();g.pose().translate(g.guiWidth()/2f,top,0);g.pose().scale(scale,scale,1);
-        team(g,true,"ALPHA",options.color("ALPHA"),alpha,alpha>bravo,bomb==null?null:"ALPHA".equals(bomb.attacker()));
-        team(g,false,"BRAVO",options.color("BRAVO"),bravo,bravo>alpha,bomb==null?null:"BRAVO".equals(bomb.attacker()));
+        if(FreeForAllHud.is(state)) FreeForAllHud.top(g,state);
+        else {
+        team(g,true,"ALPHA",options.color("ALPHA"),alpha,alpha>bravo,bomb==null?null:"ALPHA".equals(bomb.attacker()),bomb==null?"":alive(state,"ALPHA"));
+        team(g,false,"BRAVO",options.color("BRAVO"),bravo,bravo>alpha,bomb==null?null:"BRAVO".equals(bomb.attacker()),bomb==null?"":alive(state,"BRAVO"));
+        }
         if(bomb!=null){
             small(g,"ROUND "+bomb.round()+" / "+bomb.totalRounds(),0,2,.75f,0xFFFFFFFF,true);
-            MatchTimerHud.drawAt(g,MatchReport.time(state.seconds()),0,11);
-        }else MatchTimerHud.drawAt(g,MatchReport.time(state.seconds()),0,7);
+            MatchTimerHud.drawAt(g,state,0,11);
+        }else MatchTimerHud.drawAt(g,state,0,7);
         g.pose().popPose();
-        return top+Math.round(32*scale);
+        return top+Math.round((FreeForAllHud.is(state)?37:32)*scale);
     }
-    /** Attacking is null outside bomb rounds; otherwise it picks the ATK/DEF tag. */
-    private static void team(GuiGraphics g,boolean left,String name,int color,int score,boolean leading,Boolean attacking) {
+    /** Bomb round survivors of a team, e.g. "생존 3/5"; the dead watch until the next round. */
+    private static String alive(MatchSnapshot state,String team) {
+        var dead=state.bomb().deadPlayers()==null?java.util.List.<String>of():state.bomb().deadPlayers();
+        var members=state.players().stream().filter(r->team.equals(r.team())).toList();
+        long left=members.stream().filter(r->!dead.contains(r.id())).count();
+        return "생존 "+left+"/"+members.size();
+    }
+    /** Attacking is null outside bomb rounds; otherwise it picks the ATK/DEF tag. Note sits beside the tag (bomb survivors). */
+    static void team(GuiGraphics g,boolean left,String name,int color,int score,boolean leading,Boolean attacking,String note) {
         int inner=36,outer=116,y1=3,y2=27,x1=left?-outer:inner,x2=left?-inner:outer;
         plate(g,x1,y1,x2,y2,color,left,leading);
         var font=Minecraft.getInstance().font;String text=String.valueOf(score);
@@ -32,10 +42,11 @@ final class DeathmatchHud {
         int edge=left?x1+7:x2-7;
         small(g,name,edge,y1+5,.75f,0xFFFFFFFF,false,left);
         if(attacking!=null){
-            String tag=attacking?"ATK":"DEF";int tagColor=attacking?0xFFFF8A65:0xFF70CDBF,w=Math.round(font.width(tag)*.6f)+6;
+            String tag=attacking?"ATK":"DEF";int tagColor=attacking?0xFFFF8A65:0xFF4D9FFF,w=Math.round(font.width(tag)*.6f)+6;
             int tx=left?edge:edge-w;
             g.fill(tx,y1+14,tx+w,y1+21,(tagColor&0xFFFFFF)|0x40000000);g.fill(tx,y1+14,tx+1,y1+21,tagColor);
             small(g,tag,tx+3,y1+15,.6f,tagColor,false,true);
+            if(!note.isEmpty())small(g,note,left?tx+w+3:tx-3,y1+15,.6f,note.startsWith("생존 0/")?0xFFFF6B6B:0xFFFFFFFF,false,left);
         }
     }
     /** Draws a score scaled about its centre so the pop grows in place; popping scores flash white. */

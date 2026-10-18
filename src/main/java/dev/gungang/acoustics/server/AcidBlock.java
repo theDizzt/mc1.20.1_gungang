@@ -8,6 +8,18 @@ public final class AcidBlock extends LiquidBlock {
     public AcidBlock(){super(GimmickBlocks.ACID_SOURCE,Properties.copy(Blocks.WATER).lightLevel(s->12));}
     @Override public void entityInside(BlockState s,Level level,BlockPos pos,Entity entity){
         super.entityInside(s,level,pos,entity);
-        if(!level.isClientSide&&entity instanceof net.minecraft.world.entity.player.Player p&&!p.isSpectator())p.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.POISON,ExtraGadgetConfig.ticks(GimmickConfig.acid.poisonSeconds()),GimmickConfig.acid.amplifier()));
+        poison(level,entity);
+    }
+    public static void poison(Level level,Entity entity){
+        if(!level.isClientSide&&entity instanceof net.minecraft.world.entity.player.Player p&&!p.isSpectator()&&PropDimensions.prop(p)==null){ // disguised hiders are immune
+            int amplifier=GimmickConfig.acid.amplifier();
+            int interval=Math.max(1,25>>amplifier);
+            int duration=Math.max(interval+1,ExtraGadgetConfig.ticks(GimmickConfig.acid.poisonSeconds()));
+            var current=p.getEffect(net.minecraft.world.effect.MobEffects.POISON);
+            // Preserve the poison tick phase when refreshing while submerged.
+            if(current!=null&&current.getAmplifier()==amplifier)
+                duration-=Math.floorMod(duration-current.getDuration(),interval);
+            p.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.POISON,duration,amplifier));
+        }
     }
 }

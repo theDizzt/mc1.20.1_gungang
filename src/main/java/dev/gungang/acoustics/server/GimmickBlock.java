@@ -21,7 +21,7 @@ public class GimmickBlock extends BaseEntityBlock {
     @Override public RenderShape getRenderShape(BlockState s){return s.getValue(ACTIVE)?RenderShape.MODEL:RenderShape.INVISIBLE;}
     @Override public VoxelShape getShape(BlockState s,BlockGetter l,BlockPos p,CollisionContext c){
         if(!s.getValue(ACTIVE))return Shapes.empty();
-        return switch(id){case "uxo"->box(3,0,3,13,2,13);case "gas_barrel"->box(2,0,2,14,s.getValue(TOP)?8:16,14);case "nozzle"->box(6,0,6,10,16,10);case "cracked_glass_pane"->Shapes.or(box(7,0,0,9,16,16),box(0,0,7,16,16,9));default->Shapes.block();};
+        return switch(id){case "uxo"->box(3,0,3,13,2,13);case "gas_barrel"->box(2,0,2,14,s.getValue(TOP)?8:16,14);case "nozzle","acid_nozzle"->box(6,0,6,10,16,10);case "cracked_glass_pane"->Shapes.or(box(7,0,0,9,16,16),box(0,0,7,16,16,9));default->Shapes.block();};
     }
     @Override public BlockState getStateForPlacement(BlockPlaceContext c){return id.equals("gas_barrel")&&(!c.getLevel().getBlockState(c.getClickedPos().above()).canBeReplaced(c)||c.getClickedPos().getY()+1>=c.getLevel().getMaxBuildHeight())?null:defaultBlockState();}
     @Override public void setPlacedBy(Level level,BlockPos pos,BlockState s,LivingEntity who,net.minecraft.world.item.ItemStack stack){if(id.equals("gas_barrel"))level.setBlock(pos.above(),s.setValue(TOP,true),3);}

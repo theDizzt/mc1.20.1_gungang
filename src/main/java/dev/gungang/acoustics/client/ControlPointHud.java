@@ -11,7 +11,7 @@ final class ControlPointHud {
         var point=state.point();
         int top=Math.max(2,BossBarHud.bottom+1);
         if(point==null) return top;
-        if("NORMANDY".equals(point.mode())) return normandy(g,point,top);
+        if("NORMANDY".equals(point.mode())) return normandy(g,state,top);
         var options=state.options()==null?TeamOptions.defaults():state.options();
         int alpha=options.color("ALPHA"),bravo=options.color("BRAVO");
         int tint=point.progress()>0?alpha:point.progress()<0?bravo:0xFFE2E7EF;
@@ -29,17 +29,19 @@ final class ControlPointHud {
         g.pose().popPose();
         return top+Math.round(48*scale);
     }
-    private static int normandy(GuiGraphics g,MatchSnapshot.Capture point,int top) {
+    private static int normandy(GuiGraphics g,MatchSnapshot state,int top) {
+        var point=state.point();
         int active=Math.max(0,Math.min(3,point.completed()));
         int[] colors={0xFF2455FF,0xFF28D83B,0xFFFF8000,0xFFFF3333};
-        // One 44px objective, three 28px objectives, with 6px gaps; center the whole row.
-        int width=44+3*28+3*6;
+        // Reserve a fixed central clock; each pair grows outwards from it.
+        int width=2*(36+44+6+28);
         float scale=Math.min(.8f,(g.guiWidth()-12)/(float)(width+2));
         g.pose().pushPose();
         g.pose().translate(g.guiWidth()/2f,top,0);
         g.pose().scale(scale,scale,1);
-        int left=-width/2;
+        int left=-36-(active<2?44+28:56)-6;
         for(int i=0;i<4;i++) {
+            if(i==2)left=36;
             boolean current=i==active;
             int radius=current?22:14,x=left+radius;
             float progress=i<point.completed()?100:current?Math.abs(point.progress()):0;
@@ -52,6 +54,7 @@ final class ControlPointHud {
             }
             left+=radius*2+6;
         }
+        MatchTimerHud.drawAt(g,state,0,14);
         g.pose().popPose();
         return top+Math.round(48*scale);
     }

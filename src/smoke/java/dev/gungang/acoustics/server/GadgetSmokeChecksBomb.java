@@ -48,24 +48,25 @@ final class GadgetSmokeChecksBomb {
             field(LobbyManager.class,"selected").set(null,map.id());field(LobbyManager.class,"selectedMode").set(null,"BOMB");
             var prepare=LobbyManager.class.getDeclaredMethod("prepare");prepare.setAccessible(true);prepare.invoke(null);
             var match=MatchManager.bomb();check(match!=null,"Bomb map initializes round controller");
-            check(players.stream().filter(p->p.getOffhandItem().is(GadgetItems.BOMB.get())).count()==1,"Exactly one attacker receives bomb");
-            check(players.stream().filter(p->p.getOffhandItem().is(GadgetItems.DEFUSER.get())).count()==1,"Exactly one defender receives defuser");
+            check(players.stream().noneMatch(p->p.getMainHandItem().getItem() instanceof BombItem||p.getOffhandItem().getItem() instanceof BombItem),"Nobody is issued bomb or defuser items");
             check(Loadouts.load().secondary().stream().noneMatch(BombEquipment::reserved),"Reserved items never appear in weapon selection");
-            var attacker=players.stream().filter(p->p.getOffhandItem().is(GadgetItems.BOMB.get())).findFirst().orElseThrow();
-            var defender=players.stream().filter(p->p.getOffhandItem().is(GadgetItems.DEFUSER.get())).findFirst().orElseThrow();
+            var attacker=players.stream().filter(p->LobbyManager.team(p.getUUID()).equals(match.game.attacker())).findFirst().orElseThrow();
+            var defender=players.stream().filter(p->LobbyManager.team(p.getUUID()).equals(match.game.defender())).findFirst().orElseThrow();
             attacker.setPos(450,240,450);defender.setPos(450,240,450);match.tick();
             check(attacker.getX()<440&&defender.getX()==450,"Preparation confines attackers only");
             for(int i=1;i<600;i++)match.tick();check(match.activePlay(),"Thirty seconds starts round");
-            swap(attacker);attacker.setPos(415.5,241,410.5);attacker.setXRot(90);
+            attacker.setPos(415.5,240,410.5);attacker.setOnGround(true);
             check(!match.beginUse(attacker,false),"Cannot plant outside A/B");
-            aim(attacker,a);check(match.beginUse(attacker,false),"Can start planting at A");attacker.startUsingItem(InteractionHand.MAIN_HAND);
+            stand(defender,a);check(!match.beginUse(defender,false),"Defenders cannot plant");defender.setPos(450,240,450);
+            stand(attacker,a);match.key(attacker,true);check(match.gauge(attacker)!=null,"Any living attacker starts planting with E inside A");
             attacker.setPos(attacker.position().add(.5,0,0));check(!match.continueUse(attacker,false),"Movement cancels plant");
-            attacker.stopUsingItem();aim(attacker,a);
-            check(attacker.getMainHandItem().use(level,attacker,InteractionHand.MAIN_HAND).getResult().consumesAction(),"Bomb item right click starts use");
-            advanceUse(match,attacker,79);check(!match.game.planted(),"Plant must not complete before four seconds");
-            advanceUse(match,attacker,1);check(match.game.planted()&&level.getBlockState(new BlockPos(a.x(),a.y(),a.z())).is(GimmickBlocks.BOMB.get()),"Four seconds places one bomb block");
+            stand(attacker,a);match.key(attacker,true);advanceUse(match,attacker,20);match.key(attacker,false);
+            check(match.gauge(attacker)==null&&!match.game.planted(),"Releasing E cancels incomplete planting");
+            match.key(attacker,true);
+            advanceUse(match,attacker,99);check(!match.game.planted(),"Plant must not complete before five seconds");
+            advanceUse(match,attacker,1);check(match.game.planted()&&level.getBlockState(new BlockPos(a.x(),a.y(),a.z())).is(GimmickBlocks.BOMB.get()),"Five seconds places one bomb block at the feet");
             check(match.view().plantedPosition().equals(a),"Timer and defuse position follow actual placement rather than area center");
-            attacker.stopUsingItem();check(!match.beginUse(attacker,false),"Cannot plant twice");
+            match.key(attacker,false);check(!match.beginUse(attacker,false),"Cannot plant twice");
             var ledger=(MatchLedger)field(MatchManager.class,"ledger").get(null);
             ledger.damage(defender.getUUID(),attacker.getUUID(),10,server.getTickCount());
             attacker.setPos(440.5,240,440.5);
@@ -89,26 +90,32 @@ final class GadgetSmokeChecksBomb {
             for(var p:players)if(LobbyManager.team(p.getUUID()).equals(match.game.attacker())&&!p.isSpectator())match.eliminate(p);
             match.tick();check(match.activePlay(),"Attack wipe after planting does not end round");
             check(attacker.getCamera()==attacker&&attacker.getY()==map.spectatorSpawn().y(),"Team wipe waits at the fixed spectator spawn");
-            swap(defender);aim(defender,a);check(defender.getMainHandItem().use(level,defender,InteractionHand.MAIN_HAND).getResult().consumesAction(),"Defuser starts on planted bomb");
-            advanceUse(match,defender,139);check(match.activePlay(),"Defuse must take seven seconds");advanceUse(match,defender,1);defender.stopUsingItem();
+            aim(defender,a);match.key(defender,true);check(match.gauge(defender)!=null,"Any living defender starts defusing with E on the bomb");
+            advanceUse(match,defender,199);check(match.activePlay(),"Defuse must take ten seconds");advanceUse(match,defender,1);match.key(defender,false);
             check(match.game.reason().equals("DEFUSED")&&level.getBlockState(new BlockPos(a.x(),a.y(),a.z())).isAir(),"Defuse awards round and removes bomb");
             String oldAttack=match.game.attacker();
             for(int i=0;i<60;i++)match.tick();
             check(match.game.round()==2&&!match.game.attacker().equals(oldAttack)&&players.stream().noneMatch(ServerPlayer::isSpectator),"Next round revives and swaps roles");
             check(players.stream().allMatch(p->p.getCamera()==p),"Next round restores all player cameras");
             for(int i=0;i<600;i++)match.tick();
-            var nextBomber=players.stream().filter(p->p.getOffhandItem().is(GadgetItems.BOMB.get())).findFirst().orElseThrow();
-            match.eliminate(nextBomber);match.tick();
-            check(players.stream().anyMatch(p->!p.isSpectator()&&p.getOffhandItem().is(GadgetItems.BOMB.get())),"Carrier death transfers bomb to surviving teammate");
-            nextBomber=players.stream().filter(p->!p.isSpectator()&&p.getOffhandItem().is(GadgetItems.BOMB.get())).findFirst().orElseThrow();
-            swap(nextBomber);aim(nextBomber,b);check(nextBomber.getMainHandItem().use(level,nextBomber,InteractionHand.MAIN_HAND).getResult().consumesAction(),"B also allows planting");advanceUse(match,nextBomber,80);nextBomber.stopUsingItem();
+            var fallen=players.stream().filter(p->!p.isSpectator()&&LobbyManager.team(p.getUUID()).equals(match.game.attacker())).findFirst().orElseThrow();
+            fallen.setPos(415.5,240,415.5);match.eliminate(fallen);match.tick();
+            boolean dropped=false;for(var e:level.getAllEntities())if(e instanceof net.minecraft.world.entity.item.ItemEntity item&&!item.isRemoved()&&item.getItem().getItem() instanceof BombItem)dropped=true;
+            check(!dropped,"Death drops no objective");
+            var planter=players.stream().filter(p->!p.isSpectator()&&LobbyManager.team(p.getUUID()).equals(match.game.attacker())).findFirst().orElseThrow();
+            stand(planter,b);match.key(planter,true);advanceUse(match,planter,100);match.key(planter,false);
+            check(match.game.planted()&&"B".equals(match.view().plantedSite()),"Another living attacker plants at B");
             var health=new HashMap<UUID,Float>();players.forEach(p->health.put(p.getUUID(),p.getHealth()));
             for(int i=0;i<900;i++)match.tick();
             check(match.game.reason().equals("EXPLODED"),"Bomb fuse explodes after forty-five seconds");
             check(players.stream().allMatch(p->p.getHealth()==health.get(p.getUUID())),"Objective explosion never damages players");
+            var endDrop=looseDrop(level);check(!endDrop.isRemoved(),"Cleanup fixture exists");
             LobbyManager.finish("ABORTED");
+            check(endDrop.isRemoved(),"Game end removes objective drops");
             for(int i=0;i<players.size();i++)LobbyManager.station(players.get(i),i<3?StationBlock.Kind.ALPHA:StationBlock.Kind.BRAVO,new BlockPos(400,239,400));
+            var startDrop=looseDrop(level);
             field(LobbyManager.class,"selectedMode").set(null,"DEATHMATCH");prepare.invoke(null);
+            check(startDrop.isRemoved(),"New game preparation clears objective drops across modes");
             check(MatchManager.bomb()==null,"Bomb map in deathmatch has no bomb rules");
             check(players.get(0).getX()==rules.attackSpawn().x()&&players.get(3).getX()==rules.defenseSpawn().x(),"Deathmatch maps attack/defense spawns to ALPHA/BRAVO");
             field(LobbyManager.class,"deadline").setInt(null,0);
@@ -118,7 +125,9 @@ final class GadgetSmokeChecksBomb {
             check(LobbyManager.respawning(players.get(0).getUUID()),"Deathmatch death zone schedules ordinary respawn");
             var tdmLedger=(MatchLedger)field(MatchManager.class,"ledger").get(null);
             check(tdmLedger.kills("ALPHA")==0&&tdmLedger.kills("BRAVO")==0,"Deathmatch death zone cannot change team score");
-            System.out.println("GUNGANG_BOMB_SMOKE_PASS roles=swap respawn=round-only sites=A,B plant=4s defuse=7s fuse=45s deathzone=suicide spectator=team-cycle,disconnect,enemy-reject,round-reset");
+            LobbyManager.finish("ABORTED");var reloadDrop=looseDrop(level);
+            check(server.getCommands().getDispatcher().execute("gungang reload",server.createCommandSourceStack())==1&&reloadDrop.isRemoved(),"Reload immediately clears objective drops");
+            System.out.println("GUNGANG_BOMB_SMOKE_PASS roles=swap respawn=round-only sites=A,B plant=5s(E,anyone) defuse=10s(E,anyone) fuse=45s deathzone=suicide spectator=team-cycle,disconnect,enemy-reject,round-reset");
         }finally{
             LobbyManager.finish("ABORTED");
             for(var p:players){online.remove(p);byId.remove(p.getUUID());lobbyPlayers.remove(p.getUUID());level.removePlayerImmediately(p,net.minecraft.world.entity.Entity.RemovalReason.DISCARDED);}
@@ -126,12 +135,16 @@ final class GadgetSmokeChecksBomb {
             saved.forEach((pos,state)->level.setBlock(pos,state,3));server.getWorldData().overworldData().setGameTime(oldTime);
         }
     }
-    private static void swap(ServerPlayer p){var main=p.getMainHandItem();p.setItemInHand(InteractionHand.MAIN_HAND,p.getOffhandItem());p.setItemInHand(InteractionHand.OFF_HAND,main);}
+    private static net.minecraft.world.entity.item.ItemEntity looseDrop(net.minecraft.server.level.ServerLevel level){
+        var item=new net.minecraft.world.entity.item.ItemEntity(level,400,240,400,new ItemStack(GadgetItems.BOMB.get()));level.addFreshEntity(item);return item;
+    }
+    /** Looking straight down at the cell from above, for defusing. */
     private static void aim(ServerPlayer p,BombRules.Point point){p.setPos(point.x()+.5,point.y()+1,point.z()+.5);p.setXRot(90);p.setYRot(0);}
+    /** Feet in the cell, standing on the floor below it, for planting. */
+    private static void stand(ServerPlayer p,BombRules.Point point){p.setPos(point.x()+.5,point.y(),point.z()+.5);p.setOnGround(true);}
     private static void advanceUse(BombMatch match,ServerPlayer p,int ticks){
         for(int i=0;i<ticks;i++){
             p.server.getWorldData().overworldData().setGameTime(p.level().getGameTime()+1);
-            var stack=p.getMainHandItem();if(stack.getItem() instanceof BombItem item)item.onUseTick(p.level(),p,stack,72000-i);
             match.tick();
         }
     }

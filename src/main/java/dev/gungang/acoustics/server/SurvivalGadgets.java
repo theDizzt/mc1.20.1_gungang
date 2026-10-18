@@ -60,6 +60,11 @@ public final class SurvivalGadgets {
         JETS.put(p.getUUID(),new Jet(p.level().getGameTime()+ExtraGadgetConfig.ticks(ExtraGadgetConfig.jet.durationSeconds()),p.position(),p.isNoGravity(),
                 stack.hasTag()&&stack.getTag().getBoolean("GunGangJetpackVerticalFlight")));
         p.setNoGravity(true);p.fallDistance=0;
+        // Ignition: spark, whoosh of the burner catching, then a low thrust bark.
+        var sounds=net.minecraft.sounds.SoundSource.PLAYERS;
+        p.level().playSound(null,p.blockPosition(),net.minecraft.sounds.SoundEvents.FLINTANDSTEEL_USE,sounds,1,.8f);
+        p.level().playSound(null,p.blockPosition(),net.minecraft.sounds.SoundEvents.FIRECHARGE_USE,sounds,1.2f,.7f);
+        p.level().playSound(null,p.blockPosition(),net.minecraft.sounds.SoundEvents.BLAZE_SHOOT,sounds,.9f,.6f);
         SecondaryRuntime.commit(p,stack);sync(p);return true;
     }
     private static void velocity(ServerPlayer p,Vec3 velocity) {
@@ -69,6 +74,8 @@ public final class SurvivalGadgets {
     private static void stopJet(ServerPlayer p) {
         var jet=JETS.remove(p.getUUID());if(jet==null)return;
         p.setNoGravity(jet.originalNoGravity());p.fallDistance=0;
+        // Burner cut-off.
+        p.level().playSound(null,p.blockPosition(),net.minecraft.sounds.SoundEvents.FIRE_EXTINGUISH,net.minecraft.sounds.SoundSource.PLAYERS,.6f,1.4f);
         velocity(p,Vec3.ZERO);
         long end=p.level().getGameTime()+ExtraGadgetConfig.ticks(ExtraGadgetConfig.jet.trailSeconds());
         TRAILS.replaceAll(t->t.owner().equals(p.getUUID())?new Trail(t.level(),t.owner(),t.position(),Math.min(t.end(),end)):t);
@@ -116,7 +123,10 @@ public final class SurvivalGadgets {
         JETS.put(p.getUUID(),new Jet(jet.end(),p.position(),jet.originalNoGravity(),jet.verticalFlight()));
         TRAILS.add(new Trail(p.serverLevel(),p.getUUID(),p.position().subtract(direction.scale(.4)),jet.end()+ExtraGadgetConfig.ticks(ExtraGadgetConfig.jet.trailSeconds())));
         velocity(p,motion);
-        if(now%6==0)p.level().playSound(null,p.blockPosition(),net.minecraft.sounds.SoundEvents.FIRECHARGE_USE,net.minecraft.sounds.SoundSource.PLAYERS,.5f,1.4f);
+        // Sustained burn while active: a crackling roar under rapid, slightly detuned ignition pops.
+        var sounds=net.minecraft.sounds.SoundSource.PLAYERS;
+        if(now%8==0)p.level().playSound(null,p.blockPosition(),net.minecraft.sounds.SoundEvents.BLAZE_BURN,sounds,.9f,.8f);
+        if(now%5==0)p.level().playSound(null,p.blockPosition(),net.minecraft.sounds.SoundEvents.FIRECHARGE_USE,sounds,.55f,1.2f+p.getRandom().nextFloat()*.3f);
     }
     @SubscribeEvent public static void trails(TickEvent.ServerTickEvent event) {
         if(event.phase!=TickEvent.Phase.END)return;
@@ -133,7 +143,7 @@ public final class SurvivalGadgets {
     static void jetImpact(ServerPlayer target,Vec3 direction){
         // A skill impulse must survive gun mods cancelling vanilla LivingKnockBackEvent.
         if(jetting(target))stopJet(target);
-        double strength=ExtraGadgetConfig.jet.knockback();if(strength<=0)return;
+        double strength=ExtraGadgetConfig.jet.knockback();if(strength<=0||CombatGadgets.shieldBlocked(target))return;
         var horizontal=new Vec3(direction.x,0,direction.z).normalize();var old=target.getDeltaMovement();
         velocity(target,new Vec3(old.x*.5+horizontal.x*strength,Math.max(old.y,.35),old.z*.5+horizontal.z*strength));
         target.hurtMarked=true;

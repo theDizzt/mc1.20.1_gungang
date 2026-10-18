@@ -11,16 +11,21 @@ import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID,value=Dist.CLIENT)
 public final class UtilityHud {
-    private static CombatGadgets.Hud state=new CombatGadgets.Hud(java.util.List.of(),0,0,3,"");
+    private static CombatGadgets.Hud state=new CombatGadgets.Hud(java.util.List.of(),0,0,3,1,"");
     private static long received;
     public static void receive(String json) {state=ServerFiles.GSON.fromJson(json,CombatGadgets.Hud.class);var level=Minecraft.getInstance().level;received=level==null?0:level.getGameTime();}
-    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event) {state=new CombatGadgets.Hud(java.util.List.of(),0,0,3,"");received=0;}
+    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event) {state=new CombatGadgets.Hud(java.util.List.of(),0,0,3,1,"");received=0;}
     @SubscribeEvent public static void input(InputEvent.InteractionKeyMappingTriggered event) {
-        if(CombatGadgets.holdingShield(Minecraft.getInstance().player)) {event.setCanceled(true);event.setSwingHand(false);}
+        if(FreeForAllHud.blocked()||CombatGadgets.holdingShield(Minecraft.getInstance().player)) {event.setCanceled(true);event.setSwingHand(false);}
     }
     static void gauges(GuiGraphics g,int center,int healthBarY,int width,int height,float partial) {
         var mc=Minecraft.getInstance();if(mc.player==null||!mc.player.isAlive()||mc.player.isSpectator())return;
         int y=healthBarY-36-height;
+        var protection=FreeForAllHud.row(mc.player.getUUID());
+        if(protection!=null&&protection.protectionTicks()>0){
+            gauge(g,center,y,width,height,protection.protectionTicks(),protection.protectionTotal(),(protection.protectionTotal()==600?"무적 ":"은신 ")+(protection.protectionTicks()+19)/20+"초",partial);
+            y-=height+4;
+        }
         for(var gauge:state.gauges()) {
             float remaining=gauge.remaining();if(gauge.timed())remaining-=Math.max(0,mc.level.getGameTime()-received+partial);
             if(remaining<=0)continue;
@@ -33,9 +38,10 @@ public final class UtilityHud {
     }
     private static void gauge(GuiGraphics g,int center,int y,int width,int height,float remaining,float maximum,String label,float partial) {
         float fraction=Math.min(1,remaining/Math.max(1,maximum));int x=center-width/2;
-        ShooterHud.panel(g,x,y,width,height,0xFF60696D,0x8029353E);
+        ShooterHud.card(g,x,y,width,height,ShooterHud.BAR_EDGE,ShooterHud.SURFACE,0);
         HudHealthBars.fill(g,x+1,y+1,width-2,height-2,fraction,0xFF65D9FF);
         HudHealthBars.stripes(g,x+1,y+1,width-2,height-2,fraction,(Minecraft.getInstance().player.tickCount+partial)/20.0);
+        ShooterHud.finish(g,x+1,y+1,width-2,height-2,fraction);
         HudText.health(g,label,x+3,y+1,width-6,height-2,0xFFFFFFFF);
     }
     static void placements(GuiGraphics g,int x,int y) {
@@ -44,12 +50,12 @@ public final class UtilityHud {
             g.drawString(font,"지뢰: "+state.mines()+"/"+state.maxMines(),x,y,state.mines()>=state.maxMines()?0xFFFF5555:0xFFFFFFFF,true);y+=12;
         }
         if(state.equipped().equals("barrier")||state.barriers()>0)
-            g.drawString(font,"방벽: "+state.barriers()+"/1",x,y,state.barriers()>=1?0xFFFF5555:0xFFFFFFFF,true);
+            g.drawString(font,"방벽: "+state.barriers()+"/"+state.maxBarriers(),x,y,state.barriers()>=state.maxBarriers()?0xFFFF5555:0xFFFFFFFF,true);
     }
     static int placementWidth() {
         var font=Minecraft.getInstance().font;int width=0;
         if(state.equipped().equals("landmine")||state.mines()>0)width=font.width("지뢰: "+state.mines()+"/"+state.maxMines());
-        if(state.equipped().equals("barrier")||state.barriers()>0)width=Math.max(width,font.width("방벽: "+state.barriers()+"/1"));
+        if(state.equipped().equals("barrier")||state.barriers()>0)width=Math.max(width,font.width("방벽: "+state.barriers()+"/"+state.maxBarriers()));
         return width==0?0:width+8;
     }
     private UtilityHud() { }

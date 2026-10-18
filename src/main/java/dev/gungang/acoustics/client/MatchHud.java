@@ -23,6 +23,7 @@ import net.minecraftforge.fml.common.Mod;
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID,value=Dist.CLIENT)
 public final class MatchHud {
     private static MatchSnapshot state;
+    static MatchSnapshot state(){return state;}
     private static int page;
     private static MatchSnapshot pendingResult;
     private static int resultDelay;
@@ -30,6 +31,8 @@ public final class MatchHud {
     public static boolean roundIntermission(){return active()&&state.bomb()!=null&&"ROUND_END".equals(state.bomb().phase());}
     public static void receive(String json) {
         state=ServerFiles.GSON.fromJson(json,MatchSnapshot.class);
+        refreshGates();
+        EscortHud.receive(state);
         MapEnvironmentClient.receive(state);
         BombWorldHud.receive(state);
         BombSpectator.receive(state);
@@ -38,7 +41,7 @@ public final class MatchHud {
         pendingResult=null;resultDelay=0;
         if(state.result()) {
             var mc=Minecraft.getInstance();
-            pendingResult=state;resultDelay=60;
+            pendingResult=state;resultDelay=state.point()!=null&&"PROP_HUNT".equals(state.point().mode())?1:60;
             mc.setScreen(null);
             mc.gui.setTimes(10,40,10);
             mc.gui.setSubtitle(Component.empty());
@@ -48,6 +51,7 @@ public final class MatchHud {
     static Component resultTitle(MatchSnapshot result) {
         if(result.winner().equals("DRAW"))return Component.literal("무승부");
         if(result.winner().equals("ABORTED"))return Component.literal("경기 종료");
+        if(FreeForAllHud.is(result)){var row=result.players().stream().filter(r->r.id().equals(result.winner())).findFirst().orElse(null);return Component.literal((row==null?"":row.name())+" 승리").withStyle(style->style.withColor(row==null?0xFFFFFF:row.color()));}
         var options=result.options()==null?TeamOptions.defaults():result.options();
         return Component.empty().append(Component.literal("Team "+result.winner()).withStyle(s->s.withColor(options.color(result.winner())&0xFFFFFF)))
                 .append(Component.literal(" 승리").withStyle(ChatFormatting.WHITE));
@@ -62,29 +66,53 @@ public final class MatchHud {
             mc.setScreen(new Results(result));
         }
     }
-    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut e) { state=null; page=0;ScorePop.reset();pendingResult=null;resultDelay=0;MapEnvironmentClient.receive(null);BombWorldHud.receive(null);BombSpectator.receive(null); }
+    /** Gate rule for SpawnGateBlock: FREE_FOR_ALL, the bomb attacker, or null, from the live match snapshot. */
+    static String gateRule(){
+        var s=state;if(s==null||!s.active())return null;
+        if(s.point()!=null&&"PROP_HUNT".equals(s.point().mode()))return "PROP_HUNT";
+        if(FreeForAllHud.is(s))return dev.gungang.acoustics.server.SpawnGateBlock.FREE_FOR_ALL;
+        return s.bomb()==null?null:s.bomb().attacker();
+    }
+    private static String lastGateRule;
+    /** Gate tint is baked into chunk meshes, so rebuild them when the bomb sides swap or the mode changes. */
+    private static void refreshGates(){
+        String rule=gateRule();
+        if(java.util.Objects.equals(rule,lastGateRule))return;
+        lastGateRule=rule;var mc=Minecraft.getInstance();
+        if(mc.level!=null)mc.levelRenderer.allChanged();
+    }
+    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut e) { state=null;lastGateRule=null; page=0;ScorePop.reset();pendingResult=null;resultDelay=0;MapEnvironmentClient.receive(null);BombWorldHud.receive(null);BombSpectator.receive(null); }
     @SubscribeEvent public static void hide(RenderGuiOverlayEvent.Pre e) {
-        if(state!=null&&state.active()&&e.getOverlay().id().equals(VanillaGuiOverlay.PLAYER_LIST.id())) e.setCanceled(true);
+        if(HudVisibility.enabled()&&state!=null&&state.active()&&e.getOverlay().id().equals(VanillaGuiOverlay.PLAYER_LIST.id())) e.setCanceled(true);
     }
     @SubscribeEvent public static void scroll(InputEvent.MouseScrollingEvent e) {
         var mc=Minecraft.getInstance();
-        if(state!=null&&state.active()&&mc.screen==null&&mc.options.keyPlayerList.isDown()) { page=Math.max(0,page+(e.getScrollDelta()<0?1:-1)); e.setCanceled(true); }
+        if(HudVisibility.enabled()&&state!=null&&state.active()&&mc.screen==null&&mc.options.keyPlayerList.isDown()) { page=Math.max(0,page+(e.getScrollDelta()<0?1:-1)); e.setCanceled(true); }
         else BombSpectator.scroll(e);
     }
     @SubscribeEvent public static void render(RenderGuiEvent.Post e) {
-        var mc=Minecraft.getInstance(); if(state==null||!state.active()||mc.options.hideGui)return;
+        var mc=Minecraft.getInstance(); if(state==null||!state.active()||mc.options.hideGui||!HudVisibility.enabled())return;
         var g=e.getGuiGraphics();
-        boolean deathmatch=state.point()!=null&&("DEATHMATCH".equals(state.point().mode())||"BOMB".equals(state.point().mode()));
+        if(state.point()!=null&&"PROP_HUNT".equals(state.point().mode())){PropHuntClient.draw(g);return;}
+        boolean deathmatch=state.point()!=null&&(FreeForAllHud.is(state)||"DEATHMATCH".equals(state.point().mode())||"BOMB".equals(state.point().mode()));
         int y;
-        if(deathmatch)y=DeathmatchHud.draw(g,state);
-        else {y=ControlPointHud.draw(g,state)+2;MatchTimerHud.draw(g,MatchReport.time(state.seconds()),y);}
+        if(state.escort()!=null)y=EscortHud.draw(g,state);
+        else if(deathmatch)y=DeathmatchHud.draw(g,state);
+        else {y=ControlPointHud.draw(g,state)+4;if(state.point()==null||!"NORMANDY".equals(state.point().mode()))MatchTimerHud.draw(g,state,y);}
         if(mc.screen==null&&mc.options.keyPlayerList.isDown()) {
             String label="경과 시간",time=MatchReport.time(state.elapsedSeconds());
             int w=mc.font.width(label)+mc.font.width(time)+20,cx=g.guiWidth()/2-w/2;
             g.fill(cx,y+18,cx+w,y+31,0x900B121C);g.fill(cx,y+30,cx+w,y+31,0xFF70CDBF);
             g.drawString(mc.font,label,cx+7,y+21,0xFF9AAABD,false);
             g.drawString(mc.font,time,cx+w-7-mc.font.width(time),y+21,0xFFFFFFFF,false);
-            table(g,state,Math.max(4,(g.guiWidth()-480)/2),y+35,Math.min(480,g.guiWidth()-8),g.guiHeight()-y-48,page);
+            int height=g.guiHeight()-y-48;
+            if(state.bomb()!=null){
+                // Bomb mode: the scoreboard shares the width with a square minimap on its right.
+                int map=Math.max(0,Math.min(Math.min(180,height-14),(g.guiWidth()-16)/3)),width=Math.min(480,g.guiWidth()-16-map),left=Math.max(4,(g.guiWidth()-width-8-map)/2);
+                table(g,state,left,y+35,width,height,page);
+                BombMinimap.draw(g,state,left+width+8,y+35+13,map);
+            }
+            else table(g,state,Math.max(4,(g.guiWidth()-480)/2),y+35,Math.min(480,g.guiWidth()-8),height,page);
         }
     }
     private static final int HEAD=28,COLS=13,ROW=18,FOOT=13,GAP=8;
@@ -92,6 +120,8 @@ public final class MatchHud {
             .thenComparing(Comparator.comparingDouble(MatchSnapshot.Row::damage).reversed())
             .thenComparingInt(MatchSnapshot.Row::deaths).thenComparing(MatchSnapshot.Row::name);
     static int table(GuiGraphics g,MatchSnapshot value,int x,int y,int width,int height,int requestedPage) {
+        if(value.point()!=null&&"PROP_HUNT".equals(value.point().mode()))return PropHuntClient.table(g,value,x,y,width,height,requestedPage);
+        if(FreeForAllHud.is(value))return FreeForAllHud.table(g,value,x,y,width,height,requestedPage);
         int capacity=capacity(height),pages=tablePages(value,height),p=Math.min(requestedPage,pages-1);
         int half=(width-GAP)/2,shown=1;
         var options=value.options()==null?TeamOptions.defaults():value.options();
@@ -153,10 +183,10 @@ public final class MatchHud {
             g.drawString(font,label,right-8-font.width(label),bottom-FOOT+3,0xFF5F6E80,false);
         }
     }
-    private static void column(GuiGraphics g,String text,int right,int y,int color) {
+    static void column(GuiGraphics g,String text,int right,int y,int color) {
         var font=Minecraft.getInstance().font;g.drawString(font,text,right-font.width(text),y,color,false);
     }
-    private static ResourceLocation skin(String id) {
+    static ResourceLocation skin(String id) {
         var connection=Minecraft.getInstance().getConnection();
         try {
             var info=connection==null?null:connection.getPlayerInfo(UUID.fromString(id));
@@ -166,6 +196,8 @@ public final class MatchHud {
     }
     private static int capacity(int height) { return Math.max(1,(height-HEAD-COLS-FOOT)/ROW); }
     private static int tablePages(MatchSnapshot value,int height) {
+        if(value.point()!=null&&"PROP_HUNT".equals(value.point().mode()))return PropHuntClient.pages(value,height);
+        if(FreeForAllHud.is(value))return FreeForAllHud.pages(value,height);
         long count=Math.max(value.players().stream().filter(r->r.team().equals("ALPHA")).count(),value.players().stream().filter(r->r.team().equals("BRAVO")).count());
         int capacity=capacity(height);return Math.max(1,(int)((count+capacity-1)/capacity));
     }
@@ -179,7 +211,14 @@ public final class MatchHud {
             closeButton(left()+body()-80,height-40,70,20);
         }
         @Override public void render(GuiGraphics g,int mx,int my,float partial) {
-            shell(g,Component.literal(result.map()+" · 플레이 시간 "+MatchReport.time(result.seconds())+" · ")
+            if(FreeForAllHud.is(result)){
+                var winner=result.players().stream().filter(r->r.id().equals(result.winner())).findFirst().orElse(null);
+                var subtitle=Component.literal(result.map()+" · 플레이 시간 "+MatchReport.time(result.seconds()));
+                if(winner!=null)subtitle.append(Component.literal(" · 1위 ").withStyle(ChatFormatting.GRAY))
+                        .append(Component.literal(winner.name()+" "+winner.score()+"점").withStyle(s->s.withColor(winner.color()&0xFFFFFF)));
+                shell(g,subtitle);
+            }
+            else shell(g,Component.literal(result.map()+" · 플레이 시간 "+MatchReport.time(result.seconds())+" · ")
                     .append(Component.literal("Team ALPHA "+result.alphaScore()).withStyle(s->s.withColor((result.options()==null?TeamOptions.defaults():result.options()).color("ALPHA")&0xFFFFFF)))
                     .append(Component.literal(" : ").withStyle(ChatFormatting.GRAY))
                     .append(Component.literal("Team Bravo "+result.bravoScore()).withStyle(s->s.withColor((result.options()==null?TeamOptions.defaults():result.options()).color("BRAVO")&0xFFFFFF))));

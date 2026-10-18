@@ -29,9 +29,13 @@ public final class ServerFiles {
         boolean firstRun = !Files.exists(mapsDirectory);
         Files.createDirectories(mapsDirectory);
         Files.createDirectories(mapsDirectory.resolve("preview"));
+        Files.createDirectories(mapsDirectory.resolve("data"));
         if (firstRun) ConfigLayout.writeNew(mapsDirectory.resolve("example.json"), GSON.toJson(ArenaMap.example()));
         ConfigLayout.writeNew(mapsDirectory.resolve("normandy.json"), GSON.toJson(NormandyRules.example()));
         ConfigLayout.writeNew(mapsDirectory.resolve("bomb.json"), GSON.toJson(BombRules.example()));
+        ConfigLayout.writeNew(mapsDirectory.resolve("escort.json"), GSON.toJson(EscortRules.example()));
+        ConfigLayout.writeNew(mapsDirectory.resolve("free_for_all.json"), GSON.toJson(FreeForAllRules.example()));
+        ConfigLayout.writeNew(mapsDirectory.resolve("prop_hunt.json"), GSON.toJson(PropHuntRules.example()));
         List<ArenaMap> maps = new ArrayList<>();
         Set<String> ids = new HashSet<>();
         try (var paths = Files.list(mapsDirectory)) {

@@ -3,6 +3,12 @@ package dev.gungang.acoustics.server;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.phys.AABB;
+import org.joml.Vector3f;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
@@ -13,12 +19,13 @@ import net.minecraft.world.level.block.state.*;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.material.*;
 
-/** Source-fluid logging, like vanilla waterlogging, with acid and lava support. */
+/** Source-fluid logging, like vanilla waterlogging, with acid and lava support. Sprays water, or acid with id acid_nozzle. */
 public final class NozzleBlock extends GimmickBlock implements LiquidBlockContainer, BucketPickup {
     public static final IntegerProperty FLUID=IntegerProperty.create("fluid",0,3);
+    public static final DustParticleOptions ACID_SPRAY=new DustParticleOptions(new Vector3f(.6f,1f,.1f),1.2f);
 
-    public NozzleBlock(){
-        super("nozzle");
+    public NozzleBlock(String id){
+        super(id);
         registerDefaultState(defaultBlockState().setValue(FLUID,0));
     }
 
@@ -27,7 +34,7 @@ public final class NozzleBlock extends GimmickBlock implements LiquidBlockContai
         builder.add(FLUID);
     }
 
-    private static int fluidId(Fluid fluid){
+    static int fluidId(Fluid fluid){
         if(fluid.isSame(Fluids.WATER))return 1;
         if(fluid.isSame(Fluids.LAVA))return 2;
         if(fluid.isSame(GimmickBlocks.ACID_SOURCE.get()))return 3;
@@ -88,5 +95,31 @@ public final class NozzleBlock extends GimmickBlock implements LiquidBlockContai
     @Override public void entityInside(BlockState state,Level level,BlockPos pos,Entity entity){
         super.entityInside(state,level,pos,entity);
         if(state.getValue(FLUID)==3)GimmickBlocks.ACID_BLOCK.get().entityInside(GimmickBlocks.ACID_BLOCK.get().defaultBlockState(),level,pos,entity);
+    }
+
+    public boolean acid(){return id.equals("acid_nozzle");}
+    private double height(){return acid()?GimmickConfig.acidNozzle.height():GimmickConfig.nozzle.height();}
+    /** The spray column above the nozzle, where its effect applies. */
+    public AABB column(BlockPos pos){return new AABB(pos.getX()+.3,pos.getY()+1,pos.getZ()+.3,pos.getX()+.7,pos.getY()+1+height(),pos.getZ()+.7);}
+    public void particles(ServerLevel level,BlockPos pos){
+        int perSecond=acid()?GimmickConfig.acidNozzle.particlesPerSecond():GimmickConfig.nozzle.particlesPerSecond();
+        if(level.getGameTime()%4==0)for(int i=0;i<Math.max(1,perSecond/5);i++){
+            double y=pos.getY()+1+level.random.nextDouble()*height();
+            if(acid())level.sendParticles(ACID_SPRAY,pos.getX()+.5,y,pos.getZ()+.5,1,.06,.02,.06,0);
+            else level.sendParticles(ParticleTypes.SPLASH,pos.getX()+.5,y,pos.getZ()+.5,1,.06,.02,.06,.015);
+        }
+    }
+
+    /** Water spray puts out burning entities; acid spray hurts living ones. */
+    public void spray(ServerLevel level,BlockPos pos){
+        long now=level.getGameTime();
+        particles(level,pos);
+        var column=column(pos);
+        if(!acid()){
+            for(var entity:level.getEntities((Entity)null,column,Entity::isOnFire))entity.clearFire();
+        }else if(now%GimmickConfig.acidNozzle.damageIntervalTicks()==0&&GimmickConfig.acidNozzle.damage()>0){
+            for(var entity:level.getEntitiesOfClass(LivingEntity.class,column,e->e.isAlive()&&!e.isSpectator()))
+                if(!SpawnGateProtection.shields(entity,net.minecraft.world.phys.Vec3.atCenterOf(pos)))OrdnanceDamage.hurt(entity,level.damageSources().magic(),(float)GimmickConfig.acidNozzle.damage());
+        }
     }
 }

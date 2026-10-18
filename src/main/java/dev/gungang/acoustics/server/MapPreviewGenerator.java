@@ -15,10 +15,16 @@ import net.minecraftforge.fml.common.Mod;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
+import java.security.MessageDigest;
+import java.util.zip.CRC32;
 import java.util.*;
 import javax.imageio.ImageIO;
 
-/** Server-side map colors, one existing chunk per tick. Never generates new terrain. */
+/** Server-side map colors, one existing chunk per tick. Never generates new terrain.
+ *  Finished maps are kept in server/maps/data/<id>.png and reused until the map JSON changes. */
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID)
 public final class MapPreviewGenerator {
     private static final Map<ArenaMap,byte[]> CACHE=new LinkedHashMap<>();
@@ -91,11 +97,11 @@ public final class MapPreviewGenerator {
         }
         byte[] finish() throws Exception {
             var g=image.createGraphics();g.setFont(new Font(Font.SANS_SERIF,Font.BOLD,11));g.setClip(0,0,width*unit,height*unit);
-            var red=new Color(225,65,65);var blue=new Color(65,110,235);var gold=new Color(210,155,20);
+            var options=LobbyManager.options();var red=new Color(options.color("ALPHA")&0xFFFFFF);var blue=new Color(options.color("BRAVO")&0xFFFFFF);var gold=new Color(210,155,20);var orange=new Color(240,120,20);
             area(g,map.alphaArea(),red);area(g,map.bravoArea(),blue);
             marker(g,map.alphaSpawn().x(),map.alphaSpawn().z(),"A",red,false);
             marker(g,map.bravoSpawn().x(),map.bravoSpawn().z(),"B",blue,false);
-            if(map.capture()!=null){var a=map.capture().area();area(g,a,gold);marker(g,(a.minX()+a.maxX())/2,(a.minZ()+a.maxZ())/2,"C",gold,true);}
+            if(map.capture()!=null){var a=map.capture().area();area(g,a,orange);marker(g,(a.minX()+a.maxX())/2,(a.minZ()+a.maxZ())/2,"C",orange,true);}
             if(map.bomb()!=null){
                 var sites=new BombRules.Site[]{map.bomb().areaA(),map.bomb().areaB()};var points=new BombRules.Point[]{map.bomb().pointA(),map.bomb().pointB()};
                 for(int i=0;i<2;i++){var site=sites[i];var p=points[i];
@@ -103,14 +109,63 @@ public final class MapPreviewGenerator {
                     marker(g,site==null?p.x()+.5:site.centerX(),site==null?p.z()+.5:site.centerZ(),i==0?"A":"B",gold,true);
                 }
             }
-            if(map.normandy()!=null){int i=1;for(var p:map.normandy().points())marker(g,p.center().x(),p.center().z(),""+i++,gold,true);}
+            if(map.normandy()!=null){int i=1;for(var p:map.normandy().points())marker(g,p.center().x(),p.center().z(),""+i++,orange,true);}
             g.setClip(null);g.setColor(new Color(20,26,35));g.fillRect(0,height*unit,image.getWidth(),42);g.setColor(Color.WHITE);
-            g.drawString(map.bomb()==null?"N ^  |  Red A: ALPHA / Blue B: BRAVO":"N ^  |  Red A: Attack / Blue B: Defend",5,height*unit+14);
-            g.drawString("Gold diamond: objective"+(missing?"  |  ! Unexplored":""),5,height*unit+30);g.dispose();
+            g.drawString(map.bomb()==null?"N ^  |  A: ALPHA / B: BRAVO":"N ^  |  A: Attack / B: Defend",5,height*unit+14);
+            g.drawString((map.bomb()!=null?"Gold diamond: bomb site":"Orange diamond: capture point")+(missing?"  |  ! Unexplored":""),5,height*unit+30);g.dispose();
             var bytes=new ByteArrayOutputStream();ImageIO.write(image,"png",bytes);var png=bytes.toByteArray();MapPreviewFiles.dimensions(png);return png;
         }
     }
+    // Bump when the rendering changes so old files are regenerated.
+    private static final String FORMAT="2";
+    private static final String KEYWORD="gungang-map",SEPARATOR=String.valueOf((char)0);
+    public static Path directory(){return ServerFiles.root().resolve("server/maps/data");}
+    private static Path file(String id){return directory().resolve(id+".png");}
+    // Team colors are drawn into the image, so option.json changes must invalidate saved files.
+    private static String teamColors(){var options=LobbyManager.options();return options.alphaColor()+","+options.bravoColor();}
+    private static String fingerprint(ArenaMap map){
+        try{
+            var digest=MessageDigest.getInstance("SHA-256").digest((FORMAT+":"+teamColors()+":"+ServerFiles.GSON.toJson(map)).getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        }catch(Exception failure){throw new IllegalStateException(failure);}
+    }
+    /** Stores the fingerprint as a tEXt chunk right after IHDR, so one file per map ID is enough. */
+    private static byte[] tag(byte[] png,String key){
+        byte[] data=(KEYWORD+SEPARATOR+key).getBytes(StandardCharsets.ISO_8859_1),type="tEXt".getBytes(StandardCharsets.ISO_8859_1);
+        var crc=new CRC32();crc.update(type);crc.update(data);
+        var chunk=ByteBuffer.allocate(12+data.length).putInt(data.length).put(type).put(data).putInt((int)crc.getValue()).array();
+        var out=new byte[png.length+chunk.length];
+        System.arraycopy(png,0,out,0,33);System.arraycopy(chunk,0,out,33,chunk.length);System.arraycopy(png,33,out,33+chunk.length,png.length-33);
+        return out;
+    }
+    private static String key(byte[] png){
+        if(png.length<45)return "";
+        var buffer=ByteBuffer.wrap(png,33,png.length-33);int length=buffer.getInt();
+        if(buffer.getInt()!=0x74455874||length<0||length>256||length>buffer.remaining()-4)return "";
+        var text=new String(png,41,length,StandardCharsets.ISO_8859_1);
+        return text.startsWith(KEYWORD+SEPARATOR)?text.substring(KEYWORD.length()+1):"";
+    }
+    private static byte[] load(ArenaMap map){
+        var path=file(map.id());
+        if(!Files.isRegularFile(path))return null;
+        try{
+            var png=MapPreviewFiles.read(directory(),map.id()+".png");
+            return key(png).equals(fingerprint(map))?png:null;
+        }catch(Exception failure){
+            com.mojang.logging.LogUtils.getLogger().warn("Map data {} ignored: {}",map.id(),failure.getMessage());return null;
+        }
+    }
+    private static void save(ArenaMap map,byte[] png){
+        try{
+            Files.createDirectories(directory());
+            var tagged=tag(png,fingerprint(map));MapPreviewFiles.dimensions(tagged);
+            var temp=directory().resolve(map.id()+".png.tmp");
+            Files.write(temp,tagged);
+            Files.move(temp,file(map.id()),StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);
+        }catch(Exception failure){com.mojang.logging.LogUtils.getLogger().warn("Map data {} could not be saved",map.id(),failure);}
+    }
     public static void request(ServerPlayer player,ArenaMap map){
+        if(!CACHE.containsKey(map)){var saved=load(map);if(saved!=null)remember(map,saved);}
         if(CACHE.containsKey(map)){GungangNetwork.send(player,new GungangNetwork.MapPreview(map.id(),CACHE.get(map),""));return;}
         var job=JOBS.get(map);
         if(job==null){
@@ -125,7 +180,9 @@ public final class MapPreviewGenerator {
         var iterator=JOBS.entrySet().iterator();var entry=iterator.next();var job=entry.getValue();
         try{
             if(!job.step())return;
-            byte[] png=job.finish();CACHE.put(entry.getKey(),png);while(CACHE.size()>8)CACHE.remove(CACHE.keySet().iterator().next());
+            byte[] png=job.finish();remember(entry.getKey(),png);
+            // Unexplored chunks may load later; keep those maps in memory only so they are retried.
+            if(!job.missing)save(job.map,png);
             for(var id:job.viewers){var player=job.level.getServer().getPlayerList().getPlayer(id);if(player!=null)GungangNetwork.send(player,new GungangNetwork.MapPreview(job.map.id(),png,""));}
         }catch(Exception failure){
             com.mojang.logging.LogUtils.getLogger().warn("Map generation failed: {}",job.map.id(),failure);
@@ -133,7 +190,23 @@ public final class MapPreviewGenerator {
         }
         iterator.remove();
     }
+    private static void remember(ArenaMap map,byte[] png){CACHE.put(map,png);while(CACHE.size()>8)CACHE.remove(CACHE.keySet().iterator().next());}
     public static void clear(){CACHE.clear();JOBS.clear();}
+    /** Deletes saved map data (all maps when id is null) so the next preview request regenerates it. */
+    public static int purge(String id)throws java.io.IOException{
+        CACHE.keySet().removeIf(m->id==null||m.id().equals(id));JOBS.keySet().removeIf(m->id==null||m.id().equals(id));
+        var dir=directory();if(!Files.isDirectory(dir))return 0;
+        int removed=0;
+        try(var paths=Files.list(dir)){
+            for(var path:paths.toList()){
+                String name=path.getFileName().toString();
+                if(!Files.isRegularFile(path)||!(name.endsWith(".png")||name.endsWith(".png.tmp")))continue;
+                if(id!=null&&!name.equals(id+".png")&&!name.equals(id+".png.tmp"))continue;
+                Files.delete(path);if(name.endsWith(".png"))removed++;
+            }
+        }
+        return removed;
+    }
     @SubscribeEvent public static void stop(net.minecraftforge.event.server.ServerStoppedEvent event){clear();}
     private MapPreviewGenerator(){}
 }

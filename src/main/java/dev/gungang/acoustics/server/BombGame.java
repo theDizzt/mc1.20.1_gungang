@@ -26,7 +26,8 @@ public final class BombGame {
     public int fuseTicks(){return Math.max(0,fuse);}
     public String roundWinner(){return roundWinner;}
     public String reason(){return reason;}
-    public String winner(){return alpha>=rules.winsRequired()?"ALPHA":bravo>=rules.winsRequired()?"BRAVO":"";}
+    /** Even round counts can end level (e.g. 3:3 of 6); that is a draw once every round is played. */
+    public String winner(){return alpha>=rules.winsRequired()?"ALPHA":bravo>=rules.winsRequired()?"BRAVO":alpha+bravo>=rules.rounds()?"DRAW":"";}
     public boolean plant(int fuseTicks){
         if(phase!=Phase.RUNNING||planted||fuseTicks<1)return false;
         planted=true;fuse=fuseTicks;return true;
