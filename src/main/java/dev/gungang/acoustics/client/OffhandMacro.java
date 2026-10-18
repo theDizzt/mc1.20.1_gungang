@@ -32,6 +32,7 @@ public final class OffhandMacro {
     private static boolean click;
     private static boolean holdingUse;
     private static boolean gunAction;
+    private static boolean objectiveAction;
     private static boolean shieldHold;
     private static boolean previousAttackDown, previousUseDown;
 
@@ -41,7 +42,7 @@ public final class OffhandMacro {
     }
 
     public static boolean executingClick() { return click; }
-    public static boolean ownsGunInput() { return owner != null && gunAction; }
+    public static boolean ownsGunInput() { return owner != null && (gunAction || objectiveAction); }
     public static void stopForRoundEnd(){if(owner!=null)finish(Minecraft.getInstance());}
 
     @SubscribeEvent
@@ -58,6 +59,7 @@ public final class OffhandMacro {
         boolean useEdge = useClick && !previousUseDown;
         previousAttackDown = attackDown;
         previousUseDown = useDown;
+        if ((attackEdge || useEdge) && GadgetClient.placing()) { GadgetClient.cancel(); return; }
         if (owner == null && (attackEdge || useEdge) && canStart(mc)) {
             if(attackEdge&&dev.gungang.acoustics.server.CombatGadgets.is(mc.player.getOffhandItem(),"shield"))return;
             begin(mc, !attackEdge);
@@ -71,6 +73,7 @@ public final class OffhandMacro {
     }
 
     private static boolean canStart(Minecraft mc) {
+        if(FreeForAllHud.blocked())return false;
         return mc.player != null && mc.level != null && mc.gameMode != null && mc.getConnection() != null
                 && !MatchHud.roundIntermission()
                 && mc.isWindowActive() && mc.screen == null && !mc.isPaused()
@@ -87,6 +90,7 @@ public final class OffhandMacro {
         originalSlot = owner.getInventory().selected;
         sequence = new MacroSequence();
         gunAction = false;
+        objectiveAction = rightClick && owner.getOffhandItem().getItem() instanceof dev.gungang.acoustics.server.BombItem;
         use = rightClick;
         shieldHold=rightClick&&dev.gungang.acoustics.server.CombatGadgets.is(owner.getOffhandItem(),"shield");
         // Keep the server's selected slot current before the swap packet.
@@ -122,7 +126,10 @@ public final class OffhandMacro {
                 }
                 click = true;
                 try {
-                    if (use) ((Clicks) mc).gungang$use();
+                    // Objectives validate their own ray trace on the server. Avoid an interactive
+                    // floor block or a gun input handler consuming the macro's single use click.
+                    if (objectiveAction) mc.gameMode.useItem(owner, InteractionHand.MAIN_HAND);
+                    else if (use) ((Clicks) mc).gungang$use();
                     else ((Clicks) mc).gungang$attack();
                 } finally { click = false; }
                 sequence.actionDone();
@@ -174,6 +181,7 @@ public final class OffhandMacro {
         if (holdingUse) mc.options.keyUse.setDown(physicalDown(mc, mc.options.keyUse));
         holdingUse = false;
         gunAction = false;
+        objectiveAction = false;
         shieldHold = false;
         click = false;
         owner = null;

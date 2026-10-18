@@ -2,10 +2,10 @@
   "id": "98",
   "itemNbt": "{id:'gungang:bomb',Count:1b}",
   "name": "폭탄",
-  "description": "폭탄전에서 무작위 담당자에게만 지급됩니다.",
-  "usage": "대상을 조준하고 우클릭을 유지합니다.",
+  "description": "아이템으로 지급하지 않습니다. 이 파일은 시간 설정용입니다.",
+  "usage": "공격팀 누구나 A/B 영역 바닥에 서서 E를 유지해 설치합니다.",
   "category": "폭탄전 전용",
   "cooldownSeconds": 0,
-  "plantSeconds": 4,
+  "plantSeconds": 5,
   "fuseSeconds": 45
 }

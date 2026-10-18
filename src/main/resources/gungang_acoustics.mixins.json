@@ -4,9 +4,10 @@
   "package": "dev.gungang.acoustics.mixin",
   "compatibilityLevel": "JAVA_17",
   "refmap": "gungang_acoustics.refmap.json",
-  "mixins": ["TaczDamageMixin", "SecondaryItemUseMixin", "SecondaryCooldownMixin", "TacticalCooldownMixin", "FoodRegenerationMixin", "OrdnanceFriendlyFireMixin", "JetpackStepMixin", "BombSpectatorCameraMixin", "BombSpectatorTeleportMixin"],
+  "mixins": ["PropTargetMixin", "PropCollisionMixin", "SpawnGateEffectMixin", "MapSnowAccumulationMixin", "AcidLoggedStateMixin", "AcidLoggedFluidMixin", "AcidLoggedShapeMixin", "TaczDamageMixin", "TaczNpcPassMixin", "SecondaryItemUseMixin", "SecondaryCooldownMixin", "TacticalCooldownMixin", "FoodRegenerationMixin", "OrdnanceFriendlyFireMixin", "JetpackStepMixin", "BombSpectatorCameraMixin", "BombSpectatorTeleportMixin"],
   "client": [
-    "MapPrecipitationMixin",
+    "PropKeyboardMixin", "PropMouseMixin", "MapPrecipitationMixin",
+    "MapWeatherRendererMixin",
     "ShieldHandLayerMixin",
     "ShieldPoseMixin",
     "ChannelMixin",

@@ -23,10 +23,14 @@ class DownrunMapTest {
         assertEquals(13,map.bomb().pointB().y());
         assertEquals(map.bomb().attackSpawn(),DeathmatchRules.defaults().arena(map).alphaSpawn());
     }
-    @Test void suppliedMapIsValidAndDeathmatchOnly() throws Exception {
+    @Test void suppliedMapOffersFreeForAllAndTeamDeathmatch() throws Exception {
         var map = new Gson().fromJson(Files.readString(Path.of("server_resource/config/gungang/server/maps/brazil-downrun.json")), ArenaMap.class).validate();
         assertTrue(map.enabled());
-        assertTrue(DeathmatchRules.exclusive(map));
+        assertEquals(23, map.freeForAll().spawns().size());
+        assertTrue(DeathmatchRules.supported(map));
+        assertFalse(DeathmatchRules.exclusive(map));
+        assertTrue(PropHuntRules.supported(map));
+        assertNull(DeathmatchRules.defaults().arena(map).freeForAll());
         assertEquals(238, map.alphaArea().minX());
         assertEquals(405, map.bravoArea().maxX());
         var arena = DeathmatchRules.defaults().arena(map).validate();

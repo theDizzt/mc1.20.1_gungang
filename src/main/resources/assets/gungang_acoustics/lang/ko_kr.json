@@ -1,4 +1,13 @@
 {
+  "item.gungang.spatial_wand": "공간마법사",
+  "block.gungang.alpha_spawn_gate": "ALPHA·공격팀 스폰 입구 홀로그램",
+  "block.gungang.bravo_spawn_gate": "BRAVO·수비팀 스폰 입구 홀로그램",
+  "block.gungang.escort_path": "호위 경로 지정 블록",
+  "block.gungang.escort_start": "호위 시작점 지정 블록",
+  "block.gungang.escort_end": "호위 도착점 지정 블록",
+  "block.gungang.escort_checkpoint": "호위 중간거점 지정 블록",
+  "entity.gungang.escort_cart": "금광 수레",
+  "entity.gungang.escort_rail": "호위 선로",
   "itemGroup.gungang.blocks": "GunGang 블록",
   "itemGroup.gungang.items": "GunGang 아이템",
   "key.gungang.lobby": "대기실 다시 열기",
@@ -139,5 +148,8 @@
   "fluid_type.gungang.acid": "산성 용액",
   "item.gungang.bomb": "폭탄",
   "item.gungang.defuser": "폭탄 해체기",
-  "block.gungang.planted_bomb": "설치된 폭탄"
+  "block.gungang.planted_bomb": "설치된 폭탄",
+  "block.gungang.acid_nozzle": "산성 노즐",
+  "block.gungang.acid_puddle": "산성 웅덩이",
+  "entity.gungang.acid_puddle": "산성 웅덩이"
 }

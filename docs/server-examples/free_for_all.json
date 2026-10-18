@@ -1,0 +1,27 @@
+{
+  "id": "free_for_all",
+  "name": "개인전 예제",
+  "description": "실제 맵의 스폰 좌표로 수정한 뒤 활성화하세요.",
+  "enabled": false,
+  "timeLimitSeconds": 600,
+  "gameMode": "adventure",
+  "dimension": "minecraft:overworld",
+  "alphaSpawn": {"x": 0.5, "y": 65, "z": 0.5, "yaw": 0, "pitch": 0},
+  "bravoSpawn": {"x": 40.5, "y": 65, "z": 0.5, "yaw": 180, "pitch": 0},
+  "spectatorSpawn": {"x": 20.5, "y": 80, "z": 0.5, "yaw": 0, "pitch": 30},
+  "alphaArea": {"minX": -5, "minY": 64, "minZ": -5, "maxX": 5, "maxY": 72, "maxZ": 5},
+  "bravoArea": {"minX": 35, "minY": 64, "minZ": -5, "maxX": 45, "maxY": 72, "maxZ": 5},
+  "weather": "clear",
+  "timeOfDay": "day",
+  "onPrepare": [], "onStart": [], "onEnd": [],
+  "freeForAll": {
+    "timeLimitSeconds": 600,
+    "winningScore": 16,
+    "spawns": [
+      {"x": 0.5, "y": 65, "z": 0.5, "yaw": 0, "pitch": 0},
+      {"x": 40.5, "y": 65, "z": 0.5, "yaw": 180, "pitch": 0},
+      {"x": 20.5, "y": 65, "z": 20.5, "yaw": 180, "pitch": 0},
+      {"x": 20.5, "y": 65, "z": -20.5, "yaw": 0, "pitch": 0}
+    ]
+  }
+}

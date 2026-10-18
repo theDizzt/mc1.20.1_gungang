@@ -9,8 +9,9 @@ public record DeathmatchRules(Integer timeLimitSeconds,Integer winningKills) {
             throw new IllegalArgumentException("Invalid team deathmatch time limit or winning kills");
     }
     public static DeathmatchRules defaults() { return new DeathmatchRules(1200,100); }
-    public static boolean supported(ArenaMap map) { return map!=null&&map.normandy()==null; }
-    public static boolean exclusive(ArenaMap map) { return supported(map)&&map.capture()==null&&map.bomb()==null; }
+    /** Free-for-all maps also offer team deathmatch; their team spawns are kept for this. */
+    public static boolean supported(ArenaMap map) { return map!=null&&map.normandy()==null&&map.propHunt()==null; }
+    public static boolean exclusive(ArenaMap map) { return supported(map)&&map.capture()==null&&map.bomb()==null&&map.escort()==null&&map.freeForAll()==null; }
     public ArenaMap arena(ArenaMap source) {
         if(!supported(source)) throw new IllegalArgumentException("이 맵에서는 팀 데스매치를 선택할 수 없습니다.");
         // No capture logic, floor recoloring or legacy objective function hooks in deathmatch.

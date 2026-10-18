@@ -123,7 +123,7 @@ public final class GadgetManager {
         if(!valid(p,pos,wall,east)) {p.displayClientMessage(Component.literal("이 위치에는 설치할 수 없습니다."),true);return;}
         PLACED.values().removeIf(DeployableEntity::isRemoved);
         long count=DeployableLedger.get(p.server).count(p.getUUID(),wall);
-        if(count>=(wall?1:GadgetConfig.mine.maxPlaced())) {p.displayClientMessage(Component.literal(wall?"기존 방벽이 남아 있습니다.":"설치 가능한 지뢰 개수를 초과했습니다."),true);return;}
+        if(count>=(wall?GadgetConfig.barrier.maxPlaced():GadgetConfig.mine.maxPlaced())) {p.displayClientMessage(Component.literal(wall?"설치 가능한 방벽 개수를 초과했습니다.":"설치 가능한 지뢰 개수를 초과했습니다."),true);return;}
         var entity=GadgetItems.DEPLOYABLE.get().create(p.serverLevel());if(entity==null)return;
         entity.setPos(pos.getX()+.5,pos.getY(),pos.getZ()+.5);entity.setup(p,wall,east);
         if(p.serverLevel().addFreshEntity(entity)) {track(entity);SecondaryRuntime.commit(p,stack);cancel(p);}else entity.discard();

@@ -26,7 +26,17 @@ public final class SafeZones {
         for(var player:server.getPlayerList().getPlayers())sync(player);
     }
     public static void sync(net.minecraft.server.level.ServerPlayer player){GungangNetwork.send(player,new GungangNetwork.SafeZoneConfig(ServerFiles.GSON.toJson(serverRules)));}
-    public static boolean contains(Entity entity){return entity!=null&&contains(entity.level(),entity.getX(),entity.getY(),entity.getZ());}
+    /** Client side of {@link #armed}: set by PropHuntClient for the local seeker. */
+    public static java.util.function.Predicate<Entity> clientArmed=e->false;
+    /** Client: the local player is in a running prop hunt (set by PropHuntClient). */
+    public static java.util.function.BooleanSupplier clientInMatch=()->false;
+    public static boolean contains(Entity entity){return entity!=null&&!armed(entity)&&contains(entity.level(),entity.getX(),entity.getY(),entity.getZ());}
+    /** During a prop hunt match seekers (and their shots) may fire inside safe zones, and disguises there can be hit. */
+    private static boolean armed(Entity entity){
+        if(entity instanceof Projectile projectile&&projectile.getOwner()!=null&&projectile.getOwner()!=entity)return armed(projectile.getOwner());
+        if(entity.level().isClientSide)return clientArmed.test(entity);
+        var match=MatchManager.propHunt();return match!=null&&match.armed(entity);
+    }
     public static boolean contains(net.minecraft.world.level.Level level,double x,double y,double z){
         return (level.isClientSide?clientRules:serverRules).contains(level.dimension().location().toString(),x,y,z);
     }

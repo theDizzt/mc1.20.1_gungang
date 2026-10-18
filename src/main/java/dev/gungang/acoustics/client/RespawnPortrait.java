@@ -38,7 +38,7 @@ public final class RespawnPortrait {
 
     @SubscribeEvent public static void overlay(net.minecraftforge.client.event.RenderGuiEvent.Post event) {
         var mc=Minecraft.getInstance();
-        if(mc.player==null||mc.screen!=null||mc.options.hideGui) return;
+        if(mc.player==null||mc.screen!=null||mc.options.hideGui||!HudVisibility.enabled()) return;
         var state=SERVER.get(mc.player.getUUID());
         if(state==null) return;
         var g=event.getGuiGraphics();

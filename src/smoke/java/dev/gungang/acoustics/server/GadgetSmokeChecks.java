@@ -186,13 +186,55 @@ public final class GadgetSmokeChecks {
                 check(!level.getBlockState(pos).is(nozzle)&&level.getFluidState(pos).getType().isSame(fluid),"Removing nozzle preserves fluid");
                 for(var at:saved.keySet())if(at.getY()>=pos.getY())level.setBlock(at,net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(),3);
             }
-            System.out.println("GUNGANG_ACID_NOZZLE_PASS bucket=roundtrip fluids=water,lava,acid");
+            for(var block:java.util.List.of(net.minecraft.world.level.block.Blocks.OAK_FENCE,net.minecraft.world.level.block.Blocks.OAK_STAIRS,net.minecraft.world.level.block.Blocks.GLASS_PANE,net.minecraft.world.level.block.Blocks.IRON_BARS)){
+                check(!AcidLogging.acid(block.defaultBlockState())&&block.defaultBlockState().hasProperty(AcidLogging.ACIDLOGGED),"Acidloggable blocks start dry");
+                level.setBlock(pos,block.defaultBlockState(),3);
+                check(((net.minecraft.world.level.block.LiquidBlockContainer)block).placeLiquid(level,pos,level.getBlockState(pos),GimmickBlocks.ACID_SOURCE.get().getSource(false)),"Acid fills "+block);
+                check(level.getBlockState(pos).is(block)&&level.getFluidState(pos).getType().isSame(GimmickBlocks.ACID_SOURCE.get()),"Acid overlaps "+block);
+                check(((net.minecraft.world.level.block.BucketPickup)block).pickupBlock(level,pos,level.getBlockState(pos)).is(GimmickBlocks.ACID_BUCKET.get())&&level.getFluidState(pos).isEmpty(),"Bucket drains acid from "+block);
+                level.setBlock(pos,GimmickBlocks.ACID_BLOCK.get().defaultBlockState(),3);player.setItemInHand(InteractionHand.MAIN_HAND,new ItemStack(block));
+                var context=new net.minecraft.world.item.context.BlockPlaceContext(player,InteractionHand.MAIN_HAND,new ItemStack(block),
+                        new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(pos),net.minecraft.core.Direction.UP,pos,false));
+                check(AcidLogging.acid(block.getStateForPlacement(context)),"Placing "+block+" inside acid acidlogs it");
+                level.setBlock(pos,net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(),3);
+            }
+            long oldTime=level.getGameTime();
+            // Spray contact needs entity queries: use a real mob (the smoke FakePlayer is not in the world) in the always entity-loaded spawn chunk.
+            var spray=level.getSharedSpawnPos().atY(level.getMaxBuildHeight()-8);var oldSpray=level.getBlockState(spray);
+            var pig=net.minecraft.world.entity.EntityType.PIG.create(level);pig.setNoGravity(true);pig.setPos(spray.getX()+.5,spray.getY()+1,spray.getZ()+.5);level.addFreshEntity(pig);
+            try{
+                level.setBlock(spray,GimmickBlocks.NOZZLE.get().defaultBlockState(),3);pig.setRemainingFireTicks(100);
+                nozzle.spray(level,spray);check(!pig.isOnFire(),"Water nozzle spray extinguishes");
+                var acidNozzle=(NozzleBlock)GimmickBlocks.ACID_NOZZLE.get();level.setBlock(spray,acidNozzle.defaultBlockState(),3);
+                level.getServer().getWorldData().overworldData().setGameTime(oldTime-oldTime%GimmickConfig.acidNozzle.damageIntervalTicks());
+                acidNozzle.spray(level,spray);check(pig.getHealth()<pig.getMaxHealth(),"Acid nozzle spray damages");
+            }finally{pig.discard();level.setBlock(spray,oldSpray,3);level.getServer().getWorldData().overworldData().setGameTime(oldTime);}
+            level.setBlock(pos,net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(),3);
+            player.removeAllEffects();PuddleBlock.splash(level,player,true);
+            check(player.hasEffect(net.minecraft.world.effect.MobEffects.POISON),"Acid puddle poisons");player.removeAllEffects();
+            System.out.println("GUNGANG_ACID_NOZZLE_PASS bucket=roundtrip fluids=water,lava,acid acidlogged=fence,stairs,pane,bars");
         }finally{
             saved.forEach((at,state)->level.setBlock(at,state,3));player.setPos(oldPosition);player.setXRot(oldPitch);player.setYRot(oldYaw);player.setItemInHand(InteractionHand.MAIN_HAND,ItemStack.EMPTY);
         }
     }
     @SubscribeEvent public static void started(ServerStartedEvent event) {
         var server=event.getServer();server.execute(()->{
+            if("1".equals(System.getenv("GUNGANG_LOADOUT_SMOKE_ONLY"))){
+                try{GadgetSmokeChecksLoadout.run(server);}catch(Throwable failure){failure.printStackTrace();System.out.println("GUNGANG_LOADOUT_SMOKE_FAIL");}
+                server.halt(false);return;
+            }
+            if("1".equals(System.getenv("GUNGANG_MODIFY_SMOKE_ONLY"))){
+                try{GadgetSmokeChecksModify.run(server);}catch(Throwable failure){failure.printStackTrace();System.out.println("GUNGANG_MODIFY_SMOKE_FAIL");}
+                server.halt(false);return;
+            }
+            if("1".equals(System.getenv("GUNGANG_GATE_SMOKE_ONLY"))){
+                try{GadgetSmokeChecksGate.run(server);GadgetSmokeChecksEscort.run(server);GadgetSmokeChecksArea.run(server);}catch(Throwable failure){failure.printStackTrace();System.out.println("GUNGANG_GATE_SMOKE_FAIL");}
+                server.halt(false);return;
+            }
+            if("1".equals(System.getenv("GUNGANG_ESCORT_SMOKE_ONLY"))){
+                try{GadgetSmokeChecksEscort.run(server);}catch(Throwable failure){failure.printStackTrace();System.out.println("GUNGANG_ESCORT_SMOKE_FAIL");}
+                server.halt(false);return;
+            }
             if("1".equals(System.getenv("GUNGANG_BOMB_SMOKE_ONLY"))){
                 try{GadgetSmokeChecksBomb.run(server);}catch(Throwable failure){failure.printStackTrace();System.out.println("GUNGANG_BOMB_SMOKE_FAIL");}
                 server.halt(false);return;

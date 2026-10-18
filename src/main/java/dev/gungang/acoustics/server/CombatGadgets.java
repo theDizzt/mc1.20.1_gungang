@@ -18,7 +18,7 @@ import net.minecraftforge.fml.common.Mod;
 public final class CombatGadgets {
     public static final int SCAN_TICKS=200,SCAN_COOLDOWN=2400,REPAIR_TICKS=1800;
     public record Gauge(String kind,float remaining,float maximum,boolean timed) { }
-    public record Hud(List<Gauge> gauges,int mines,int barriers,int maxMines,String equipped) { }
+    public record Hud(List<Gauge> gauges,int mines,int barriers,int maxMines,int maxBarriers,String equipped) { }
     public record Target(UUID id,double x,double y,double z,float yaw,boolean crouching,int color) { }
     public record ScanView(List<Target> targets) { }
     private record Scan(String team,String dimension,long end) { }
@@ -26,6 +26,8 @@ public final class CombatGadgets {
     private static final Map<UUID,Shield> SHIELDS=new HashMap<>();
     private static final Map<UUID,Scan> SCANS=new HashMap<>();
     private static final Map<UUID,Long> SCAN_READY=new HashMap<>();
+    /** Game time of the last hit a shield took (no knockback that tick) and of each player's last damage dealt or taken. */
+    private static final Map<UUID,Long> BLOCKED=new HashMap<>(),COMBAT=new HashMap<>();
     private static final Map<UUID,String> LAST_HUD=new HashMap<>(),LAST_SCAN=new HashMap<>();
     private static final UUID SHIELD_SLOW=UUID.fromString("bf8dc095-4b54-495a-8f07-f821e859e41b");
     public static void updateShieldMovement(ServerPlayer p){
@@ -80,6 +82,12 @@ public final class CombatGadgets {
     }
     @SubscribeEvent(priority=EventPriority.HIGH) public static void hurt(LivingHurtEvent event) {
         if(!(event.getEntity() instanceof ServerPlayer p)||!holdingShield(p)||event.getAmount()<=0)return;
+        // Raised shields soften melee from any side; a jetpack ram uses the same damage type but is not melee.
+        var type=event.getSource();
+        if((type.is(net.minecraft.world.damagesource.DamageTypes.PLAYER_ATTACK)||type.is(net.minecraft.world.damagesource.DamageTypes.MOB_ATTACK)||type.is(net.minecraft.world.damagesource.DamageTypes.MOB_ATTACK_NO_AGGRO))
+                &&!(type.getEntity() instanceof Player attacker&&SurvivalGadgets.jetting(attacker)))
+            event.setAmount((float)(event.getAmount()*(1-ExtraGadgetConfig.shield.meleeReductionPercent()/100)));
+        if(event.getAmount()<=0) {event.setCanceled(true);return;}
         Vec3 source=event.getSource().getSourcePosition();if(source==null)return;
         Vec3 delta=source.subtract(p.position());
         if(event.getSource().getDirectEntity() instanceof net.minecraft.world.entity.projectile.Projectile projectile
@@ -87,10 +95,27 @@ public final class CombatGadgets {
         else if(delta.horizontalDistanceSqr()<1e-8&&event.getSource().getEntity()!=null)delta=event.getSource().getEntity().position().subtract(p.position());
         var look=p.getLookAngle();if(!ShieldRules.inFront(look.x,look.z,delta.x,delta.z))return;
         var shield=shield(p);var hit=ShieldRules.absorb(shield.health,event.getAmount());shield.health=hit.durability();
+        BLOCKED.put(p.getUUID(),p.level().getGameTime());
         if(shield.health==0)shield.repairEnd=p.level().getGameTime()+ExtraGadgetConfig.ticks(ExtraGadgetConfig.shield.repairSeconds());
         event.setAmount(hit.damage());if(hit.damage()==0)event.setCanceled(true);
         p.level().playSound(null,p.blockPosition(),shield.health==0?net.minecraft.sounds.SoundEvents.SHIELD_BREAK:net.minecraft.sounds.SoundEvents.SHIELD_BLOCK,net.minecraft.sounds.SoundSource.PLAYERS,1,1);
         syncShield(p);
+    }
+    @SubscribeEvent(priority=EventPriority.HIGHEST) public static void combat(LivingHurtEvent event) {
+        if(event.getAmount()<=0)return;
+        if(event.getEntity() instanceof ServerPlayer victim)COMBAT.put(victim.getUUID(),victim.level().getGameTime());
+        if(event.getSource().getEntity() instanceof ServerPlayer attacker&&attacker!=event.getEntity())COMBAT.put(attacker.getUUID(),attacker.level().getGameTime());
+    }
+    public static boolean shieldBlocked(ServerPlayer p) {return BLOCKED.getOrDefault(p.getUUID(),Long.MIN_VALUE)==p.level().getGameTime();}
+    @SubscribeEvent(priority=EventPriority.HIGHEST) public static void knockback(net.minecraftforge.event.entity.living.LivingKnockBackEvent event) {
+        if(event.getEntity() instanceof ServerPlayer p&&shieldBlocked(p))event.setCanceled(true);
+    }
+    private static void regenerate(ServerPlayer p) {
+        var config=ExtraGadgetConfig.shield;var shield=SHIELDS.get(p.getUUID());
+        if(!config.outOfCombatRegen()||shield==null||shield.health<=0||shield.health>=config.capacity())return;
+        long now=p.level().getGameTime();
+        if(now-COMBAT.getOrDefault(p.getUUID(),Long.MIN_VALUE/2)<ExtraGadgetConfig.ticks(config.regenDelaySeconds()))return;
+        shield.health=(float)Math.min(config.capacity(),shield.health+config.regenPerSecond()/20);
     }
     @SubscribeEvent public static void attack(AttackEntityEvent event) {if(holdingShield(event.getEntity())||SurvivalGadgets.jetting(event.getEntity()))event.setCanceled(true);}
     @SubscribeEvent public static void projectile(net.minecraftforge.event.entity.EntityJoinLevelEvent event) {
@@ -98,7 +123,7 @@ public final class CombatGadgets {
                 &&projectile.getOwner() instanceof Player owner&&(holdingShield(owner)||SurvivalGadgets.jetting(owner)))event.setCanceled(true);
     }
     public static boolean enemies(Player viewer,Player target) {
-        return viewer!=target&&target.isAlive()&&!target.isSpectator()&&viewer.getTeam()!=null&&target.getTeam()!=null&&!viewer.getTeam().isAlliedTo(target.getTeam());
+        return !FreeForAllMatch.blocked(target)&&viewer!=target&&target.isAlive()&&!target.isSpectator()&&viewer.getTeam()!=null&&target.getTeam()!=null&&!viewer.getTeam().isAlliedTo(target.getTeam());
     }
     public static ScanView view(ServerPlayer viewer) {
         return view(viewer,viewer.serverLevel().players());
@@ -126,11 +151,11 @@ public final class CombatGadgets {
             var stack=p.getInventory().getItem(i);
             if(stack.getItem() instanceof GadgetItem item&&(item.kind.equals("landmine")||item.kind.equals("barrier"))) {equipped=item.kind;break;}
         }
-        return new Hud(gauges,(int)ledger.count(p.getUUID(),false),(int)ledger.count(p.getUUID(),true),GadgetConfig.mine.maxPlaced(),equipped);
+        return new Hud(gauges,(int)ledger.count(p.getUUID(),false),(int)ledger.count(p.getUUID(),true),GadgetConfig.mine.maxPlaced(),GadgetConfig.barrier.maxPlaced(),equipped);
     }
     @SubscribeEvent public static void tick(TickEvent.PlayerTickEvent event) {
         if(event.phase!=TickEvent.Phase.END||!(event.player instanceof ServerPlayer p))return;
-        updateShieldMovement(p);if(p.tickCount%4!=0)return;
+        updateShieldMovement(p);regenerate(p);if(p.tickCount%4!=0)return;
         SCANS.entrySet().removeIf(entry->entry.getValue().end()<=p.level().getGameTime());
         if(!p.isAlive()||p.isSpectator()||LobbyManager.respawning(p.getUUID()))SCANS.remove(p.getUUID());
         syncShield(p);
@@ -138,17 +163,18 @@ public final class CombatGadgets {
         if(!hud.equals(LAST_HUD.put(p.getUUID(),hud)))GungangNetwork.send(p,new GungangNetwork.Utility(hud));
         if(!scan.equals(LAST_SCAN.put(p.getUUID(),scan)))GungangNetwork.send(p,new GungangNetwork.Scan(scan));
     }
-    public static void clear(ServerPlayer p) {p.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED).removeModifier(SHIELD_SLOW);SHIELDS.remove(p.getUUID());SCANS.remove(p.getUUID());SCAN_READY.remove(p.getUUID());LAST_HUD.remove(p.getUUID());LAST_SCAN.remove(p.getUUID());}
+    static void resetScan(ServerPlayer p) {SCAN_READY.remove(p.getUUID());}
+    public static void clear(ServerPlayer p) {p.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED).removeModifier(SHIELD_SLOW);SHIELDS.remove(p.getUUID());BLOCKED.remove(p.getUUID());COMBAT.remove(p.getUUID());SCANS.remove(p.getUUID());SCAN_READY.remove(p.getUUID());LAST_HUD.remove(p.getUUID());LAST_SCAN.remove(p.getUUID());}
     public static void reset(net.minecraft.server.MinecraftServer server) {
         SurvivalGadgets.reset(server);
-        SHIELDS.clear();SCANS.clear();SCAN_READY.clear();LAST_HUD.clear();LAST_SCAN.clear();
+        SHIELDS.clear();BLOCKED.clear();COMBAT.clear();SCANS.clear();SCAN_READY.clear();LAST_HUD.clear();LAST_SCAN.clear();
         for(var p:server.getPlayerList().getPlayers()) {
             p.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED).removeModifier(SHIELD_SLOW);
             GungangNetwork.send(p,new GungangNetwork.Scan(ServerFiles.GSON.toJson(new ScanView(List.of()))));
-            GungangNetwork.send(p,new GungangNetwork.Utility(ServerFiles.GSON.toJson(new Hud(List.of(),0,0,GadgetConfig.mine.maxPlaced(),""))));
+            GungangNetwork.send(p,new GungangNetwork.Utility(ServerFiles.GSON.toJson(new Hud(List.of(),0,0,GadgetConfig.mine.maxPlaced(),GadgetConfig.barrier.maxPlaced(),""))));
         }
     }
     @SubscribeEvent public static void logout(PlayerEvent.PlayerLoggedOutEvent event) {if(event.getEntity() instanceof ServerPlayer p)clear(p);}
-    @SubscribeEvent public static void stopped(ServerStoppedEvent event) {SHIELDS.clear();SCANS.clear();SCAN_READY.clear();LAST_HUD.clear();LAST_SCAN.clear();}
+    @SubscribeEvent public static void stopped(ServerStoppedEvent event) {SHIELDS.clear();BLOCKED.clear();COMBAT.clear();SCANS.clear();SCAN_READY.clear();LAST_HUD.clear();LAST_SCAN.clear();}
     private CombatGadgets() { }
 }
