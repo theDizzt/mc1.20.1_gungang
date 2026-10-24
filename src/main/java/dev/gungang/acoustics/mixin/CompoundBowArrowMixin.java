@@ -36,9 +36,9 @@ public abstract class CompoundBowArrowMixin implements CompoundBow.ArrowAccess {
     @Inject(method="hitEntity",at=@At("HEAD"),cancellable=true,require=1)
     private void gungang$deployable(@Coerce Object value,CallbackInfo ci){
         var hit=(CompoundBowHitAccessor)value;var arrow=(Projectile)(Object)this;
-        if(hit.gungang$entity() instanceof DeployableEntity placed){
+        if(hit.gungang$entity() instanceof DeployableEntity||hit.gungang$entity() instanceof TurretEntity){
             if(!arrow.level().isClientSide&&!arrow.isRemoved()){
-                placed.hurt(arrow.level().damageSources().thrown(arrow,arrow.getOwner()),damage);
+                hit.gungang$entity().hurt(arrow.level().damageSources().thrown(arrow,arrow.getOwner()),damage);
                 finishImpact(hit.gungang$position());
             }
             ci.cancel();
