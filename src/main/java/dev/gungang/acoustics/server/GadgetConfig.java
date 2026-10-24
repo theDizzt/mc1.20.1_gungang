@@ -29,6 +29,7 @@ public final class GadgetConfig {
     }
     private static void load(java.util.Map<String,com.google.gson.JsonObject> overrides,boolean apply)throws IOException {
         ExtraGadgetConfig.load(overrides,apply);
+        Turrets.load(overrides,apply);
         GimmickConfig.load(overrides,apply);
         Mine m=read("landmine",Mine.class,new Mine(100,3,1.2,3,5,5,false),overrides,apply);
         Recovery r=read("recovery_potion",Recovery.class,new Recovery(50,5),overrides,apply);

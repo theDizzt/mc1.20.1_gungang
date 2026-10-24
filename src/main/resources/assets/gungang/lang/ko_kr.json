@@ -10,5 +10,8 @@
   "item.gungang.molotov": "몰로토프 칵테일",
   "item.gungang.orbital_strike": "궤도폭격",
   "item.gungang.life_support": "생명 유지 장치",
-  "item.gungang.jetpack": "제트팩"
+  "item.gungang.jetpack": "제트팩",
+  "item.gungang.turret": "터렛",
+  "entity.gungang_acoustics.turret": "터렛",
+  "death.attack.gungang.turret": "%1$s님이 %2$s님의 터렛에 사망했습니다"
 }

@@ -10,5 +10,8 @@
   "item.gungang.molotov": "Molotov Cocktail",
   "item.gungang.orbital_strike": "Orbital Strike",
   "item.gungang.life_support": "Life Support",
-  "item.gungang.jetpack": "Jetpack"
+  "item.gungang.jetpack": "Jetpack",
+  "item.gungang.turret": "Turret",
+  "entity.gungang_acoustics.turret": "Turret",
+  "death.attack.gungang.turret": "%1$s was shot by %2$s's turret"
 }

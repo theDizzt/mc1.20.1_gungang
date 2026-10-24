@@ -44,7 +44,7 @@ public final class SafeZones {
         var item=stack.getItem();var id=net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(item);
         return item instanceof ProjectileWeaponItem||item instanceof TridentItem||item instanceof SnowballItem||item instanceof EggItem
                 ||item instanceof FireworkRocketItem||item instanceof ThrowablePotionItem&&net.minecraft.world.item.alchemy.PotionUtils.getMobEffects(stack).stream().anyMatch(e->!e.getEffect().isBeneficial())
-                ||item instanceof HandAxeItem||item instanceof GadgetItem gadget&&java.util.Set.of("landmine","molotov","orbital_strike","bear_trap").contains(gadget.kind)
+                ||item instanceof HandAxeItem||item instanceof GadgetItem gadget&&java.util.Set.of("landmine","molotov","orbital_strike","bear_trap","turret").contains(gadget.kind)
                 ||id!=null&&(id.getNamespace().equals("tacz")||id.getNamespace().equals("lrtactical"));
     }
     public static boolean blocked(Entity target,DamageSource source){

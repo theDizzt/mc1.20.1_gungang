@@ -28,7 +28,7 @@ public final class GadgetManager {
             for(var entity:level.getAllEntities())if(entity instanceof DeployableEntity placed)entities.add(placed);
             for(var entity:entities) {entity.discard();count++;}
         }
-        PLACED.clear();count+=BearTraps.clearAll(server);
+        PLACED.clear();count+=BearTraps.clearAll(server);count+=Turrets.clearAll(server);
         for(var player:server.getPlayerList().getPlayers())cancel(player);
         PREVIEW.clear();return count;
     }
@@ -47,11 +47,11 @@ public final class GadgetManager {
     }
     public static void use(ServerPlayer p,ItemStack stack,String kind) {
         if(SurvivalGadgets.jetting(p))return;
-        if((kind.equals("landmine")||kind.equals("molotov")||kind.equals("orbital_strike")||kind.equals("bear_trap"))&&SafeZones.contains(p))return;
+        if((kind.equals("landmine")||kind.equals("molotov")||kind.equals("orbital_strike")||kind.equals("bear_trap")||kind.equals("turret"))&&SafeZones.contains(p))return;
         if(!p.isAlive()||p.isSpectator()||LobbyManager.respawning(p.getUUID())||!SecondaryRuntime.ready(p,stack))return;
         if(kind.equals("jetpack")) {SurvivalGadgets.startJet(p,stack);return;}
         if(CombatGadgets.use(p,stack,kind))return;
-        if(kind.equals("landmine")||kind.equals("barrier")||kind.equals("orbital_strike")||kind.equals("bear_trap")) {
+        if(GadgetItem.placement(kind)) {
             PREVIEW.put(p.getUUID(),new Preview(kind,p.getInventory().selected));GungangNetwork.send(p,new GungangNetwork.Gadget(kind));return;
         }
         if(kind.equals("molotov")) {
@@ -108,6 +108,17 @@ public final class GadgetManager {
         ItemStack stack=p.getMainHandItem().getItem() instanceof GadgetItem item&&item.kind.equals(kind)?p.getMainHandItem():p.getOffhandItem();
         if(!(stack.getItem() instanceof GadgetItem item)||!item.kind.equals(kind)||!SecondaryRuntime.ready(p,stack)) {cancel(p);return;}
         boolean wall=kind.equals("barrier"),east=p.getDirection().getAxis()==Direction.Axis.X;
+        if(kind.equals("turret")) {
+            var pos=target(p,Turrets.config.placementRange());
+            if(!Turrets.valid(p,pos)){p.displayClientMessage(Component.literal("터렛은 평평한 지면의 빈 2×2×2 공간에만 설치할 수 있습니다."),true);return;}
+            if(Turrets.owned(p.getUUID())!=null){p.displayClientMessage(Component.literal("터렛은 최대 1개만 설치할 수 있습니다."),true);return;}
+            var turret=GadgetItems.TURRET_ENTITY.get().create(p.serverLevel());if(turret==null)return;
+            turret.setPos(pos.getX()+1,pos.getY(),pos.getZ()+1);turret.setYRot(p.getYRot());turret.setup(p);
+            if(!Turrets.claim(turret)){turret.discard();return;}
+            if(p.serverLevel().addFreshEntity(turret)){SecondaryRuntime.commit(p,stack);cancel(p);}
+            else turret.discard();
+            return;
+        }
         if(kind.equals("orbital_strike")) {
             var pos=target(p,ExtraGadgetConfig.orbital.range());
             if(!valid(p,pos,false,false)) {p.displayClientMessage(Component.literal("이 위치에는 폭격을 지정할 수 없습니다."),true);return;}
@@ -167,6 +178,7 @@ public final class GadgetManager {
     }
     /** Mines and barriers of one owner, player or bot. */
     static void clearOwned(net.minecraft.server.MinecraftServer server,UUID owner) {
+        Turrets.clear(server,owner);
         DeployableLedger.get(server).clear(owner);
         for(var level:server.getAllLevels()) {
             var owned=new ArrayList<DeployableEntity>();
