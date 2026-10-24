@@ -16,7 +16,7 @@
   "bomb": {
     "rounds": 5,
     "swapEveryRounds": 1,
-    "preparationSeconds": 30,
+    "preparationSeconds": 25,
     "attackSpawn": {
       "x": 0.5,
       "y": 65,

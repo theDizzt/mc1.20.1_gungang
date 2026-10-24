@@ -121,12 +121,16 @@ public final class PropHuntMatch {
         p.inventoryMenu.broadcastChanges();
     }
     private void change(ServerPlayer p,Member m){
+        // A health pack sunk into the floor comes back up first, so the new block never starts inside the ground.
+        boolean sunk=m.prop!=null&&m.prop.sunk();
         if(m.prop!=null){PropInteraction.remove(m.prop);m.prop.discard();}p.closeContainer();
         String item=test?items.get(m.id):PropCatalog.variant(game.draw(),random);
         m.prop=PropEntity.TYPE.get().create(p.serverLevel());m.prop.setup(m.id,item,random.nextInt(26));m.prop.setPos(m.fixed?m.anchor:p.position());
         p.serverLevel().addFreshEntity(m.prop);
         p.refreshDimensions();
+        if(m.watching==null)unstick(p);
         if(m.fixed&&m.watching==null)m.anchor=p.position();
+        if(sunk)p.sendSystemMessage(Component.literal("블록이 바뀌어 생명력 팩 매설이 풀렸습니다."));
         p.displayClientMessage(Component.literal("변신: ").append(new ItemStack(net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(PropCatalog.id(item))).getHoverName()).append(" ["+PropCatalog.number(item)+"]"),true);
         m.hazard=server.getTickCount()+80;
     }
@@ -150,7 +154,7 @@ public final class PropHuntMatch {
                 if(change)change(p,m);
                 if(m.watching!=null){var camera=camera(m.watching);if(camera==null)home(p,m);else if(p.getCamera()!=camera)p.setCamera(camera);}
                 if(m.fixed&&m.watching==null){hold(p,m.anchor,m.yaw,m.pitch);}
-                if(m.prop!=null){p.setAirSupply(p.getMaxAirSupply());m.prop.setPos(spot(m,p));if(m.fixed)look(m);submerge(m.prop);PropInteraction.tick(m.prop);hazards(p,m);}
+                if(m.prop!=null){p.setAirSupply(p.getMaxAirSupply());m.prop.setPos(spot(m,p));if(m.fixed)look(m);submerge(m.prop);hazards(p,m);}
             }else{
                 rush(p,rush);
                 if(phase()==PropHuntGame.Phase.HIDING||m.waiting>server.getTickCount()){
@@ -169,6 +173,14 @@ public final class PropHuntMatch {
             }
         }
         if(server.getTickCount()%4==0)sync();
+    }
+    /** A bigger new disguise must not start inside walls or the floor: step aside, or failing that, up onto free space. */
+    private static void unstick(ServerPlayer p){
+        if(p.level().noCollision(p))return;
+        for(double up=0;up<=2;up+=.25)for(double x=-1;x<=1;x+=.5)for(double z=-1;z<=1;z+=.5){
+            var to=p.position().add(x,up,z);
+            if(p.level().noCollision(p,p.getBoundingBox().move(to.subtract(p.position())))){p.connection.teleport(to.x,to.y,to.z,p.getYRot(),p.getXRot());return;}
+        }
     }
     private void hold(ServerPlayer p,Vec3 pos,float yaw,float pitch){
         p.setDeltaMovement(Vec3.ZERO);p.fallDistance=0;
@@ -193,7 +205,7 @@ public final class PropHuntMatch {
         for(var target:server.getPlayerList().getPlayers()){
             var other=members.get(target.getUUID());if(other==null||!other.team.equals("BRAVO")||frozen(other.id)||target.level()!=owner.level())continue;
             if(!target.getBoundingBox().inflate(.15).intersects(prop.getBoundingBox()))continue;
-            if(id.equals("gungang:landmine")){
+            if(id.equals("gungang:uxo")){
                 m.hazard=server.getTickCount()+100;
                 explode(prop,3);
             }else if(id.endsWith("health_pack")){
@@ -409,8 +421,9 @@ public final class PropHuntMatch {
     @SubscribeEvent(priority=EventPriority.HIGHEST) public static void attack(net.minecraftforge.event.entity.living.LivingAttackEvent e){
         var m=MatchManager.propHunt();if(m==null)return;
         if(e.getEntity() instanceof ServerPlayer p&&m.participant(p.getUUID())){
-            // A disguise never drowns or takes acid/poison damage, in water, acid or a nozzle spray.
-            var source=e.getSource();boolean liquid=source.is(net.minecraft.world.damagesource.DamageTypes.DROWN)||source.is(net.minecraft.world.damagesource.DamageTypes.MAGIC)||source.is(net.minecraft.world.damagesource.DamageTypes.INDIRECT_MAGIC);
+            // A disguise never drowns or takes acid/poison damage, in water, acid or a nozzle spray,
+            // nor suffocates: low props keep a raised eye (camera) that may poke into a block above.
+            var source=e.getSource();boolean liquid=source.is(net.minecraft.world.damagesource.DamageTypes.IN_WALL)||source.is(net.minecraft.world.damagesource.DamageTypes.DROWN)||source.is(net.minecraft.world.damagesource.DamageTypes.MAGIC)||source.is(net.minecraft.world.damagesource.DamageTypes.INDIRECT_MAGIC);
             if(liquid&&m.prop(p.getUUID())!=null){e.setCanceled(true);p.removeEffect(MobEffects.POISON);return;}
             if(m.reviewing||m.frozen(p.getUUID())&&!m.hider(p.getUUID())||m.hider(p.getUUID())&&(propArrow(e.getSource())||e.getSource().getEntity()!=null&&e.getSource().getEntity()!=p))e.setCanceled(true);
         }

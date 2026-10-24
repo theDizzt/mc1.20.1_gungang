@@ -52,7 +52,7 @@ public final class MatchLedger {
     }
     public List<MatchSnapshot.Row> rows() {
         return players.entrySet().stream().map(e -> {
-            var s=e.getValue(); return new MatchSnapshot.Row(e.getKey().toString(),s.name,s.team,s.kills,s.deaths,s.assists,s.damage,s.ticks/20);
+            var s=e.getValue(); return new MatchSnapshot.Row(e.getKey().toString(),s.name,s.team,s.kills,s.deaths,s.assists,s.damage,s.ticks/20,s.kills,0,0,0,BotManager.identity(e.getKey())?BotManager.skin(e.getKey()):"");
         }).sorted(Comparator.comparing(MatchSnapshot.Row::team).thenComparing(Comparator.comparingInt(MatchSnapshot.Row::kills).reversed()).thenComparing(MatchSnapshot.Row::name)).toList();
     }
 }

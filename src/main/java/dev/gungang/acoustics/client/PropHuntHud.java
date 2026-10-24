@@ -42,10 +42,11 @@ final class PropHuntHud {
     private static void plate(GuiGraphics g,boolean left,String name,String tag,int color,String value,String note,boolean active) {
         int inner=36,outer=116,y1=3,y2=27,x1=left?-outer:inner,x2=left?-inner:outer;
         DeathmatchHud.plate(g,x1,y1,x2,y2,color,left,active);
-        var font=Minecraft.getInstance().font;
-        float size=Math.min(1.8f,34f/Math.max(1,font.width(value)));int width=Math.round(font.width(value)*size);
-        g.pose().pushPose();g.pose().translate(left?x2-8-width:x1+8,y1+12-4*size,0);g.pose().scale(size,size,1);
-        g.drawString(font,value,0,0,active?0xFFFFFFFF:0xFFC4CEDA,false);g.pose().popPose();
+        var font=Minecraft.getInstance().font;int numberWidth=HudText.numberWidth(value);
+        float size=Math.min(1.8f,34f/Math.max(1,numberWidth));int width=Math.round(numberWidth*size);
+        // Number-font digits are 7 rows tall, so centre them on the plate like the deathmatch score.
+        g.pose().pushPose();g.pose().translate(left?x2-8-width:x1+8,y1+12-3.5f*size,0);g.pose().scale(size,size,1);
+        g.drawString(font,HudText.number(value),0,0,active?0xFFFFFFFF:0xFFC4CEDA,false);g.pose().popPose();
         int edge=left?x1+7:x2-7;
         DeathmatchHud.small(g,name,edge,y1+5,.75f,0xFFFFFFFF,false,left);
         int w=Math.round(font.width(tag)*.6f)+6,tx=left?edge:edge-w;
@@ -114,10 +115,10 @@ final class PropHuntHud {
         g.fill(left,top,right,top+2,color);g.fill(left+8,top+9,left+10,top+19,color);
         g.drawString(font,title,left+14,top+7,0xFFFFFFFF,false);
         g.drawString(font,subtitle,left+14,top+17,0xFF9AAABD,false);
-        g.pose().pushPose();g.pose().translate(right-8-font.width(total)*2,top+6,0);g.pose().scale(2,2,1);
-        g.drawString(font,total,0,0,0xFFFFFFFF,false);g.pose().popPose();
+        g.pose().pushPose();g.pose().translate(right-8-HudText.numberWidth(total)*2,top+6,0);g.pose().scale(2,2,1);
+        g.drawString(font,HudText.number(total),0,0,0xFFFFFFFF,false);g.pose().popPose();
         // Hiders: status + hidden time; seekers: find count. Right-anchored so names keep the rest.
-        int value=right-8,status=value-52,face=left+26,nameX=face+16,cy=top+HEAD,nameEnd=hider?status-34:value-30;
+        int value=right-8,status=value-52,face=left+26,nameX=face+30,cy=top+HEAD,nameEnd=hider?status-34:value-30;
         g.fill(left,cy,right,cy+COLS,0x30000000);g.fill(left,cy+COLS-1,right,cy+COLS,0xFF22324A);
         g.drawString(font,"#",left+8,cy+3,DIM,false);g.drawString(font,"플레이어",face,cy+3,DIM,false);
         if(hider){MatchHud.column(g,"상태",status,cy+3,DIM);MatchHud.column(g,"숨은 시간",value,cy+3,DIM);}
@@ -130,10 +131,11 @@ final class PropHuntHud {
             if(mine){g.fill(left,ry,right,ry+ROW,rgb|0x38000000);g.fill(left,ry,left+2,ry+ROW,color);}
             else if(i%2==1)g.fill(left,ry,right,ry+ROW,0x10FFFFFF);
             String number=String.valueOf(rank);
-            g.drawString(font,number,left+8+(10-font.width(number))/2,ry+5,rank==1&&(hider?row.seconds()>0:row.finds()>0)?0xFFFFD166:DIM,false);
+            g.drawString(font,HudText.number(number),left+8+(10-HudText.numberWidth(number))/2,ry+5,rank==1&&(hider?row.seconds()>0:row.finds()>0)?0xFFFFD166:DIM,false);
             g.fill(face-1,ry+2,face+13,ry+16,mine?color:found?0xFF5A2A2A:0xFF2A3A50);
             PlayerFaceRenderer.draw(g,MatchHud.skin(row.id()),face,ry+3,12);
             if(found)g.fill(face,ry+3,face+12,ry+15,0x900B121C);
+            PlayerLevels.draw(g,row.id(),face+15,ry+3,12);
             g.drawString(font,font.plainSubstrByWidth(row.name(),Math.max(1,nameEnd-nameX)),nameX,ry+5,mine?0xFFFFFFFF:found?0xFF8A96A6:0xFFE2E8F0,false);
             if(hider) {
                 if(row.found()!=null)MatchHud.column(g,found?"발견됨":"생존",status,ry+5,found?FOUND:HIDER);

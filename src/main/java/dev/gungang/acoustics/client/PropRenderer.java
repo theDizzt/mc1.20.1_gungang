@@ -12,11 +12,33 @@ import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.properties.*;
 
 public final class PropRenderer extends EntityRenderer<PropEntity> {
-    private final java.util.Map<PropEntity,java.util.Map<net.minecraft.core.BlockPos,net.minecraft.world.level.block.entity.BlockEntity>> blockEntities=new java.util.WeakHashMap<>();
+    /** Sprites of each drawn block state, marked visible every frame (campfire flames, stonecutter saw). */
+    private final java.util.Map<net.minecraft.world.level.block.state.BlockState,java.util.List<TextureAtlasSprite>> sprites=new java.util.HashMap<>();
+    /**
+     * Embeddium's "animate only visible textures" only advances sprites it saw in chunk meshes, so a block model drawn
+     * by an entity would freeze; this marks the prop's sprites as visible. No-op without Embeddium/Sodium.
+     */
+    private static final java.lang.invoke.MethodHandle MARK_ACTIVE=markActive();
+    private static java.lang.invoke.MethodHandle markActive(){
+        try{
+            var type=Class.forName("me.jellysquid.mods.sodium.client.render.texture.SpriteUtil");
+            return java.lang.invoke.MethodHandles.publicLookup().findStatic(type,"markSpriteActive",java.lang.invoke.MethodType.methodType(void.class,TextureAtlasSprite.class));
+        }catch(ReflectiveOperationException|LinkageError absent){return null;}
+    }
+    private void animate(net.minecraft.world.level.block.state.BlockState state){
+        if(MARK_ACTIVE==null)return;
+        var list=sprites.computeIfAbsent(state,s->{
+            var model=Minecraft.getInstance().getBlockRenderer().getBlockModel(s);var random=net.minecraft.util.RandomSource.create(42);var found=new java.util.LinkedHashSet<TextureAtlasSprite>();
+            var sides=net.minecraft.core.Direction.values();
+            for(int i=0;i<=sides.length;i++)for(var quad:model.getQuads(s,i<sides.length?sides[i]:null,random))found.add(quad.getSprite());
+            return java.util.List.copyOf(found);
+        });
+        try{for(var sprite:list)MARK_ACTIVE.invokeExact(sprite);}catch(Throwable ignored){}
+    }
     public PropRenderer(EntityRendererProvider.Context context){super(context);shadowRadius=0;}
     @Override public void render(PropEntity entity,float yaw,float partial,PoseStack pose,MultiBufferSource buffers,int light){
         var mc=Minecraft.getInstance();var state=entity.state();pose.pushPose();
-        if(entity.item().equals("gungang:landmine")||entity.item().equals("minecraft:barrier")){
+        if(entity.item().equals("minecraft:barrier")){
             pose.translate(0,.075,0);pose.scale(.7f,.7f,.7f);
             var item=net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(new ResourceLocation(entity.item()));
             mc.getItemRenderer().renderStatic(new ItemStack(item),ItemDisplayContext.GROUND,light,OverlayTexture.NO_OVERLAY,pose,buffers,entity.level(),entity.getId());
@@ -33,17 +55,19 @@ public final class PropRenderer extends EntityRenderer<PropEntity> {
             // Slightly larger than a block around its centre, so where a disguise overlaps world blocks
             // (a sunk health pack in the floor, a prop against a wall) the disguise's faces win the depth test.
             pose.translate(.5,.5,.5);pose.scale(1.004f,1.004f,1.004f);pose.translate(-.5,-.5,-.5);
-            var cache=blockEntities.computeIfAbsent(entity,u->new java.util.HashMap<>());
+            // A sunk health pack fills the floor cell exactly; its top would z-fight (flicker) with the floor's,
+            // so it sits a hair higher and narrower: a flush lid in the floor instead.
+            if(entity.sunk()){pose.translate(.5,0,.5);pose.scale(.996f,1,.996f);pose.translate(-.5,1/64f,-.5);}
             for(var part:dev.gungang.acoustics.server.PropGeometry.parts(state)){
                 pose.pushPose();pose.translate(part.offset().getX(),part.offset().getY(),part.offset().getZ());var partState=part.state();
                 // Emissive blocks (campfire, glowstone, lanterns) stay bright in the dark like the real block.
                 int partLight=LightTexture.pack(Math.max(LightTexture.block(light),partState.getLightEmission()),LightTexture.sky(light));
                 if(partState.getBlock() instanceof EntityBlock block){
-                    var be=cache.get(part.offset());
-                    if(be==null||be.getBlockState().getBlock()!=partState.getBlock()){be=block.newBlockEntity(entity.blockPosition().offset(part.offset()),partState);if(be!=null){be.setLevel(entity.level());cache.put(part.offset(),be);}}
-                    if(be!=null){be.setBlockState(partState);if(be instanceof net.minecraft.world.level.block.entity.ChestBlockEntity chest){chest.triggerEvent(1,entity.open()?1:0);net.minecraft.world.level.block.entity.ChestBlockEntity.lidAnimateTick(entity.level(),be.getBlockPos(),partState,chest);}mc.getBlockEntityRenderDispatcher().renderItem(be,pose,buffers,partLight,OverlayTexture.NO_OVERLAY);}
+                    // Ticked by PropEffects (book pages, chest lid); the chest lid opens while the prop is open.
+                    var be=PropEffects.blockEntity(entity,part.offset(),partState,block);
+                    if(be!=null){if(be instanceof net.minecraft.world.level.block.entity.ChestBlockEntity chest)chest.triggerEvent(1,entity.open()?1:0);mc.getBlockEntityRenderDispatcher().renderItem(be,pose,buffers,partLight,OverlayTexture.NO_OVERLAY);}
                 }
-                if(partState.getRenderShape()==RenderShape.MODEL)mc.getBlockRenderer().renderSingleBlock(partState,pose,buffers,partLight,OverlayTexture.NO_OVERLAY);
+                if(partState.getRenderShape()==RenderShape.MODEL){animate(partState);mc.getBlockRenderer().renderSingleBlock(partState,pose,buffers,partLight,OverlayTexture.NO_OVERLAY);}
                 pose.popPose();
             }
         }

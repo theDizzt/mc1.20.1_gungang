@@ -59,6 +59,7 @@ final class BombMinimap {
             double yaw=Math.toRadians(m.yaw());int dx=(int)Math.round(-Math.sin(yaw)*(r+3)),dz=(int)Math.round(Math.cos(yaw)*(r+3));
             g.fill(px+dx-1,pz+dz-1,px+dx+1,pz+dz+1,color);
         }
+        TeamPointHud.minimap(g,b,left,top,w,h,scale);
     }
     /** The generated preview image's map region (it has a legend strip below), or a plain surface. */
     private static void background(GuiGraphics g,BombMatch.View v,int left,int top,int w,int h){

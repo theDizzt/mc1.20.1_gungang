@@ -73,6 +73,15 @@ public final class MatchHud {
         if(FreeForAllHud.is(s))return dev.gungang.acoustics.server.SpawnGateBlock.FREE_FOR_ALL;
         return s.bomb()==null?null:s.bomb().attacker();
     }
+    /** Client mirror of MatchManager.preparationGate from the live match snapshot. */
+    static String gatePreparation(){
+        var s=state;if(s==null||!s.active())return null;
+        String mode=s.point()==null?null:s.point().mode();
+        if("PROP_HUNT".equals(mode)||"FREE_FOR_ALL".equals(mode))return null;
+        if(s.bomb()!=null)return "PREPARING".equals(s.bomb().phase())?("ALPHA".equals(s.bomb().attacker())?"BRAVO":"ALPHA"):null;
+        if(!"PREPARING".equals(s.phase()))return null;
+        return "ESCORT".equals(mode)?"BRAVO":"NORMANDY".equals(mode)?"ALPHA":"";
+    }
     private static String lastGateRule;
     /** Gate tint is baked into chunk meshes, so rebuild them when the bomb sides swap or the mode changes. */
     private static void refreshGates(){
@@ -101,10 +110,10 @@ public final class MatchHud {
         else {y=ControlPointHud.draw(g,state)+4;if(state.point()==null||!"NORMANDY".equals(state.point().mode()))MatchTimerHud.draw(g,state,y);}
         if(mc.screen==null&&mc.options.keyPlayerList.isDown()) {
             String label="경과 시간",time=MatchReport.time(state.elapsedSeconds());
-            int w=mc.font.width(label)+mc.font.width(time)+20,cx=g.guiWidth()/2-w/2;
+            int w=mc.font.width(label)+HudText.numberWidth(time)+20,cx=g.guiWidth()/2-w/2;
             g.fill(cx,y+18,cx+w,y+31,0x900B121C);g.fill(cx,y+30,cx+w,y+31,0xFF70CDBF);
             g.drawString(mc.font,label,cx+7,y+21,0xFF9AAABD,false);
-            g.drawString(mc.font,time,cx+w-7-mc.font.width(time),y+21,0xFFFFFFFF,false);
+            g.drawString(mc.font,HudText.number(time),cx+w-7-HudText.numberWidth(time),y+21,0xFFFFFFFF,false);
             int height=g.guiHeight()-y-48;
             if(state.bomb()!=null){
                 // Bomb mode: the scoreboard shares the width with a square minimap on its right.
@@ -151,10 +160,10 @@ public final class MatchHud {
         long kills=rows.stream().mapToLong(MatchSnapshot.Row::kills).sum();
         g.drawString(font,rows.size()+"명 · "+kills+" 킬",left+14,top+17,0xFF9AAABD,false);
         String total=String.valueOf(score);
-        g.pose().pushPose();g.pose().translate(right-8-font.width(total)*2,top+6,0);g.pose().scale(2,2,1);
-        g.drawString(font,total,0,0,leading?0xFFFFFFFF:0xFFB4C0CE,false);g.pose().popPose();
+        g.pose().pushPose();g.pose().translate(right-8-HudText.numberWidth(total)*2,top+6,0);g.pose().scale(2,2,1);
+        g.drawString(font,HudText.number(total),0,0,leading?0xFFFFFFFF:0xFFB4C0CE,false);g.pose().popPose();
         // Columns are right-anchored so the name gets every remaining pixel.
-        int dmg=right-8,assist=dmg-46,death=assist-22,kill=death-22,face=left+26,nameX=face+16,cy=top+HEAD;
+        int dmg=right-8,assist=dmg-46,death=assist-22,kill=death-22,face=left+26,nameX=face+30,cy=top+HEAD;
         g.fill(left,cy,right,cy+COLS,0x30000000);g.fill(left,cy+COLS-1,right,cy+COLS,0xFF22324A);
         g.drawString(font,"#",left+8,cy+3,0xFF5F6E80,false);
         g.drawString(font,"플레이어",face,cy+3,0xFF5F6E80,false);
@@ -168,9 +177,10 @@ public final class MatchHud {
             if(mine){g.fill(left,ry,right,ry+ROW,rgb|0x38000000);g.fill(left,ry,left+2,ry+ROW,color|0xFF000000);}
             else if(i%2==1)g.fill(left,ry,right,ry+ROW,0x10FFFFFF);
             String number=String.valueOf(rank);
-            g.drawString(font,number,left+8+(10-font.width(number))/2,ry+5,rank==1&&row.kills()>0?0xFFFFD166:0xFF5F6E80,false);
+            g.drawString(font,HudText.number(number),left+8+(10-HudText.numberWidth(number))/2,ry+5,rank==1&&row.kills()>0?0xFFFFD166:0xFF5F6E80,false);
             g.fill(face-1,ry+2,face+13,ry+16,mine?color|0xFF000000:0xFF2A3A50);
-            PlayerFaceRenderer.draw(g,skin(row.id()),face,ry+3,12);
+            PlayerFaceRenderer.draw(g,row.skin()!=null&&!row.skin().isEmpty()?BotRenderer.texture(row.skin()):skin(row.id()),face,ry+3,12);
+            PlayerLevels.draw(g,row.id(),face+15,ry+3,12);
             g.drawString(font,font.plainSubstrByWidth(row.name(),Math.max(1,kill-22-nameX)),nameX,ry+5,mine?0xFFFFFFFF:0xFFE2E8F0,false);
             column(g,String.valueOf(row.kills()),kill,ry+5,0xFFFFFFFF);
             column(g,String.valueOf(row.deaths()),death,ry+5,0xFFE08A8A);
@@ -184,7 +194,7 @@ public final class MatchHud {
         }
     }
     static void column(GuiGraphics g,String text,int right,int y,int color) {
-        var font=Minecraft.getInstance().font;g.drawString(font,text,right-font.width(text),y,color,false);
+        var font=Minecraft.getInstance().font;var value=HudText.numbers(text);g.drawString(font,value,right-font.width(value),y,color,false);
     }
     static ResourceLocation skin(String id) {
         var connection=Minecraft.getInstance().getConnection();

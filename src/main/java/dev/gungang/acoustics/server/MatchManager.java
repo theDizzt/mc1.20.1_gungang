@@ -32,6 +32,16 @@ public final class MatchManager {
     public static EscortMatch escort(){return escort;}
     public static boolean isEscortCart(EscortCart cart){return escort!=null&&escort.cart==cart;}
     public static BombMatch bomb(){return bomb;}
+    /**
+     * While a match prepares, the defending team that roams freely and may pass its own spawn gate
+     * (escort BRAVO, Normandy ALPHA, bomb defenders); "" shuts every gate, null leaves gates as in play.
+     */
+    public static String preparationGate(){
+        if(map==null||propHunt!=null||freeForAll!=null)return null;
+        if(bomb!=null)return bomb.game.phase()==BombGame.Phase.PREPARING?bomb.game.defender():null;
+        if(running)return null;
+        return escort!=null?"BRAVO":normandy!=null?"ALPHA":"";
+    }
     public static boolean active(){return map!=null;}
     public static void deathZone(ServerPlayer player){
         if(map==null||!java.util.Set.of("ALPHA","BRAVO").contains(LobbyManager.team(player.getUUID()))||player.isSpectator()||!player.isAlive())return;
@@ -53,6 +63,7 @@ public final class MatchManager {
     private static final CaptureFloor floor = new CaptureFloor();
     private static final CapturePresence presence = new CapturePresence();
     public static void prepare(MinecraftServer s, ArenaMap arena, DeathmatchRules teamDeathmatch) {
+        TeamPoints.clear(s);
         PropHuntMatch.endTest();
         BombDrops.clear(s);
         var escortRoute=arena.escort()==null?null:EscortMatch.validate(s,arena);
@@ -71,14 +82,16 @@ public final class MatchManager {
         presence.clear(); contested=false;
         started=ZonedDateTime.now();
         for (var p:s.getPlayerList().getPlayers()) ledger.add(p.getUUID(),p.getGameProfile().getName(),freeForAll!=null&&freeForAll.participant(p.getUUID())?p.getUUID().toString():LobbyManager.team(p.getUUID()));
+        if(deathmatch!=null)BotManager.prepare(s,arena);else BotManager.close();
         floor.prepare(s,arena);
         NormandyBeacon.get(s).activate(s,arena,0);
         send(snapshot(false,"",LobbyManager.preparationSeconds(arena)));
         LogUtils.getLogger().info("[GunGang] MATCH PREPARE date={} map={} ({}) dimension={} timeLimitSeconds={}",started,map.name(),map.id(),map.dimension(),map.timeLimitSeconds());
     }
-    public static void start() { if(freeForAll!=null)freeForAll.start(); BombDrops.clear(server);GimmickEpoch.reset(server);if(!running)started=ZonedDateTime.now();running=true; LogUtils.getLogger().info("[GunGang] MATCH START date={} map={} ({})",started,map.name(),map.id()); }
+    public static void start() { TeamPoints.clear(server);if(freeForAll!=null)freeForAll.start(); BombDrops.clear(server);GimmickEpoch.reset(server);if(!running)started=ZonedDateTime.now();running=true; LogUtils.getLogger().info("[GunGang] MATCH START date={} map={} ({})",started,map.name(),map.id()); }
     public static void tick(int preparationSeconds) {
         if(map==null)return;
+        if(deathmatch!=null){BotManager.tick(running);if(map==null)return;if(running)for(var id:BotManager.activeIds())ledger.played(id);}
         if(propHunt!=null){if(running){if(propHunt.game.phase()==PropHuntGame.Phase.HIDING||propHunt.game.phase()==PropHuntGame.Phase.HUNTING)ticks++;propHunt.tick();}if(map!=null&&server.getTickCount()%4==0)send(snapshot(false,"",preparationSeconds));return;}
         if(escort!=null){
             if(running){ticks++;for(var p:server.getPlayerList().getPlayers())if(!LobbyManager.team(p.getUUID()).equals("SPECTATOR"))ledger.played(p.getUUID());}
@@ -176,11 +189,14 @@ public final class MatchManager {
         }
     }
     public static void end(String winner) {
+        TeamPoints.clear(server);
         BombDrops.clear(server);
         if(map==null)return;
         MapEnvironment.restore();
         GimmickEpoch.reset(server);
         var result=snapshot(true,winner,0); var ended=ZonedDateTime.now();
+        BotManager.close();
+        BotManager.finish(result);
         ProgressionService.finish(server,result);
         LogUtils.getLogger().info("[GunGang] MATCH END date={} started={} map={} ({}) dimension={} winner={} score={}:{} playTime={}",ended,started,map.name(),map.id(),map.dimension(),winner,alphaScore(),bravoScore(),format(ticks/20));
         try {
@@ -194,11 +210,18 @@ public final class MatchManager {
     public static String format(int seconds) { return MatchReport.time(seconds); }
     @SubscribeEvent(priority=EventPriority.LOWEST) public static void damage(LivingDamageEvent event) {
         if(!running||map==null||event.isCanceled())return;
-        if(event.getEntity() instanceof ServerPlayer victim&&event.getSource().getEntity() instanceof ServerPlayer attacker)
+        var victim=event.getEntity();var attacker=event.getSource().getEntity();
+        if(BotManager.owns(attacker)&&(victim instanceof ServerPlayer||BotManager.owns(victim))&&ledger.enemies(attacker.getUUID(),victim.getUUID()))
+            BotManager.damageDealt(attacker,Math.min(victim.getHealth(),event.getAmount()));
+        if((victim instanceof ServerPlayer||BotManager.owns(victim))&&(attacker instanceof ServerPlayer||BotManager.owns(attacker)))
             ledger.damage(attacker.getUUID(),victim.getUUID(),Math.min(victim.getHealth(),event.getAmount()),server.getTickCount());
     }
     @SubscribeEvent(priority=EventPriority.LOWEST) public static void death(LivingDeathEvent event) {
         if(!running||map==null||event.isCanceled())return;
+        if(BotManager.owns(event.getEntity())){
+            event.setCanceled(true);var killer=event.getSource().getEntity();
+            botDeath(event.getEntity().getUUID(),killer==null?null:killer.getUUID());return;
+        }
         if(event.getEntity() instanceof ServerPlayer victim) {
             if(freeForAll!=null&&!freeForAll.participant(victim.getUUID()))return;
             if(freeForAll!=null&&freeForAll.opening()){freeForAll.openingDeath(victim);event.setCanceled(true);return;}
@@ -215,7 +238,9 @@ public final class MatchManager {
                 victim.setHealth(victim.getMaxHealth()); event.setCanceled(true); return;
             }
             var killer=event.getSource().getEntity() instanceof ServerPlayer player?player:null;
-            ledger.death(victim.getUUID(),killer==null?(freeForAll!=null?victim.getUUID():null):killer.getUUID(),server.getTickCount(),deathmatch!=null);
+            var source=event.getSource().getEntity();
+            var killerId=source!=null&&BotManager.identity(source.getUUID())?source.getUUID():killer==null?(freeForAll!=null?victim.getUUID():null):killer.getUUID();
+            ledger.death(victim.getUUID(),killerId,server.getTickCount(),deathmatch!=null);
             if(freeForAll!=null)freeForAll.death(victim,killer);
             if(LobbyManager.beginRespawn(victim,killer)) event.setCanceled(true);
             if(freeForAll!=null){String winner=freeForAll.winner(false);if(!winner.isEmpty())LobbyManager.finish(winner);}
@@ -227,6 +252,13 @@ public final class MatchManager {
     }
     public static void participant(ServerPlayer player) {
         if (map!=null) ledger.add(player.getUUID(),player.getGameProfile().getName(),freeForAll!=null&&freeForAll.participant(player.getUUID())?player.getUUID().toString():LobbyManager.team(player.getUUID()));
+    }
+    static boolean botRunning(){return running&&map!=null&&deathmatch!=null;}
+    static void botParticipant(UUID bot,String name,String team){if(map!=null&&deathmatch!=null)ledger.add(bot,name,team);}
+    static void botDeath(UUID bot,UUID killer){
+        if(!botRunning())return;
+        ledger.death(bot,killer,server.getTickCount(),true);BotManager.died(bot,killer);
+        String winner=deathmatch.winner(alphaScore(),bravoScore(),false);if(!winner.isEmpty())LobbyManager.finish(winner);
     }
     private MatchManager() {}
 }

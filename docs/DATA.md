@@ -31,6 +31,7 @@
 | 좌표 지도 | 맵 JSON의 `previewArea` | 범위 등록 시 자동 생성. 캐시는 `server/maps/data/<id>.png` |
 | 외부 TTF | 클라이언트 `config/gungang/fonts/*.ttf` | Config의 `fontFile` 선택, F3+T로 반영. 서버에서 자동 배포하지 않음 |
 | 팀·부활·XP 보상 | `config/gungang/server/option.json` | 옵션 값 편집 후 reload |
+| 팀데스매치 AI 봇 | `config/gungang/server/bot.json` | `/gungang bot` 명령으로 저장·반영. 직접 편집은 서버 재시작 필요. [봇 설정](BOTS.md) |
 | 비무장 지대 | `config/gungang/server/safe_zones.json` | `zones` 배열에 영역 추가 후 reload |
 | 레벨별 누적 XP 표 | `config/gungang/xp.json` | `cumulativeXp` 91개, 첫 값 0·엄격한 증가 |
 | 서버 음향 | `config/gungang/acoustics.json` | 서버가 접속·reload 때 클라이언트에 전송 |

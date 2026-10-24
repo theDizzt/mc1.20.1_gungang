@@ -11,7 +11,9 @@ public final class AcidBlock extends LiquidBlock {
         poison(level,entity);
     }
     public static void poison(Level level,Entity entity){
-        if(!level.isClientSide&&entity instanceof net.minecraft.world.entity.player.Player p&&!p.isSpectator()&&PropDimensions.prop(p)==null){ // disguised hiders are immune
+        // Disguised prop-hunt hiders are immune.
+        if(!level.isClientSide&&BotEntity.participant(entity)&&entity instanceof net.minecraft.world.entity.LivingEntity p
+                &&!(p instanceof net.minecraft.world.entity.player.Player player&&PropDimensions.prop(player)!=null)){
             int amplifier=GimmickConfig.acid.amplifier();
             int interval=Math.max(1,25>>amplifier);
             int duration=Math.max(interval+1,ExtraGadgetConfig.ticks(GimmickConfig.acid.poisonSeconds()));

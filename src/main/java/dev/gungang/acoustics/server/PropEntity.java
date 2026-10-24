@@ -31,6 +31,7 @@ public final class PropEntity extends LivingEntity {
     public int rotation(){return entityData.get(ROTATION);}
     public boolean open(){return entityData.get(OPEN);}
     public void toggle(){entityData.set(OPEN,!open());}
+    public void open(boolean open){entityData.set(OPEN,open);}
     /** Health packs toggle with E between standing and sunk one block into the floor; their bottle hologram stays above. */
     public boolean healthPack(){return state().getBlock() instanceof StationBlock station&&station.healthPack();}
     public boolean sunk(){return open()&&healthPack();}
@@ -49,7 +50,6 @@ public final class PropEntity extends LivingEntity {
     @Override public void tick(){super.tick();setDeltaMovement(0,0,0);setBoundingBox(makeBoundingBox());if(!level().isClientSide&&MatchManager.propHunt()==null)discard();}
     @Override protected AABB makeBoundingBox(){
         if(entityData==null)return super.makeBoundingBox();
-        if(item().equals("gungang:landmine"))return new AABB(getX()-.35,getY(),getZ()-.35,getX()+.35,getY()+.15,getZ()+.35);
         if(item().equals("minecraft:painting")){
             var list=level().registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.PAINTING_VARIANT).holders().toList();
             var variant=list.get(Math.floorMod(painting(),list.size())).value();double w=variant.getWidth()/16d,h=variant.getHeight()/16d;

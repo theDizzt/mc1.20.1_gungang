@@ -21,18 +21,23 @@ java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 if (project.hasProperty('gungangSmoke')) sourceSets.main.java.srcDir('src/smoke/java')
 if (project.hasProperty('gungangClientSmoke')) sourceSets.main.java.srcDir('src/clientSmoke/java')
 if (project.hasProperty('gungangPropSmoke')) sourceSets.main.java.srcDir('src/propSmoke/java')
+if (project.hasProperty('gungangBotSmoke')) sourceSets.main.java.srcDir('src/botSmoke/java')
+if (project.hasProperty('gungangAxeSmoke')) sourceSets.main.java.srcDir('src/axeSmoke/java')
+if (project.hasProperty('gungangBowSmoke')) sourceSets.main.java.srcDir('src/bowSmoke/java')
 
 minecraft {
     mappings channel: 'official', version: '1.20.1'
     copyIdeResources = true
     runs {
         client {
-            workingDirectory project.file('run')
+            workingDirectory project.file(project.hasProperty('gungangAxeSmoke') ? 'build/axe-client-smoke' : 'run')
             property 'forge.logging.console.level', 'info'
+            if (project.hasProperty('gungangScannerPreview')) property 'gungang.scannerPreview', 'true'
+            if (project.hasProperty('gungangOrbitalPreview')) property 'gungang.orbitalPreview', 'true'
             mods { gungang_acoustics { source sourceSets.main } }
         }
         server {
-            workingDirectory project.file(project.hasProperty('gungangPropSmoke') ? 'build/prop-smoke-run' : project.hasProperty('gungangBombSmoke') ? 'build/bomb-smoke-run' : 'run-server')
+            workingDirectory project.file(project.hasProperty('gungangBowSmoke') ? 'build/bow-smoke-run' : project.hasProperty('gungangAxeSmoke') ? 'build/axe-server-smoke' : project.hasProperty('gungangBotSmoke') ? 'build/bot-smoke-run' : project.hasProperty('gungangPropSmoke') ? 'build/prop-smoke-run' : project.hasProperty('gungangBombSmoke') ? 'build/bomb-smoke-run' : 'run-server')
             args '--nogui'
             mods { gungang_acoustics { source sourceSets.main } }
         }
@@ -40,6 +45,7 @@ minecraft {
 }
 
 repositories { maven { url = 'https://repo.spongepowered.org/repository/maven-public/' } }
+if (project.hasProperty('gungangBowSmoke')) repositories { flatDir { dirs 'server_resource/mods' } }
 // Optional local compatibility test dependency; no TaCZ binaries are bundled or required by this mod.
 if (project.hasProperty('taczVersion')) {
     repositories { flatDir { dirs '.cache/compat' } }
@@ -48,6 +54,12 @@ dependencies {
     minecraft 'net.minecraftforge:forge:1.20.1-47.4.0'
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    if (project.hasProperty('gungangBowSmoke')) {
+        ['tactical-military-bow-forge-1.20.1:1.0.4','tacz-1.20.1:1.1.8-hotfix2',
+         'lrtactical-1.20.1:0.4.3','geckolib-forge-1.20.1:4.8.4','curios-forge:5.14.1+1.20.1'].each {
+            runtimeOnly fg.deobf("local.bow:${it}")
+        }
+    }
     if (project.hasProperty('taczVersion')) {
         runtimeOnly fg.deobf("local.tacz:tacz-1.20.1:${project.property('taczVersion')}")
     }
@@ -60,6 +72,10 @@ tasks.named('jar', Jar).configure {
     exclude 'dev/gungang/acoustics/server/GadgetSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/client/PreviewSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/server/PropSmokeChecks*.class'
+    exclude 'dev/gungang/acoustics/server/BotSmokeChecks*.class'
+    exclude 'dev/gungang/acoustics/server/CompoundBowSmokeChecks*.class'
+    exclude 'dev/gungang/acoustics/server/HandAxeSmokeChecks*.class'
+    exclude 'dev/gungang/acoustics/client/HandAxeSmokeChecks*.class'
     archiveFileName = "gungang-realistic_1.20.1_${releaseName}.jar"
     manifest { attributes(['MixinConfigs': 'gungang_acoustics.mixins.json']) }
     finalizedBy 'reobfJar'
@@ -69,7 +85,7 @@ tasks.named('processResources', ProcessResources).configure {
     inputs.property 'modVersion', project.version
     filesMatching('META-INF/mods.toml') { expand(modVersion: project.version) }
     from('font') {
-        include 'Galmuri11-Bold.ttf', 'advanced_pixel_lcd-7.ttf'
+        include 'Galmuri11-Bold.ttf', 'advanced_pixel_lcd-7.ttf', 'gungang.ttf'
         into 'assets/gungang_acoustics/font'
         rename { it.toLowerCase(java.util.Locale.ROOT).replace(' ', '-') }
     }

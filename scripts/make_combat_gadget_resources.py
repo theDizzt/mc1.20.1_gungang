@@ -19,9 +19,10 @@ display={
     'thirdperson_righthand':{'rotation':[0,90,0],'translation':[0,1,0],'scale':[.65,.65,.65]},
     'thirdperson_lefthand':{'rotation':[0,-90,0],'translation':[0,1,0],'scale':[.65,.65,.65]},
     'ground':{'rotation':[0,0,0],'translation':[0,2,0],'scale':[.5,.5,.5]}}
-write(ASSETS/'models/item/infrared_scanner.json',{
-    'textures':{'case':'minecraft:block/gray_concrete','screen':'minecraft:block/emerald_block','edge':'minecraft:block/iron_block','button':'minecraft:block/redstone_block','particle':'minecraft:block/gray_concrete'},
-    'display':display,'elements':[box([3,2,6],[13,13,10],'case'),box([4,6,5.5],[12,12,6],'edge'),box([4.5,6.5,5.2],[11.5,11.5,5.5],'screen'),box([10,14,7],[11,16,8],'edge'),box([9,3,5.3],[11,4.5,6],'button')]})
+# Reimport the supplied model so regeneration cannot restore the old placeholder.
+import subprocess
+subprocess.run(['powershell','-NoProfile','-ExecutionPolicy','Bypass','-File',
+                str(ROOT/'scripts/import_infrared_scanner.ps1')],check=True)
 from import_shield_model import import_model
 import_model()
 

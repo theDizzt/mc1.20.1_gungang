@@ -37,6 +37,7 @@ public class StationBlock extends BaseEntityBlock {
     }
     @Override public void stepOn(Level level,BlockPos pos,BlockState state,Entity entity){
         if(entity instanceof ServerPlayer p&&interactionEntity(level,pos,state) instanceof StationEntity station)station.interact(p,true);
+        if(entity instanceof BotEntity bot&&healthPack()&&interactionEntity(level,pos,state) instanceof StationEntity station)station.interact(bot);
         super.stepOn(level,pos,state,entity);
     }
     public BlockEntity interactionEntity(Level level,BlockPos pos,BlockState state){return level.getBlockEntity(pos);}

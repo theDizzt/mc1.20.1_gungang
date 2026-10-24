@@ -58,6 +58,7 @@ public final class ShooterHud {
         PlayerFaceRenderer.draw(graphics, player.getSkinTextureLocation(), x + 3, y + 5, 56,
                 player.isModelPartShown(PlayerModelPart.HAT), false);
         RespawnPortrait.render(graphics, player.getUUID(), x + 3, y + 5, 56);
+        TeamPointHud.badge(graphics,player.getUUID(),x+3,y+5,56);
         int detailX = x + 68;
         ProgressionHud.draw(graphics,detailX,y+7,WIDTH-68);
         HudText.draw(graphics, player.getName().getString(), detailX, y + 19, WIDTH - 68, 0xFFFFFFFF);
@@ -108,11 +109,11 @@ public final class ShooterHud {
         int airSpace = player.isInWater()
                 ? Math.min(Math.max(0, barWidth - 6), mc.font.width("100%") + 4) : 0;
         int healthTextWidth = Math.max(0, barWidth - 6 - airSpace);
-        HudText.health(graphics, value, barX + 3, barY + 1, healthTextWidth, HEALTH_HEIGHT - 2, 0xFFFFFFFF);
+        HudText.healthNumber(graphics, value, barX + 3, barY + 1, healthTextWidth, HEALTH_HEIGHT - 2, 0xFFFFFFFF, 1f);
         if (filled > 0) {
             graphics.enableScissor(Math.round((barX + 1) * scale), Math.round((barY + 1) * scale),
                     Math.round((barX + 1 + filled) * scale), Math.round((barY + HEALTH_HEIGHT - 1) * scale));
-            HudText.health(graphics, value, barX + 3, barY + 1, healthTextWidth, HEALTH_HEIGHT - 2, 0xFF111820);
+            HudText.healthNumber(graphics, value, barX + 3, barY + 1, healthTextWidth, HEALTH_HEIGHT - 2, 0xFF111820, 1f);
             graphics.disableScissor();
         }
         if (airSpace > 4) {
@@ -129,7 +130,7 @@ public final class ShooterHud {
         int effectX = barX + barWidth - 15 - airSpace;
         var effects = player.getActiveEffects().stream().filter(e -> e.showIcon())
                 .sorted(java.util.Comparator.comparingInt(e -> net.minecraft.world.effect.MobEffect.getId(e.getEffect()))).toList();
-        int numberSpace = Math.round(mc.font.width(value) * 1.8f) + 10;
+        int numberSpace = Math.round(HudText.numberWidth(value) * 1.8f) + 10;
         for (var effect : effects) {
             if (effectX < barX + numberSpace) break;
             graphics.blit(effectX, barY + (HEALTH_HEIGHT - 12) / 2, 0, 12, 12,

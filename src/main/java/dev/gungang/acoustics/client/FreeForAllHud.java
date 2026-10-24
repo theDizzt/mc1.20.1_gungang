@@ -50,8 +50,8 @@ public final class FreeForAllHud {
         int fill=Math.round((x2-x1)*Math.max(0,Math.min(1,row.score()/(float)Math.max(1,goal))));
         g.fill(x1,y2-2,x2,y2,0xFF2A3A50);
         g.fill(left?x2-fill:x1,y2-2,left?x2:x1+fill,y2,color);
-        var font=Minecraft.getInstance().font;String text=String.valueOf(row.score());
-        float size=Math.min(2f,36f/Math.max(1,font.width(text)));int width=Math.round(font.width(text)*size);
+        var font=Minecraft.getInstance().font;String text=String.valueOf(row.score());int numberWidth=HudText.numberWidth(text);
+        float size=Math.min(2f,36f/Math.max(1,numberWidth));int width=Math.round(numberWidth*size);
         DeathmatchHud.score(g,left?0:1,row.score(),text,(left?x2-8-width:x1+8)+width/2f,y1+12,size,rank==1);
         int edge=left?x1+7:x2-7;
         // Rank chip, then the name in the remaining space before the score.
@@ -87,11 +87,11 @@ public final class FreeForAllHud {
         var leader=s.players().isEmpty()?null:s.players().get(0);
         if(leader!=null) {
             String total=String.valueOf(leader.score()),label="1위";
-            g.pose().pushPose();g.pose().translate(right-8-font.width(total)*2,y+6,0);g.pose().scale(2,2,1);
-            g.drawString(font,total,0,0,0xFFFFFFFF,false);g.pose().popPose();
-            g.drawString(font,label,right-12-font.width(total)*2-font.width(label),y+13,GOLD,false);
+            g.pose().pushPose();g.pose().translate(right-8-HudText.numberWidth(total)*2,y+6,0);g.pose().scale(2,2,1);
+            g.drawString(font,HudText.number(total),0,0,0xFFFFFFFF,false);g.pose().popPose();
+            g.drawString(font,label,right-12-HudText.numberWidth(total)*2-font.width(label),y+13,GOLD,false);
         }
-        int dmg=right-8,assist=dmg-46,death=assist-22,kill=death-22,score=kill-30,face=x+26,nameX=face+16,cy=y+HEAD;
+        int dmg=right-8,assist=dmg-46,death=assist-22,kill=death-22,score=kill-30,face=x+26,nameX=face+30,cy=y+HEAD;
         g.fill(x,cy,right,cy+COLS,0x30000000);g.fill(x,cy+COLS-1,right,cy+COLS,0xFF22324A);
         g.drawString(font,"#",x+8,cy+3,DIM,false);g.drawString(font,"플레이어",face,cy+3,DIM,false);
         MatchHud.column(g,"점수",score,cy+3,DIM);MatchHud.column(g,"K",kill,cy+3,DIM);MatchHud.column(g,"D",death,cy+3,DIM);
@@ -104,9 +104,10 @@ public final class FreeForAllHud {
             else if(i%2==1)g.fill(x,ry,right,ry+ROW,0x10FFFFFF);
             g.fill(x,ry,x+2,ry+ROW,color);
             String number=String.valueOf(rank);
-            g.drawString(font,number,x+8+(10-font.width(number))/2,ry+5,rank<=3&&r.score()>0?rankColor(rank):DIM,false);
+            g.drawString(font,HudText.number(number),x+8+(10-HudText.numberWidth(number))/2,ry+5,rank<=3&&r.score()>0?rankColor(rank):DIM,false);
             g.fill(face-1,ry+2,face+13,ry+16,mine?color:0xFF2A3A50);
             PlayerFaceRenderer.draw(g,MatchHud.skin(r.id()),face,ry+3,12);
+            PlayerLevels.draw(g,r.id(),face+15,ry+3,12);
             g.drawString(font,font.plainSubstrByWidth(r.name(),Math.max(1,score-30-nameX)),nameX,ry+5,mine?0xFFFFFFFF:color,false);
             MatchHud.column(g,String.valueOf(r.score()),score,ry+5,0xFFFFFFFF);
             MatchHud.column(g,String.valueOf(r.kills()),kill,ry+5,0xFFE2E8F0);

@@ -32,7 +32,7 @@ public final class PreviewSmokeChecks {
                 stage=1;ticks=0;
             }else if(++ticks==30){
                 Path directory=Path.of("../build/ui-smoke");Files.createDirectories(directory);
-                try(var image=net.minecraft.client.Screenshot.takeScreenshot(mc.getMainRenderTarget())){image.writeToFile(directory.resolve(stage==1?"loadout.png":stage==2?"maps.png":stage==3?"teams.png":stage==4?"furniture.png":stage==5?"gadgets.png":stage==6?"shield-pose.png":stage==7?"shield-first-person.png":stage==8?"gimmicks.png":"bomb.png"));}
+                try(var image=net.minecraft.client.Screenshot.takeScreenshot(mc.getMainRenderTarget())){image.writeToFile(directory.resolve(stage==13?"team-points.png":stage==12?"bot-statistics.png":stage==10?"teams-bot-add.png":stage==11?"teams-bot-off.png":stage==1?"loadout.png":stage==2?"maps.png":stage==3?"teams.png":stage==4?"furniture.png":stage==5?"gadgets.png":stage==6?"shield-pose.png":stage==7?"shield-first-person.png":stage==8?"gimmicks.png":"bomb.png"));}
                 if(stage==1){
                     var view=new LobbySnapshot.MapView("01","일리오스","전장 미리보기 테스트",600,"쟁탈전",true,"test.png");
                     var screen=new LobbyScreen(new LobbySnapshot(true,true,false,"tester","01","LOBBY",0,List.of(view),List.of(),TeamOptions.defaults(),"CONTROL"));
@@ -46,18 +46,55 @@ public final class PreviewSmokeChecks {
                     if(Files.exists(generated))PreviewCache.map(new GungangNetwork.MapPreview("01",Files.readAllBytes(generated),""));
                     stage=2;ticks=0;
                 }else if(stage==2){
-                    var view=new LobbySnapshot.MapView("preview","사찰 거점","전장 미리보기 테스트",600,"쟁탈전",true,"test.png");
-                    mc.setScreen(new LobbyScreen(new LobbySnapshot(true,true,false,"tester","preview","LOBBY",0,List.of(view),List.of(),TeamOptions.defaults(),"CONTROL")));
+                    mc.setScreen(botLobby(true,true));
                     stage=3;ticks=0;
-                }else if(stage==3){mc.setScreen(new FurnitureScreen());stage=4;ticks=0;}
+                }else if(stage==3){mc.setScreen(botLobby(true,false));stage=10;ticks=0;}
+                else if(stage==10){mc.setScreen(botLobby(false,false));stage=11;ticks=0;}
+                else if(stage==11){mc.setScreen(new BotTableScreen());stage=12;ticks=0;}
+                else if(stage==12){mc.setScreen(new FurnitureScreen());stage=4;ticks=0;}
                 else if(stage==4){mc.setScreen(new GadgetScreen());stage=5;ticks=0;}
                 else if(stage==5){mc.setScreen(new ShieldPoseScreen());stage=6;ticks=0;}
                 else if(stage==6){mc.setScreen(new ShieldFirstPersonScreen());stage=7;ticks=0;}
                 else if(stage==7){mc.setScreen(new GimmickScreen());stage=8;ticks=0;}
                 else if(stage==8){mc.setScreen(new BombScreen());stage=9;ticks=0;}
+                else if(stage==9){mc.setScreen(new TeamPointScreen());stage=13;ticks=0;}
                 else {System.out.println("GUNGANG_PREVIEW_SMOKE_PASS");mc.stop();stage=9;}
             }
         }catch(Throwable failure){failure.printStackTrace();System.out.println("GUNGANG_PREVIEW_SMOKE_FAIL");mc.stop();stage=3;}
+    }
+    private static final class TeamPointScreen extends net.minecraft.client.gui.screens.Screen {
+        TeamPointScreen(){super(net.minecraft.network.chat.Component.literal("Team point HUD"));}
+        @Override public void render(net.minecraft.client.gui.GuiGraphics g,int mx,int my,float partial) {
+            g.fill(0,0,width,height,0xFF18232F);g.drawString(font,"Team points: portrait / compass / minimap",16,12,0xFFFFFFFF);
+            var skin=new net.minecraft.resources.ResourceLocation("minecraft","textures/entity/player/wide/steve.png");
+            for(int side=0;side<2;side++) {
+                int color=side==0?0xFFFF5555:0xFF5555FF,top=32+side*((height-40)/2);
+                net.minecraft.client.gui.components.PlayerFaceRenderer.draw(g,skin,20,top,56);TeamPointHud.drawBadge(g,1,20,top,56,color);
+                for(int i=0;i<3;i++){int x=92+i*36;net.minecraft.client.gui.components.PlayerFaceRenderer.draw(g,skin,x,top,26);TeamPointHud.drawBadge(g,i+2,x,top,26,color);}
+                var marks=List.of(new TeamPointState.Point(java.util.UUID.randomUUID(),1,"minecraft:overworld",-12,64,-30,1),
+                        new TeamPointState.Point(java.util.UUID.randomUUID(),2,"minecraft:overworld",12,64,-20,2));
+                g.fill(20,top+90,220,top+91,0xFFFFFFFF);g.drawString(font,"N",116,top+77,0xFFFFFFFF);
+                TeamPointHud.drawCompass(g,marks,net.minecraft.world.phys.Vec3.ZERO,color,120,top+66,0,1.6);
+                g.fill(260,top,350,top+90,0xFF304451);
+                TeamPointHud.drawMinimap(g,marks,color,new double[]{-40,-40,40,40},260,top,90,90,90.0/80);
+            }
+        }
+    }
+    private static LobbyScreen botLobby(boolean enabled,boolean added){
+        var view=new LobbySnapshot.MapView("preview","사찰 거점","봇 로비 검증",600,"팀 데스매치",true,"");
+        var members=new java.util.ArrayList<LobbySnapshot.Member>();
+        members.add(new LobbySnapshot.Member("tester","테스트 관리자","ALPHA",false));
+        if(added)members.add(new LobbySnapshot.Member(BotManager.ID.toString(),"연습봇","BRAVO",true,BotDatabase.DEFAULT_SKIN));
+        return new LobbyScreen(new LobbySnapshot(true,true,true,"tester","preview","LOBBY",0,List.of(view),members,TeamOptions.defaults(),"DEATHMATCH",enabled,added));
+    }
+    private static final class BotTableScreen extends net.minecraft.client.gui.screens.Screen {
+        BotTableScreen(){super(net.minecraft.network.chat.Component.literal("Bot statistics"));}
+        @Override public void render(net.minecraft.client.gui.GuiGraphics g,int mx,int my,float partial){
+            g.fill(0,0,width,height,0xFF283440);
+            var bot=new MatchSnapshot.Row(BotManager.ID.toString(),"연습봇","BRAVO",3,2,1,125.5,45,3,0,0,0,BotDatabase.DEFAULT_SKIN);
+            var human=new MatchSnapshot.Row("e82b199c-3dad-47d1-9af5-d9c496964df8","테스트 관리자","ALPHA",2,3,0,85,45);
+            MatchHud.table(g,new MatchSnapshot(true,false,"Test","RUNNING",60,true,"",2,3,List.of(bot,human)),10,20,width-20,height-40,0);
+        }
     }
     private static final class BombScreen extends net.minecraft.client.gui.screens.Screen {
         BombScreen(){super(net.minecraft.network.chat.Component.literal("Bomb mode preview"));}
