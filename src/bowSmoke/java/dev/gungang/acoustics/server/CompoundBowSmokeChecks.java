@@ -84,6 +84,30 @@ public final class CompoundBowSmokeChecks {
                 stuck.tick();check(stuck.isRemoved(),"Wall arrow vanishes after 15 seconds");
                 level.removeBlock(stone,false);
                 System.out.println("COMPOUND_BOW_WALL_EXPIRY_PASS");
+                var face=new BlockHitResult(new Vec3(.5,101.5,4),net.minecraft.core.Direction.NORTH,new BlockPos(0,101,4),false);
+                var impacts=Class.forName("com.korkuluk.standalonebow.BlockImpactHandler");
+                for(var state:new net.minecraft.world.level.block.state.BlockState[]{Blocks.GLASS.defaultBlockState(),Blocks.GLASS_PANE.defaultBlockState(),Blocks.OAK_PLANKS.defaultBlockState(),Blocks.ICE.defaultBlockState()})
+                    for(int i=0;i<20;i++){
+                        level.setBlock(face.getBlockPos(),state,3);var shot=arrow(false,1);level.addFreshEntity(shot);
+                        method(impacts,"onHit",arrows,BlockHitResult.class).invoke(null,shot,face);
+                        method(impacts,"igniteFlameArrow",arrows,BlockHitResult.class).invoke(null,shot,face);
+                        method(impacts,"ignite",arrows,BlockHitResult.class).invoke(null,shot,face);
+                        check(level.getBlockState(face.getBlockPos())==state,"Arrow left "+state+" intact");
+                        check(level.getBlockState(face.getBlockPos().north()).isAir(),"Arrow set no fire");shot.discard();
+                    }
+                level.removeBlock(face.getBlockPos(),false);
+                System.out.println("COMPOUND_BOW_MAP_PROTECTION_PASS glass pane wood ice fire");
+                level.setBlock(face.getBlockPos(),Blocks.STONE.defaultBlockState(),3);
+                var loose=arrow(false,1);level.addFreshEntity(loose);((CompoundBow.ArrowAccess)loose).gungang$embed(face);
+                var recoverable=arrows.getDeclaredField("recoverable");recoverable.setAccessible(true);recoverable.setBoolean(loose,true);
+                level.removeBlock(face.getBlockPos(),false);
+                for(int i=0;i<5&&!loose.isRemoved();i++)loose.tick();
+                var area=new net.minecraft.world.phys.AABB(face.getBlockPos()).inflate(3);
+                check(loose.isRemoved(),"Arrow in a removed block goes away");
+                check(level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class,area).isEmpty(),"Arrow in a removed block drops no item");
+                var item=new net.minecraft.world.entity.item.ItemEntity(level,.5,101,4,new ItemStack(ForgeRegistries.ITEMS.getValue(new net.minecraft.resources.ResourceLocation("tacticalmilitarybow","flame_arrow"))));
+                check(!level.addFreshEntity(item)&&level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class,area).isEmpty(),"Bow arrow items never enter the world");
+                System.out.println("COMPOUND_BOW_NO_ARROW_DROP_PASS");
                 var wall=GadgetItems.DEPLOYABLE.get().create(level);wall.setPos(.5,101,4.5);wall.setup(player,true,false);level.addFreshEntity(wall);
                 float hp=wall.getHealth();var shot=arrow(false,1);fire(shot);
                 check(wall.getHealth()<hp,"Real arrow flight damages barrier");wall.discard();shot.discard();
