@@ -20,6 +20,7 @@ public final class ClientSetup {
         }
     }
     @SubscribeEvent public static void renderers(net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
+        event.registerEntityRenderer(dev.gungang.acoustics.server.BotEntity.TYPE.get(),BotRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.PropEntity.TYPE.get(),PropRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.EscortBlocks.CART.get(),EscortRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.EscortBlocks.RAIL.get(),EscortRenderer.Rail::new);
@@ -27,8 +28,10 @@ public final class ClientSetup {
         event.registerEntityRenderer(dev.gungang.acoustics.server.GimmickBlocks.ACID_PUDDLE_OVERLAY.get(),PuddleRenderer::new);
         event.registerBlockEntityRenderer(dev.gungang.acoustics.server.StationBlocks.ENTITY.get(),StationRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.DEPLOYABLE.get(),DeployableRenderer::new);
+        event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.BEAR_TRAP_ENTITY.get(),BearTrapRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.MOLOTOV_PROJECTILE.get(),net.minecraft.client.renderer.entity.ThrownItemRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.ORDNANCE.get(),OrdnanceRenderer::new);
+        event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.HAND_AXE_PROJECTILE.get(),HandAxeRenderer::new);
     }
     @SubscribeEvent public static void blockColors(net.minecraftforge.client.event.RegisterColorHandlersEvent.Block event) {
         // In bomb mode a gate takes the colour of the side currently using its spawn (attackers / defenders).
@@ -54,6 +57,7 @@ public final class ClientSetup {
     }
     @SubscribeEvent
     public static void keys(RegisterKeyMappingsEvent event) {
+        event.register(TeamPointHud.POINT);
         event.register(OffhandMacro.ATTACK);
         event.register(OffhandMacro.USE);
         event.register(LobbyClient.LOADOUT);
@@ -69,6 +73,7 @@ public final class ClientSetup {
     public static void setup(FMLClientSetupEvent event) {
         dev.gungang.acoustics.server.PropDimensions.clientProp=PropHuntClient::prop;
         dev.gungang.acoustics.server.SpawnGateBlock.clientRule=MatchHud::gateRule;
+        dev.gungang.acoustics.server.SpawnGateBlock.clientPreparation=MatchHud::gatePreparation;
         event.enqueueWork(()->{
             net.minecraft.client.renderer.ItemBlockRenderTypes.setRenderLayer(dev.gungang.acoustics.server.StationBlocks.ALPHA_GATE.get(),net.minecraft.client.renderer.RenderType.translucent());
             net.minecraft.client.renderer.ItemBlockRenderTypes.setRenderLayer(dev.gungang.acoustics.server.StationBlocks.BRAVO_GATE.get(),net.minecraft.client.renderer.RenderType.translucent());

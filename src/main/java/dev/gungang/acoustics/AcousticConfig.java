@@ -14,11 +14,11 @@ public final class AcousticConfig {
     public static final ForgeConfigSpec.BooleanValue FONT_SMOOTHING;
     public static final ForgeConfigSpec.BooleanValue HUD_BOLD_TEXT;
     public static final ForgeConfigSpec.IntValue HUD_TEXT_SIZE;
-    public static final ForgeConfigSpec.BooleanValue TEAM_HUD, KILL_LOG, TEAM_SILHOUETTES, COMPASS;
+    public static final ForgeConfigSpec.BooleanValue TEAM_HUD, KILL_LOG, TEAM_SILHOUETTES, COMPASS, AUTO_SPRINT;
     public static final ForgeConfigSpec.BooleanValue ENABLED, DIFFRACTION, LOW_PASS, SHOOTER_HUD;
     public static final ForgeConfigSpec.DoubleValue REFERENCE_DISTANCE, ROLLOFF, WALL_STRENGTH, SMOOTHING;
     public static final ForgeConfigSpec.IntValue UPDATE_BUDGET, MAX_TRACE_DISTANCE, DIFFRACTION_RADIUS, HUD_OFFSET_X, HUD_OFFSET_Y, MIN_EFFECT_VOLUME;
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> EXCLUDED_SOUNDS, MATERIALS;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> EXCLUDED_SOUNDS, MATERIALS, REMOVED_KEYS;
 
     static {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
@@ -44,6 +44,7 @@ public final class AcousticConfig {
         FONT_OFFSET_Y = b.comment("TTF vertical shift in font units; positive moves down. Reload resources to apply.")
                 .defineInRange("fontOffsetY", 1.0, -8.0, 8.0);
         COMPASS = b.comment("Show heading compass and enemy gunshot bearings above the player health bar.").define("compass", true);
+        AUTO_SPRINT = b.comment("Sprint automatically while moving forward; fire and aim input stop the sprint so guns stay usable.").define("autoSprint", true);
         TEAM_HUD = b.define("teamHud", true);
         KILL_LOG = b.define("killLog", true);
         TEAM_SILHOUETTES = b.define("teamSilhouettes", true);
@@ -75,6 +76,8 @@ public final class AcousticConfig {
                 .defineListAllowEmpty("excludedSounds", List.of(), o -> o instanceof String s && s.matches("[a-z0-9_.-]+:([a-z0-9_./-]+|\\*)"));
         MATERIALS = b.comment("Block transmission overrides: namespace:block=decibels_per_block, 0..120.")
                 .defineListAllowEmpty("materialOverrides", List.of("minecraft:glass=7", "minecraft:glass_pane=7"), AcousticConfig::validMaterial);
+        REMOVED_KEYS = b.comment("Key binding names removed from the Controls screen and left unbound, e.g. key.advancements.")
+                .defineListAllowEmpty("removedKeys", List.of(), o -> o instanceof String s && !s.isBlank());
         SPEC = b.build();
     }
 

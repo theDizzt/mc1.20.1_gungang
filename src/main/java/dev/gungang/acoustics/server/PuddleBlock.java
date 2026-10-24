@@ -14,7 +14,8 @@ public final class PuddleBlock extends Block {
     /** Water puddles put out fire; acid puddles poison like acid fluid. */
     public static void splash(Level level,Entity entity,boolean acid){
         if(acid)AcidBlock.poison(level,entity);else if(!level.isClientSide)entity.clearFire();
-        if(level.isClientSide||!(entity instanceof net.minecraft.world.entity.player.Player p)||p.isSpectator())return;
+        // Footsteps in water are a sound cue, for the bot's steps as much as a player's.
+        if(level.isClientSide||!BotEntity.participant(entity))return;var p=entity;
         long now=level.getGameTime();var tag=p.getPersistentData();
         double dx=p.getX()-tag.getDouble("GunGangPuddleX"),dz=p.getZ()-tag.getDouble("GunGangPuddleZ");
         boolean moving=!tag.contains("GunGangPuddleSeen")||now-tag.getLong("GunGangPuddleSeen")>2||dx*dx+dz*dz>.0001;

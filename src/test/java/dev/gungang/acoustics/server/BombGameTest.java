@@ -5,9 +5,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class BombGameTest {
     private BombGame game(){return new BombGame(BombRules.defaults(),210,true);}
-    private void start(BombGame game){for(int i=0;i<600;i++)game.tick(2,2);assertEquals(BombGame.Phase.RUNNING,game.phase());}
+    private void start(BombGame game){for(int i=0;i<500;i++)game.tick(2,2);assertEquals(BombGame.Phase.RUNNING,game.phase());}
     @Test void preparationAndDefaultTime(){
-        var game=game();for(int i=0;i<599;i++)game.tick(0,0);
+        var game=game();assertEquals(500,game.remainingTicks());for(int i=0;i<499;i++)game.tick(0,0);
         assertEquals(BombGame.Phase.PREPARING,game.phase());game.tick(2,2);
         assertEquals(4200,game.remainingTicks());assertEquals("ALPHA",game.attacker());
     }
@@ -30,7 +30,7 @@ class BombGameTest {
     @Test void roundTitleIsThreeSecondsAndSidesSwap(){
         var g=game();start(g);g.tick(1,0);
         for(int i=0;i<59;i++)g.tick(1,0);assertEquals(1,g.round());assertEquals(BombGame.Phase.ROUND_END,g.phase());
-        g.tick(1,0);assertEquals(2,g.round());assertEquals("BRAVO",g.attacker());assertEquals(600,g.remainingTicks());
+        g.tick(1,0);assertEquals(2,g.round());assertEquals("BRAVO",g.attacker());assertEquals(500,g.remainingTicks());
     }
     @Test void firstToThreeEndsEarly(){
         var g=game();
@@ -53,7 +53,7 @@ class BombGameTest {
         var tdm=DeathmatchRules.defaults().arena(source).validate();assertNull(tdm.bomb());assertNull(tdm.capture());
         assertEquals(source.bomb().attackSpawn(),tdm.alphaSpawn());assertEquals(source.bomb().defenseSpawn(),tdm.bravoSpawn());assertEquals(1200,tdm.timeLimitSeconds());
     }
-    private static BombRules rounds(int rounds){var r=BombRules.defaults();return new BombRules(rounds,1,30,r.attackSpawn(),r.attackArea(),r.defenseSpawn(),r.defenseArea(),r.pointA(),r.pointB());}
+    private static BombRules rounds(int rounds){var r=BombRules.defaults();return new BombRules(rounds,1,r.preparationSeconds(),r.attackSpawn(),r.attackArea(),r.defenseSpawn(),r.defenseArea(),r.pointA(),r.pointB());}
     /** Plays one round; the given team wins by eliminating the other side. */
     private void play(BombGame g,String winner){
         start(g);boolean attack=g.attacker().equals(winner);g.tick(attack?1:0,attack?0:1);

@@ -9,9 +9,12 @@ import net.minecraft.network.chat.Component;
 
 public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot9) {
     public record Specs(String damage, String accuracy, String stability, String range, String fireRate) { }
+    /** Free-form spec row for the loadout screen, e.g. {"name":"속박 시간","value":"3초"}. */
+    public record Stat(String name, String value) { }
     public record Weapon(String id, @com.google.gson.annotations.SerializedName(value="itemNbt",alternate={"nbt"}) String itemNbt, String name, String description, Specs specs, String usage, String category,
-                         Double maxHealth, Double movementSpeed, Double cooldownSeconds, String command, boolean jetpackVerticalFlight, String releaseDate) {
+                         Double maxHealth, Double movementSpeed, Double cooldownSeconds, String command, boolean jetpackVerticalFlight, String releaseDate, List<Stat> stats) {
         public Weapon {
+            stats=stats==null?List.of():List.copyOf(stats);
             releaseDate=ArenaMap.releaseDate(releaseDate,id);
             itemNbt=itemNbt==null?"":itemNbt;
             command=command==null?"":command.strip();
@@ -23,6 +26,9 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
             cooldownSeconds=cooldownSeconds==null?0:cooldownSeconds;
             if(!Double.isFinite(maxHealth)||maxHealth<1||maxHealth>1024||!Double.isFinite(movementSpeed)||movementSpeed<1||movementSpeed>1000
                     ||!Double.isFinite(cooldownSeconds)||cooldownSeconds<0||cooldownSeconds>3600) throw new IllegalArgumentException("Invalid weapon health, speed or cooldown: "+id);
+        }
+        public Weapon(String id,String itemNbt,String name,String description,Specs specs,String usage,String category,Double maxHealth,Double movementSpeed,Double cooldownSeconds,String command,boolean jetpackVerticalFlight,String releaseDate) {
+            this(id,itemNbt,name,description,specs,usage,category,maxHealth,movementSpeed,cooldownSeconds,command,jetpackVerticalFlight,releaseDate,null);
         }
         public Weapon(String id,String itemNbt,String name,String description,Specs specs,String usage,String category,Double maxHealth,Double movementSpeed,Double cooldownSeconds,String command,boolean jetpackVerticalFlight) {
             this(id,itemNbt,name,description,specs,usage,category,maxHealth,movementSpeed,cooldownSeconds,command,jetpackVerticalFlight,"");
@@ -63,9 +69,13 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
             if(commandOnly()&&requireSpecs)throw new IllegalArgumentException("Command fallback is only supported for secondary weapons");
             if (specs != null) for (String value : new String[]{specs.damage, specs.accuracy, specs.stability, specs.range, specs.fireRate})
                 if (value == null || value.length() > 80) throw new IllegalArgumentException("Invalid weapon specs: " + id);
+            if (stats.size() > 12) throw new IllegalArgumentException("At most 12 stats per weapon: " + id);
+            for (var stat : stats)
+                if (stat == null || stat.name() == null || stat.name().isBlank() || stat.name().length() > 24 || stat.value() == null || stat.value().length() > 40
+                        || (stat.name() + stat.value()).chars().anyMatch(Character::isISOControl)) throw new IllegalArgumentException("Invalid weapon stats: " + id);
             stack();
         }
-        public Weapon view() { return new Weapon(id, "", name, description, specs, usage, category,maxHealth,movementSpeed,cooldownSeconds,"",false,releaseDate); }
+        public Weapon view() { return new Weapon(id, "", name, description, specs, usage, category,maxHealth,movementSpeed,cooldownSeconds,"",false,releaseDate,stats); }
     }
     public Loadouts view() { return new Loadouts(primary.stream().map(Weapon::view).toList(), secondary.stream().map(Weapon::view).toList(), slot9 == null ? null : slot9.view()); }
     public static Loadouts load() throws java.io.IOException {
@@ -124,7 +134,7 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
     private static void ensureOrdnance(Path directory)throws java.io.IOException {
         var existing=readCategory(directory);
         for(var weapon:OrdnanceLoadouts.defaults()) {
-            String item=switch(weapon.id()) {case "81"->"molotov";case "87"->"orbital_strike";case "92"->"life_support";default->"jetpack";};
+            String item=switch(weapon.id()) {case "81"->"molotov";case "87"->"orbital_strike";case "89"->"bear_trap";case "80"->"hand_axe";case "92"->"life_support";default->"jetpack";};
             if(existing.stream().noneMatch(w->w.id().equals(weapon.id())||w.itemNbt().contains("gungang:"+item)))
                 ConfigLayout.writeNew(directory.resolve(weapon.id()+"_"+item+".json"),ServerFiles.GSON.toJson(weapon));
         }

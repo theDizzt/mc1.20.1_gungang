@@ -31,7 +31,10 @@ public record MatchSnapshot(boolean active, boolean result, String map, String p
         this(active,result,map,phase,seconds,countdown,winner,alphaScore,bravoScore,players,null,TeamOptions.defaults(),List.of());
     }
     public record Row(String id, String name, String team, int kills, int deaths, int assists, double damage, int playSeconds,
-                      int score,int color,int protectionTicks,int protectionTotal) {
+                      int score,int color,int protectionTicks,int protectionTotal,String skin) {
+        public Row(String id,String name,String team,int kills,int deaths,int assists,double damage,int playSeconds,int score,int color,int protectionTicks,int protectionTotal){
+            this(id,name,team,kills,deaths,assists,damage,playSeconds,score,color,protectionTicks,protectionTotal,"");
+        }
         public Row(String id,String name,String team,int kills,int deaths,int assists,double damage,int playSeconds){this(id,name,team,kills,deaths,assists,damage,playSeconds,kills,0,0,0);}
     }
 }

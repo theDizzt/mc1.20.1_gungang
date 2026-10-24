@@ -33,21 +33,28 @@ public final class EscortHud {
         }else if(v.overtimeTicks()>0){
             // Overtime replaces the clock: refills to 5.0 while attackers hold the cart.
             DeathmatchHud.small(g,"추가시간",0,2,.75f,AMBER,true);
-            DeathmatchHud.small(g,String.format(Locale.ROOT,"%.1f",v.overtimeTicks()/20.0),0,11,1.6f,v.overtimeTicks()<=40?0xFFFF6B6B:AMBER,true);
+            overtime(g,String.format(Locale.ROOT,"%.1f",v.overtimeTicks()/20.0),11,1.6f,v.overtimeTicks()<=40?0xFFFF6B6B:AMBER);
         }else MatchTimerHud.drawAt(g,snapshot,0,7);
         track(g,v,alpha,bravo,next);
         g.pose().popPose();
         return top+Math.round(56*scale);
     }
-    private static String meters(double d){return (int)Math.ceil(Math.max(0,d))+"m";}
+    private static String meters(double d){return Integer.toString((int)Math.ceil(Math.max(0,d)));}
+    /** Overtime seconds centred under the label in the number font, shadow-free so its 1px counters stay open. */
+    private static void overtime(GuiGraphics g,String text,int y,float size,int color){
+        var font=Minecraft.getInstance().font;var number=HudText.number(text);float width=(font.width(number)-1)*size;
+        g.pose().pushPose();g.pose().translate(-width/2,y,0);g.pose().scale(size,size,1);
+        g.drawString(font,number,0,0,color,false);g.pose().popPose();
+    }
     /** Same plate as the deathmatch strip; the big number is a distance instead of a score. */
     private static void team(GuiGraphics g,boolean left,String name,String tag,int tagColor,int color,String value,String target,boolean active){
         int inner=36,outer=116,y1=3,y2=27,x1=left?-outer:inner,x2=left?-inner:outer;
         DeathmatchHud.plate(g,x1,y1,x2,y2,color,left,active);
-        var font=Minecraft.getInstance().font;
-        float size=Math.min(1.6f,34f/Math.max(1,font.width(value)));int width=Math.round(font.width(value)*size);
-        g.pose().pushPose();g.pose().translate(left?x2-8-width:x1+8,y1+12-4*size,0);g.pose().scale(size,size,1);
-        g.drawString(font,value,0,0,active?0xFFFFFFFF:0xFFC4CEDA,false);g.pose().popPose();
+        var font=Minecraft.getInstance().font;var number=HudText.numbers(value);
+        float size=Math.min(1.6f,34f/Math.max(1,font.width(number)));int width=Math.round(font.width(number)*size);
+        // Number-font digits are 7 rows tall, so centre them on the plate like the deathmatch score.
+        g.pose().pushPose();g.pose().translate(left?x2-8-width:x1+8,y1+12-3.5f*size,0);g.pose().scale(size,size,1);
+        g.drawString(font,number,0,0,active?0xFFFFFFFF:0xFFC4CEDA,false);g.pose().popPose();
         int edge=left?x1+7:x2-7;
         DeathmatchHud.small(g,name,edge,y1+5,.75f,0xFFFFFFFF,false,left);
         int w=Math.round(font.width(tag)*.6f)+6,tx=left?edge:edge-w;

@@ -31,6 +31,12 @@ public final class PropEffects {
     private static ClientLevel last;
     /** Vanilla samples a given nearby block for animateTick about once every 44 ticks. */
     private static final int ANIMATE_CHANCE=44;
+    /**
+     * The model is drawn centred on the prop, not on its block cell; block code spawns particles from the cell corner.
+     * While a prop's block code runs, PropParticleMixin shifts every new particle by this amount.
+     */
+    private static net.minecraft.world.phys.Vec3 particleOffset=net.minecraft.world.phys.Vec3.ZERO;
+    public static net.minecraft.world.phys.Vec3 particleOffset(){return particleOffset;}
 
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event){
         if(event.phase!=TickEvent.Phase.END)return;
@@ -42,25 +48,38 @@ public final class PropEffects {
             if(!(entity instanceof PropEntity prop)||prop.isRemoved())continue;
             seen.add(prop.getId());
             int emission=0;
-            var entities=TICKING.computeIfAbsent(prop.getId(),id->new HashMap<>());
-            for(var part:PropGeometry.parts(prop.state())){
-                var state=part.state();var pos=prop.blockPosition().offset(part.offset());
-                emission=Math.max(emission,state.getLightEmission());
-                if(level.random.nextInt(ANIMATE_CHANCE)==0)state.getBlock().animateTick(state,level,pos,level.random);
-                // Chest lids already animate in PropRenderer.
-                if(state.getBlock() instanceof EntityBlock block&&!(state.getBlock() instanceof net.minecraft.world.level.block.ChestBlock))clientTicker(level,block,state,pos,part.offset(),entities);
-            }
+            particleOffset=new net.minecraft.world.phys.Vec3(prop.getX()-.5-prop.blockPosition().getX(),prop.getY()-prop.blockPosition().getY(),prop.getZ()-.5-prop.blockPosition().getZ());
+            try{
+                for(var part:PropGeometry.parts(prop.state())){
+                    var state=part.state();var pos=prop.blockPosition().offset(part.offset());
+                    emission=Math.max(emission,state.getLightEmission());
+                    if(level.random.nextInt(ANIMATE_CHANCE)==0)state.getBlock().animateTick(state,level,pos,level.random);
+                    if(state.getBlock() instanceof EntityBlock block)clientTicker(level,block,state,pos,blockEntity(prop,part.offset(),state,block));
+                }
+            }finally{particleOffset=net.minecraft.world.phys.Vec3.ZERO;}
             BlockPos cell=BlockPos.containing(prop.getX(),prop.getY()+.5,prop.getZ());
             glow(level,prop.getId(),emission>0?cell:null,emission);
         }
         for(var id:List.copyOf(GLOWS.keySet()))if(!seen.contains(id))glow(level,id,null,0);
         TICKING.keySet().retainAll(seen);
     }
-    @SuppressWarnings("unchecked")
-    private static <T extends BlockEntity> void clientTicker(ClientLevel level,EntityBlock block,BlockState state,BlockPos pos,BlockPos offset,Map<BlockPos,BlockEntity> cache){
-        var be=cache.get(offset);
-        if(be==null||be.getBlockState().getBlock()!=state.getBlock()){be=block.newBlockEntity(pos,state);if(be==null)return;be.setLevel(level);cache.put(offset,be);}
+    /**
+     * The one client block entity of a prop part, shared by the ticker here and PropRenderer,
+     * so what animates (enchanting book, chest lid) is what gets drawn. Null for blocks without one.
+     */
+    static BlockEntity blockEntity(PropEntity prop,BlockPos offset,BlockState state,EntityBlock block){
+        var cache=TICKING.computeIfAbsent(prop.getId(),id->new HashMap<>());var be=cache.get(offset);
+        if(be==null||be.getBlockState().getBlock()!=state.getBlock()){
+            be=block.newBlockEntity(prop.blockPosition().offset(offset),state);
+            if(be==null){cache.remove(offset);return null;}
+            be.setLevel(prop.level());cache.put(offset,be);
+        }
         be.setBlockState(state);
+        return be;
+    }
+    @SuppressWarnings("unchecked")
+    private static <T extends BlockEntity> void clientTicker(ClientLevel level,EntityBlock block,BlockState state,BlockPos pos,BlockEntity be){
+        if(be==null)return;
         var ticker=block.getTicker(level,state,(net.minecraft.world.level.block.entity.BlockEntityType<T>)be.getType());
         if(ticker!=null)ticker.tick(level,pos,state,(T)be);
     }

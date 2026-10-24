@@ -1,0 +1,8 @@
+newmtl material_0
+Kd 1 1 1
+d 1
+map_Kd gungang:item/infrared_scanner_0
+newmtl material_1
+Kd 1 1 1
+d 1
+map_Kd gungang:item/infrared_scanner_1

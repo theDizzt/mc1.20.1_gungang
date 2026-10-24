@@ -20,18 +20,29 @@ public final class StationEntity extends BlockEntity {
         var block=(StationBlock)getBlockState().getBlock();long now=level.getGameTime();
         if(block.locked(player))return;
         if(block.healthPack()) {
-            if(!stepping||remaining()>0||player.getHealth()>=player.getMaxHealth())return;
-            var config=block.kind==StationBlock.Kind.SMALL?GadgetConfig.smallHealthPack:GadgetConfig.largeHealthPack;
-            if(config.heal()<=0)return;
-            float before=player.getHealth();player.heal((float)config.heal());
-            if(player.getHealth()<=before)return;
-            player.playNotifySound(net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP,net.minecraft.sounds.SoundSource.PLAYERS,.8f,1.2f);
-            readyAt=now+(long)Math.ceil(config.cooldownSeconds()*20);
-            level.setBlock(worldPosition,getBlockState().setValue(StationBlock.COOLING,remaining()>0),3);sync();return;
+            if(stepping)heal(player);return;
         }
         if(stepping){Long previous=touches.put(player.getUUID(),now);if(previous!=null&&now-previous<10)return;}
         if(now-actions.getOrDefault(player.getUUID(),-100L)<10)return;
         actions.put(player.getUUID(),now);LobbyManager.station(player,block.kind,worldPosition);
+    }
+    boolean availableHealthPack(){
+        if(!(getBlockState().getBlock() instanceof StationBlock block)||!block.healthPack()||remaining()>0)return false;
+        return (block.kind==StationBlock.Kind.SMALL?GadgetConfig.smallHealthPack:GadgetConfig.largeHealthPack).heal()>0;
+    }
+    public void interact(BotEntity bot){
+        if(BotManager.owns(bot)&&MatchManager.botRunning()&&bot.isAlive())heal(bot);
+    }
+    private void heal(net.minecraft.world.entity.LivingEntity entity){
+        if(level==null||!availableHealthPack()||entity.getHealth()>=entity.getMaxHealth())return;
+        var block=(StationBlock)getBlockState().getBlock();
+        var config=block.kind==StationBlock.Kind.SMALL?GadgetConfig.smallHealthPack:GadgetConfig.largeHealthPack;
+        float before=entity.getHealth();entity.heal((float)config.heal());
+        if(entity.getHealth()<=before)return;
+        if(entity instanceof ServerPlayer player)player.playNotifySound(net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP,net.minecraft.sounds.SoundSource.PLAYERS,.8f,1.2f);
+        else entity.playSound(net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP,.8f,1.2f);
+        readyAt=level.getGameTime()+(long)Math.ceil(config.cooldownSeconds()*20);
+        level.setBlock(worldPosition,getBlockState().setValue(StationBlock.COOLING,remaining()>0),3);sync();
     }
     public static void tick(Level level,BlockPos pos,BlockState state,StationEntity entity){
         if(state.getValue(StationBlock.COOLING)&&entity.remaining()==0){level.setBlock(pos,state.setValue(StationBlock.COOLING,false),3);entity.sync();}
@@ -43,6 +54,9 @@ public final class StationEntity extends BlockEntity {
         if(target instanceof StationEntity station)
             for(var player:level.getEntitiesOfClass(ServerPlayer.class,new net.minecraft.world.phys.AABB(pos.getX(),pos.getY()+top,pos.getZ(),pos.getX()+1,pos.getY()+top+.15,pos.getZ()+1)))
                 if(player.getY()>=pos.getY()+top-.01&&player.getY()<=pos.getY()+top+.15)station.interact(player,true);
+        if(block.healthPack()&&target instanceof StationEntity station)
+            for(var bot:level.getEntitiesOfClass(BotEntity.class,new net.minecraft.world.phys.AABB(pos.getX(),pos.getY()+top,pos.getZ(),pos.getX()+1,pos.getY()+top+.15,pos.getZ()+1)))
+                if(bot.getY()>=pos.getY()+top-.01&&bot.getY()<=pos.getY()+top+.15)station.interact(bot);
         if(level.getGameTime()%200==0){entity.touches.values().removeIf(t->level.getGameTime()-t>200);entity.actions.values().removeIf(t->level.getGameTime()-t>200);}
     }
     private void sync(){setChanged();level.sendBlockUpdated(worldPosition,getBlockState(),getBlockState(),3);}

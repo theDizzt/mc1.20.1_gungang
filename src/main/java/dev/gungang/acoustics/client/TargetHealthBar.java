@@ -29,7 +29,8 @@ public final class TargetHealthBar {
             if (!(entity instanceof LivingEntity target) || !target.isAlive() || target == mc.player
                     || target.isSpectator() || target.isInvisibleTo(mc.player)
                     || (target instanceof dev.gungang.acoustics.server.DeployableEntity deployed && !deployed.showHealthBar())
-                    || (target instanceof net.minecraft.world.entity.player.Player player && TeamHud.teammate(player))
+                    // Allies, bots included, show in the top-left roster instead.
+                    || TeamHud.teammate(target)
                     || target.distanceToSqr(mc.player) > 96 * 96) continue;
             var pose = event.getPoseStack();
             Vec3 position = target.getPosition(event.getPartialTick());

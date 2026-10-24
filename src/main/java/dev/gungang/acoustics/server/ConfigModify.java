@@ -37,8 +37,8 @@ public final class ConfigModify {
     private static Map<String,Object> settings(String kind){
         var result=new TreeMap<String,Object>();
         if(kind.equals("item")){
-            result.put("landmine",GadgetConfig.mine);result.put("recovery_potion",GadgetConfig.recovery);result.put("adrenaline",GadgetConfig.adrenaline);result.put("barrier",GadgetConfig.barrier);
-            result.put("molotov",ExtraGadgetConfig.molotov);result.put("orbital_strike",ExtraGadgetConfig.orbital);result.put("life_support",ExtraGadgetConfig.life);result.put("jetpack",ExtraGadgetConfig.jet);result.put("infrared_scanner",ExtraGadgetConfig.scanner);result.put("shield",ExtraGadgetConfig.shield);
+            result.put("landmine",GadgetConfig.mine);result.put("recovery_potion",GadgetConfig.recovery);result.put("adrenaline",GadgetConfig.adrenaline);result.put("barrier",GadgetConfig.barrier);result.put("bear_trap",GadgetConfig.bearTrap);
+            result.put("molotov",ExtraGadgetConfig.molotov);result.put("orbital_strike",ExtraGadgetConfig.orbital);result.put("life_support",ExtraGadgetConfig.life);result.put("jetpack",ExtraGadgetConfig.jet);result.put("infrared_scanner",ExtraGadgetConfig.scanner);result.put("shield",ExtraGadgetConfig.shield);result.put("hand_axe",ExtraGadgetConfig.handAxe);
         }else if(kind.equals("block")){
             result.put("small_health_pack",GadgetConfig.smallHealthPack);result.put("large_health_pack",GadgetConfig.largeHealthPack);
             result.put("uxo",GimmickConfig.uxo);result.put("gas_barrel",GimmickConfig.gas);result.put("puddle",GimmickConfig.puddle);result.put("acid",GimmickConfig.acid);result.put("nozzle",GimmickConfig.nozzle);result.put("acid_nozzle",GimmickConfig.acidNozzle);result.putAll(GimmickConfig.walls);

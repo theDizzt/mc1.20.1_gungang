@@ -31,5 +31,9 @@ class OrdnanceRulesTest {
         var definitions=OrdnanceLoadouts.defaults();
         assertEquals("81",definitions.get(0).id());assertEquals(36d,definitions.get(0).cooldownSeconds());
         assertEquals("87",definitions.get(1).id());assertEquals(240d,definitions.get(1).cooldownSeconds());
+        var trap=definitions.stream().filter(w->w.id().equals("89")).findFirst().orElseThrow();
+        assertEquals(36d,trap.cooldownSeconds());assertEquals("2026-10-21",trap.releaseDate());
+        var axe=definitions.stream().filter(w->w.id().equals("80")).findFirst().orElseThrow();
+        assertEquals(16d,axe.cooldownSeconds());assertTrue(axe.itemNbt().contains("gungang:hand_axe"));
     }
 }
