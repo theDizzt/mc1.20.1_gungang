@@ -32,7 +32,7 @@ import org.joml.Vector3f;
 
 /**
  * Hatchet chop: the axe rests cocked by the shoulder, draws back, accelerates into a diagonal downward chop,
- * stops hard on impact with a small rebound, then recovers. Holding use winds the axe behind the head to throw.
+ * follows through with its weight, recoils at the wrist, then recovers outward. Holding use winds the axe behind the head to throw.
  * First person draws the arm with the axe gripped in the fist; third person drives the arm and body.
  */
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID,value=Dist.CLIENT)
@@ -42,10 +42,12 @@ public final class HandAxeAnimation {
     /** First-person grip keys for the right hand: progress, camera-space x/y/z, then pitch/yaw/roll degrees, easing. */
     private static final float[][] CHOP={
             {0f,   .52f,-.48f, -.95f, -12, 45, -10, SMOOTH},     // ready: head up, blade angled in
-            {.16f, .58f,-.30f, -.95f,  12, 40, -16, DECELERATE}, // draw back over the shoulder
-            {.34f, .10f,-.68f,-1.10f,-100, 20,  32, ACCELERATE}, // chop through the crosshair, down and across
-            {.41f, .12f,-.63f,-1.08f, -90, 18,  29, DECELERATE}, // rebound off the target
-            {.50f, .11f,-.65f,-1.09f, -95, 19,  30, SMOOTH},     // settle
+            {.12f, .48f,-.24f,-1.05f,  18, 36, -16, DECELERATE}, // compact wind-up, blade stays visible beside the aiming line
+            {.23f, .36f,-.34f,-1.13f, -42, 30,   8, ACCELERATE}, // shoulder leads the diagonal cut
+            {.31f, .04f,-.59f,-1.23f,-104,  8,  42, ACCELERATE}, // fast cut across the aiming line
+            {.39f,-.05f,-.72f,-1.17f,-118, -4,  50, DECELERATE}, // follow-through carries the weight past the strike
+            {.48f, .04f,-.60f,-1.10f, -96, 12,  34, DECELERATE}, // restrained wrist recoil, including on a missed swing
+            {.70f, .38f,-.47f,-1.01f, -30, 40,  -2, SMOOTH},     // lift the handle back along an outward arc
             {1f,   .52f,-.48f, -.95f, -12, 45, -10, SMOOTH}};    // recover to ready
     private static final float[] THROW={.45f,-.20f,-.90f,30,40,-25};
     /** Carried in the offhand beside a gun: lower and further out than the ready stance so it stays out of the sights. */
@@ -55,10 +57,12 @@ public final class HandAxeAnimation {
     /** Third-person keys: progress, arm xRot/zRot (right arm), body yRot (right-handed), wrist degrees, easing. */
     private static final float[][] ARM={
             {0f,   -.55f, .05f,  0f,    0, SMOOTH},
-            {.16f, -2.95f, .30f, -.30f,  35, DECELERATE},
-            {.34f, -1.15f,-.20f,  .45f,-125, ACCELERATE},
-            {.41f, -1.30f,-.16f,  .38f,-112, DECELERATE},
-            {.50f, -1.22f,-.18f,  .41f,-118, SMOOTH},
+            {.12f, -2.90f, .38f, -.36f,  42, DECELERATE},
+            {.23f, -2.10f, .10f, -.08f, -30, ACCELERATE},
+            {.31f, -1.10f,-.30f,  .46f,-125, ACCELERATE},
+            {.39f,  -.92f,-.40f,  .54f,-137, DECELERATE},
+            {.48f, -1.20f,-.24f,  .38f,-111, DECELERATE},
+            {.70f,  -.80f, .02f,  .10f, -30, SMOOTH},
             {1f,   -.55f, .05f,  0f,    0, SMOOTH}};
     /** Grip point on the OBJ handle (model units), the model scale in hand, and the turn that faces the blade forward. */
     private static final float GRIP_Y=.2f,SCALE=1.1f,BLADE_YAW=-90;

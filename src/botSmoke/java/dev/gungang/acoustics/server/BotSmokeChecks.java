@@ -186,6 +186,15 @@ public final class BotSmokeChecks {
             TeamPoints.clear(server);player.setGameMode(net.minecraft.world.level.GameType.SPECTATOR);TeamPoints.request(player);
             check(TeamPoints.STATE.view("BRAVO",0).points().isEmpty(),"Spectator cannot issue point requests");
             System.out.println("TEAM_POINT_SERVER_PASS");
+            var source=player.createCommandSourceStack().withPermission(2);
+            check(server.getCommands().performPrefixedCommand(source,"gungang bot debug 1")==1&&BotDiagnostics.watching(player.getUUID()),"Operator can select a bot for private diagnostics");
+            check(BotDiagnostics.details(agent).contains("최근 경로 실패="),"Diagnostic snapshot includes navigation failure details");
+            check(server.getCommands().performPrefixedCommand(source,"gungang bot debug info")==1,"Diagnostic info command works");
+            check(server.getCommands().performPrefixedCommand(source,"gungang bot debug off")==1&&!BotDiagnostics.watching(player.getUUID()),"Diagnostic off removes tracking");
+            check(server.getCommands().performPrefixedCommand(player.createCommandSourceStack().withPermission(0),"gungang bot debug 1")==0,"Non-operators cannot enable diagnostics");
+            BotDiagnostics.watch(source,0);BotDiagnostics.clear();
+            check(!BotDiagnostics.watching(player.getUUID()),"Match cleanup clears diagnostic watchers");
+            System.out.println("BOT_DIAGNOSTICS_PASS");
         }finally {
             team.set(entry,"ALPHA");player.setGameMode(net.minecraft.world.level.GameType.ADVENTURE);player.setYRot(yaw);player.setXRot(pitch);
             TeamPoints.clear(server);agent.actions.reset();agent.tactics.reset(server.getTickCount());agent.perception.reset();agent.movement.reset();agent.movement.prepareSpawnExit();bot().getNavigation().stop();
@@ -206,6 +215,15 @@ public final class BotSmokeChecks {
         b.setPos(from);
         for(int z=-2;z<=2;z++)for(int y=101;y<=103;y++)level.setBlock(new BlockPos(23,y,z),Blocks.AIR.defaultBlockState(),3);
         System.out.println("BOT_SCOUT_COVER_PASS");
+        check(BotMovement.nearSpawn(arena,"ALPHA",new net.minecraft.world.phys.Vec3(.5,101,.5)),"Own spawn is excluded from idle patrol and regroup");
+        check(!BotMovement.nearSpawn(arena,"ALPHA",from),"Forward positions remain eligible");
+        BotMovement.newTick();b.setOnGround(true);
+        var local=movement.localPatrol(b,arena,"ALPHA",server.getTickCount(),new net.minecraft.world.phys.Vec3(.5,101,.5),new net.minecraft.world.phys.Vec3(20.5,101,.5));
+        check(local!=null&&!BotMovement.nearSpawn(arena,"ALPHA",local),"Local fallback selects a reachable point away from spawn");
+        var localPath=BotMovement.path(b,BlockPos.containing(local),0);
+        check(localPath!=null&&localPath.canReach(),"Fallback never submits an unreachable global destination");
+        BotMovement.newTick();
+        System.out.println("BOT_PATROL_SPAWN_EXCLUSION_PASS");
         check(BotMovement.safeSegment(b,arena,from,from.add(0,0,2)),"Clear supported strafe is safe");
         var obstacle=new BlockPos(24,101,1);level.setBlock(obstacle,Blocks.STONE.defaultBlockState(),3);
         check(!BotMovement.safeSegment(b,arena,from,from.add(0,0,2)),"Strafe rejects wall along route");
@@ -593,10 +611,17 @@ public final class BotSmokeChecks {
                 check(bot()!=null,"Bot respawns inside a gated spawn room");
                 check(gateLeft>=gateBorn&&gateBorn>=0&&gateLeft-gateBorn<=60,"Spawn exit completes within 60 ticks despite a 200-tick patrol interval: "+gateBorn+" -> "+gateLeft+" position="+bot().position()+" goal="+BotManager.agent(bot()).movement.goal());
                 System.out.println("BOT_FAST_SPAWN_EXIT_PASS ticks="+(gateLeft-gateBorn));
+                // Also check what happens AFTER crossing the gate, with no visible enemy to hold the bot there.
+                player.setGameMode(net.minecraft.world.level.GameType.SPECTATOR);
+                bot().removeAllEffects();bot().setHealth(bot().getMaxHealth());
+                var agent=BotManager.agent(bot());agent.target=null;agent.perception.reset();agent.actions.reset();agent.tactics.reset(server.getTickCount());
+                agent.nextThink=agent.nextPath=server.getTickCount();
             }
             if(tick==960){
                 System.out.println("BOT_SMOKE_GATE bot="+(bot()==null?"null":bot().position()));
                 check(bot()!=null&&bot().getX()<16,"Bot finds its own spawn gate and leaves the spawn room");
+                check(!BotMovement.nearSpawn(arena,"BRAVO",bot().position()),"Idle bot continues away from the gate instead of circling spawn: "+bot().position());
+                System.out.println("BOT_POST_EXIT_PATROL_PASS");
                 MatchManager.end("ABORTED");
                 // Two bots on opposite sides: they must find and fight each other with no player involved.
                 command("set pathTicks 40");
