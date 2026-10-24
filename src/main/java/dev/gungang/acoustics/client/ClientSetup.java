@@ -13,6 +13,7 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
 @Mod.EventBusSubscriber(modid = GungangAcoustics.ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class ClientSetup {
+    @SubscribeEvent public static void turretModels(net.minecraftforge.client.event.ModelEvent.RegisterAdditional event){event.register(TurretRenderer.BASE);event.register(TurretRenderer.HEAD);}
     @SubscribeEvent public static void layers(net.minecraftforge.client.event.EntityRenderersEvent.AddLayers event) {
         for(String skin:event.getSkins()) {
             net.minecraft.client.renderer.entity.player.PlayerRenderer renderer=event.getSkin(skin);
@@ -29,6 +30,7 @@ public final class ClientSetup {
         event.registerBlockEntityRenderer(dev.gungang.acoustics.server.StationBlocks.ENTITY.get(),StationRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.DEPLOYABLE.get(),DeployableRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.BEAR_TRAP_ENTITY.get(),BearTrapRenderer::new);
+        event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.TURRET_ENTITY.get(),TurretRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.MOLOTOV_PROJECTILE.get(),net.minecraft.client.renderer.entity.ThrownItemRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.ORDNANCE.get(),OrdnanceRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.HAND_AXE_PROJECTILE.get(),HandAxeRenderer::new);

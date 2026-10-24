@@ -249,6 +249,7 @@ public final class LobbyManager {
     }
     public static void action(ServerPlayer sender, GungangNetwork.Action action) {
         if (server == null) return;
+        if(action.action().equals("turretReload")){Turrets.key(sender,action.value());return;}
         // Plant/defuse key: press and release must both arrive, so it bypasses the action rate limit.
         if(action.action().equals("bomb")){var bomb=MatchManager.bomb();if(bomb!=null)bomb.key(sender,action.value().equals("down"));return;}
         if(action.action().equals("prop")){if(MatchManager.propHunt()!=null)MatchManager.propHunt().action(sender,action.value());return;}

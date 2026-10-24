@@ -24,7 +24,7 @@ public final class GadgetItem extends Item {
         return InteractionResultHolder.sidedSuccess(stack,level.isClientSide);
     }
     @Override public int getUseDuration(ItemStack stack) { return 72000; }
-    public static boolean placement(String kind) {return kind.equals("landmine")||kind.equals("barrier")||kind.equals("orbital_strike")||kind.equals("bear_trap");}
+    public static boolean placement(String kind) {return kind.equals("landmine")||kind.equals("barrier")||kind.equals("orbital_strike")||kind.equals("bear_trap")||kind.equals("turret");}
     @Override public UseAnim getUseAnimation(ItemStack stack) { return UseAnim.BOW; }
     @Override public void onUseTick(Level level,LivingEntity entity,ItemStack stack,int remaining) {
         if(kind.equals("bear_trap")) {
