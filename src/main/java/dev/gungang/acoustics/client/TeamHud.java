@@ -4,7 +4,12 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import dev.gungang.acoustics.AcousticConfig;
 import dev.gungang.acoustics.GungangAcoustics;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
+import java.util.UUID;
+import dev.gungang.acoustics.server.BotDatabase;
+import dev.gungang.acoustics.server.BotEntity;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.PlayerFaceRenderer;
@@ -12,6 +17,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.resources.DefaultPlayerSkin;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
@@ -26,12 +33,14 @@ public final class TeamHud {
         final DeathNotice notice; final long started; long expires; float y = Float.NaN;
         Kill(DeathNotice notice, long started, long expires) { this.notice = notice; this.started = started; this.expires = expires; }
     }
+    /** Softer charcoal than the card surface behind a teammate's missing health. */
+    private static final int BAR_TRACK = 0xFF232A33;
     private static final long ENTER_NS = 280_000_000L, EXIT_NS = 400_000_000L, LIFE_NS = 8_000_000_000L;
     private static long lastFrame;
     private static final ArrayDeque<Kill> KILLS = new ArrayDeque<>();
     public static int rosterBottom = 8;
 
-    public static boolean teammate(Player other) {
+    public static boolean teammate(LivingEntity other) {
         var self = Minecraft.getInstance().player;
         return self != null && other != self && self.getTeam() != null
                 && self.getTeam().isAlliedTo(other.getTeam()) && !other.isSpectator();
@@ -68,34 +77,33 @@ public final class TeamHud {
         Minecraft mc = Minecraft.getInstance();
         rosterBottom = 8;
         if (AcousticConfig.TEAM_HUD.get()) {
-            var members = mc.getConnection().getOnlinePlayers().stream()
-                    .filter(info -> !info.getProfile().getId().equals(mc.player.getUUID())
-                            && mc.player.getTeam() != null
-                            && mc.player.getTeam().isAlliedTo(info.getTeam())
-                            && (info.getGameMode() != net.minecraft.world.level.GameType.SPECTATOR || RespawnPortrait.waiting(info.getProfile().getId())))
-                    .sorted(Comparator.comparing(info -> info.getProfile().getName())).toList();
+            var members = members(mc);
             int capacity = Math.max(0, Math.min(height / 3, mainY - 20) / 34);
             int count = Math.min(capacity, members.size());
             for (int i = 0; i < count; i++) {
-                var info = members.get(i);
-                Player p = mc.level.getPlayerByUUID(info.getProfile().getId());
+                var member = members.get(i);
+                LivingEntity p = member.entity();
                 int y = 8 + i * 34;
                 ShooterHud.portrait(g, x, y, 30, teamColor(mc.player));
-                PlayerFaceRenderer.draw(g, info.getSkinLocation(), x + 2, y + 2, 26);
-                RespawnPortrait.render(g, info.getProfile().getId(), x + 2, y + 2, 26);
-                HudText.draw(g, info.getProfile().getName(), x + 34, y + 1, 80, 0xFFFFFFFF);
-                ShooterHud.card(g, x + 34, y + 16, 80, 14, ShooterHud.BAR_EDGE, ShooterHud.SURFACE, 0);
+                PlayerFaceRenderer.draw(g, member.skin(), x + 2, y + 2, 26);
+                RespawnPortrait.render(g, member.id(), x + 2, y + 2, 26);
+                TeamPointHud.badge(g,member.id(),x+2,y+2,26);
+                Integer level = PlayerLevels.level(member.id());
+                if (level != null) LevelEmblem.draw(g, level, x + 34, y + 1, 12);
+                int nameX = level != null ? x + 49 : x + 34;
+                HudText.draw(g, member.name(), nameX, y + 1, x + 114 - nameX, 0xFFFFFFFF);
+                ShooterHud.card(g, x + 34, y + 16, 80, 14, ShooterHud.BAR_EDGE, BAR_TRACK, 0);
                 ShooterHud.card(g, x + 118, y + 8, 22, 22, ShooterHud.EDGE, ShooterHud.SURFACE, 0);
                 if (p != null) {
                     var layers = HudHealthBars.layers(p, partialTick);
                     float fraction = layers.absorptionEnd();
                     HudHealthBars.render(g, x + 35, y + 17, 78, 12, layers, 0xFFF5F5F0);
                     ShooterHud.finish(g, x + 35, y + 17, 78, 12, fraction);
-                    HudText.health(g, HudHealth.label(p.getHealth(), p.getMaxHealth(),p.getAbsorptionAmount()), x + 36, y + 16, 76, 14, 0xFFFFFFFF, 0.78f);
+                    HudText.healthNumber(g, HudHealth.label(p.getHealth(), p.getMaxHealth(),p.getAbsorptionAmount()), x + 36, y + 16, 76, 14, 0xFFFFFFFF, 0.78f);
                     float scale = (float) (2.0 / mc.getWindow().getGuiScale());
                     g.enableScissor(Math.round((x + 35) * scale), Math.round((y + 17) * scale),
                             Math.round((x + 35 + 78 * fraction) * scale), Math.round((y + 29) * scale));
-                    HudText.health(g, HudHealth.label(p.getHealth(), p.getMaxHealth(),p.getAbsorptionAmount()), x + 36, y + 16, 76, 14, 0xFF111820, 0.78f);
+                    HudText.healthNumber(g, HudHealth.label(p.getHealth(), p.getMaxHealth(),p.getAbsorptionAmount()), x + 36, y + 16, 76, 14, 0xFF111820, 0.78f);
                     g.disableScissor();
                     g.renderItem(p.getMainHandItem(), x + 121, y + 11);
                 } else {
@@ -146,19 +154,55 @@ public final class TeamHud {
         }
     }
 
+    private record Member(UUID id, String name, ResourceLocation skin, LivingEntity entity) { }
+
+    /** Allied players plus allied bots (from the match rows, as bots have no PlayerInfo), sorted by name. */
+    private static List<Member> members(Minecraft mc) {
+        var team = mc.player.getTeam();
+        List<Member> members = new ArrayList<>();
+        if (team == null) return members;
+        for (var info : mc.getConnection().getOnlinePlayers()) {
+            UUID id = info.getProfile().getId();
+            if (id.equals(mc.player.getUUID()) || !team.isAlliedTo(info.getTeam())
+                    || (info.getGameMode() == net.minecraft.world.level.GameType.SPECTATOR && !RespawnPortrait.waiting(id))) continue;
+            members.add(new Member(id, info.getProfile().getName(), info.getSkinLocation(), mc.level.getPlayerByUUID(id)));
+        }
+        var state = MatchHud.state();
+        String side = team.getName().equals("Red") ? "ALPHA" : team.getName().equals("Blue") ? "BRAVO" : "";
+        if (state != null && state.active()) for (var row : state.players()) {
+            UUID id;
+            try { id = UUID.fromString(row.id()); } catch (IllegalArgumentException notUuid) { continue; }
+            if (BotDatabase.slot(id) < 0) continue;
+            BotEntity bot = null;
+            for (var entity : mc.level.entitiesForRendering())
+                if (entity instanceof BotEntity found && found.getUUID().equals(id)) { bot = found; break; }
+            // A dead bot is discarded and leaves the scoreboard team until it respawns; its match row still names the side.
+            if (!(bot != null ? team.isAlliedTo(bot.getTeam()) : row.team().equals(side))) continue;
+            String skin = row.skin() != null && !row.skin().isEmpty() ? row.skin() : bot != null ? bot.skin() : BotDatabase.DEFAULT_SKIN;
+            members.add(new Member(id, row.name(), BotRenderer.texture(skin), bot != null && bot.isAlive() ? bot : null));
+        }
+        members.sort(Comparator.comparing(Member::name));
+        return members;
+    }
+
     private static int actor(GuiGraphics g, Component name, int right, int y) {
         Minecraft mc = Minecraft.getInstance();
         PlayerInfo info = null;
+        UUID id = null;
         HoverEvent hover = name.getStyle().getHoverEvent();
         if (hover != null) {
             var entity = hover.getValue(HoverEvent.Action.SHOW_ENTITY);
-            if (entity != null) info = mc.getConnection().getPlayerInfo(entity.id);
+            if (entity != null) { id = entity.id; info = mc.getConnection().getPlayerInfo(entity.id); }
         }
         if (info == null) info = mc.getConnection().getPlayerInfo(name.getString());
         String label = mc.font.plainSubstrByWidth(name.getString(), 62);
         int left = right - mc.font.width(label) - 20;
-        var skin = info == null ? DefaultPlayerSkin.getDefaultSkin() : info.getSkinLocation();
-        var team = info == null ? mc.level.getScoreboard().getPlayersTeam(name.getString()) : info.getTeam();
+        // Bots have no PlayerInfo: take their profile skin from the match rows, else from the loaded entity.
+        String botSkin = info == null && id != null ? botSkin(mc, id) : null;
+        var skin = botSkin != null ? BotRenderer.texture(botSkin)
+                : info == null ? DefaultPlayerSkin.getDefaultSkin() : info.getSkinLocation();
+        var team = info != null ? info.getTeam()
+                : mc.level.getScoreboard().getPlayersTeam(id != null && botSkin != null ? id.toString() : name.getString());
         Integer teamRgb = team == null ? null : team.getColor().getColor();
         int color = 0xFF000000 | (teamRgb == null ? 0xFFFFFF : teamRgb);
         if(team!=null&&team.getName().equals("Red"))color=LobbyClient.options.color("ALPHA");
@@ -167,6 +211,15 @@ public final class TeamHud {
         PlayerFaceRenderer.draw(g, skin, left + 1, y + 1, 14);
         g.drawString(mc.font, label, left + 20, y + 4, color, false);
         return left;
+    }
+
+    private static String botSkin(Minecraft mc, UUID id) {
+        var state = MatchHud.state();
+        if (state != null) for (var row : state.players())
+            if (row.id().equals(id.toString()) && row.skin() != null && !row.skin().isEmpty()) return row.skin();
+        for (var entity : mc.level.entitiesForRendering())
+            if (entity instanceof BotEntity bot && bot.getUUID().equals(id)) return bot.skin();
+        return null;
     }
 
     private static void skull(GuiGraphics g, int x, int y) {

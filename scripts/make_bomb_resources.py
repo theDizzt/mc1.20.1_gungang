@@ -53,7 +53,7 @@ for language,names in [('ko_kr',('폭탄','폭탄 해체기','설치된 폭탄')
     for key,value in zip(['item.gungang.bomb','item.gungang.defuser','block.gungang.planted_bomb'],names):data[key]=value
     write(path,data)
 
-rules={'rounds':5,'swapEveryRounds':1,'preparationSeconds':30,
+rules={'rounds':5,'swapEveryRounds':1,'preparationSeconds':25,
        'attackSpawn':{'x':.5,'y':65,'z':.5,'yaw':0,'pitch':0},
        'attackArea':{'minX':-5,'minY':64,'minZ':-5,'maxX':5,'maxY':72,'maxZ':5},
        'defenseSpawn':{'x':40.5,'y':65,'z':.5,'yaw':180,'pitch':0},

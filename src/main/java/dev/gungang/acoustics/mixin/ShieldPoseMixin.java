@@ -14,6 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class ShieldPoseMixin {
     @Inject(method="setupAnim",at=@At("TAIL"))
     private void gungang$guard(LivingEntity entity,float swing,float amount,float age,float yaw,float pitch,CallbackInfo ci) {
+        dev.gungang.acoustics.client.HandAxeAnimation.poseArm((HumanoidModel<?>)(Object)this,entity);
         if(entity instanceof Player player&&CombatGadgets.holdingShield(player))
             ShieldRendering.poseArms((HumanoidModel<?>)(Object)this);
     }

@@ -125,16 +125,19 @@ public final class TaczAmmoHud {
         text(g,font,name,nameRight-font.width(name),rowTop-11,0xFFE2E8F0);
         g.pose().popPose();
     }
-    /** Width of the widest digit, so every digit gets the same cell whatever font is active. */
+    /** Width of the widest number-font digit, so every digit gets the same cell. */
     private static int digitCell(net.minecraft.client.gui.Font font) {
-        int cell=0;for(char c='0';c<='9';c++)cell=Math.max(cell,font.width(String.valueOf(c)));return cell;
+        int cell=0;for(char c='0';c<='9';c++)cell=Math.max(cell,HudText.numberWidth(String.valueOf(c)));return cell;
     }
-    /** Tabular digits: each character centred in a fixed cell so the count does not shift as it changes. */
+    /**
+     * Tabular digits: each character centred in a fixed cell so the count does not shift as it changes.
+     * No drop shadow: the number font's counters and gaps are one pixel wide, so a 1px shadow fills them as dark lines.
+     */
     private static void digits(GuiGraphics g,net.minecraft.client.gui.Font font,String text,int firstCell,int color) {
         int cell=digitCell(font);
         for(int i=0;i<text.length();i++) {
-            String c=String.valueOf(text.charAt(i));
-            text(g,font,c,(firstCell+i)*cell+(cell-font.width(c))/2,0,color);
+            String c=String.valueOf(text.charAt(i));int x=(firstCell+i)*cell+(cell-HudText.numberWidth(c))/2;
+            g.drawString(font,HudText.number(c),x,0,color,false);
         }
     }
     /** Text with a translucent drop shadow instead of vanilla's opaque one. */

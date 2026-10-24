@@ -4,9 +4,10 @@
   "package": "dev.gungang.acoustics.mixin",
   "compatibilityLevel": "JAVA_17",
   "refmap": "gungang_acoustics.refmap.json",
-  "mixins": ["PropTargetMixin", "PropCollisionMixin", "SpawnGateEffectMixin", "MapSnowAccumulationMixin", "AcidLoggedStateMixin", "AcidLoggedFluidMixin", "AcidLoggedShapeMixin", "TaczDamageMixin", "TaczNpcPassMixin", "SecondaryItemUseMixin", "SecondaryCooldownMixin", "TacticalCooldownMixin", "FoodRegenerationMixin", "OrdnanceFriendlyFireMixin", "JetpackStepMixin", "BombSpectatorCameraMixin", "BombSpectatorTeleportMixin"],
+  "plugin": "dev.gungang.acoustics.mixin.CompoundBowMixinPlugin",
+  "mixins": ["PropTargetMixin", "PropCollisionMixin", "SpawnGateEffectMixin", "MapSnowAccumulationMixin", "AcidLoggedStateMixin", "AcidLoggedFluidMixin", "AcidLoggedShapeMixin", "TaczDamageMixin", "TaczNpcPassMixin", "SecondaryItemUseMixin", "SecondaryCooldownMixin", "TacticalCooldownMixin", "FoodRegenerationMixin", "OrdnanceFriendlyFireMixin", "JetpackStepMixin", "BombSpectatorCameraMixin", "BombSpectatorTeleportMixin", "HandAxeSwingMixin"],
   "client": [
-    "PropKeyboardMixin", "PropMouseMixin", "MapPrecipitationMixin",
+    "PropKeyboardMixin", "PropMouseMixin", "PropParticleMixin", "MapPrecipitationMixin",
     "MapWeatherRendererMixin",
     "ShieldHandLayerMixin",
     "ShieldPoseMixin",
@@ -23,7 +24,12 @@
     "ChatComponentMixin",
     "ChatScreenMixin",
     "NormalFontStyleMixin",
-    "GunSoundSourceMixin"
+    "GunSoundSourceMixin",
+    "PlayerTabLevelMixin",
+    "KeyEntryMixin",
+    "KeyBindsListMixin",
+    "KeyBindsScreenMixin",
+    "HandAxeWristMixin"
   ],
   "injectors": {
     "defaultRequire": 1

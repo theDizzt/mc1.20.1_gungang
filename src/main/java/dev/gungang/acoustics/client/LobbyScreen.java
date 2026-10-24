@@ -17,6 +17,34 @@ final class LobbyScreen extends ArenaScreen {
     private double zoom=1,panX,panY;
     private int viewX,viewY,viewW,viewH,baseW,baseH;
     private boolean draggingPreview,draggingMapBar;
+    /** Team drag: the member being dragged, where the press started, and whether it has moved far enough to count. */
+    private String dragId;
+    private double dragX,dragY;
+    private boolean draggingMember;
+    private record Row(LobbySnapshot.Member member,int x,int y,int w) { }
+    /** Member rows exactly where {@link #members} places their buttons (face included). */
+    private java.util.List<Row> rows(){
+        var rows=new java.util.ArrayList<Row>();if(maps)return rows;
+        int x=left()+12,w=body()-24,half=(w-8)/2;
+        addRows(rows,team("ALPHA"),x+4,100,half-8,capacity(),page*capacity());
+        addRows(rows,team("BRAVO"),x+half+12,100,half-8,capacity(),page*capacity());
+        addRows(rows,neutral(),x+4,neutralTop(),w-8,neutralCapacity(),page*neutralCapacity());
+        return rows;
+    }
+    private static void addRows(java.util.List<Row> rows,java.util.List<LobbySnapshot.Member> list,int x,int y,int w,int count,int offset){
+        for(int i=offset;i<Math.min(list.size(),offset+count);i++)rows.add(new Row(list.get(i),x,y+(i-offset)*24,w));
+    }
+    /** The team card under the cursor: ALPHA, BRAVO or SPECTATOR (the unassigned/spectator card), else null. */
+    private String zoneAt(double mx,double my){
+        int x=left()+12,w=body()-24,half=(w-8)/2,bottom=100+capacity()*24-2;
+        if(my>=81&&my<bottom&&mx>=x&&mx<x+half)return "ALPHA";
+        if(my>=81&&my<bottom&&mx>=x+half+8&&mx<x+w)return "BRAVO";
+        if(my>=neutralTop()-17&&my<neutralTop()+neutralCapacity()*24&&mx>=x&&mx<x+w)return "SPECTATOR";
+        return null;
+    }
+    private LobbySnapshot.Member member(String id){return state.members().stream().filter(m->m.id().equals(id)).findFirst().orElse(null);}
+    /** Admins move anyone; players only themselves. Bots can only go to ALPHA or BRAVO. */
+    private boolean draggable(LobbySnapshot.Member m){return "LOBBY".equals(state.phase())&&(state.administrator()||m.id().equals(state.you()));}
     private void dragMapBar(double y){scrollMaps((int)Math.round((y-85)/(capacity()*27.0-3)*maxMapScroll()));}
     private boolean overPreview(double x,double y){return maps&&baseW>0&&x>=viewX&&x<viewX+viewW&&y>=viewY&&y<viewY+viewH;}
     private void clampPreview(){
@@ -37,16 +65,29 @@ final class LobbyScreen extends ArenaScreen {
         panX=dx-(dx-panX)*zoom/previous;panY=dy-(dy-panY)*zoom/previous;clampPreview();return true;
     }
     @Override public boolean mouseClicked(double x,double y,int button){
+        if(button==0&&!maps)for(var row:rows())
+            if(x>=row.x()&&x<row.x()+row.w()&&y>=row.y()&&y<row.y()+21&&draggable(row.member())){dragId=row.member().id();dragX=x;dragY=y;draggingMember=false;break;}
         if(button==0&&overPreview(x,y)){draggingPreview=true;return true;}
         if(button==0&&overMapBar(x,y)){draggingMapBar=true;dragMapBar(y);return true;}
         return super.mouseClicked(x,y,button);
     }
     @Override public boolean mouseDragged(double x,double y,int button,double dx,double dy){
+        if(button==0&&dragId!=null){
+            if(!draggingMember&&(x-dragX)*(x-dragX)+(y-dragY)*(y-dragY)>16)draggingMember=true;
+            if(draggingMember)return true;
+        }
         if(button==0&&draggingPreview){panX+=dx;panY+=dy;clampPreview();return true;}
         if(button==0&&draggingMapBar){dragMapBar(y);return true;}
         return super.mouseDragged(x,y,button,dx,dy);
     }
     @Override public boolean mouseReleased(double x,double y,int button){
+        if(button==0&&dragId!=null){
+            boolean dropped=draggingMember;var moved=member(dragId);String zone=zoneAt(x,y);
+            if(dropped&&moved!=null&&zone!=null&&!zone.equals(moved.team())&&!(moved.bot()&&zone.equals("SPECTATOR")))
+                LobbyClient.action("team",zone,moved.id());
+            dragId=null;draggingMember=false;
+            if(dropped)return true;
+        }
         if(button==0&&draggingPreview){draggingPreview=false;return true;}
         if(button==0&&draggingMapBar){draggingMapBar=false;return true;}
         return super.mouseReleased(x,y,button);
@@ -130,13 +171,25 @@ final class LobbyScreen extends ArenaScreen {
         } else {
         colorButton("FREE_FOR_ALL".equals(state.selectedMode())?"참가":"Team ALPHA", x, height - 64, third, 20, !maps, LobbyClient.options.color("ALPHA"), () -> LobbyClient.action("team", "ALPHA", target));
         colorButton("FREE_FOR_ALL".equals(state.selectedMode())?"참가":"Team BRAVO", x + (third + 6) * 2, height - 64, third, 20, !maps, LobbyClient.options.color("BRAVO"), () -> LobbyClient.action("team", "BRAVO", target));
-        button("관전자", x + third + 6, height - 64, third, 20, !maps, MUTED, () -> LobbyClient.action("team", "SPECTATOR", target));
+        var chosen=member(target);
+        button("관전자", x + third + 6, height - 64, third, 20, chosen==null||!chosen.bot(), MUTED, () -> LobbyClient.action("team", "SPECTATOR", target));
         }
         var self = state.members().stream().filter(m -> m.id().equals(state.you())).findFirst().orElse(null);
         boolean canReady = self != null && (self.team().equals("ALPHA") || self.team().equals("BRAVO")) && !state.selectedMap().isEmpty();
         Runnable ready = () -> LobbyClient.action("ready", "", "");
-        if (self != null && self.ready()) button("준비 취소", x, height - 38, w, 20, canReady, WAITING, ready);
-        else colorButton("준비 완료", x, height - 38, w, 20, canReady, ACCENT, ready);
+        int readyWidth=maps?w:w-110;
+        if (self != null && self.ready()) button("준비 취소", x, height - 38, readyWidth, 20, canReady, WAITING, ready);
+        else colorButton("준비 완료", x, height - 38, readyWidth, 20, canReady, ACCENT, ready);
+        if(!maps){
+            // Adding never depends on who is selected or how the teams are filled: up to the server's limit (4).
+            // Removing is its own button, enabled when a bot row is selected.
+            var picked=member(target);boolean botPicked=picked!=null&&picked.bot();
+            boolean full=state.botCount()>=state.botMax(),lobby=state.administrator()&&"LOBBY".equals(state.phase())&&state.botEnabled();
+            String label=!state.botEnabled()?"봇 사용 꺼짐":!"DEATHMATCH".equals(state.selectedMode())?"팀데스매치 전용"
+                    :full?"봇 "+state.botCount()+"/"+state.botMax():"봇 추가 "+state.botCount()+"/"+state.botMax();
+            button(label,x+w-104,height-38,64,20,lobby&&"DEATHMATCH".equals(state.selectedMode())&&!full,MUTED,()->LobbyClient.action("botAdd","",""));
+            button("봇 제거",x+w-36,height-38,36,20,lobby&&botPicked,MUTED,()->LobbyClient.action("botRemove","",picked.id()));
+        }
     }
     private void members(java.util.List<LobbySnapshot.Member> list,int x,int y,int w,int color,int count,int offset) {
         for(int i=offset;i<Math.min(list.size(),offset+count);i++) {
@@ -149,7 +202,7 @@ final class LobbyScreen extends ArenaScreen {
             if(member.id().equals(state.you()))label.append(Component.literal(" (나)").withStyle(s->s.withColor(ACCENT&0xFFFFFF)));
             label.append(Component.literal(" · ").withStyle(s->s.withColor(DIM&0xFFFFFF)))
                     .append(Component.literal(status).withStyle(s->s.withColor(statusColor&0xFFFFFF)));
-            listButton(label,x,y+(i-offset)*24,w,21,
+            listButton(label,x+20,y+(i-offset)*24,w-20,21,
                     state.administrator()||member.id().equals(state.you()),member.id().equals(target)?color:MUTED,()->{target=member.id();rebuildWidgets();});
         }
     }
@@ -160,7 +213,7 @@ final class LobbyScreen extends ArenaScreen {
                 .append(Component.literal(selectedMap.orElse("활성 맵 없음 · 서버 config/gungang/server/maps의 enabled 확인")).withStyle(s -> s.withColor((selectedMap.isPresent() ? INK : 0xFFE08060) & 0xFFFFFF)))
                 .append(Component.literal(" · ").withStyle(s -> s.withColor(DIM & 0xFFFFFF)))
                 .append(Component.literal(mode).withStyle(s -> s.withColor(ACCENT & 0xFFFFFF)))
-                .append(Component.literal("  /  전원 준비 → "+("NORMANDY".equals(state.selectedMode())?45:30)+"초 준비"));
+                .append(Component.literal("  /  전원 준비 → "+("NORMANDY".equals(state.selectedMode())?45:"BOMB".equals(state.selectedMode())?25:30)+"초 준비"));
         shell(g, subtitle);
         if(!maps) {
             int x=left()+12,w=body()-24,half=(w-8)/2;
@@ -172,6 +225,8 @@ final class LobbyScreen extends ArenaScreen {
             int pages=pageCount();
             cardHeader(g,x,top,x+w,"미배정 / 관전자",MUTED,neutral.size()+"명"+(pages>1?"  ·  페이지 "+(page+1)+"/"+pages:""));
             if(neutral.isEmpty())g.drawString(font,"대기 중인 플레이어 없음",x+8,neutralTop()+6,DIM,false);
+            String hint=state.administrator()?"이름을 끌어 다른 팀 칸에 놓으면 팀을 옮깁니다":"내 이름을 끌어 팀 칸에 놓으면 팀을 옮깁니다";
+            g.drawString(font,font.plainSubstrByWidth(hint,Math.max(1,w)),x,height-103,DIM,false);
         }
         if (maps) {
             renderPreview(g);
@@ -191,6 +246,35 @@ final class LobbyScreen extends ArenaScreen {
             }
         }
         super.render(g, mouseX, mouseY, partial);
+        if(!maps){
+            int x=left()+12,w=body()-24,half=(w-8)/2;
+            faces(g,team("ALPHA"),x+4,100,capacity(),page*capacity());
+            faces(g,team("BRAVO"),x+half+12,100,capacity(),page*capacity());
+            faces(g,neutral(),x+4,neutralTop(),neutralCapacity(),page*neutralCapacity());
+            if(draggingMember)renderDrag(g,mouseX,mouseY);
+        }
+    }
+    /** The dragged name follows the cursor; the card it would land in lights up (red when the move is not allowed). */
+    private void renderDrag(GuiGraphics g,int mx,int my){
+        var moved=member(dragId);if(moved==null)return;
+        String zone=zoneAt(mx,my);
+        if(zone!=null){
+            int x=left()+12,w=body()-24,half=(w-8)/2,bottom=100+capacity()*24-2;
+            boolean allowed=!zone.equals(moved.team())&&!(moved.bot()&&zone.equals("SPECTATOR"));
+            int tint=allowed?0x3070CDBF:0x30E05050;
+            switch(zone){
+                case "ALPHA"->g.fill(x,81,x+half,bottom,tint);
+                case "BRAVO"->g.fill(x+half+8,81,x+w,bottom,tint);
+                default->g.fill(x,neutralTop()-17,x+w,neutralTop()+neutralCapacity()*24-2,tint);
+            }
+        }
+        int width=font.width(moved.name())+24;
+        g.pose().pushPose();g.pose().translate(0,0,400);
+        g.fill(mx+6,my-2,mx+6+width,my+18,0xE0101A28);g.renderOutline(mx+6,my-2,width,20,ACCENT);
+        var skin=moved.bot()?BotRenderer.texture(moved.skin()):MatchHud.skin(moved.id());
+        net.minecraft.client.gui.components.PlayerFaceRenderer.draw(g,skin,mx+9,my+1,14);
+        g.drawString(font,moved.name(),mx+27,my+4,INK,false);
+        g.pose().popPose();
     }
     private int pageCount() {
         int count=Math.max(Math.max(team("ALPHA").size(),team("BRAVO").size()),((neutral().size()+neutralCapacity()-1)/neutralCapacity())*capacity());
@@ -202,6 +286,13 @@ final class LobbyScreen extends ArenaScreen {
         long ready=list.stream().filter(LobbySnapshot.Member::ready).count();
         cardHeader(g,x1,top,x2,name,color,list.size()+"명 · 준비 "+ready+"/"+list.size());
         if(list.isEmpty())g.drawString(font,"플레이어 없음",x1+8,106,DIM,false);
+    }
+    private void faces(GuiGraphics g,java.util.List<LobbySnapshot.Member> members,int x,int y,int count,int offset){
+        for(int i=offset;i<Math.min(members.size(),offset+count);i++){
+            var member=members.get(i);
+            var skin=member.skin()!=null&&!member.skin().isEmpty()?BotRenderer.texture(member.skin()):MatchHud.skin(member.id());
+            net.minecraft.client.gui.components.PlayerFaceRenderer.draw(g,skin,x+2,y+(i-offset)*24+3,16);
+        }
     }
     private void renderPreview(GuiGraphics g) {
         baseW=0;

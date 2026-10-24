@@ -19,20 +19,27 @@ public final class SpawnGateBlock extends Block {
     public final String team;
     /** The match rule as the client sees it ({@link #rule()} values); set by ClientSetup. */
     public static java.util.function.Supplier<String> clientRule=()->null;
+    /** The preparation rule as the client sees it ({@link MatchManager#preparationGate()} values); set by ClientSetup. */
+    public static java.util.function.Supplier<String> clientPreparation=()->null;
     public SpawnGateBlock(String team){
         super(Properties.of().strength(-1,3600000).noOcclusion().dynamicShape().lightLevel(s->8)
                 .isViewBlocking((s,l,p)->false).isSuffocating((s,l,p)->false).sound(SoundType.GLASS));this.team=team;
     }
     public boolean allows(Entity entity){
+        if(entity instanceof BotEntity bot)return bot.isAlive()&&bot.getTeam()!=null&&bot.getTeam().getName().equals(team.equals("ALPHA")?"Red":"Blue")
+                &&open(MatchManager.preparationGate(),team);
         if(!(entity instanceof Player player)||player.isSpectator()||!player.isAlive())return false;
         if(player.level().isClientSide?"PROP_HUNT".equals(clientRule.get()):MatchManager.realPropHunt()!=null)return true;
         if(!player.level().isClientSide) {
             String owner=owner(rule());
-            return owner!=null&&owner.equals(LobbyManager.team(player.getUUID()));
+            return owner!=null&&owner.equals(LobbyManager.team(player.getUUID()))&&open(MatchManager.preparationGate(),owner);
         }
         String owner=owner(clientRule.get());var scoreboardTeam=player.getTeam();
-        return owner!=null&&scoreboardTeam!=null&&scoreboardTeam.getName().equals(owner.equals("ALPHA")?"Red":"Blue");
+        return owner!=null&&scoreboardTeam!=null&&scoreboardTeam.getName().equals(owner.equals("ALPHA")?"Red":"Blue")
+                &&open(clientPreparation.get(),owner);
     }
+    /** During preparation only the free-roaming defenders get through their own gate; everyone else stays in spawn. */
+    private static boolean open(String preparation,String owner){return preparation==null||preparation.equals(owner);}
     /** Server-side rule: {@link #FREE_FOR_ALL}, the bomb attacker ("ALPHA"/"BRAVO"), or null for ordinary team modes. */
     static String rule(){
         if(MatchManager.freeForAll()!=null)return FREE_FOR_ALL;

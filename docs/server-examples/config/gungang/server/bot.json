@@ -1,0 +1,16 @@
+{
+  "enabled": false,
+  "team": "AUTO",
+  "weapon": "",
+  "thinkTicks": 5,
+  "pathTicks": 10,
+  "range": 48,
+  "reactionTicks": 6,
+  "aimError": 3.5,
+  "secondary": "",
+  "movementSpeed": 1.0,
+  "turnRate": 14.0,
+  "memorySeconds": 3.0,
+  "fov": 110,
+  "difficulty": "normal"
+}

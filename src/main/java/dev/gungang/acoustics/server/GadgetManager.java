@@ -19,7 +19,7 @@ import net.minecraftforge.fml.common.Mod;
 public final class GadgetManager {
     public static int clearAll(net.minecraft.server.MinecraftServer server) {
         DeployableLedger.get(server).clearAll();
-        int count=0;
+        int count=CompoundBow.clearArrows(server);
         for(var level:server.getAllLevels()) {
             var attacks=new ArrayList<net.minecraft.world.entity.Entity>();
             for(var entity:level.getAllEntities())if(entity instanceof OrdnanceEntity||entity instanceof MolotovEntity)attacks.add(entity);
@@ -28,7 +28,7 @@ public final class GadgetManager {
             for(var entity:level.getAllEntities())if(entity instanceof DeployableEntity placed)entities.add(placed);
             for(var entity:entities) {entity.discard();count++;}
         }
-        PLACED.clear();
+        PLACED.clear();count+=BearTraps.clearAll(server);
         for(var player:server.getPlayerList().getPlayers())cancel(player);
         PREVIEW.clear();return count;
     }
@@ -47,11 +47,11 @@ public final class GadgetManager {
     }
     public static void use(ServerPlayer p,ItemStack stack,String kind) {
         if(SurvivalGadgets.jetting(p))return;
-        if((kind.equals("landmine")||kind.equals("molotov")||kind.equals("orbital_strike"))&&SafeZones.contains(p))return;
+        if((kind.equals("landmine")||kind.equals("molotov")||kind.equals("orbital_strike")||kind.equals("bear_trap"))&&SafeZones.contains(p))return;
         if(!p.isAlive()||p.isSpectator()||LobbyManager.respawning(p.getUUID())||!SecondaryRuntime.ready(p,stack))return;
         if(kind.equals("jetpack")) {SurvivalGadgets.startJet(p,stack);return;}
         if(CombatGadgets.use(p,stack,kind))return;
-        if(kind.equals("landmine")||kind.equals("barrier")||kind.equals("orbital_strike")) {
+        if(kind.equals("landmine")||kind.equals("barrier")||kind.equals("orbital_strike")||kind.equals("bear_trap")) {
             PREVIEW.put(p.getUUID(),new Preview(kind,p.getInventory().selected));GungangNetwork.send(p,new GungangNetwork.Gadget(kind));return;
         }
         if(kind.equals("molotov")) {
@@ -119,6 +119,19 @@ public final class GadgetManager {
             }
             return;
         }
+        if(kind.equals("bear_trap")) {
+            var pos=target(p,GadgetConfig.bearTrap.range());
+            if(!valid(p,pos,false,false)) {p.displayClientMessage(Component.literal("이 위치에는 설치할 수 없습니다."),true);return;}
+            if(BearTraps.count(p.getUUID())>=GadgetConfig.bearTrap.maxPlaced()) {p.displayClientMessage(Component.literal("설치 가능한 베어트랩 개수를 초과했습니다."),true);return;}
+            var trap=GadgetItems.BEAR_TRAP_ENTITY.get().create(p.serverLevel());if(trap==null)return;
+            trap.setPos(pos.getX()+.5,pos.getY(),pos.getZ()+.5);trap.setYRot(p.getDirection().toYRot());trap.setup(p);
+            BearTraps.placed(trap);
+            if(p.serverLevel().addFreshEntity(trap)) {
+                p.serverLevel().playSound(null,pos,net.minecraft.sounds.SoundEvents.IRON_TRAPDOOR_OPEN,net.minecraft.sounds.SoundSource.PLAYERS,.9f,.7f);
+                SecondaryRuntime.commit(p,stack);cancel(p);
+            } else trap.discard();
+            return;
+        }
         var pos=target(p,wall?GadgetConfig.barrier.range():GadgetConfig.mine.range());
         if(!valid(p,pos,wall,east)) {p.displayClientMessage(Component.literal("이 위치에는 설치할 수 없습니다."),true);return;}
         PLACED.values().removeIf(DeployableEntity::isRemoved);
@@ -150,14 +163,17 @@ public final class GadgetManager {
         p.getAttribute(Attributes.MOVEMENT_SPEED).removeModifier(SPEED);p.getAttribute(Attributes.ATTACK_SPEED).removeModifier(ATTACK);
     }
     public static void clearDeployables(ServerPlayer p) {
-        cancel(p);
-        DeployableLedger.get(p.server).clear(p.getUUID());
-        for(var level:p.server.getAllLevels()) {
+        cancel(p);BearTraps.clear(p);clearOwned(p.server,p.getUUID());
+    }
+    /** Mines and barriers of one owner, player or bot. */
+    static void clearOwned(net.minecraft.server.MinecraftServer server,UUID owner) {
+        DeployableLedger.get(server).clear(owner);
+        for(var level:server.getAllLevels()) {
             var owned=new ArrayList<DeployableEntity>();
-            for(var entity:level.getAllEntities())if(entity instanceof DeployableEntity placed&&p.getUUID().equals(placed.owner()))owned.add(placed);
+            for(var entity:level.getAllEntities())if(entity instanceof DeployableEntity placed&&owner.equals(placed.owner()))owned.add(placed);
             owned.forEach(DeployableEntity::discard);
         }
-        PLACED.values().removeIf(e->{if(p.getUUID().equals(e.owner())) {e.discard();return true;}return false;});
+        PLACED.values().removeIf(e->{if(owner.equals(e.owner())) {e.discard();return true;}return false;});
     }
     public static void changingSecondary(ServerPlayer p,Loadouts.Weapon weapon) {
         for(int i=0;i<p.getInventory().getContainerSize();i++) {

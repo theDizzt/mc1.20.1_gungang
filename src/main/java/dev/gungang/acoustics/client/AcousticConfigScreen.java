@@ -16,6 +16,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraftforge.common.ForgeConfigSpec;
 
 public final class AcousticConfigScreen extends Screen {
+    private static final int TABS = 4, ROWS_TOP = 60;
     private final Screen parent;
     private final List<Option> options = new ArrayList<>();
     private final List<EditBox> inputs = new ArrayList<>();
@@ -26,45 +27,52 @@ public final class AcousticConfigScreen extends Screen {
     public AcousticConfigScreen(Screen parent) {
         super(text("title"));
         this.parent = parent;
-        options.add(new Option(7, "waterEffects", AcousticConfig.WATER_EFFECTS, Boolean::parseBoolean, true));
-        options.add(new Option(7, "footstepOcclusion", AcousticConfig.FOOTSTEP_OCCLUSION, Boolean::parseBoolean, true));
-        options.add(new Option(7, "footstepVolume", AcousticConfig.FOOTSTEP_VOLUME, s -> ConfigInput.integer(s, 0, 300), false));
-        options.add(new Option(7, "weaponVolume", AcousticConfig.WEAPON_VOLUME, s -> ConfigInput.integer(s, 0, 300), false));
-        options.add(new Option(3, "compass", AcousticConfig.COMPASS, Boolean::parseBoolean, true));
-        options.add(new Option(3, "shooterHud", AcousticConfig.SHOOTER_HUD, Boolean::parseBoolean, true));
-        options.add(new Option(3, "hudOffsetX", AcousticConfig.HUD_OFFSET_X, s -> ConfigInput.integer(s, 0, 4096), false));
-        options.add(new Option(3, "hudOffsetY", AcousticConfig.HUD_OFFSET_Y, s -> ConfigInput.integer(s, 0, 4096), false));
-        options.add(new Option(5, "customFont", AcousticConfig.CUSTOM_FONT, Boolean::parseBoolean, true));
-        options.add(new Option(5, "fontFile", AcousticConfig.FONT_FILE, ExternalFonts::filename, false));
-        options.add(new Option(5, "fontOversample", AcousticConfig.FONT_OVERSAMPLE, s -> ConfigInput.integer(s, 1, 8), false));
-        options.add(new Option(5, "fontSmoothing", AcousticConfig.FONT_SMOOTHING, Boolean::parseBoolean, true));
-        decimal(6, "fontOffsetX", AcousticConfig.FONT_OFFSET_X, -8, 8);
-        decimal(6, "fontOffsetY", AcousticConfig.FONT_OFFSET_Y, -8, 8);
-        options.add(new Option(6, "hudTextSize", AcousticConfig.HUD_TEXT_SIZE, s -> ConfigInput.integer(s, 100, 150), false));
-        options.add(new Option(6, "hudBoldText", AcousticConfig.HUD_BOLD_TEXT, Boolean::parseBoolean, true));
-        options.add(new Option(4, "teamHud", AcousticConfig.TEAM_HUD, Boolean::parseBoolean, true));
-        options.add(new Option(4, "killLog", AcousticConfig.KILL_LOG, Boolean::parseBoolean, true));
-        options.add(new Option(4, "teamSilhouettes", AcousticConfig.TEAM_SILHOUETTES, Boolean::parseBoolean, true));
+        // Sound: effects on the left, volume and footsteps on the right.
         toggle("enabled", AcousticConfig.ENABLED);
         toggle("lowPass", AcousticConfig.LOW_PASS);
         toggle("diffraction", AcousticConfig.DIFFRACTION);
         decimal(0, "wallStrength", AcousticConfig.WALL_STRENGTH, 0, 4);
         decimal(0, "smoothingSeconds", AcousticConfig.SMOOTHING, 0.01, 1);
         options.add(new Option(0, "minimumEffectVolume", AcousticConfig.MIN_EFFECT_VOLUME, s -> ConfigInput.integer(s, 0, 100), false));
+        options.add(new Option(0, "waterEffects", AcousticConfig.WATER_EFFECTS, Boolean::parseBoolean, true).right());
+        options.add(new Option(0, "footstepOcclusion", AcousticConfig.FOOTSTEP_OCCLUSION, Boolean::parseBoolean, true).right());
+        options.add(new Option(0, "footstepVolume", AcousticConfig.FOOTSTEP_VOLUME, s -> ConfigInput.integer(s, 0, 300), false).right());
+        options.add(new Option(0, "weaponVolume", AcousticConfig.WEAPON_VOLUME, s -> ConfigInput.integer(s, 0, 300), false).right());
+        // Distance and performance on the left, sound/material lists on the right.
         decimal(1, "referenceDistance", AcousticConfig.REFERENCE_DISTANCE, 0.25, 16);
         decimal(1, "rolloff", AcousticConfig.ROLLOFF, 0.1, 4);
         integer("updatesPerTick", AcousticConfig.UPDATE_BUDGET, 1, 128);
         integer("maxTraceDistance", AcousticConfig.MAX_TRACE_DISTANCE, 16, 192);
         integer("diffractionRadius", AcousticConfig.DIFFRACTION_RADIUS, 1, 8);
-        options.add(new Option(2, "excludedSounds", AcousticConfig.EXCLUDED_SOUNDS, s -> ConfigInput.entries(s, false), false));
-        options.add(new Option(2, "materialOverrides", AcousticConfig.MATERIALS, s -> ConfigInput.entries(s, true), false));
+        options.add(new Option(1, "excludedSounds", AcousticConfig.EXCLUDED_SOUNDS, s -> ConfigInput.entries(s, false), false).right().list());
+        options.add(new Option(1, "materialOverrides", AcousticConfig.MATERIALS, s -> ConfigInput.entries(s, true), false).right().list());
+        // HUD on the left, team display and controls on the right.
+        options.add(new Option(2, "compass", AcousticConfig.COMPASS, Boolean::parseBoolean, true));
+        options.add(new Option(2, "shooterHud", AcousticConfig.SHOOTER_HUD, Boolean::parseBoolean, true));
+        options.add(new Option(2, "hudOffsetX", AcousticConfig.HUD_OFFSET_X, s -> ConfigInput.integer(s, 0, 4096), false));
+        options.add(new Option(2, "hudOffsetY", AcousticConfig.HUD_OFFSET_Y, s -> ConfigInput.integer(s, 0, 4096), false));
+        options.add(new Option(2, "hudTextSize", AcousticConfig.HUD_TEXT_SIZE, s -> ConfigInput.integer(s, 100, 150), false));
+        options.add(new Option(2, "hudBoldText", AcousticConfig.HUD_BOLD_TEXT, Boolean::parseBoolean, true));
+        options.add(new Option(2, "teamHud", AcousticConfig.TEAM_HUD, Boolean::parseBoolean, true).right());
+        options.add(new Option(2, "killLog", AcousticConfig.KILL_LOG, Boolean::parseBoolean, true).right());
+        options.add(new Option(2, "teamSilhouettes", AcousticConfig.TEAM_SILHOUETTES, Boolean::parseBoolean, true).right());
+        options.add(new Option(2, "autoSprint", AcousticConfig.AUTO_SPRINT, Boolean::parseBoolean, true).right());
+        // Fonts, one column.
+        options.add(new Option(3, "customFont", AcousticConfig.CUSTOM_FONT, Boolean::parseBoolean, true));
+        options.add(new Option(3, "fontFile", AcousticConfig.FONT_FILE, ExternalFonts::filename, false));
+        options.add(new Option(3, "fontOversample", AcousticConfig.FONT_OVERSAMPLE, s -> ConfigInput.integer(s, 1, 8), false));
+        options.add(new Option(3, "fontSmoothing", AcousticConfig.FONT_SMOOTHING, Boolean::parseBoolean, true));
+        decimal(3, "fontOffsetX", AcousticConfig.FONT_OFFSET_X, -8, 8);
+        decimal(3, "fontOffsetY", AcousticConfig.FONT_OFFSET_Y, -8, 8);
     }
 
     private void toggle(String key, ForgeConfigSpec.BooleanValue value) {
         options.add(new Option(0, key, value, Boolean::parseBoolean, true));
     }
-    private void decimal(int page, String key, ForgeConfigSpec.DoubleValue value, double min, double max) {
-        options.add(new Option(page, key, value, s -> ConfigInput.decimal(s, min, max), false));
+    private Option decimal(int page, String key, ForgeConfigSpec.DoubleValue value, double min, double max) {
+        Option option = new Option(page, key, value, s -> ConfigInput.decimal(s, min, max), false);
+        options.add(option);
+        return option;
     }
     private void integer(String key, ForgeConfigSpec.IntValue value, int min, int max) {
         options.add(new Option(1, key, value, s -> ConfigInput.integer(s, min, max), false));
@@ -73,14 +81,14 @@ public final class AcousticConfigScreen extends Screen {
     @Override protected void init() {
         inputs.clear();
         int left = left(), body = bodyWidth();
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < TABS; i++) {
             final int target = i;
             Button tab = Button.builder(text("tab." + i), b -> { page = target; rebuildWidgets(); })
-                    .bounds(left + i * (body / 8), 32, body / 8 - 2, 20).build();
+                    .bounds(left + i * (body / TABS), 32, body / TABS - 2, 20).build();
             tab.active = page != i;
             addRenderableWidget(tab);
         }
-        int y = 60;
+        int bottom = layout();
         for (Option option : options) {
             if (option.page != page) continue;
             Tooltip tip = Tooltip.create(text(option.key + ".tip"));
@@ -89,11 +97,12 @@ public final class AcousticConfigScreen extends Screen {
                     option.draft = Boolean.toString(!Boolean.parseBoolean(option.draft));
                     b.setMessage(toggleLabel(option));
                     status = Component.empty();
-                }).bounds(left, y, body, 20).tooltip(tip).build()).active = !AcousticPolicy.locked(option.value);
+                }).bounds(option.x, option.y, option.width, 20).tooltip(tip).build()).active = !AcousticPolicy.locked(option.value);
             } else {
-                int inputX = page == 2 ? left : left + body / 2;
-                int inputY = page == 2 ? y + 15 : y;
-                EditBox box = new EditBox(font, inputX, inputY, page == 2 ? body : body / 2, 20, text(option.key));
+                // Inputs sit right of their label; list inputs go under it.
+                int inputWidth = option.list ? option.width : columns() ? option.width * 2 / 5 : option.width / 2;
+                int inputY = option.list ? option.y + 15 : option.y;
+                EditBox box = new EditBox(font, option.x + option.width - inputWidth, inputY, inputWidth, 20, text(option.key));
                 box.setMaxLength(Math.max(32767, option.draft.length()));
                 box.setValue(option.draft);
                 box.setTooltip(tip);
@@ -107,12 +116,11 @@ public final class AcousticConfigScreen extends Screen {
                 box.setEditable(!AcousticPolicy.locked(option.value));
                 inputs.add(addRenderableWidget(box));
             }
-            y += page == 2 ? 60 : 23;
         }
         int buttonWidth = body / 3 - 2;
-        if (page == 3) {
+        if (page == 2) {
             addRenderableWidget(Button.builder(text("keyBindings"), b -> minecraft.setScreen(new KeyBindsScreen(this, minecraft.options)))
-                    .bounds(left, 156, body, 20).tooltip(Tooltip.create(text("keyBindings.tip"))).build());
+                    .bounds(left + body - columnWidth(), bottom, columnWidth(), 20).tooltip(Tooltip.create(text("keyBindings.tip"))).build());
         }
         addRenderableWidget(Button.builder(text("defaults"), b -> {
             options.forEach(option -> { if (!AcousticPolicy.locked(option.value)) option.draft = Option.format(option.value.getDefault()); });
@@ -125,6 +133,24 @@ public final class AcousticConfigScreen extends Screen {
                 .bounds(left + 2 * (body / 3), height - 28, buttonWidth, 20).build());
         validate();
     }
+
+    /** Places this page's options and returns the next free row of the right column. */
+    private int layout() {
+        int left = left(), body = bodyWidth(), step = columns() ? 22 : 23;
+        int[] rows = {ROWS_TOP, ROWS_TOP};
+        for (Option option : options) {
+            if (option.page != page) continue;
+            int column = columns() ? option.column : 0;
+            option.x = column == 0 ? left : left + body - columnWidth();
+            option.width = columns() ? columnWidth() : body;
+            option.y = rows[column];
+            rows[column] += option.list ? 60 : step;
+        }
+        return rows[1];
+    }
+    /** Every page but fonts splits into two columns. */
+    private boolean columns() { return page != 3; }
+    private int columnWidth() { return (bodyWidth() - 6) / 2; }
 
     private void validate() {
         if (saveButton != null) saveButton.active = options.stream().allMatch(Option::valid);
@@ -165,11 +191,9 @@ public final class AcousticConfigScreen extends Screen {
     @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderBackground(graphics);
         graphics.drawCenteredString(font, title, width / 2, 12, 0xFFFFFF);
-        int y = 60;
         for (Option option : options) {
             if (option.page != page) continue;
-            if (!option.toggle) graphics.drawString(font, text(option.key), left(), y + (page == 2 ? 0 : 6), 0xEEEEEE);
-            y += page == 2 ? 60 : 23;
+            if (!option.toggle) graphics.drawString(font, text(option.key), option.x, option.y + (option.list ? 0 : 6), 0xEEEEEE);
         }
         Component message = !status.getString().isEmpty() ? status :
                 options.stream().anyMatch(o -> !o.valid()) ? text("invalid") : text("hint." + page);
@@ -192,11 +216,15 @@ public final class AcousticConfigScreen extends Screen {
         final ForgeConfigSpec.ConfigValue<?> value;
         final Function<String, Object> parse;
         final boolean toggle;
+        boolean list;
         String draft;
+        int column, x, y, width;
         Option(int page, String key, ForgeConfigSpec.ConfigValue<?> value, Function<String, Object> parse, boolean toggle) {
             this.page = page; this.key = key; this.value = value; this.parse = parse; this.toggle = toggle;
             this.draft = format(AcousticPolicy.get(value));
         }
+        Option right() { column = 1; return this; }
+        Option list() { list = true; return this; }
         boolean valid() {
             try { parse.apply(draft); return true; }
             catch (IllegalArgumentException invalid) { return false; }
