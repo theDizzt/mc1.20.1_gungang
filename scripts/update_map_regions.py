@@ -18,7 +18,7 @@ def write(path,data):
     path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 italy=dict(id='06',name='이탈리아',description='폭탄전 / 팀 데스매치 · A 또는 B 영역 바닥에 폭탄 설치',enabled=True,timeLimitSeconds=210,
     gameMode='adventure',dimension='minecraft:overworld',spectatorSpawn=spawn(-127,80,-387,0),
-    bomb=dict(rounds=5,swapEveryRounds=1,preparationSeconds=30,
+    bomb=dict(rounds=5,swapEveryRounds=1,preparationSeconds=25,
         attackSpawn=spawn(-145.5,12,-286.5,180),attackArea=area((-164,11,-301,-128,36,-273)),
         defenseSpawn=spawn(-118.5,13,-486.5,0),defenseArea=area((-137,12,-501,-101,37,-473)),
         areaA=area((-203,6,-429,-177,37,-407)),areaB=area((-75,12,-423,-54,12,-400))),

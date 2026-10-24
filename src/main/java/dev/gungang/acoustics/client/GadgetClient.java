@@ -37,6 +37,10 @@ public final class GadgetClient {
     }
     @SubscribeEvent public static void movement(MovementInputUpdateEvent e) {
         if(SurvivalGadgets.jetting(e.getEntity()))e.getInput().jumping=false;
+        if(UtilityHud.rooted()) {
+            var input=e.getInput();input.forwardImpulse=0;input.leftImpulse=0;input.jumping=false;
+            input.up=false;input.down=false;input.left=false;input.right=false;
+        }
     }
     public static void receive(String kind,double distance) {
         if(!kind.isEmpty()&&(!kind.equals(expected)||!valid(kind))){cancel();return;}

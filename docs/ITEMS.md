@@ -26,7 +26,7 @@
 | `life_support` | 생명 유지 장치 | `item/life_support.json` |
 | `jetpack` | 제트팩 | `item/jetpack.json` |
 | `molotov` | 몰로토프 칵테일 | `item/molotov.json` |
-| `orbital_strike` | 궤도폭격 | `item/orbital_strike.json` |
+| `orbital_strike` | 궤도폭격 ([야간투시 쌍안경 모델](../models/orbital_strike/README_KO.md)) | `item/orbital_strike.json` |
 | `infrared_scanner` | 적외선 스캐너 | `item/infrared_scanner.json` |
 | `shield` | 방패 | `item/shield.json` |
 | `acid_bucket` | 산성 액체가 든 양동이. 빈 양동이로 원천 회수 | [산성 유체·블록](BLOCKS.md#gimmicks) |
@@ -57,6 +57,7 @@
 - 보조 손의 방패는 **GunGang → 왼손 아이템 우클릭 후 복귀 키를 누르는 동안** 주손으로 들어 방어하고, 놓으면 보조 손으로 되돌립니다. 기본값은 H이며 기존 사용자 키 재지정도 그대로 따릅니다. 화면 열기·포커스 상실·슬롯 변경 시 해제합니다. 방어 중 이동속도는 15% 감소하며 `shield.json`의 `movementPenaltyPercent`로 변경합니다. 왼손 아이템 키 설정은 모두 GunGang 카테고리에 있습니다.
 - 생명유지장치의 임시 체력과 일반/재생 회복량은 본인·팀원 체력 숫자에 합산하며, 임시 체력은 계속 노란 막대로 구분합니다. 힐팩은 실제 수령자에게만 회복음을 재생합니다.
 - **96 적외선 스캐너** (`gungang:infrared_scanner`): 사용 시 같은 차원의 적 위치를 같은 팀에 10초간 공유합니다. 적 팀 색상의 실루엣을 벽 너머로 표시하며, 쿨타임은 120초입니다. 일반 엔티티 추적 거리 밖의 적 위치도 공유합니다.
+  외형은 사용자 제공 AN/PEQ-15 모델을 사용합니다. [모델 출처·재변환·검증 안내](../models/infrared_scanner/README_KO.md).
 - **97 방패** (`gungang:shield`): **주손에 들었을 때만** 정면 180도에서 들어오는 피해를 총 75까지 흡수합니다. 보조 손에 보관하면 방어 효과와 공격 제한이 없으며 주무기를 사용할 수 있습니다. 내구도를 넘는 피해는 플레이어에게 적용되며 뒤쪽·옆 경계의 공격은 막지 못합니다. 파손된 순간부터 90초 후 자동 수리되고, 파손 전 수리나 재선택으로 내구도 초기화는 불가능합니다. 방어 중에는 근접·투척·총기 등 무기 사용을 차단합니다. 방패로 막은 공격은 넉백을 주지 않습니다. 방패를 든 동안 받는 근접 피해는 방향과 관계없이 20% 줄어듭니다(`meleeReductionPercent`, 제트팩 충돌 제외). 피해를 주거나 받지 않은 지 `regenDelaySeconds`(기본 5초)가 지나면 초당 `regenPerSecond`(기본 5)씩 내구도를 회복하며, `outOfCombatRegen`을 `false`로 두면 끕니다. 파손된 방패는 회복하지 않고 수리 시간을 기다립니다.
 - 방패 모델은 `models/shield`의 49개 큐브와 반투명 관측창을 유지합니다. 주손 방어 중에는 전용 렌더러가 1인칭 화면 중앙과 3인칭 시선 전방에 배치하며, 관측창 중심을 눈높이에 맞춥니다. 팔 흔들림과 좌우 주손 설정에 영향받지 않습니다. 보조 손 방패는 1인칭에서 숨겨 주무기 시야를 확보합니다. `python scripts/import_shield_model.py`는 모델 리소스를 재생성하며, 방어 중 배치는 `ShieldRendering`과 `ShieldRenderLayer`에서 처리합니다.
 - 두 장비의 선택용 `96_infrared-scanner.json`, `97_shield.json`은 업데이트 후 자동 생성합니다. 같은 ID나 아이템을 사용하는 설정이 있으면 덮어쓰지 않습니다. 쿨타임·수리 시간은 `item` 설정을 따르며 방패 수리는 파손 시에만 시작합니다.

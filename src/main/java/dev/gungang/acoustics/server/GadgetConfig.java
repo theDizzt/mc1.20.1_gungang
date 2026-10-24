@@ -11,12 +11,16 @@ public final class GadgetConfig {
     public record Barrier(double health,double range,int maxPlaced) {
         public Barrier(double health,double range){this(health,range,1);}
     }
+    public record BearTrap(double rootSeconds,double recallSeconds,int maxPlaced,double range,double slowSeconds,int slowAmplifier) {
+        public BearTrap(double root,double recall,int max,double range){this(root,recall,max,range,2,0);}
+    }
     public record HealthPack(double heal,double cooldownSeconds) { }
     public static HealthPack smallHealthPack=new HealthPack(35,10),largeHealthPack=new HealthPack(70,15);
     public static Mine mine=new Mine(100,3,1.2,3,5,5,false);
     public static Recovery recovery=new Recovery(50,5);
     public static Adrenaline adrenaline=new Adrenaline(50,7,20,20);
     public static Barrier barrier=new Barrier(200,5);
+    public static BearTrap bearTrap=new BearTrap(3,3,1,5);
     public static void load() throws IOException {
         load(java.util.Map.of(),true);
     }
@@ -30,6 +34,8 @@ public final class GadgetConfig {
         Recovery r=read("recovery_potion",Recovery.class,new Recovery(50,5),overrides,apply);
         Adrenaline a=read("adrenaline",Adrenaline.class,new Adrenaline(50,7,20,20),overrides,apply);
         Barrier b=read("barrier",Barrier.class,new Barrier(200,5),overrides,apply);
+        BearTrap t=read("bear_trap",BearTrap.class,new BearTrap(3,3,1,5),overrides,apply);
+        bounded(t.rootSeconds(),.05,60);bounded(t.slowSeconds(),0,60);bounded(t.slowAmplifier(),0,9);bounded(t.recallSeconds(),.05,60);bounded(t.maxPlaced(),1,32);bounded(t.range(),1,8);
         HealthPack small=read("small_health_pack",HealthPack.class,new HealthPack(35,10),overrides,apply);
         HealthPack large=read("large_health_pack",HealthPack.class,new HealthPack(70,15),overrides,apply);
         for(var pack:java.util.List.of(small,large)){bounded(pack.heal(),0,10000);bounded(pack.cooldownSeconds(),0,86400);}
@@ -39,7 +45,7 @@ public final class GadgetConfig {
         bounded(a.damageBonusPercent(),0,500);
         bounded(b.health(),1,1024);bounded(b.range(),1,8);bounded(b.maxPlaced(),1,32);
         if(!apply)return;
-        mine=m;recovery=r;adrenaline=a;barrier=b;
+        mine=m;recovery=r;adrenaline=a;barrier=b;bearTrap=t;
         smallHealthPack=small;largeHealthPack=large;
     }
     static void bounded(double value,double min,double max) { if(!Double.isFinite(value)||value<min||value>max)throw new IllegalArgumentException("Invalid gadget value: "+value); }

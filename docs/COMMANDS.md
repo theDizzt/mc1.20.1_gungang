@@ -5,6 +5,7 @@
 일반 플레이어·관리자·콘솔 명령, 공간마법사와 설정 편집까지 이 문서에서 확인합니다.
 
 - [전체 명령어와 권한](#reference)
+- [AI 봇 설정과 켜기·끄기](BOTS.md)
 - [전적·XP·레벨 조회와 수정](#progression)
 - [공간마법사: 영역 선택·등록·되돌리기](#area)
 - [modify: 맵·무기·아이템·블록 설정 편집](#modify)
@@ -13,9 +14,11 @@
 
 ## 전체 명령어와 권한
 
-`/gungang cleardeployables`(OP 2)는 전체 지뢰·방벽을 제거합니다. 경기 중 팀 참가자는 무기고 3블록 이내에서도 무기 선택을 사용할 수 있습니다. 일반 맵의 준비 시간은 30초이고, [노르망디](GAMEPLAY.md#normandy)는 45초이며 ALPHA는 자유 이동합니다.
+`/gungang cleardeployables`(OP 2)는 전체 지뢰·방벽과 컴파운드 보우 화살을 제거합니다. 미로드 청크의 화살도 다음 로드 시 제거됩니다. 경기 중 팀 참가자는 무기고 3블록 이내에서도 무기 선택을 사용할 수 있습니다. 일반 맵의 준비 시간은 30초이고, [노르망디](GAMEPLAY.md#normandy)는 45초이며 ALPHA는 자유 이동합니다.
 
 현재 코드에 등록된 서버·클라이언트 명령어 목록입니다. 설정 파일의 전체 형식은 [데이터 등록 설명서](DATA.md)를 참고하세요.
+
+팀데스매치 봇은 `/gungang bot on`, `/gungang bot off`, `/gungang bot status`, `/gungang bot preset low`로 관리합니다(OP 2, 콘솔 가능). 기본 OFF이며 최대 4명입니다. `on`은 사용을 허용하며 실제 참가는 로비의 `봇 추가` 버튼으로 한 명씩 지정합니다. 봇별 이름·스킨은 `/gungang bot name <번호> <이름>`, `/gungang bot skin <번호> <텍스처>`로 바꾸고, 실력은 `/gungang bot difficulty easy|normal|hard|expert`로 조절합니다. `off`는 봇과 참가 예약을 제거하고 로비 추가 버튼을 잠급니다. [처음 실행 순서](BOTS.md#quick-start), [전체 명령어](BOTS.md#commands), [봇 닉네임·스킨·전적](BOTS.md#profile), [문제 해결](BOTS.md#troubleshooting)을 참고하세요.
 
 ### 사용 조건
 
@@ -55,7 +58,7 @@ HUD off는 체력·탄약·팀·나침반·거점·호위·경기 시간·점수
 | 명령어 | 권한 | 실행 위치 | 기능·조건 |
 | --- | --- | --- | --- |
 | `/gungang escorttrack` | OP 2 | 콘솔 가능 | 로비에서 선택한 호위 맵의 경로를 검증하고 선로를 다시 생성합니다. |
-| `/gungang cleardeployables` | OP 2 | 콘솔 가능 | 전체 지뢰·방벽을 제거합니다. 전장 기믹 복구는 reset 또는 경기 수명주기를 따릅니다. |
+| `/gungang cleardeployables` | OP 2 | 콘솔 가능 | 전체 지뢰·방벽·컴파운드 보우 화살을 제거합니다. 전장 기믹 복구는 reset 또는 경기 수명주기를 따릅니다. |
 | `/gungang lobby open` | OP 2 | 콘솔 가능 | 서버에 하나의 로비를 열고 접속자에게 UI를 표시합니다. 이미 열려 있으면 기존 로비를 다시 표시하고 팀·준비 상태를 유지합니다. 준비·경기 중에는 새로 열 수 없습니다. |
 | `/gungang lobby close` | OP 2 | 콘솔 가능 | 로비를 닫습니다. 진행 중 경기는 중단 전적으로 저장하고 원래 위치·게임 모드를 복원하며 팀은 해제합니다. |
 | `/gungang lobby` | 일반 | 플레이어 전용 | 이미 열린 로비의 UI를 본인에게 다시 표시합니다. 준비·경기 진행 중에는 로비 UI가 열리지 않습니다. |

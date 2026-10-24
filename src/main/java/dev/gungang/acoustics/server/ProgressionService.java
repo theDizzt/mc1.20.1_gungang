@@ -19,19 +19,35 @@ public final class ProgressionService {
     private static PlayerDatabase database;
     private static XpTable table=XpTable.defaults();
     private static final Set<String> FIELDS=Set.of("xp","matches","wins","kills","deaths","damage","playSeconds");
+    /** Opens player-db.json on its own so a broken weapon/map/xp config cannot leave every player without records. */
+    public static void open() throws java.io.IOException {
+        if(database==null)database=new PlayerDatabase(ServerFiles.root().resolve("player-db.json"));
+    }
     public static void configure(MinecraftServer server) throws java.io.IOException {
+        open();
         Path file=ServerFiles.root().resolve("xp.json");ConfigLayout.writeNew(file,ServerFiles.GSON.toJson(XpTable.defaults()));
         if(Files.size(file)>65536)throw new java.io.IOException("xp.json is too large");
         XpTable candidate=ServerFiles.GSON.fromJson(Files.readString(file),XpTable.class);
         if(candidate==null)throw new java.io.IOException("Empty xp.json");
-        if(database==null)database=new PlayerDatabase(ServerFiles.root().resolve("player-db.json"));
         table=candidate;
         for(var p:server.getPlayerList().getPlayers())sync(p);
+        broadcastLevels(server);
     }
     public static void sync(ServerPlayer player) {
         if(database==null)return;
         var record=database.get(player.getUUID().toString(),player.getGameProfile().getName());
         GungangNetwork.send(player,new GungangNetwork.Progression(ServerFiles.GSON.toJson(table.progress(record.experience()))));
+    }
+    /** Level for any XP total under the server's table (bots use it for their own career XP). */
+    static XpTable.Progress progress(long experience) {return table.progress(experience);}
+    /** Every online player's level and every bot's, for the Tab player list and the in-match stats tables. */
+    static void broadcastLevels(MinecraftServer server) {
+        if(database==null||server==null)return;
+        Map<String,Integer> levels=new HashMap<>();
+        for(var p:server.getPlayerList().getPlayers())levels.put(p.getUUID().toString(),table.progress(record(p).experience()).level());
+        for(int slot=0;slot<BotManager.MAX;slot++){var id=BotDatabase.id(slot);levels.put(id.toString(),table.progress(BotManager.experience(id)).level());}
+        String json=ServerFiles.GSON.toJson(levels);
+        for(var p:server.getPlayerList().getPlayers())GungangNetwork.send(p,new GungangNetwork.Levels(json));
     }
     static PlayerRecord record(ServerPlayer player) {
         if(database==null)throw new IllegalStateException("플레이어 DB가 로드되지 않았습니다.");
@@ -45,18 +61,19 @@ public final class ProgressionService {
     static PlayerRecord.Preset defaultPreset(ServerPlayer player) {return database==null?null:record(player).defaultLoadout();}
     @SubscribeEvent public static void login(PlayerEvent.PlayerLoggedInEvent event) {
         if(!(event.getEntity() instanceof ServerPlayer p)||database==null)return;
-        try {database.update(database.get(p.getUUID().toString(),p.getGameProfile().getName()).named(p.getGameProfile().getName()));sync(p);}
+        try {database.update(database.get(p.getUUID().toString(),p.getGameProfile().getName()).named(p.getGameProfile().getName()));sync(p);broadcastLevels(p.server);}
         catch(Exception e) {com.mojang.logging.LogUtils.getLogger().error("[GunGang] Player database login failed",e);}
     }
     @SubscribeEvent public static void stopped(ServerStoppedEvent event) {database=null;table=XpTable.defaults();}
     public static void finish(MinecraftServer server,MatchSnapshot match) {
         if(database==null) {com.mojang.logging.LogUtils.getLogger().error("[GunGang] Player database unavailable; match statistics not saved");return;}
         try {
-            var rewards=database.match(match.players(),match.winner(),LobbyManager.options().experience());
+            var rewards=database.match(match.players().stream().filter(row->BotDatabase.slot(row.id())<0).toList(),match.winner(),LobbyManager.options().experience());
             for(var p:server.getPlayerList().getPlayers()) {
                 Integer xp=rewards.get(p.getUUID().toString());
                 if(xp!=null) {sync(p);p.sendSystemMessage(Component.literal("[GunGang] 경기 전적 저장 · 경험치 +"+xp));}
             }
+            broadcastLevels(server);
         } catch(Exception e) {com.mojang.logging.LogUtils.getLogger().error("[GunGang] Could not commit match statistics to player-db.json",e);}
     }
     private static PlayerRecord resolve(CommandSourceStack source,String target) throws Exception {
@@ -83,6 +100,7 @@ public final class ProgressionService {
         if(add)value=Long.toString(Math.addExact(old.experience(),Long.parseLong(value)));
         var updated=old.set(field,value);database.update(updated);
         var player=source.getServer().getPlayerList().getPlayer(UUID.fromString(updated.id()));if(player!=null)sync(player);
+        broadcastLevels(source.getServer());
         source.sendSuccess(()->Component.literal(updated.name()+"의 "+field+" 값을 저장했습니다."),true);
     }
     private interface Work {void run() throws Exception;}
@@ -112,6 +130,11 @@ public final class ProgressionService {
         root.then(xp);
         root.then(Commands.literal("level").executes(c->run(c.getSource(),()->show(c.getSource(),null,false)))
                 .then(playerArgument().executes(c->run(c.getSource(),()->show(c.getSource(),StringArgumentType.getString(c,"player"),false)))));
+        root.then(Commands.literal("emblem").executes(c->run(c.getSource(),()->{
+            var p=c.getSource().getPlayerOrException();
+            if(!GungangNetwork.installed(p))throw new IllegalStateException("엠블럼 목록은 GunGang 클라이언트 모드가 필요합니다.");
+            GungangNetwork.send(p,new GungangNetwork.Emblems());
+        })));
         event.getDispatcher().register(root);
     }
     private ProgressionService() { }

@@ -27,6 +27,10 @@ public final class SecondaryRuntime {
         var tag=stack.getOrCreateTag();tag.putString("GunGangSecondaryId",weapon.id());
         tag.putInt("GunGangCooldownTicks",(int)Math.ceil(weapon.cooldownSeconds()*20));
         if(CombatGadgets.is(stack,"molotov"))tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(ExtraGadgetConfig.molotov.cooldownSeconds()));
+        if(HandAxeItem.is(stack)) {
+            tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(ExtraGadgetConfig.handAxe.cooldownSeconds()));
+            HandAxeItem.configurePreview(stack);
+        }
         if(CombatGadgets.is(stack,"life_support"))tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(ExtraGadgetConfig.life.cooldownSeconds()));
         if(CombatGadgets.is(stack,"jetpack")) {
             tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(ExtraGadgetConfig.jet.cooldownSeconds()));
@@ -99,6 +103,7 @@ public final class SecondaryRuntime {
         }
         if(stack.isEmpty())return null;
         if(item instanceof GadgetItem gadget&&gadget.kind.equals("landmine")&&GadgetManager.aimedMine(p)!=null)return 0f;
+        if(item instanceof GadgetItem gadget&&gadget.kind.equals("bear_trap")&&BearTraps.recallable(p))return 0f;
         int total=stack.getTag().getInt("GunGangCooldownTicks");
         return total==0?0f:Math.max(0,Math.min(1,(remaining(p,stack)-partial)/total));
     }

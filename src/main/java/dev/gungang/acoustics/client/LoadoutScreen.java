@@ -227,7 +227,11 @@ final class LoadoutScreen extends ArenaScreen {
                 stat(rows,"사거리",weapon.specs().range(),v->v.specs()==null?"":v.specs().range());
                 stat(rows,"연사력",weapon.specs().fireRate(),v->v.specs()==null?"":v.specs().fireRate());
             }
-        }else rows.add(new Row("재사용 대기시간",weapon.cooldownSeconds()==0?"무제한":number(weapon.cooldownSeconds())+"초",-1,STAT_ROW));
+        }else{
+            rows.add(new Row("재사용 대기시간",weapon.cooldownSeconds()==0?"무제한":number(weapon.cooldownSeconds())+"초",-1,STAT_ROW));
+            // Secondary specs come from the weapon JSON "stats"; bars compare against secondaries listing the same stat.
+            for(var row:weapon.stats())stat(rows,row.name(),row.value(),v->v.stats().stream().filter(s->s.name().equals(row.name())).map(Loadouts.Stat::value).findFirst().orElse(""));
+        }
         return rows;
     }
     /** One line per stat: label, bar, value. Rows without a comparable number show the value text only. */

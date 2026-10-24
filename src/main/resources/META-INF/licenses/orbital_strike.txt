@@ -1,0 +1,12 @@
+Model Information:
+* title:	Night vision binocular
+* source:	https://sketchfab.com/3d-models/night-vision-binocular-439c0cb2be044d45a5a60b36b89b825c
+* author:	Halil Kantarci (https://sketchfab.com/halilkantarci)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Night vision binocular" (https://sketchfab.com/3d-models/night-vision-binocular-439c0cb2be044d45a5a60b36b89b825c) by Halil Kantarci (https://sketchfab.com/halilkantarci) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+Modifications: converted glTF to Forge OBJ, scaled and oriented for handheld use; original diffuse texture and alpha preserved; V coordinates shifted by one repeating tile; normal/specular/gloss maps omitted.

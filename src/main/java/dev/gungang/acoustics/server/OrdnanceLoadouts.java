@@ -16,7 +16,15 @@ final class OrdnanceLoadouts {
                         "보조 손에 장착하면 자동 발동합니다. 쿨타임 120초.","지원·방어",100d,100d,120d),
                 new Loadouts.Weapon("93","{id:'gungang:jetpack',Count:1b}","제트팩",
                         "3초간 중력 없이 바라보는 수평 방향으로 비행. 잔류 불꽃은 다른 플레이어에게 화상 3초를 주고 비행 종료 1초 후 사라집니다. 아군·적 충돌 시 피해 25와 넉백 후 정지. 이동 중 회복·무기 사용 불가.",null,
-                        "보조무기 사용 키로 발동합니다. 비행 종료 시 원래 중력 상태로 돌아갑니다.","이동",100d,100d,24d));
+                        "보조무기 사용 키로 발동합니다. 비행 종료 시 원래 중력 상태로 돌아갑니다.","이동",100d,100d,24d),
+                new Loadouts.Weapon("89","{id:'gungang:bear_trap',Count:1b}","베어트랩",
+                        "밟은 적을 3초간 그 자리에 고정하고, 풀려난 뒤 2초간 구속 효과를 겁니다. 최대 1개 설치. 아군은 걸리지 않습니다.",null,
+                        "사용 후 우클릭 설치 / 좌클릭 취소. 밟히지 않은 베어트랩은 보조 손 사용 키를 3초간 눌러 회수합니다.","설치형",100d,100d,36d,"",false,"2026-10-21",
+                        List.of(new Loadouts.Stat("고정 시간","3초"),new Loadouts.Stat("구속 효과","2초"),new Loadouts.Stat("회수 시간","3초"),new Loadouts.Stat("최대 설치","1개"))),
+                new Loadouts.Weapon("80","{id:'gungang:hand_axe',Count:1b}","손도끼",
+                        "좌클릭 근접 공격 35 피해. 우클릭을 길게 눌렀다 떼면 조준 방향으로 곧게 던져 66 피해. 중력을 받아 멀리 갈수록 조금씩 떨어집니다. 투척 거리는 누른 시간에 따라 5블록에서 최대 24블록까지 늘어납니다. 던진 뒤 16초 동안 다시 사용할 수 없습니다. 내구도 없음.",null,
+                        "키보드 F 로 보조무기 전환 후 좌클릭 근접 공격, 우클릭을 길게 눌렀다 떼서 투척. 보조 손 공격/사용 키로도 사용할 수 있습니다.","근접·투척형",100d,100d,16d,"",false,"2026-10-22",
+                        List.of(new Loadouts.Stat("근접 피해","35"),new Loadouts.Stat("투척 피해","66"),new Loadouts.Stat("투척 거리","5~24블록"),new Loadouts.Stat("투척 쿨타임","16초"))));
     }
     static Loadouts.Weapon upgradePlaceholder(Loadouts.Weapon weapon) {
         if(weapon.description()!=null&&weapon.description().contains("개발중")&&(weapon.itemNbt().contains("zeta:p92")||weapon.itemNbt().contains("bf1:sw_model3")))

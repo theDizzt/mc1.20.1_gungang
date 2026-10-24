@@ -8,7 +8,7 @@ public record BombRules(Integer rounds,Integer swapEveryRounds,Integer preparati
     public BombRules {
         rounds=rounds==null?5:rounds;
         swapEveryRounds=swapEveryRounds==null?1:swapEveryRounds;
-        preparationSeconds=preparationSeconds==null?30:preparationSeconds;
+        preparationSeconds=preparationSeconds==null?25:preparationSeconds;
         if(areaA!=null)pointA=areaA.center();
         if(areaB!=null)pointB=areaB.center();
     }
@@ -79,7 +79,7 @@ public record BombRules(Integer rounds,Integer swapEveryRounds,Integer preparati
         attackSpawn.validate();defenseSpawn.validate();attackArea.validateRoom(attackSpawn);defenseArea.validateRoom(defenseSpawn);pointA.validate();pointB.validate();
     }
     public static BombRules defaults(){
-        return new BombRules(5,1,30,new ArenaMap.Spawn(.5,65,.5,0,0),new ArenaMap.Area(-5,64,-5,5,72,5),
+        return new BombRules(5,1,25,new ArenaMap.Spawn(.5,65,.5,0,0),new ArenaMap.Area(-5,64,-5,5,72,5),
                 new ArenaMap.Spawn(40.5,65,.5,180,0),new ArenaMap.Area(35,64,-5,45,72,5),new Point(20,65,-10),new Point(20,65,10));
     }
     public static ArenaMap example(){

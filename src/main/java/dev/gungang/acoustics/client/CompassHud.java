@@ -75,6 +75,7 @@ public final class CompassHud {
         }
         label(g, String.format(java.util.Locale.ROOT, "%03d°", CompassMath.heading(mc.player.getViewYRot(partialTick))), center, y - 23, 0xFFFFFFFF);
         g.fill(center, y - 5, center + 1, y + 3, 0xFFFFFFFF);
+        TeamPointHud.compass(g,center,y-34,heading,pixelsPerDegree);
         long now = mc.level.getGameTime();
         PINGS.entrySet().removeIf(e -> now - e.getValue().tick > 50 || now < e.getValue().tick);
         for (Ping ping : PINGS.values()) {

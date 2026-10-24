@@ -65,6 +65,7 @@ public final class LobbyManager {
     @SubscribeEvent public static void starting(ServerStartingEvent event) {
         server = event.getServer(); PLAYERS.clear(); LAST_ACTION.clear(); LAST_PREVIEW.clear(); FREE_SELECTION.clear(); LAST_EQUIPMENT.clear(); RESPAWNING.clear(); enabled = false; phase = "LOBBY";
         NormandyBeacon.get(server).restore(server);
+        try { ProgressionService.open(); } catch (Exception failure) { LogUtils.getLogger().error("GunGang player database could not be loaded", failure); }
         try { reload(); } catch (Exception failure) { LogUtils.getLogger().error("GunGang config could not be loaded; previous files were not overwritten", failure); }
     }
     @SubscribeEvent public static void stopping(ServerStoppingEvent event) { if (enabled) close(); }
@@ -168,12 +169,14 @@ public final class LobbyManager {
     }
     private static void close() {
         if (!phase.equals("LOBBY") && activeMap != null) finish("ABORTED");
+        BotManager.clearLobby();
         enabled = false; phase = "LOBBY";
         for (var p : server.getPlayerList().getPlayers()) { Entry e = PLAYERS.get(p.getUUID()); if (e != null) restore(p, e, true); }
         broadcast(false); PLAYERS.clear(); activeMap = null;
     }
     @SubscribeEvent public static void commands(RegisterCommandsEvent event) {
         var root = Commands.literal("gungang");
+        BotManager.register(root);
         HudPreferences.register(root);
         AreaEditor.register(root);
         ConfigModify.register(root);
@@ -197,7 +200,7 @@ public final class LobbyManager {
         root.then(Commands.literal("reset").requires(s -> s.hasPermission(2)).executes(c -> run(c.getSource(), LobbyManager::reset)));
         root.then(Commands.literal("cleardeployables").requires(s->s.hasPermission(2)).executes(c->run(c.getSource(),()->{
             int removed=GadgetManager.clearAll(c.getSource().getServer());
-            c.getSource().sendSuccess(()->Component.literal("지뢰·방벽 "+removed+"개 제거, 미로드 설치물도 무효화했습니다."),true);
+            c.getSource().sendSuccess(()->Component.literal("지뢰·방벽·컴파운드 보우 화살 "+removed+"개 제거, 미로드 설치물·화살도 무효화했습니다."),true);
         })));
         root.then(Commands.literal("join").executes(c -> run(c.getSource(), () -> joinMatch(c.getSource().getPlayerOrException(), "")))
                 .then(Commands.argument("team", StringArgumentType.word()).suggests((c,b) -> { b.suggest("ALPHA"); b.suggest("BRAVO"); return b.buildFuture(); })
@@ -286,12 +289,19 @@ public final class LobbyManager {
             if (!enabled || !PLAYERS.containsKey(sender.getUUID())) return;
             if (!phase.equals("LOBBY")) throw new IllegalStateException("준비 또는 경기 진행 중에는 로비 설정을 변경할 수 없습니다.");
             switch (action.action()) {
+                case "botAdd" -> {
+                    admin(sender);
+                    if(!selectedMode.equals("DEATHMATCH"))throw new IllegalArgumentException("AI 봇은 팀데스매치에서만 추가할 수 있습니다.");
+                    BotManager.lobbyAdd(loadouts);botChanged();return;
+                }
+                case "botRemove" -> {admin(sender);BotManager.lobbyRemove(action.target().isEmpty()?null:UUID.fromString(action.target()));botChanged();return;}
                 case "map" -> { admin(sender); select(action.value()); }
                 case "mode" -> { admin(sender); selectMode(action.value()); }
                 case "random" -> { admin(sender); randomize(); }
                 case "team" -> {
                     UUID target = action.target().isEmpty() ? sender.getUUID() : UUID.fromString(action.target());
                     if (!target.equals(sender.getUUID())) admin(sender);
+                    if(BotManager.identity(target)){BotManager.lobbyTeam(target,action.value());botChanged();return;}
                     var player = server.getPlayerList().getPlayer(target);
                     if (player == null || !PLAYERS.containsKey(target)) return;
                     setTeam(player, action.value());
@@ -401,6 +411,8 @@ public final class LobbyManager {
         p.displayClientMessage(Component.literal(message),true);
         equipment(p,true);
     }
+    /** Ids of the loaded maps, for command suggestions. */
+    static List<String> mapIds() { return files==null?List.of():files.maps().stream().map(ArenaMap::id).toList(); }
     private static ArenaMap selectedArena() { return files==null?null:files.maps().stream().filter(m->m.id().equals(selected)).findFirst().orElse(null); }
     private static void normalizeMode() {
         var arena=selectedArena();
@@ -504,6 +516,7 @@ public final class LobbyManager {
         level(activeMap);
         if(activeMap.propHunt()!=null)PropHuntMatch.validate(server,activeMap,loadouts);
         if(activeMap.escort()!=null)EscortMatch.validate(server,activeMap);
+        if(deathmatch!=null)BotManager.validate(loadouts);
         phase = "PREPARING"; deadline = server.getTickCount() + preparationSeconds(activeMap)*20;
         GadgetManager.clearAll(server);
         CombatGadgets.reset(server);
@@ -691,6 +704,7 @@ public final class LobbyManager {
         if(slot==0) LoadoutAttributes.apply(p,weapon);
         p.getInventory().setItem(slot, stack);
         if (!remember) LoadoutSlots.preserve(p,displaced);
+        CompoundBow.syncAmmo(p);
         p.inventoryMenu.broadcastChanges();
     }
     private static void chooseWeapon(ServerPlayer p, String group, String id) throws java.io.IOException {
@@ -782,6 +796,7 @@ public final class LobbyManager {
         if(slot==0) LoadoutAttributes.apply(p,weapon);
         p.getInventory().setItem(slot,stack);
         LoadoutSlots.preserve(p,displaced);
+        CompoundBow.syncAmmo(p);
         p.inventoryMenu.broadcastChanges();
     }
     static void executeSecondaryCommand(ServerPlayer p,Loadouts.Weapon weapon,int slot,String tag) {
@@ -840,11 +855,14 @@ public final class LobbyManager {
                 m.propHunt()!=null?"숨바꼭질":m.freeForAll()!=null?"개인전":m.escort()!=null?"호위":m.normandy()!=null?"노르망디":(DeathmatchRules.exclusive(m)||selectedMode.equals("DEATHMATCH")&&DeathmatchRules.supported(m))?"팀 데스매치":m.bomb()!=null?"폭탄전":"쟁탈전",DeathmatchRules.supported(m),m.previewArea()!=null?"@generated":m.previewImage(),m.bomb()!=null,DeathmatchRules.exclusive(m),m.weather(),m.timeOfDay(),m.releaseDate())).toList();
         List<LobbySnapshot.Member> members = new ArrayList<>();
         for (var entry : PLAYERS.entrySet()) { var player = server.getPlayerList().getPlayer(entry.getKey()); if (player != null) members.add(new LobbySnapshot.Member(entry.getKey().toString(),player.getGameProfile().getName(),entry.getValue().team,entry.getValue().ready)); }
+        if(selectedMode.equals("DEATHMATCH"))for(var bot:BotManager.lobbyIds())members.add(new LobbySnapshot.Member(bot.toString(),BotManager.name(bot),BotManager.team(bot),true,BotManager.skin(bot)));
         var snapshot = new LobbySnapshot(enabled, show, p.hasPermissions(2), p.getUUID().toString(), selected, phase,
-                phase.equals("LOBBY") ? 0 : Math.max(0,(deadline - server.getTickCount() + 19)/20), mapViews, members, options(),selectedMode);
+                phase.equals("LOBBY") ? 0 : Math.max(0,(deadline - server.getTickCount() + 19)/20), mapViews, members, options(),selectedMode,BotManager.settings().enabled(),BotManager.added(),BotManager.lobbyCount(),BotManager.MAX);
         GungangNetwork.send(p, new GungangNetwork.Lobby(ServerFiles.GSON.toJson(snapshot)));
     }
     private static void broadcast(boolean show) { if (server != null) for (var p : server.getPlayerList().getPlayers()) send(p, show); }
+    /** Refresh every open lobby immediately; editing bot participation never triggers a match start. */
+    static void botChanged(){if(phase.equals("LOBBY"))PLAYERS.values().forEach(e->e.ready=false);broadcast(false);}
     public static TeamOptions options() { return files == null ? TeamOptions.defaults() : files.options(); }
     public static boolean respawning(UUID id) { return RESPAWNING.containsKey(id); }
     static boolean beginRespawn(ServerPlayer victim, ServerPlayer killer) {
@@ -912,6 +930,7 @@ public final class LobbyManager {
         p.teleportTo(p.server.overworld(),HOME.getX(),HOME.getY(),HOME.getZ(),0,0);
     }
     private static void reset() {
+        TeamPoints.clear(server);
         GimmickEpoch.reset(server);
         close();MapEnvironment.resetDefaults(server);MapPreviewGenerator.clear();GadgetManager.clearAll(server);CombatGadgets.reset(server);
         server.overworld().setDefaultSpawnPos(HOME,0);

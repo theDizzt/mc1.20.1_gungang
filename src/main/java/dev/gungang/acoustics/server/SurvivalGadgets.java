@@ -113,7 +113,7 @@ public final class SurvivalGadgets {
         p.setNoGravity(true);p.fallDistance=0;
         Vec3 direction=jetDirection(p,jet.verticalFlight()),motion=direction.scale(ExtraGadgetConfig.jet.speed());
         var swept=p.getBoundingBox().expandTowards(jet.previous().subtract(p.position())).expandTowards(motion).inflate(.1);
-        var hit=p.serverLevel().getEntitiesOfClass(ServerPlayer.class,swept,q->q!=p&&q.isAlive()&&!q.isSpectator()&&!SafeZones.contains(q)).stream()
+        var hit=p.serverLevel().getEntitiesOfClass(LivingEntity.class,swept,q->q!=p&&BotEntity.participant(q)&&!SafeZones.contains(q)).stream()
                 .min(Comparator.comparingDouble(q->q.position().distanceToSqr(jet.previous()))).orElse(null);
         if(hit!=null) {
             OrdnanceDamage.hurt(hit,p.damageSources().playerAttack(p),(float)ExtraGadgetConfig.jet.collisionDamage());
@@ -134,11 +134,21 @@ public final class SurvivalGadgets {
         for(var trail:TRAILS) {
             var pos=trail.position();var level=trail.level();
             if(level.getGameTime()%4==0)level.sendParticles(ParticleTypes.FLAME,pos.x,pos.y+.3,pos.z,2,.2,.15,.2,.015);
-            for(var victim:level.getEntitiesOfClass(ServerPlayer.class,new AABB(pos.x-.65,pos.y,pos.z-.65,pos.x+.65,pos.y+1,pos.z+.65),
-                    p->!p.getUUID().equals(trail.owner())&&p.isAlive()&&!p.isSpectator()&&!SafeZones.contains(p))) {
+            for(var victim:level.getEntitiesOfClass(LivingEntity.class,new AABB(pos.x-.65,pos.y,pos.z-.65,pos.x+.65,pos.y+1,pos.z+.65),
+                    p->!p.getUUID().equals(trail.owner())&&BotEntity.participant(p)&&!SafeZones.contains(p))) {
                 victim.setSecondsOnFire(ExtraGadgetConfig.jet.burnSeconds());AdrenalineDamage.burning(victim,trail.owner(),ExtraGadgetConfig.jet.burnSeconds(),ExtraGadgetConfig.jet.burnDamage());
             }
         }
+    }
+    /** Jet flame trail of a non-player owner (the bot); same damage and lifetime as a player's trail. */
+    static void trail(ServerLevel level,UUID owner,Vec3 position,long end){TRAILS.add(new Trail(level,owner,position,end));}
+    static void endTrail(UUID owner,long end){TRAILS.replaceAll(t->t.owner().equals(owner)?new Trail(t.level(),t.owner(),t.position(),Math.min(t.end(),end)):t);}
+    static void jetImpact(LivingEntity target,Vec3 direction){
+        if(target instanceof ServerPlayer player){jetImpact(player,direction);return;}
+        // The bot: no client to sync, so set its motion directly.
+        double strength=ExtraGadgetConfig.jet.knockback();if(strength<=0)return;
+        var horizontal=new Vec3(direction.x,0,direction.z).normalize();var old=target.getDeltaMovement();
+        target.setDeltaMovement(old.x*.5+horizontal.x*strength,Math.max(old.y,.35),old.z*.5+horizontal.z*strength);target.hurtMarked=true;
     }
     static void jetImpact(ServerPlayer target,Vec3 direction){
         // A skill impulse must survive gun mods cancelling vanilla LivingKnockBackEvent.

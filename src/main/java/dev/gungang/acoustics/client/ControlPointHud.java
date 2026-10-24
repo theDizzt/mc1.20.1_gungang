@@ -96,8 +96,8 @@ final class ControlPointHud {
         int fill=Math.round((x2-x1)*fraction);
         g.fill(x1,y2-2,x2,y2,0xFF2A3A50);
         g.fill(left?x2-fill:x1,y2-2,left?x2:x1+fill,y2,color|0xFF000000);
-        var font=Minecraft.getInstance().font;String text=String.valueOf(score);
-        float size=Math.min(1.7f,30f/Math.max(1,font.width(text)));int width=Math.round(font.width(text)*size);
+        String text=String.valueOf(score);int numberWidth=HudText.numberWidth(text);
+        float size=Math.min(1.7f,30f/Math.max(1,numberWidth));int width=Math.round(numberWidth*size);
         DeathmatchHud.score(g,left?0:1,score,text,(left?x2-7-width:x1+7)+width/2f,y1+11,size,owner);
         int edge=left?x1+7:x2-7;
         DeathmatchHud.small(g,left?"ALPHA":"BRAVO",edge,y1+5,.7f,0xFFFFFFFF,false,left);

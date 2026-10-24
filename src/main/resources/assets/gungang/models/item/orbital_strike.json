@@ -1,3 +1,111 @@
 {
-  "parent": "minecraft:item/spyglass"
+    "loader":  "forge:obj",
+    "model":  "gungang:models/item/orbital_strike.obj",
+    "automatic_culling":  false,
+    "flip_v":  false,
+    "render_type":  "minecraft:translucent",
+    "textures":  {
+                     "particle":  "gungang:item/orbital_strike"
+                 },
+    "display":  {
+                    "gui":  {
+                                "scale":  [
+                                              1,
+                                              1,
+                                              1
+                                          ],
+                                "rotation":  [
+                                                 30,
+                                                 135,
+                                                 0
+                                             ]
+                            },
+                    "thirdperson_lefthand":  {
+                                                 "translation":  [
+                                                                     0,
+                                                                     2,
+                                                                     0
+                                                                 ],
+                                                 "rotation":  [
+                                                                  90,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                                 "scale":  [
+                                                               0.65,
+                                                               0.65,
+                                                               0.65
+                                                           ]
+                                             },
+                    "fixed":  {
+                                  "rotation":  [
+                                                   25,
+                                                   135,
+                                                   0
+                                               ]
+                              },
+                    "firstperson_lefthand":  {
+                                                 "translation":  [
+                                                                     0,
+                                                                     1,
+                                                                     -1
+                                                                 ],
+                                                 "rotation":  [
+                                                                  0,
+                                                                  20,
+                                                                  0
+                                                              ],
+                                                 "scale":  [
+                                                               0.65,
+                                                               0.65,
+                                                               0.65
+                                                           ]
+                                             },
+                    "thirdperson_righthand":  {
+                                                  "translation":  [
+                                                                      0,
+                                                                      2,
+                                                                      0
+                                                                  ],
+                                                  "rotation":  [
+                                                                   90,
+                                                                   0,
+                                                                   0
+                                                               ],
+                                                  "scale":  [
+                                                                0.65,
+                                                                0.65,
+                                                                0.65
+                                                            ]
+                                              },
+                    "ground":  {
+                                   "scale":  [
+                                                 0.5,
+                                                 0.5,
+                                                 0.5
+                                             ],
+                                   "translation":  [
+                                                       0,
+                                                       2,
+                                                       0
+                                                   ]
+                               },
+                    "firstperson_righthand":  {
+                                                  "translation":  [
+                                                                      0,
+                                                                      1,
+                                                                      -1
+                                                                  ],
+                                                  "rotation":  [
+                                                                   0,
+                                                                   -20,
+                                                                   0
+                                                               ],
+                                                  "scale":  [
+                                                                0.65,
+                                                                0.65,
+                                                                0.65
+                                                            ]
+                                              }
+                }
 }

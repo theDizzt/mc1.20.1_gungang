@@ -32,7 +32,7 @@ public final class GimmickEntity extends BlockEntity {
         var c=block.id.equals("uxo")?GimmickConfig.uxo:GimmickConfig.gas;
         active(false);readyAt=server.getGameTime()+ExtraGadgetConfig.ticks(c.respawnSeconds());setChanged();
         var center=Vec3.atCenterOf(worldPosition);
-        for(var p:server.getEntitiesOfClass(ServerPlayer.class,new AABB(center,center).inflate(c.radius()),p->p.isAlive()&&!p.isSpectator()))
+        for(var p:server.getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class,new AABB(center,center).inflate(c.radius()),BotEntity::participant))
             if(p.position().distanceToSqr(center)<=c.radius()*c.radius()&&!SpawnGateProtection.shields(p,center))OrdnanceDamage.hurt(p,server.damageSources().explosion(null,null),(float)c.damage());
         server.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION_EMITTER,center.x,center.y,center.z,1,0,0,0,0);
         server.playSound(null,worldPosition,net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,net.minecraft.sounds.SoundSource.BLOCKS,2,1);
@@ -45,7 +45,7 @@ public final class GimmickEntity extends BlockEntity {
         if(e.health<0){e.health=e.maximum();e.setChanged();}
         if(!e.getBlockState().getValue(GimmickBlock.ACTIVE)){if(e.readyAt>0&&level.getGameTime()>=e.readyAt){e.readyAt=0;e.health=e.maximum();e.active(true);}return;}
         var id=((GimmickBlock)state.getBlock()).id;
-        if(id.equals("uxo")&&!level.getEntitiesOfClass(ServerPlayer.class,new AABB(pos.getX(),pos.getY(),pos.getZ(),pos.getX()+1,pos.getY()+.3,pos.getZ()+1),p->p.isAlive()&&!p.isSpectator()).isEmpty())e.damage(1);
+        if(id.equals("uxo")&&!level.getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class,new AABB(pos.getX(),pos.getY(),pos.getZ(),pos.getX()+1,pos.getY()+.3,pos.getZ()+1),BotEntity::participant).isEmpty())e.damage(1);
         if(state.getBlock() instanceof NozzleBlock nozzle)nozzle.spray(level,pos);
     }
     @Override protected void saveAdditional(CompoundTag t){super.saveAdditional(t);t.putDouble("Health",health);t.putLong("ReadyAt",readyAt);t.putLong("Generation",generation);}

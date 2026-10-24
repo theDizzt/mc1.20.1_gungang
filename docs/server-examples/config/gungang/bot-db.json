@@ -1,0 +1,72 @@
+{
+  "bots": [
+    {
+      "name": "Rookie",
+      "skin": "minecraft:textures/entity/player/wide/steve.png",
+      "statistics": {
+        "id": "87feab0f-4160-4ec8-a993-bcf41039c016",
+        "name": "Rookie",
+        "experience": 0,
+        "matches": 0,
+        "kills": 0,
+        "deaths": 0,
+        "damage": 0.0,
+        "playSeconds": 0,
+        "wins": 0,
+        "presets": [],
+        "defaultPreset": 0
+      }
+    },
+    {
+      "name": "Rookie 2",
+      "skin": "minecraft:textures/entity/player/wide/steve.png",
+      "statistics": {
+        "id": "87feab0f-4160-4ec8-a993-bcf41039c017",
+        "name": "Rookie 2",
+        "experience": 0,
+        "matches": 0,
+        "kills": 0,
+        "deaths": 0,
+        "damage": 0.0,
+        "playSeconds": 0,
+        "wins": 0,
+        "presets": [],
+        "defaultPreset": 0
+      }
+    },
+    {
+      "name": "Rookie 3",
+      "skin": "minecraft:textures/entity/player/wide/steve.png",
+      "statistics": {
+        "id": "87feab0f-4160-4ec8-a993-bcf41039c018",
+        "name": "Rookie 3",
+        "experience": 0,
+        "matches": 0,
+        "kills": 0,
+        "deaths": 0,
+        "damage": 0.0,
+        "playSeconds": 0,
+        "wins": 0,
+        "presets": [],
+        "defaultPreset": 0
+      }
+    },
+    {
+      "name": "Rookie 4",
+      "skin": "minecraft:textures/entity/player/wide/steve.png",
+      "statistics": {
+        "id": "87feab0f-4160-4ec8-a993-bcf41039c019",
+        "name": "Rookie 4",
+        "experience": 0,
+        "matches": 0,
+        "kills": 0,
+        "deaths": 0,
+        "damage": 0.0,
+        "playSeconds": 0,
+        "wins": 0,
+        "presets": [],
+        "defaultPreset": 0
+      }
+    }
+  ]
+}

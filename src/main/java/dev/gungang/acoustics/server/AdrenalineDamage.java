@@ -17,7 +17,7 @@ import net.minecraftforge.fml.common.Mod;
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID)
 public final class AdrenalineDamage {
     public static double multiplier(net.minecraft.world.entity.Entity attacker) {
-        return attacker instanceof ServerPlayer p&&p.isAlive()&&!p.isSpectator()&&GadgetManager.boostRemaining(p)>0
+        return attacker instanceof ServerPlayer p&&p.isAlive()&&!p.isSpectator()&&GadgetManager.boostRemaining(p)>0||BotManager.boosted(attacker)
                 ?1+GadgetConfig.adrenaline.damageBonusPercent()/100:1;
     }
     @SubscribeEvent(priority=EventPriority.HIGHEST) public static void raw(net.minecraftforge.event.entity.living.LivingHurtEvent event) {
@@ -44,10 +44,11 @@ public final class AdrenalineDamage {
             var burn=BURNS.get(victim);
             if(burn!=null&&burn.owner()!=null&&victim.isOnFire()&&burn.until()>victim.level().getGameTime())
                 attacker=victim.getServer().getPlayerList().getPlayer(burn.owner());
+            if(attacker==null&&burn!=null&&burn.owner()!=null&&victim.level() instanceof net.minecraft.server.level.ServerLevel level)attacker=level.getEntity(burn.owner());
             else BURNS.remove(victim);
         }
         if(attacker instanceof ServerPlayer player&&player!=victim&&player.isAlive()&&!player.isSpectator()
-                &&GadgetManager.boostRemaining(player)>0)
+                &&GadgetManager.boostRemaining(player)>0||attacker!=victim&&BotManager.boosted(attacker))
             event.setAmount((float)(event.getAmount()*(1+GadgetConfig.adrenaline.damageBonusPercent()/100)));
     }
     private AdrenalineDamage() { }

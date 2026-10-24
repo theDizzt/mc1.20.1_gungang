@@ -36,8 +36,8 @@ final class DeathmatchHud {
     static void team(GuiGraphics g,boolean left,String name,int color,int score,boolean leading,Boolean attacking,String note) {
         int inner=36,outer=116,y1=3,y2=27,x1=left?-outer:inner,x2=left?-inner:outer;
         plate(g,x1,y1,x2,y2,color,left,leading);
-        var font=Minecraft.getInstance().font;String text=String.valueOf(score);
-        float size=Math.min(2f,36f/Math.max(1,font.width(text)));int width=Math.round(font.width(text)*size);
+        var font=Minecraft.getInstance().font;String text=String.valueOf(score);int numberWidth=HudText.numberWidth(text);
+        float size=Math.min(2f,36f/Math.max(1,numberWidth));int width=Math.round(numberWidth*size);
         score(g,left?0:1,score,text,(left?x2-8-width:x1+8)+width/2f,y1+12,size,leading);
         int edge=left?x1+7:x2-7;
         small(g,name,edge,y1+5,.75f,0xFFFFFFFF,false,left);
@@ -53,7 +53,9 @@ final class DeathmatchHud {
     static void score(GuiGraphics g,int team,int score,String text,float cx,float cy,float size,boolean bright) {
         var font=Minecraft.getInstance().font;float pop=ScorePop.scale(team,score);
         g.pose().pushPose();g.pose().translate(cx,cy,0);g.pose().scale(size*pop,size*pop,1);
-        g.drawString(font,text,-font.width(text)/2,-4,bright||ScorePop.popping(team)?0xFFFFFFFF:0xFFC4CEDA,false);
+        // Centre the inked digits: 7 rows tall, advance minus the trailing 1px letter gap.
+        g.pose().translate(-(HudText.numberWidth(text)-1)/2f,-3.5f,0);
+        g.drawString(font,HudText.number(text),0,0,bright||ScorePop.popping(team)?0xFFFFFFFF:0xFFC4CEDA,false);
         g.pose().popPose();
     }
     /** Dark plate whose team tint fades from the centre outward, with a solid underline. */

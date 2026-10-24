@@ -18,6 +18,8 @@ public final class DeployableEntity extends LivingEntity {
     public DeployableEntity(EntityType<? extends LivingEntity> type,Level level) {super(type,level);setNoGravity(true);}
     @Override protected void defineSynchedData() {super.defineSynchedData();entityData.define(WALL,false);entityData.define(EAST,false);entityData.define(OWNER,Optional.empty());entityData.define(SHOW_HEALTH,false);entityData.define(TEAM_COLOR,0xFFFFFFFF);entityData.define(TEAM,"");}
     private String team() {return entityData.get(TEAM);}
+    /** Scoreboard team of the owner ("Red"/"Blue"), empty outside team modes. */
+    public String teamName() {return team();}
     public boolean mineOutlineVisibleTo(net.minecraft.world.entity.player.Player viewer) {
         return !wall()&&!isRemoved()&&viewer!=null&&(viewer.getUUID().equals(owner())
                 ||!team().isEmpty()&&viewer.getTeam()!=null&&team().equals(viewer.getTeam().getName()));
@@ -27,7 +29,7 @@ public final class DeployableEntity extends LivingEntity {
     public boolean showHealthBar() {return wall()||entityData.get(SHOW_HEALTH);}
     public boolean wall() {return entityData.get(WALL);} public boolean east() {return entityData.get(EAST);}
     public UUID owner() {return entityData.get(OWNER).orElse(null);}
-    public void setup(net.minecraft.world.entity.player.Player player,boolean wall,boolean east) {
+    public void setup(LivingEntity player,boolean wall,boolean east) {
         entityData.set(WALL,wall);entityData.set(EAST,east);entityData.set(OWNER,Optional.of(player.getUUID()));
         entityData.set(SHOW_HEALTH,GadgetConfig.mine.showHealthBar());
         String team=player.getTeam()==null?"":player.getTeam().getName();entityData.set(TEAM,team);
@@ -49,7 +51,8 @@ public final class DeployableEntity extends LivingEntity {
         var config=GadgetConfig.mine;
         boolean triggered=level().getEntitiesOfClass(LivingEntity.class,getBoundingBox().inflate(config.triggerRadius()),this::enemy).stream().anyMatch(e->e.distanceTo(this)<=config.triggerRadius()+.5);
         if(triggered) {
-            var player=owner()==null?null:level().getPlayerByUUID(owner());
+            // Any owner entity (players and the bot) gets the kill credit.
+            var player=owner()==null?null:((net.minecraft.server.level.ServerLevel)level()).getEntity(owner());
             for(var victim:level().getEntitiesOfClass(LivingEntity.class,getBoundingBox().inflate(config.radius()),this::enemy))
                 if(victim.distanceTo(this)<=config.radius())victim.hurt(level().damageSources().explosion(this,player),(float)config.damage());
             level().playSound(null,blockPosition(),net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,net.minecraft.sounds.SoundSource.BLOCKS,1,1);

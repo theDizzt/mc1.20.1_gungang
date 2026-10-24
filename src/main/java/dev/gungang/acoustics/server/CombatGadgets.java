@@ -18,7 +18,9 @@ import net.minecraftforge.fml.common.Mod;
 public final class CombatGadgets {
     public static final int SCAN_TICKS=200,SCAN_COOLDOWN=2400,REPAIR_TICKS=1800;
     public record Gauge(String kind,float remaining,float maximum,boolean timed) { }
-    public record Hud(List<Gauge> gauges,int mines,int barriers,int maxMines,int maxBarriers,String equipped) { }
+    public record Hud(List<Gauge> gauges,int mines,int barriers,int maxMines,int maxBarriers,String equipped,int bearTraps,int maxBearTraps,boolean bearTrapArmed) {
+        public Hud(List<Gauge> gauges,int mines,int barriers,int maxMines,int maxBarriers,String equipped){this(gauges,mines,barriers,maxMines,maxBarriers,equipped,0,1,false);}
+    }
     public record Target(UUID id,double x,double y,double z,float yaw,boolean crouching,int color) { }
     public record ScanView(List<Target> targets) { }
     private record Scan(String team,String dimension,long end) { }
@@ -126,7 +128,21 @@ public final class CombatGadgets {
         return !FreeForAllMatch.blocked(target)&&viewer!=target&&target.isAlive()&&!target.isSpectator()&&viewer.getTeam()!=null&&target.getTeam()!=null&&!viewer.getTeam().isAlliedTo(target.getTeam());
     }
     public static ScanView view(ServerPlayer viewer) {
-        return view(viewer,viewer.serverLevel().players());
+        var view=view(viewer,viewer.serverLevel().players());
+        // Bots are enemies like any other: a team scan shows them too.
+        if(viewer.getTeam()==null||!scanActive(viewer))return view;
+        var targets=new ArrayList<>(view.targets());
+        for(var bot:BotManager.entities()) {
+            if(bot.level()!=viewer.level()||bot.getTeam()==null||viewer.getTeam().isAlliedTo(bot.getTeam()))continue;
+            String name=bot.getTeam().getName();Integer fallback=bot.getTeam().getColor().getColor();
+            int color=name.equals("Red")?LobbyManager.options().color("ALPHA"):name.equals("Blue")?LobbyManager.options().color("BRAVO"):fallback==null?0xFFFFFFFF:0xFF000000|fallback;
+            targets.add(new Target(bot.getUUID(),bot.getX(),bot.getY(),bot.getZ(),bot.getYRot(),bot.isCrouching(),color));
+        }
+        return new ScanView(targets);
+    }
+    private static boolean scanActive(ServerPlayer viewer) {
+        long now=viewer.level().getGameTime();String team=viewer.getTeam().getName();String dimension=viewer.level().dimension().location().toString();
+        return SCANS.values().stream().anyMatch(scan->scan.end()>now&&scan.team().equals(team)&&scan.dimension().equals(dimension));
     }
     static ScanView view(ServerPlayer viewer,List<ServerPlayer> candidates) {
         long now=viewer.level().getGameTime();String team=viewer.getTeam()==null?"":viewer.getTeam().getName();
@@ -145,13 +161,19 @@ public final class CombatGadgets {
         long jet=SurvivalGadgets.jetRemaining(p);if(jet>0)gauges.add(new Gauge("jetpack",jet,ExtraGadgetConfig.ticks(ExtraGadgetConfig.jet.durationSeconds()),true));
         if(holdingShield(p))gauges.add(new Gauge("shield",shield(p).health,(float)ExtraGadgetConfig.shield.capacity(),false));
         var scan=SCANS.get(p.getUUID());if(scan!=null&&scan.end()>now)gauges.add(new Gauge("infrared_scanner",scan.end()-now,ExtraGadgetConfig.ticks(ExtraGadgetConfig.scanner.durationSeconds()),true));
+        var root=BearTraps.rootGauge(p);if(root!=null)gauges.add(root);
+        if(p.isUsingItem()&&is(p.getUseItem(),"bear_trap")&&BearTraps.recallable(p)) {
+            int recall=ExtraGadgetConfig.ticks(GadgetConfig.bearTrap.recallSeconds());
+            gauges.add(new Gauge("bear_trap_recall",Math.max(0,recall-p.getTicksUsingItem()),recall,true));
+        }
         long boost=GadgetManager.boostRemaining(p);if(boost>0)gauges.add(new Gauge("adrenaline",boost,(float)(GadgetConfig.adrenaline.durationSeconds()*20),true));
         var ledger=DeployableLedger.get(p.server);String equipped="";
         for(int i=0;i<p.getInventory().getContainerSize();i++) {
             var stack=p.getInventory().getItem(i);
-            if(stack.getItem() instanceof GadgetItem item&&(item.kind.equals("landmine")||item.kind.equals("barrier"))) {equipped=item.kind;break;}
+            if(stack.getItem() instanceof GadgetItem item&&(item.kind.equals("landmine")||item.kind.equals("barrier")||item.kind.equals("bear_trap"))) {equipped=item.kind;break;}
         }
-        return new Hud(gauges,(int)ledger.count(p.getUUID(),false),(int)ledger.count(p.getUUID(),true),GadgetConfig.mine.maxPlaced(),GadgetConfig.barrier.maxPlaced(),equipped);
+        return new Hud(gauges,(int)ledger.count(p.getUUID(),false),(int)ledger.count(p.getUUID(),true),GadgetConfig.mine.maxPlaced(),GadgetConfig.barrier.maxPlaced(),equipped,
+                BearTraps.count(p.getUUID()),GadgetConfig.bearTrap.maxPlaced(),BearTraps.recallable(p));
     }
     @SubscribeEvent public static void tick(TickEvent.PlayerTickEvent event) {
         if(event.phase!=TickEvent.Phase.END||!(event.player instanceof ServerPlayer p))return;
@@ -163,6 +185,17 @@ public final class CombatGadgets {
         if(!hud.equals(LAST_HUD.put(p.getUUID(),hud)))GungangNetwork.send(p,new GungangNetwork.Utility(hud));
         if(!scan.equals(LAST_SCAN.put(p.getUUID(),scan)))GungangNetwork.send(p,new GungangNetwork.Scan(scan));
     }
+    /** Team scan started by a non-player (the bot): its teammates see enemies exactly as with a player's scanner. */
+    static void scan(net.minecraft.world.entity.LivingEntity source,long end) {
+        if(source.getTeam()!=null)SCANS.put(source.getUUID(),new Scan(source.getTeam().getName(),source.level().dimension().location().toString(),end));
+    }
+    /** Any scan by the viewer's team (a teammate's scanner or the viewer's own) is running in its dimension. */
+    static boolean teamScanning(net.minecraft.world.entity.LivingEntity viewer) {
+        if(viewer.getTeam()==null)return false;
+        long now=viewer.level().getGameTime();String team=viewer.getTeam().getName();String dimension=viewer.level().dimension().location().toString();
+        return SCANS.values().stream().anyMatch(scan->scan.end()>now&&scan.team().equals(team)&&scan.dimension().equals(dimension));
+    }
+    static boolean scanning(net.minecraft.world.entity.LivingEntity source) {var scan=SCANS.get(source.getUUID());return scan!=null&&scan.end()>source.level().getGameTime();}
     static void resetScan(ServerPlayer p) {SCAN_READY.remove(p.getUUID());}
     public static void clear(ServerPlayer p) {p.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED).removeModifier(SHIELD_SLOW);SHIELDS.remove(p.getUUID());BLOCKED.remove(p.getUUID());COMBAT.remove(p.getUUID());SCANS.remove(p.getUUID());SCAN_READY.remove(p.getUUID());LAST_HUD.remove(p.getUUID());LAST_SCAN.remove(p.getUUID());}
     public static void reset(net.minecraft.server.MinecraftServer server) {
