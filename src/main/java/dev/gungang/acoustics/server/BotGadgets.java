@@ -41,7 +41,7 @@ final class BotGadgets {
         if(held||stack.isEmpty())return "";
         return stack.getItem() instanceof GadgetItem gadget?gadget.kind:"use";
     }
-    static boolean supported(ItemStack stack) {return !stack.isEmpty()&&!(stack.getItem() instanceof BombItem);}
+    static boolean supported(ItemStack stack) {return !stack.isEmpty()&&!(stack.getItem() instanceof BombItem)&&!CombatGadgets.is(stack,"turret");}
 
     void equip(BotEntity bot,Loadouts.Weapon weapon,ItemStack item,boolean held) {
         reset(bot);

@@ -74,11 +74,12 @@ public final class GadgetClient {
         var mc=Minecraft.getInstance();if(mc.player==null)return;
         var pos=GadgetManager.target(mc.player,range);if(pos==null)return;
         boolean wall=preview.equals("barrier"),east=mc.player.getDirection().getAxis()==Direction.Axis.X;
-        boolean valid=GadgetManager.valid(mc.player,pos,wall,east);
+        boolean turret=preview.equals("turret");
+        boolean valid=turret?Turrets.valid(mc.player,pos):GadgetManager.valid(mc.player,pos,wall,east);
         var pose=e.getPoseStack();var camera=e.getCamera().getPosition();
         pose.pushPose();pose.translate(-camera.x,-camera.y,-camera.z);
         var buffers=mc.renderBuffers().bufferSource();
-        LevelRenderer.renderLineBox(pose,buffers.getBuffer(RenderType.lines()),GadgetManager.bounds(pos,wall,east),valid?.25f:1,valid?1:.2f,.3f,1);
+        LevelRenderer.renderLineBox(pose,buffers.getBuffer(RenderType.lines()),turret?Turrets.bounds(pos):GadgetManager.bounds(pos,wall,east),valid?.25f:1,valid?1:.2f,.3f,1);
         buffers.endBatch(RenderType.lines());pose.popPose();
     }
     private GadgetClient() { }
