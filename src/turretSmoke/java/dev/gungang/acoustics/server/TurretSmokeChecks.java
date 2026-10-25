@@ -43,16 +43,23 @@ public final class TurretSmokeChecks {
             check(Turrets.claim(turret)&&level.addFreshEntity(turret),"Could not place turret");
             var duplicate=GadgetItems.TURRET_ENTITY.get().create(level);duplicate.setup(p);
             check(!Turrets.claim(duplicate),"Allowed more than one turret");duplicate.discard();
-            check(turret.getHealth()==100&&turret.ammo()==250,"Incorrect health/ammo defaults");
+            check(turret.getHealth()==150&&turret.ammo()==250,"Incorrect health/ammo defaults");
             check(turret.getBoundingBox().getXsize()==2&&turret.getBoundingBox().getYsize()==2&&turret.getBoundingBox().getZsize()==2,"Wrong hitbox");
             var close=target(level,5,1);var far=target(level,9,5);
-            turret.tick();check(close.getHealth()==1014&&far.getHealth()==1024&&turret.ammo()==249,"Did not hit nearest enemy for 10");
-            for(int i=0;i<5;i++)turret.tick();check(close.getHealth()==1004&&turret.ammo()==248,"Rapid fire blocked by vanilla hurt immunity");
+            turret.getRandom().setSeed(0);close.setDeltaMovement(.1,.2,.3);var velocity=close.getDeltaMovement();
+            turret.tick();check(close.getHealth()==1023&&far.getHealth()==1024&&turret.ammo()==249,"Did not hit nearest enemy for 1");
+            check(close.getDeltaMovement().equals(velocity),"Turret shot changed target velocity");
+            for(int i=0;i<19;i++)turret.tick();check(close.getHealth()<1023&&close.getHealth()>=1004&&turret.ammo()==230,"Must fire twenty one-damage rounds per second with misses");
+            int hitRolls=0;for(int i=0;i<100;i++)if(TurretEntity.hits(i/100f))hitRolls++;
+            check(hitRolls==84,"Accuracy threshold must be 84 percent");
+            float friendlyHealth=close.getHealth();
             var team=server.getScoreboard().addPlayerTeam("turret_test");
+            team.setColor(net.minecraft.ChatFormatting.RED);
             server.getScoreboard().addPlayerToTeam(p.getScoreboardName(),team);
             server.getScoreboard().addPlayerToTeam(close.getScoreboardName(),team);
             turret.setup(p);
-            for(int i=0;i<5;i++)turret.tick();check(close.getHealth()==1004&&far.getHealth()==1014,"Friendly filtering failed");
+            check(turret.teamColor()==net.minecraft.ChatFormatting.RED.getColor(),"Marker color does not match installer team");
+            for(int i=0;i<5;i++)turret.tick();check(close.getHealth()==friendlyHealth&&far.getHealth()<1024,"Friendly filtering failed");
             close.discard();far.discard();
             var hidden=target(level,5,1);
             for(int y=240;y<243;y++)level.setBlockAndUpdate(new BlockPos(3,y,1),Blocks.STONE.defaultBlockState());
@@ -69,6 +76,14 @@ public final class TurretSmokeChecks {
             p.setPos(0,240,4);
             var stranger=FakePlayerFactory.get(level,new com.mojang.authlib.GameProfile(UUID.randomUUID(),"TurretStranger"));stranger.setPos(0,240,4);
             check(!Turrets.canReload(stranger,turret),"Non-owner can reload");
+            turret.setHealth(120);
+            check(Turrets.canRepair(p,turret)&&!Turrets.canRepair(stranger,turret),"Repair ownership validation failed");
+            int repairAmmo=turret.ammo();
+            for(int i=0;i<20;i++){server.getWorldData().overworldData().setGameTime(start+30+i);if(i%10==0)Turrets.key(p,"repair_hold");turret.tick();}
+            check(turret.getHealth()==130&&turret.ammo()==repairAmmo,"Repair must heal one per two ticks without reloading");
+            Turrets.key(p,"up");turret.tick();check(turret.getHealth()==130,"Repair continued after release");
+            turret.setHealth(149.5f);Turrets.key(p,"repair_down");turret.tick();turret.tick();check(turret.getHealth()==150,"Repair exceeds maximum health");Turrets.key(p,"up");
+            check(turret.ownerOutline(p)&&!turret.ownerOutline(stranger),"Outline must be owner-only");
             reloadTag.putInt("Ammo",0);turret.readAdditionalSaveData(reloadTag);
             var gauge=CombatGadgets.hud(p).gauges().stream().filter(g->g.kind().equals("turret_ammo")).findFirst().orElseThrow();
             check(gauge.remaining()==0&&gauge.maximum()==250&&!gauge.timed(),"Empty turret HUD missing");
@@ -79,10 +94,11 @@ public final class TurretSmokeChecks {
             turret.tick();turret.tick();check(turret.ammo()==250,"Reload exceeded magazine capacity");
             reloadTag.putInt("Ammo",100);turret.readAdditionalSaveData(reloadTag);Turrets.key(p,"down");
             server.getWorldData().overworldData().setGameTime(start+100);turret.tick();check(turret.ammo()==100,"Stale held-key packet kept reloading");
-            turret.hurt(level.damageSources().generic(),100);check(turret.isRemoved()&&Turrets.owned(p.getUUID())==null,"Destruction did not release owner slot");
+            float ownerHealth=p.getHealth();turret.hurt(level.damageSources().generic(),150);check(turret.isRemoved()&&Turrets.owned(p.getUUID())==null,"Destruction did not release owner slot");
+            check(p.getHealth()==ownerHealth&&level.getBlockState(pos.below()).is(Blocks.STONE),"Destruction effect caused damage or changed terrain");
             var grounded=GadgetItems.TURRET_ENTITY.get().create(level);grounded.setPos(1,240,1);grounded.setup(p);Turrets.claim(grounded);level.addFreshEntity(grounded);
             level.setBlockAndUpdate(pos.below(),Blocks.AIR.defaultBlockState());grounded.tick();check(grounded.isRemoved(),"Turret floated after floor removal");
-            System.out.println("GUNGANG_TURRET_SERVER_PASS placement nearest_enemy team visibility range damage cooldown reload hud destruction support");
+            System.out.println("GUNGANG_TURRET_SERVER_PASS placement team marker owner_outline accuracy84 fire20 damage1 no_knockback health150 reload repair destruction_no_damage");
         }catch(Throwable error){error.printStackTrace();System.out.println("GUNGANG_TURRET_SERVER_FAIL");}
         finally{server.getWorldData().overworldData().setGameTime(start);server.halt(false);}
     }

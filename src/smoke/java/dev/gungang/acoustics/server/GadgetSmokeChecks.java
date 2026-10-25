@@ -402,6 +402,7 @@ public final class GadgetSmokeChecks {
                     level.setBlock(packPos,oldPack,3);level.setBlock(secondPos,oldSecond,3);level.setBlock(largePos,oldLarge,3);
                 }
                 deployablePlacement(level,player);
+                damageCredit(level);
                 combatEquipment(level,player);
                 furniture(level,player);
                 ordnance(level,player);
@@ -413,6 +414,24 @@ public final class GadgetSmokeChecks {
             } catch(Throwable failure) {failure.printStackTrace();System.out.println("GUNGANG_GADGET_SMOKE_FAIL");}
             finally {server.halt(false);}
         });
+    }
+    /** Burning, wither and poison ticks carry no attacker; match statistics must still credit the shooter. */
+    private static void damageCredit(net.minecraft.server.level.ServerLevel level) {
+        var shooter=FakePlayerFactory.get(level,new com.mojang.authlib.GameProfile(java.util.UUID.fromString("5f0c1e7a-2b4d-4e8f-9a31-7c6d2e9b4f10"),"CreditShooter"));
+        shooter.setPos(30,100,30);level.addNewPlayer(shooter);
+        var sources=level.damageSources();var victims=new java.util.ArrayList<net.minecraft.world.entity.monster.Zombie>();
+        try {
+            for(int i=0;i<3;i++){var z=net.minecraft.world.entity.EntityType.ZOMBIE.create(level);z.setNoAi(true);z.setPos(30+i*3,100,34);level.addFreshEntity(z);victims.add(z);}
+            var molotov=victims.get(0);molotov.setSecondsOnFire(3);AdrenalineDamage.burning(molotov,shooter.getUUID(),3,2);
+            check(DamageCredit.attacker(molotov,sources.onFire())==shooter,"Molotov and jet burns credit their owner");
+            var shot=victims.get(1);shot.hurt(sources.playerAttack(shooter),1);
+            shot.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.WITHER,100,3));shot.setSecondsOnFire(5);
+            check(DamageCredit.attacker(shot,sources.wither())==shooter,"Blowpipe wither credits the shooter");
+            check(DamageCredit.attacker(shot,sources.onFire())==shooter,"Gun-lit fire credits the last shooter");
+            var hazard=victims.get(2);hazard.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.POISON,100,0));hazard.setSecondsOnFire(3);
+            check(DamageCredit.attacker(hazard,sources.magic())==null&&DamageCredit.attacker(hazard,sources.onFire())==null,"Unowned poison and fire credit nobody");
+            System.out.println("GUNGANG_DAMAGE_CREDIT_PASS");
+        } finally {victims.forEach(net.minecraft.world.entity.Entity::discard);shooter.remove(net.minecraft.world.entity.Entity.RemovalReason.DISCARDED);}
     }
     private static void combatEquipment(net.minecraft.server.level.ServerLevel level,net.minecraft.server.level.ServerPlayer player) {
         var server=level.getServer();long time=level.getGameTime();
@@ -608,15 +627,19 @@ public final class GadgetSmokeChecks {
         var fatal=new net.minecraftforge.event.entity.living.LivingDeathEvent(player,level.damageSources().generic());SurvivalGadgets.death(fatal);
         check(fatal.isCanceled()&&player.isAlive()&&player.getAbsorptionAmount()==30,"Life support cancels lethal damage with 30 yellow health");
         check(SecondaryRuntime.remaining(player,life)==2400,"Life support starts 120-second cooldown on activation");
-        for(int tick=1;tick<=58;tick++) {time.setGameTime(start+tick);SurvivalGadgets.tick(new TickEvent.PlayerTickEvent(TickEvent.Phase.END,player));}
-        check(player.getAbsorptionAmount()==1,"Life reserve drains one point every two ticks");
-        player.heal(2);time.setGameTime(start+60);SurvivalGadgets.tick(new TickEvent.PlayerTickEvent(TickEvent.Phase.END,player));
+        for(int tick=1;tick<=56;tick++) {time.setGameTime(start+tick);SurvivalGadgets.tick(new TickEvent.PlayerTickEvent(TickEvent.Phase.END,player));}
+        check(player.getAbsorptionAmount()==2,"Life reserve drains one point every two ticks");
+        player.heal(2);time.setGameTime(start+58);SurvivalGadgets.tick(new TickEvent.PlayerTickEvent(TickEvent.Phase.END,player));
         check(player.isAlive()&&player.getHealth()>2&&player.getAbsorptionAmount()==0,"Healing before expiration allows survival");
         var second=new net.minecraftforge.event.entity.living.LivingDeathEvent(player,level.damageSources().generic());SurvivalGadgets.death(second);check(!second.isCanceled(),"Life support cannot reactivate during cooldown");
-        SecondaryRuntime.clear(player);SecondaryRuntime.configure(player,life,definition);player.setHealth(0);
+        SecondaryRuntime.clear(player);SecondaryRuntime.configure(player,life,definition);player.setHealth(0);time.setGameTime(start+60);
         var unhealed=new net.minecraftforge.event.entity.living.LivingDeathEvent(player,level.damageSources().generic());SurvivalGadgets.death(unhealed);
         for(int tick=1;tick<=60;tick++) {time.setGameTime(start+60+tick);SurvivalGadgets.tick(new TickEvent.PlayerTickEvent(TickEvent.Phase.END,player));}
-        check(player.getHealth()==0,"Without healing the reserve expires in death after three seconds");
+        check(player.isAlive()&&player.getHealth()==1&&player.getAbsorptionAmount()==0,"Without healing the reserve leaves 1 health after 2.9 seconds");
+        SecondaryRuntime.clear(player);SecondaryRuntime.configure(player,life,definition);player.setHealth(0);
+        var drained=new net.minecraftforge.event.entity.living.LivingDeathEvent(player,level.damageSources().generic());SurvivalGadgets.death(drained);
+        player.setAbsorptionAmount(0);time.setGameTime(start+121);SurvivalGadgets.tick(new TickEvent.PlayerTickEvent(TickEvent.Phase.END,player));
+        check(player.getHealth()==0,"An emptied reserve is still fatal");time.setGameTime(start+120);
         player.setHealth(50);player.deathTime=0;
         var jetDefinition=OrdnanceLoadouts.defaults().stream().filter(w->w.id().equals("93")).findFirst().orElseThrow();var jet=jetDefinition.stack();jet.getOrCreateTag().putInt("GunGangFreeSlot",40);
         var jetJson=ServerFiles.GSON.toJsonTree(jetDefinition).getAsJsonObject();jetJson.remove("jetpackVerticalFlight");

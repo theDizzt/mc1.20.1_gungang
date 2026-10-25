@@ -42,6 +42,7 @@ public final class OffhandMacro {
     }
 
     public static boolean executingClick() { return click; }
+    public static boolean busy(){return owner!=null;}
     public static boolean ownsGunInput() { return owner != null && (gunAction || objectiveAction); }
     public static void stopForRoundEnd(){if(owner!=null)finish(Minecraft.getInstance());}
 
@@ -59,6 +60,7 @@ public final class OffhandMacro {
         boolean useEdge = useClick && !previousUseDown;
         previousAttackDown = attackDown;
         previousUseDown = useDown;
+        if(TurretClient.servicing())return;
         if ((attackEdge || useEdge) && GadgetClient.placing()) { GadgetClient.cancel(); return; }
         if (owner == null && (attackEdge || useEdge) && canStart(mc)) {
             if(attackEdge&&dev.gungang.acoustics.server.CombatGadgets.is(mc.player.getOffhandItem(),"shield"))return;

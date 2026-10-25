@@ -39,6 +39,8 @@ public final class ClientSetup {
         // In bomb mode a gate takes the colour of the side currently using its spawn (attackers / defenders).
         event.register((state,level,pos,tint)->gateColor(dev.gungang.acoustics.server.StationBlocks.ALPHA_GATE.get()),dev.gungang.acoustics.server.StationBlocks.ALPHA_GATE.get());
         event.register((state,level,pos,tint)->gateColor(dev.gungang.acoustics.server.StationBlocks.BRAVO_GATE.get()),dev.gungang.acoustics.server.StationBlocks.BRAVO_GATE.get());
+        event.register((state,level,pos,tint)->LobbyClient.options.color("ALPHA"),dev.gungang.acoustics.server.StationBlocks.ESCORT_ALPHA_GATE.get());
+        event.register((state,level,pos,tint)->LobbyClient.options.color("BRAVO"),dev.gungang.acoustics.server.StationBlocks.ESCORT_BRAVO_GATE.get());
         event.register((state,level,pos,tint)->level!=null&&pos!=null?net.minecraft.client.renderer.BiomeColors.getAverageWaterColor(level,pos):0x3F76E4,dev.gungang.acoustics.server.GimmickBlocks.PUDDLE.get());
         event.register((state,level,pos,tint)->LobbyClient.options.color("ALPHA"),dev.gungang.acoustics.server.StationBlocks.ALPHA.get());
         event.register((state,level,pos,tint)->LobbyClient.options.color("BRAVO"),dev.gungang.acoustics.server.StationBlocks.BRAVO.get());
@@ -50,6 +52,8 @@ public final class ClientSetup {
     @SubscribeEvent public static void itemColors(net.minecraftforge.client.event.RegisterColorHandlersEvent.Item event) {
         event.register((stack,tint)->LobbyClient.options.color("ALPHA"),dev.gungang.acoustics.server.StationBlocks.ALPHA_GATE.get());
         event.register((stack,tint)->LobbyClient.options.color("BRAVO"),dev.gungang.acoustics.server.StationBlocks.BRAVO_GATE.get());
+        event.register((stack,tint)->LobbyClient.options.color("ALPHA"),dev.gungang.acoustics.server.StationBlocks.ESCORT_ALPHA_GATE.get());
+        event.register((stack,tint)->LobbyClient.options.color("BRAVO"),dev.gungang.acoustics.server.StationBlocks.ESCORT_BRAVO_GATE.get());
         event.register(new net.minecraftforge.client.model.DynamicFluidContainerModel.Colors(),dev.gungang.acoustics.server.GimmickBlocks.ACID_BUCKET.get());
         event.register((stack,tint)->0x3F76E4,dev.gungang.acoustics.server.GimmickBlocks.PUDDLE.get());
         event.register((stack,tint)->tint==0?0xCC2020:0xFFFFFF,dev.gungang.acoustics.server.GadgetItems.MOLOTOV.get());
@@ -76,9 +80,12 @@ public final class ClientSetup {
         dev.gungang.acoustics.server.PropDimensions.clientProp=PropHuntClient::prop;
         dev.gungang.acoustics.server.SpawnGateBlock.clientRule=MatchHud::gateRule;
         dev.gungang.acoustics.server.SpawnGateBlock.clientPreparation=MatchHud::gatePreparation;
+        dev.gungang.acoustics.server.EscortSpawnGateBlock.clientEditing=()->dev.gungang.acoustics.server.EscortSpawnGateBlock.editing(net.minecraft.client.Minecraft.getInstance().player);
         event.enqueueWork(()->{
             net.minecraft.client.renderer.ItemBlockRenderTypes.setRenderLayer(dev.gungang.acoustics.server.StationBlocks.ALPHA_GATE.get(),net.minecraft.client.renderer.RenderType.translucent());
             net.minecraft.client.renderer.ItemBlockRenderTypes.setRenderLayer(dev.gungang.acoustics.server.StationBlocks.BRAVO_GATE.get(),net.minecraft.client.renderer.RenderType.translucent());
+            net.minecraft.client.renderer.ItemBlockRenderTypes.setRenderLayer(dev.gungang.acoustics.server.StationBlocks.ESCORT_ALPHA_GATE.get(),net.minecraft.client.renderer.RenderType.translucent());
+            net.minecraft.client.renderer.ItemBlockRenderTypes.setRenderLayer(dev.gungang.acoustics.server.StationBlocks.ESCORT_BRAVO_GATE.get(),net.minecraft.client.renderer.RenderType.translucent());
             net.minecraft.client.renderer.ItemBlockRenderTypes.setRenderLayer(dev.gungang.acoustics.server.GimmickBlocks.ACID_SOURCE.get(),net.minecraft.client.renderer.RenderType.translucent());
             net.minecraft.client.renderer.ItemBlockRenderTypes.setRenderLayer(dev.gungang.acoustics.server.GimmickBlocks.ACID_FLOWING.get(),net.minecraft.client.renderer.RenderType.translucent());
         });

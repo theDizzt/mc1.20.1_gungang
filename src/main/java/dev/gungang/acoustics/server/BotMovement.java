@@ -76,21 +76,23 @@ final class BotMovement {
         if(pathBudget<=0)return null;
         pathBudget--;return bot.getNavigation().createPath(target,accuracy);
     }
-    private boolean pendingMove,findExit;
+    private boolean pendingMove,findExit,departingSpawn;
     /** Standing spots just outside each team's own spawn gates, scanned once per map and team. */
     private static final java.util.Map<String,java.util.List<Vec3>> EXITS=new java.util.HashMap<>();
     static void forgetExits() {EXITS.clear();}
     private Vec3 exit;
     private int nextExitScan;
-    void prepareSpawnExit() {findExit=true;nextExitScan=0;}
-    boolean leavingSpawn() {return exit!=null;}
+    void prepareSpawnExit() {findExit=true;departingSpawn=true;nextExitScan=0;}
+    boolean leavingSpawn() {return exit!=null||departingSpawn;}
     private record ExitScan(java.util.List<Vec3> points,boolean complete) { }
     /** Resume the spawn route every tick, independently of the normal patrol path interval. */
     boolean exitSpawn(BotEntity bot,ArenaMap arena,String team,int now) {
+        if(departingSpawn&&clearOfSpawn(arena,team,bot.position()))departingSpawn=false;
         if(findExit&&now>=nextExitScan)leaveSpawn(bot,arena,team);
-        if(exit==null)return false;
-        travel(bot,arena,team,null,now,false);
-        return exit!=null;
+        if(exit==null&&!departingSpawn)return false;
+        // Keep advancing beyond the door. With no mapped gate, short local routes can still leave a winding room.
+        travel(bot,arena,team,null,now,exit==null);
+        return exit!=null||departingSpawn;
     }
     /** After a respawn, walk out through the nearest reachable own-team gate before patrolling. */
     void leaveSpawn(BotEntity bot,ArenaMap arena,String team) {
@@ -148,9 +150,11 @@ final class BotMovement {
         for(int z=Math.max(z0,section[2]<<4);z<=Math.min(z1,(section[2]<<4)+15);z++)
         for(int y=Math.max(y0,section[1]<<4);y<=Math.min(y1,(section[1]<<4)+15);y++) {
             pos.set(x,y,z);
-            if(!(level.getBlockState(pos).getBlock() instanceof SpawnGateBlock gate)||!gate.allows(bot))continue;
+            var state=level.getBlockState(pos);
+            if(!(state.getBlock() instanceof SpawnGateBlock gate)||!gate.present(state)||!gate.allows(bot))continue;
             // Only the bottom block of a gate column is where feet pass.
-            if(level.getBlockState(pos.below()).getBlock() instanceof SpawnGateBlock)continue;
+            var below=level.getBlockState(pos.below());
+            if(below.getBlock() instanceof SpawnGateBlock under&&under.present(below))continue;
             double inside=Vec3.atBottomCenterOf(pos).distanceToSqr(origin);
             for(var direction:Direction.Plane.HORIZONTAL) {
                 var out=pos.relative(direction,2);Vec3 point=Vec3.atBottomCenterOf(out);
@@ -173,7 +177,7 @@ final class BotMovement {
         Vec3 eye=bot.getEyePosition();
         bot.getLookControl().setLookAt(eye.x-Math.sin(angle)*8,eye.y,eye.z+Math.cos(angle)*8);
     }
-    void reset() {failureReason="없음";failurePoint=null;failureAt=0;failedRoutes.clear();recent.clear();nextExitScan=0;searching=false;exit=null;pendingMove=false;findExit=false;goal=null;progressPos=null;chasing=false;strafing=false;nextFlip=0;reposition=null;nextReposition=0;}
+    void reset() {failureReason="없음";failurePoint=null;failureAt=0;failedRoutes.clear();recent.clear();nextExitScan=0;searching=false;exit=null;pendingMove=false;findExit=false;departingSpawn=false;goal=null;progressPos=null;chasing=false;strafing=false;nextFlip=0;reposition=null;nextReposition=0;}
     /** Another system (health packs) is steering; do not count that time as being stuck. */
     void interrupt() {progressPos=null;strafing=false;}
     /** Any other behaviour taking over the legs ends a strafe cleanly. */
@@ -301,13 +305,13 @@ final class BotMovement {
         var enemy=team.equals("ALPHA")?arena.bravoSpawn():arena.alphaSpawn();
         var room=team.equals("ALPHA")?arena.alphaArea():arena.bravoArea();
         Vec3 origin=new Vec3(own.x(),own.y(),own.z());
-        if(flat(bot.position(),origin)<144||spent())return null;
+        if(!clearOfSpawn(arena,team,bot.position())||spent())return null;
         Vec3 direction=new Vec3(enemy.x()-bot.getX(),0,enemy.z()-bot.getZ()).normalize();
         // Local approach probes avoid tracing across unloaded chunks on large maps.
         Vec3 front=bot.position().add(direction.scale(12)).add(0,1.6,0);
         Vec3 side=new Vec3(-direction.z,0,direction.x).scale(4);
         var cover=findCover(bot,arena,team,java.util.List.of(front,front.add(side),front.subtract(side)));
-        if(cover==null||flat(cover.spot(),origin)<144||crowded(cover.spot())||knownDanger(bot,cover.spot())
+        if(cover==null||!clearOfSpawn(arena,team,cover.spot())||crowded(cover.spot())||knownDanger(bot,cover.spot())
                 ||room!=null&&room.contains(cover.spot().x,cover.spot().y+.1,cover.spot().z))return null;
         return cover;
     }
@@ -518,19 +522,34 @@ final class BotMovement {
         return flat(point,new Vec3(spawn.x(),spawn.y(),spawn.z()))<64
                 ||room!=null&&room.contains(spawn.x(),spawn.y(),spawn.z())&&room.contains(point.x,point.y,point.z);
     }
+    static boolean clearOfSpawn(ArenaMap arena,String team,Vec3 point){
+        var spawn=team.equals("ALPHA")?arena.alphaSpawn():arena.bravoSpawn();
+        var enemy=team.equals("ALPHA")?arena.bravoSpawn():arena.alphaSpawn();
+        Vec3 origin=new Vec3(spawn.x(),spawn.y(),spawn.z());
+        double radius=Math.min(24,Math.max(8,Math.sqrt(flat(origin,new Vec3(enemy.x(),enemy.y(),enemy.z())))*.4));
+        return !nearSpawn(arena,team,point)&&flat(point,origin)>=radius*radius;
+    }
+    /** Idle teammates must not pull each other back toward spawn or chase one another in circles. */
+    static boolean forwardAlly(ArenaMap arena,String team,Vec3 bot,Vec3 ally){
+        var enemy=team.equals("ALPHA")?arena.bravoSpawn():arena.alphaSpawn();
+        Vec3 front=new Vec3(enemy.x(),enemy.y(),enemy.z());
+        return !nearSpawn(arena,team,ally)&&Math.sqrt(flat(ally,front))+8<Math.sqrt(flat(bot,front));
+    }
     Vec3 localPatrol(BotEntity bot,ArenaMap arena,String team,int now,Vec3 own,Vec3 enemy) {
         var candidates=new java.util.ArrayList<Vec3>();
         double heading=Math.atan2(enemy.z-bot.getZ(),enemy.x-bot.getX());
-        for(int i=0;i<12;i++) {
+        boolean inside=nearSpawn(arena,team,bot.position());
+        for(double radius:new double[]{3,6,10,16})for(int i=0;i<12;i++) {
             double angle=heading+i*Math.PI/6;
-            var ground=ground(bot,arena,bot.position().add(Math.cos(angle)*10,0,Math.sin(angle)*10));
+            var ground=ground(bot,arena,bot.position().add(Math.cos(angle)*radius,0,Math.sin(angle)*radius));
             if(ground==null)continue;
             Vec3 point=Vec3.atBottomCenterOf(ground);
-            if(nearSpawn(arena,team,point)||rejected(bot.position(),point,now)||knownDanger(bot,point))continue;
+            // A route through a spawn corridor is necessary to reach its door; only forbid returning after leaving.
+            if(!inside&&nearSpawn(arena,team,point)||rejected(bot.position(),point,now)||knownDanger(bot,point))continue;
             candidates.add(point);
         }
         candidates.sort(java.util.Comparator.comparingDouble(p->Math.sqrt(flat(p,enemy))*.15
-                +Math.max(0,16-Math.sqrt(flat(p,own)))*2+routeRisk(p,now)*8
+                +Math.max(0,24-Math.sqrt(flat(p,own)))*2+routeRisk(p,now)*8
                 +(crowded(p)?10:0)+(recent.stream().anyMatch(r->r.distanceToSqr(p)<64)?20:0)));
         for(var point:candidates.stream().limit(3).toList()) {
             if(spent())return null;

@@ -29,7 +29,7 @@ public final class UtilityHud {
         int y=healthBarY-36-height;
         var protection=FreeForAllHud.row(mc.player.getUUID());
         if(protection!=null&&protection.protectionTicks()>0){
-            gauge(g,center,y,width,height,protection.protectionTicks(),protection.protectionTotal(),(protection.protectionTotal()==600?"무적 ":"은신 ")+(protection.protectionTicks()+19)/20+"초",partial);
+            gauge(g,center,y,width,height,protection.protectionTicks(),protection.protectionTotal(),"무적 "+(protection.protectionTicks()+19)/20+"초",partial);
             y-=height+4;
         }
         for(var gauge:state.gauges()) {

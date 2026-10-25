@@ -12,6 +12,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class MineOutlineMixin {
     @Inject(method="shouldEntityAppearGlowing",at=@At("HEAD"),cancellable=true)
     private void mineOutline(Entity entity,CallbackInfoReturnable<Boolean> callback) {
+        if(entity instanceof dev.gungang.acoustics.server.PropEntity prop)
+            callback.setReturnValue(dev.gungang.acoustics.client.PropHuntClient.outline(prop));
+        if(dev.gungang.acoustics.client.ScannerVision.color(entity)!=null)callback.setReturnValue(true);
+        if(entity instanceof dev.gungang.acoustics.server.TurretEntity turret)
+            callback.setReturnValue(turret.ownerOutline(Minecraft.getInstance().player));
         if(entity instanceof DeployableEntity mine&&!mine.wall())
             callback.setReturnValue(mine.mineOutlineVisibleTo(Minecraft.getInstance().player));
     }

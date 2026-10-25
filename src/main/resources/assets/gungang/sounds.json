@@ -1,4 +1,5 @@
 {
+  "turret_shot": {"sounds": ["gungang:turret_shot"]},
   "puddle_step": {
     "sounds": [
       {

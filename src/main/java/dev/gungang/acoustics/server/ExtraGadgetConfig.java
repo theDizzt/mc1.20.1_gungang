@@ -21,7 +21,7 @@ public final class ExtraGadgetConfig {
     public record HandAxe(double meleeDamage,double meleeCooldownSeconds,double throwDamage,double minThrowDistance,double maxThrowDistance,double chargeSeconds,double cooldownSeconds,double arcDegrees) { }
     public static Molotov molotov=new Molotov(5,8,3,36);
     public static Orbital orbital=new Orbital(24,256,84,5,64,240);
-    public static Life life=new Life(30,3,1,.1,120);
+    public static Life life=new Life(30,2.9,1,.1,120);
     public static Jet jet=new Jet(.85,3,25,1.5,3,1,24,false);
     public static Scanner scanner=new Scanner(10,120);
     public static Shield shield=new Shield(75,90);
@@ -33,7 +33,7 @@ public final class ExtraGadgetConfig {
     static void load(java.util.Map<String,com.google.gson.JsonObject> overrides,boolean apply)throws IOException {
         var m=GadgetConfig.read("molotov",Molotov.class,new Molotov(5,8,3,36),overrides,apply);
         var o=GadgetConfig.read("orbital_strike",Orbital.class,new Orbital(24,256,84,5,64,240),overrides,apply);
-        var l=GadgetConfig.read("life_support",Life.class,new Life(30,3,1,.1,120),overrides,apply);
+        var l=GadgetConfig.read("life_support",Life.class,new Life(30,2.9,1,.1,120),overrides,apply);
         var j=GadgetConfig.read("jetpack",Jet.class,new Jet(.85,3,25,1.5,3,1,24,false),overrides,apply);
         var s=GadgetConfig.read("infrared_scanner",Scanner.class,new Scanner(10,120),overrides,apply);
         var h=GadgetConfig.read("shield",Shield.class,new Shield(75,90),overrides,apply);
