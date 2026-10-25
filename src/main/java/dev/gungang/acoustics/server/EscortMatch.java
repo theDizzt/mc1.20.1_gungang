@@ -34,6 +34,13 @@ public final class EscortMatch {
         for(var p:route.markers){var state=level.getBlockState(p);hidden.put(p,state.getValue(EscortBlocks.Marker.HIDDEN));level.setBlock(p,state.setValue(EscortBlocks.Marker.HIDDEN,true),3);}
         for(var p:route.samples){var cp=new net.minecraft.world.level.ChunkPos(BlockPos.containing(p));if(tickets.add(cp))level.getChunkSource().addRegionTicket(TICKET,cp,2,route.markers.get(0));}
         cart=EscortBlocks.CART.get().create(level);cart.setPos(route.at(0));cart.setYRot((float)Math.toDegrees(Math.atan2(-route.direction(0).x,route.direction(0).z)));level.addFreshEntity(cart);
+        gates();
+    }
+    private Map<String,Integer> gateStages;
+    /** Escort spawn gates follow the respawn stage each team currently spawns at. */
+    private void gates(){
+        var stages=Map.of("ALPHA",stage("ALPHA"),"BRAVO",stage("BRAVO"));
+        if(stages.equals(gateStages))return;gateStages=stages;EscortSpawnGateBlock.apply(level,stages);
     }
     public void tick(boolean running){
         if(!running)return;
@@ -46,6 +53,7 @@ public final class EscortMatch {
         int previousCheckpoint=game.completed;
         game.tick(attackers,defenders);double before=cart.position().distanceToSqr(route.at(game.distance));
         cart.advance(route.at(game.distance),route.direction(game.distance));
+        if(game.completed!=previousCheckpoint)gates();
         if(before>.000001&&level.getGameTime()%20==0)level.playSound(null,cart.blockPosition(),net.minecraft.sounds.SoundEvents.MINECART_RIDING,net.minecraft.sounds.SoundSource.BLOCKS,.8f,game.motion.equals("REVERSE")?.7f:1f);
         if(game.stopTicks>0&&(game.completed!=previousCheckpoint||level.getGameTime()%4==0))for(var p:level.players())if(Set.of("ALPHA","BRAVO").contains(LobbyManager.team(p.getUUID())))p.displayClientMessage(Component.literal("임시 정차 중 · "+String.format(Locale.ROOT,"%.1f",game.stopTicks/20.0)+"초 뒤 다시 이동 · +"+game.rules.checkpointBonusSeconds()+"초 지급 완료"),true);
         if(!game.winner.isEmpty())LobbyManager.finish(game.winner);
@@ -55,6 +63,12 @@ public final class EscortMatch {
         for(var r:game.rules.respawns().stream().sorted(Comparator.comparingInt(EscortRules.Respawn::checkpoint)).toList())if(r.checkpoint()<=game.completed){var s=team.equals("ALPHA")?r.alpha():r.bravo();if(s!=null)result=s;}
         return result;
     }
+    /** The checkpoint whose respawn entry sets this team's current spawn, or 0 for the map's own spawn. */
+    public int stage(String team){
+        int stage=0;
+        for(var r:game.rules.respawns())if(r.checkpoint()<=game.completed&&r.checkpoint()>stage&&(team.equals("ALPHA")?r.alpha():r.bravo())!=null)stage=r.checkpoint();
+        return stage;
+    }
     public View view(){var p=route.at(game.completed<route.checkpoints.size()?route.checkpoints.get(game.completed):route.length);return new View(game.distance,route.length,route.checkpoints,game.completed,game.motion,game.multiplier,game.stopTicks,p.x,p.y,p.z,game.overtime()?game.overtimeTicks:0);}
-    public void close(){cart.discard();for(var e:hidden.entrySet()){var s=level.getBlockState(e.getKey());if(s.getBlock() instanceof EscortBlocks.Marker)level.setBlock(e.getKey(),s.setValue(EscortBlocks.Marker.HIDDEN,e.getValue()),3);}for(var cp:tickets)level.getChunkSource().removeRegionTicket(TICKET,cp,2,route.markers.get(0));}
+    public void close(){cart.discard();EscortSpawnGateBlock.apply(level,null);for(var e:hidden.entrySet()){var s=level.getBlockState(e.getKey());if(s.getBlock() instanceof EscortBlocks.Marker)level.setBlock(e.getKey(),s.setValue(EscortBlocks.Marker.HIDDEN,e.getValue()),3);}for(var cp:tickets)level.getChunkSource().removeRegionTicket(TICKET,cp,2,route.markers.get(0));}
 }

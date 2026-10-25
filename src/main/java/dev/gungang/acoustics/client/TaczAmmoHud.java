@@ -23,12 +23,16 @@ public final class TaczAmmoHud {
     /** Fixed units, like ShooterHud: two framebuffer pixels each, independent of GUI scale. */
     private static final int MARGIN=18,ICON_W=39,ICON_H=13,BAR_GAP=1,BAR_H=2,SHADOW=0x66000000;
     private static final float ICON_SCALE=2f,AMMO_SCALE=2.5f,ICON_ALPHA=.7f;
+    /** Guns without a real magazine (LAS-5's capacity is Integer.MAX_VALUE): the count shows heat in percent instead. */
+    private static final java.util.Set<String> HEAT_GAUGE=java.util.Set.of("zeta:las_5");
     private static Api api;
     private static boolean unavailable;
     private record Api(Method getIGun,Method current,Method barrel,Method gunId,Method display,Method hud,Method hudEmpty,
-                       Method index,Method gunData,Method bolt,Method capacity,Object hudEnabled,Method inventoryAmmo,Method refresh,Method fireMode,Method fireModes) {
+                       Method index,Method gunData,Method bolt,Method capacity,Object hudEnabled,Method inventoryAmmo,Method refresh,Method fireMode,Method fireModes,Heat heat) {
         boolean enabled() throws ReflectiveOperationException {return hudEnabled==null||(Boolean)hudEnabled.getClass().getMethod("get").invoke(hudEnabled);}
     }
+    /** TaCZ heat API; null on builds without it, which keep the ammo count. */
+    private record Heat(Method amount,Method locked,Method data,Method max) { }
     private static Api api() {
         if(api!=null||unavailable)return api;
         try {
@@ -44,11 +48,16 @@ public final class TaczAmmoHud {
                         net.minecraft.client.player.LocalPlayer.class,ItemStack.class,data,gun,boolean.class);
                 refresh.setAccessible(true);
             } catch(ReflectiveOperationException|RuntimeException ignored) {refresh=null;}
+            Heat heat=null;
+            try {
+                heat=new Heat(gun.getMethod("getHeatAmount",ItemStack.class),gun.getMethod("isOverheatLocked",ItemStack.class),data.getMethod("getHeatData"),
+                        Class.forName("com.tacz.guns.resource.pojo.data.gun.GunHeatData").getMethod("getHeatMax"));
+            } catch(ReflectiveOperationException|LinkageError ignored) {heat=null;}
             api=new Api(gun.getMethod("getIGunOrNull",ItemStack.class),gun.getMethod("getCurrentAmmoCount",ItemStack.class),gun.getMethod("hasBulletInBarrel",ItemStack.class),
                     gun.getMethod("getGunId",ItemStack.class),timeless.getMethod("getGunDisplay",ItemStack.class),display.getMethod("getHUDTexture"),display.getMethod("getHudEmptyTexture"),
                     timeless.getMethod("getClientGunIndex",ResourceLocation.class),index.getMethod("getGunData"),data.getMethod("getBolt"),
                     attachments.getMethod("getAmmoCountWithAttachment",ItemStack.class,data),hudEnabled,gun.getMethod("useInventoryAmmo",ItemStack.class),refresh,
-                    gun.getMethod("getFireMode",ItemStack.class),data.getMethod("getFireModeSet"));
+                    gun.getMethod("getFireMode",ItemStack.class),data.getMethod("getFireModeSet"),heat);
         } catch(ReflectiveOperationException|LinkageError missing) {unavailable=true;}
         return api;
     }
@@ -69,16 +78,29 @@ public final class TaczAmmoHud {
         ItemStack stack=mc.player.getMainHandItem();
         Object gun=api.getIGun().invoke(null,stack);if(gun==null)return;
         Optional<?> display=(Optional<?>)api.display().invoke(null,stack);if(display.isEmpty())return;
-        Optional<?> index=(Optional<?>)api.index().invoke(null,api.gunId().invoke(gun,stack));
+        Object gunId=api.gunId().invoke(gun,stack);
+        Optional<?> index=(Optional<?>)api.index().invoke(null,gunId);
         Object data=index.isPresent()?api.gunData().invoke(index.get()):null;
         if(data!=null&&api.refresh()!=null)api.refresh().invoke(null,mc.player,stack,data,gun,api.inventoryAmmo().invoke(gun,stack));
-        // A round chambered in a closed-bolt gun counts toward the magazine, as in TaCZ's own HUD.
-        boolean openBolt=data!=null&&"OPEN_BOLT".equals(String.valueOf(api.bolt().invoke(data)));
-        int ammo=(Integer)api.current().invoke(gun,stack)+((Boolean)api.barrel().invoke(gun,stack)&&!openBolt?1:0);
-        int capacity=data==null?0:(Integer)api.capacity().invoke(null,stack,data);
+        int ammo,capacity,color;boolean alert;
+        Object heatData=data!=null&&api.heat()!=null&&HEAT_GAUGE.contains(String.valueOf(gunId))?api.heat().data().invoke(data):null;
+        if(heatData!=null) {
+            // Heat gauge: 000-100 percent, yellow from 75, red while overheat-locked.
+            float max=((Number)api.heat().max().invoke(heatData)).floatValue(),heat=((Number)api.heat().amount().invoke(gun,stack)).floatValue();
+            ammo=max>0?Math.round(Math.max(0,Math.min(1,heat/max))*100):0;capacity=100;
+            alert=(Boolean)api.heat().locked().invoke(gun,stack);
+            color=alert?0xFFFF5555:ammo>=75?0xFFFFFF55:0xFFFFFFFF;
+        } else {
+            // A round chambered in a closed-bolt gun counts toward the magazine, as in TaCZ's own HUD.
+            boolean openBolt=data!=null&&"OPEN_BOLT".equals(String.valueOf(api.bolt().invoke(data)));
+            ammo=(Integer)api.current().invoke(gun,stack)+((Boolean)api.barrel().invoke(gun,stack)&&!openBolt?1:0);
+            capacity=data==null?0:(Integer)api.capacity().invoke(null,stack,data);
+            alert=ammo<=0;
+            color=alert?0xFFFF5555:capacity>0&&ammo<=capacity*.25?0xFFFFFF55:0xFFFFFFFF;
+        }
         // Most gun packs define no empty silhouette (null), e.g. while a reload has emptied the magazine: use the normal one tinted red.
         var texture=(ResourceLocation)api.hud().invoke(display.get());
-        if(ammo<=0){var empty=(ResourceLocation)api.hudEmpty().invoke(display.get());if(empty!=null)texture=empty;}
+        if(alert){var empty=(ResourceLocation)api.hudEmpty().invoke(display.get());if(empty!=null)texture=empty;}
 
         float scale=(float)(2.0/mc.getWindow().getGuiScale());
         int width=mc.getWindow().getWidth()/2,height=mc.getWindow().getHeight()/2,right=width-MARGIN,bottom=height-MARGIN;
@@ -91,11 +113,10 @@ public final class TaczAmmoHud {
         // The magazine bar sits just under the digits (glyphs are 7 of the 8 font rows), as wide as the count.
         int countTop=(rowH-countH)/2,barTop=countTop+Math.round(7*AMMO_SCALE)+BAR_GAP+1,rowTop=bottom-Math.max(rowH,barTop+BAR_H);
         countTop+=rowTop;barTop+=rowTop;
-        int color=ammo<=0?0xFFFF5555:capacity>0&&ammo<=capacity*.25?0xFFFFFF55:0xFFFFFFFF;
         g.pose().pushPose();g.pose().scale(scale,scale,1);
         if(texture!=null) {
             RenderSystem.enableBlend();RenderSystem.defaultBlendFunc();
-            if(ammo<=0)RenderSystem.setShaderColor(1,.3f,.3f,ICON_ALPHA);else RenderSystem.setShaderColor(1,1,1,ICON_ALPHA);
+            if(alert)RenderSystem.setShaderColor(1,.3f,.3f,ICON_ALPHA);else RenderSystem.setShaderColor(1,1,1,ICON_ALPHA);
             int ix=right-countW-6-iconW,iy=rowTop+(rowH-iconH)/2;
             g.blit(texture,ix,iy,iconW,iconH,0,0,ICON_W,ICON_H,ICON_W,ICON_H);
             RenderSystem.setShaderColor(1,1,1,1);
@@ -107,7 +128,7 @@ public final class TaczAmmoHud {
         g.fill(right-countW,barTop,right-countW+fill,barTop+BAR_H,color);
         g.pose().pushPose();g.pose().translate(right-countW,countTop,0);g.pose().scale(AMMO_SCALE,AMMO_SCALE,1);
         // An empty magazine shows a solid red "000" instead of dimmed padding.
-        digits(g,font,padding,0,ammo<=0?color:ArenaScreen.blend(0xFF1A2230,color,.35f));
+        digits(g,font,padding,0,alert?color:ArenaScreen.blend(0xFF1A2230,color,.35f));
         digits(g,font,count,padding.length(),color);g.pose().popPose();
         // Fire selector to the right of the name: every mode the gun has, the current one lit.
         String current=String.valueOf(api.fireMode().invoke(gun,stack));

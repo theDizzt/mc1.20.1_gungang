@@ -34,7 +34,7 @@ public final class AdrenalineDamage {
     private record Burn(UUID owner,long until,double damage) { }
     private static final Map<LivingEntity,Burn> BURNS=new WeakHashMap<>();
     public static void burning(LivingEntity victim,UUID owner,int seconds,double damage) {
-        BURNS.put(victim,new Burn(owner,victim.level().getGameTime()+seconds*20L,damage));
+        BURNS.put(victim,new Burn(owner,victim.level().getGameTime()+seconds*20L,damage));DamageCredit.burning(victim,owner,seconds);
     }
     @SubscribeEvent(priority=EventPriority.HIGH) public static void damage(LivingDamageEvent event) {
         var victim=event.getEntity();if(victim.level().isClientSide||event.getAmount()<=0)return;

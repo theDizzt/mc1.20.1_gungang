@@ -19,7 +19,12 @@ public final class FreeForAllHud {
     public static boolean blocked(){var p=Minecraft.getInstance().player;var r=p==null?null:row(p.getUUID());return r!=null&&r.protectionTicks()>0;}
     static boolean is(MatchSnapshot s){return s!=null&&s.point()!=null&&"FREE_FOR_ALL".equals(s.point().mode());}
     static MatchSnapshot.Row row(UUID id){var s=MatchHud.state();return !is(s)||!s.active()?null:s.players().stream().filter(r->r.id().equals(id.toString())).findFirst().orElse(null);}
-    @SubscribeEvent public static void hide(RenderPlayerEvent.Pre event){var mc=Minecraft.getInstance();var r=row(event.getEntity().getUUID());if(event.getEntity()!=mc.player&&r!=null&&r.protectionTicks()>0)event.setCanceled(true);}
+    /** Respawn protection hides both ways: nobody sees the protected player, and they see no one, held weapons included. */
+    @SubscribeEvent public static void hide(RenderPlayerEvent.Pre event){
+        var mc=Minecraft.getInstance();if(event.getEntity()==mc.player)return;
+        var r=row(event.getEntity().getUUID());
+        if(r!=null&&r.protectionTicks()>0||r!=null&&blocked())event.setCanceled(true);
+    }
     static int rankColor(int rank){return rank==1?GOLD:rank==2?SILVER:rank==3?BRONZE:DIM;}
 
     /**

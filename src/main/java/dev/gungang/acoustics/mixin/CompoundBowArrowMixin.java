@@ -26,6 +26,9 @@ public abstract class CompoundBowArrowMixin implements CompoundBow.ArrowAccess {
         var arrow=(Projectile)(Object)this;
         if(!arrow.level().isClientSide&&isEmbedded()&&attachedEntity==null&&embeddedTicks>=CompoundBow.WALL_ARROW_TICKS){arrow.discard();ci.cancel();}
     }
+    /** An arrow whose block was removed (e.g. a broken GunGang block) disappears instead of dropping an arrow item. */
+    @Redirect(method="dropFromBrokenBlock",at=@At(value="INVOKE",target="Lnet/minecraft/world/level/Level;addFreshEntity(Lnet/minecraft/world/entity/Entity;)Z",remap=true),require=1)
+    private boolean gungang$noDrop(net.minecraft.world.level.Level level,net.minecraft.world.entity.Entity item){return false;}
     @Inject(method="prepare",at=@At("RETURN"),require=1)
     private void gungang$damage(ServerPlayer player,ItemStack stack,float charge,CallbackInfo ci){
         damage=CompoundBow.damage(CompoundBowAimAccessor.gungang$aiming().getOrDefault(player.getUUID(),false),charge);
@@ -33,9 +36,9 @@ public abstract class CompoundBowArrowMixin implements CompoundBow.ArrowAccess {
     @Inject(method="hitEntity",at=@At("HEAD"),cancellable=true,require=1)
     private void gungang$deployable(@Coerce Object value,CallbackInfo ci){
         var hit=(CompoundBowHitAccessor)value;var arrow=(Projectile)(Object)this;
-        if(hit.gungang$entity() instanceof DeployableEntity placed){
+        if(hit.gungang$entity() instanceof DeployableEntity||hit.gungang$entity() instanceof TurretEntity){
             if(!arrow.level().isClientSide&&!arrow.isRemoved()){
-                placed.hurt(arrow.level().damageSources().thrown(arrow,arrow.getOwner()),damage);
+                hit.gungang$entity().hurt(arrow.level().damageSources().thrown(arrow,arrow.getOwner()),damage);
                 finishImpact(hit.gungang$position());
             }
             ci.cancel();

@@ -69,6 +69,8 @@ public final class MatchManager {
         var escortRoute=arena.escort()==null?null:EscortMatch.validate(s,arena);
         // Before EscortMatch records its own marker flags, so its close restores to the hidden state first.
         EscortTracks.hideMarkers(s);
+        // Every mode starts with escort spawn gates off; only an EscortMatch turns its stage on.
+        EscortSpawnGateBlock.deactivate(s);
         GimmickEpoch.reset(s);
         MapEnvironment.begin(s,arena);
         deathmatch=teamDeathmatch;
@@ -210,7 +212,7 @@ public final class MatchManager {
     public static String format(int seconds) { return MatchReport.time(seconds); }
     @SubscribeEvent(priority=EventPriority.LOWEST) public static void damage(LivingDamageEvent event) {
         if(!running||map==null||event.isCanceled())return;
-        var victim=event.getEntity();var attacker=event.getSource().getEntity();
+        var victim=event.getEntity();var attacker=DamageCredit.attacker(victim,event.getSource());
         if(BotManager.owns(attacker)&&(victim instanceof ServerPlayer||BotManager.owns(victim))&&ledger.enemies(attacker.getUUID(),victim.getUUID()))
             BotManager.damageDealt(attacker,Math.min(victim.getHealth(),event.getAmount()));
         if((victim instanceof ServerPlayer||BotManager.owns(victim))&&(attacker instanceof ServerPlayer||BotManager.owns(attacker)))

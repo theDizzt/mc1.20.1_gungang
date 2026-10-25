@@ -32,6 +32,12 @@ public final class PropHuntClient {
     public static boolean review(){return active()&&state.phase().equals("REVIEW");}
     private static PropHuntSnapshot.Row self(){var p=Minecraft.getInstance().player;return !active()||p==null?null:state.players().stream().filter(r->r.id().equals(p.getUUID().toString())).findFirst().orElse(null);}
     public static boolean hider(){var s=self();return s!=null&&s.team().equals("ALPHA")&&!s.found()&&!review();}
+    public static boolean outline(PropEntity prop){
+        if(prop.marker())return true;
+        var viewer=self();
+        return viewer!=null&&!review()&&viewer.team().equals("ALPHA")&&prop.owner()!=null
+                &&state.players().stream().anyMatch(r->r.id().equals(prop.owner().toString())&&r.team().equals("ALPHA"));
+    }
     public static boolean fixed(){var s=self();return hider()&&s.fixed();}
     public static boolean lockLook(){return fixed();}
     public static boolean hidden(UUID id){return active()&&state.players().stream().anyMatch(r->r.id().equals(id.toString())&&r.team().equals("ALPHA")&&!r.found());}
