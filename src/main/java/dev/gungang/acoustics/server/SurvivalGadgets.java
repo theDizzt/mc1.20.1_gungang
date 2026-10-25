@@ -102,8 +102,9 @@ public final class SurvivalGadgets {
                 }
                 if(now>=life.end()||p.getAbsorptionAmount()<=0) {
                     // Keep LIFE present while die() dispatches events, so the same device cannot revive twice.
-                    p.setAbsorptionAmount(0);
-                    if(!SurvivalRules.recovered(p.getHealth())) {p.setHealth(0);p.die(life.source());}
+                    // Whatever reserve outlasts the timer becomes real health; only an emptied reserve is fatal.
+                    float rest=p.getAbsorptionAmount();p.setAbsorptionAmount(0);
+                    if(!SurvivalRules.recovered(p.getHealth())) {if(rest>0)p.setHealth(rest);else {p.setHealth(0);p.die(life.source());}}
                     LIFE.remove(p.getUUID());sync(p);
                 }
             }

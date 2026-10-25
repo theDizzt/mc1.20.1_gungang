@@ -202,7 +202,30 @@ public final class BotSmokeChecks {
         }
     }
     private static void wall(boolean present){for(int z=-8;z<=8;z++)for(int y=101;y<=105;y++)server.overworld().setBlock(new BlockPos(10,y,z),present?Blocks.STONE.defaultBlockState():Blocks.AIR.defaultBlockState(),3);}
+    private static void spawnCorridorGeometry()throws Exception {
+        var b=bot();var level=server.overworld();var saved=b.position();
+        try {
+            for(int x=5998;x<=6010;x++)for(int z=-2;z<=10;z++)for(int y=239;y<=243;y++)
+                level.setBlock(new BlockPos(x,y,z),y==239&&((x>=6000&&x<=6006&&z>=0&&z<=2)||(x>=6004&&x<=6006&&z>=0&&z<=6))?Blocks.STONE.defaultBlockState():Blocks.AIR.defaultBlockState(),3);
+            var json=ServerFiles.GSON.toJsonTree(arena).getAsJsonObject();
+            json.add("alphaSpawn",ServerFiles.GSON.toJsonTree(new ArenaMap.Spawn(6000.5,240,1.5,0,0)));
+            json.add("bravoSpawn",ServerFiles.GSON.toJsonTree(new ArenaMap.Spawn(6040.5,240,1.5,0,0)));
+            json.add("alphaArea",ServerFiles.GSON.toJsonTree(new ArenaMap.Area(5999,239,-1,6025,244,20)));
+            var map=ServerFiles.GSON.fromJson(json,ArenaMap.class);b.setPos(6000.5,240,1.5);b.setOnGround(true);
+            var movement=new BotMovement();BotMovement.newTick();
+            var point=movement.localPatrol(b,map,"ALPHA",server.getTickCount(),b.position(),new net.minecraft.world.phys.Vec3(6040.5,240,1.5));
+            check(point!=null&&BotMovement.nearSpawn(map,"ALPHA",point),"A winding spawn corridor needs reachable intermediate points inside its room");
+            var path=BotMovement.path(b,BlockPos.containing(point),0);
+            check(path!=null&&path.canReach(),"Short corridor step is reachable without teleporting");
+            check(!BotMovement.clearOfSpawn(map,"ALPHA",new net.minecraft.world.phys.Vec3(6015,240,1.5)),"Do not camp just outside a door");
+            var forward=new net.minecraft.world.phys.Vec3(6030,240,1.5);var rear=new net.minecraft.world.phys.Vec3(6000,240,1.5);
+            check(!BotMovement.forwardAlly(map,"ALPHA",forward,rear),"An idle rear teammate must not pull the leader back to spawn");
+            check(BotMovement.forwardAlly(map,"ALPHA",rear,forward),"An advancing teammate remains a regroup target");
+            System.out.println("BOT_WINDING_SPAWN_AND_FORWARD_REGROUP_PASS");
+        } finally { b.setPos(saved);b.getNavigation().stop();BotMovement.newTick(); }
+    }
     private static void movementGeometry()throws Exception {
+        spawnCorridorGeometry();
         BotMovement.newTick();
         var b=bot();var level=server.overworld();var original=b.position();
         var from=new net.minecraft.world.phys.Vec3(24.5,101,.5);
@@ -474,6 +497,7 @@ public final class BotSmokeChecks {
     }
     private static void coverCycle(BotEntity b,BotMovement movement,net.minecraft.world.phys.Vec3 cover,
             net.minecraft.world.phys.Vec3 enemy,net.minecraft.world.phys.Vec3 peek)throws Exception {
+        b.getRandom().setSeed(0); // Reproducible sampled cover candidates, independent of earlier navigation tests.
         BotMovement.newTick();
         var saved=BotWaypoints.get(arena.id());var playerPos=player.position();float hp=b.getHealth();
         try {

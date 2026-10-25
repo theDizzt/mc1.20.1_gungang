@@ -17,7 +17,7 @@ public abstract class CompoundBowBlockMixin {
     @Inject(method="onHit",at=@At("HEAD"),cancellable=true,require=1)
     private static void gungang$block(@Coerce Object value,BlockHitResult hit,CallbackInfo ci){
         var arrow=(Projectile)value;var level=arrow.level();
-        if(level.getBlockState(hit.getBlockPos()).getBlock() instanceof SpawnGateBlock){arrow.discard();ci.cancel();return;}
+        if(SpawnGateBlock.barrier(level.getBlockState(hit.getBlockPos()))){arrow.discard();ci.cancel();return;}
         if(GimmickEntity.at(level,hit.getBlockPos())!=null){
             if(!level.isClientSide&&!SafeZones.contains(arrow.getOwner())&&!SpawnGateProtection.bulletBlocked(arrow,hit.getLocation()))
                 GimmickEntity.hit(level,hit.getBlockPos(),(float)(((CompoundBow.ArrowAccess)value).gungang$shotDamage()*AdrenalineDamage.multiplier(arrow.getOwner())));

@@ -222,7 +222,7 @@ final class BotAgent {
                 seen?bot.distanceTo(target):Double.POSITIVE_INFINITY,perception.underFire(now),melee,
                 bot.getHealth()<bot.getMaxHealth()*.6f&&health.available(bot,now,settings.range()),
                 lead==null?Long.MAX_VALUE:now-lead.updated,ally!=null&&ally.distanceToSqr(bot)>24*24
-                        &&!BotMovement.nearSpawn(arena,team,ally.position()),perception.danger(bot.position())!=null);
+                        &&BotMovement.forwardAlly(arena,team,bot.position(),ally.position()),perception.danger(bot.position())!=null);
         // Finish the bounded hide/peek/return cycle unless an urgent close threat or low health interrupts it.
         action=tactics.choose(situation,now,
                 actions.holdingCover()&&!melee&&bot.getHealth()>bot.getMaxHealth()*.2f&&(!seen||bot.distanceToSqr(target)>16),

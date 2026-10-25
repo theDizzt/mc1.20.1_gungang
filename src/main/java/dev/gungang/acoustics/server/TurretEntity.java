@@ -23,12 +23,22 @@ public final class TurretEntity extends LivingEntity {
     private static final EntityDataAccessor<Integer> CAPACITY=SynchedEntityData.defineId(TurretEntity.class,EntityDataSerializers.INT);
     private static final EntityDataAccessor<Float> RELOAD_RANGE=SynchedEntityData.defineId(TurretEntity.class,EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> AIM=SynchedEntityData.defineId(TurretEntity.class,EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Integer> COLOR=SynchedEntityData.defineId(TurretEntity.class,EntityDataSerializers.INT);
+    /** Shot end point, then a counter: one synced data packet per tick replaces a particle packet per tracer step and a sound packet. */
+    private static final EntityDataAccessor<org.joml.Vector3f> TRACER=SynchedEntityData.defineId(TurretEntity.class,EntityDataSerializers.VECTOR3);
+    private static final EntityDataAccessor<Integer> SHOTS=SynchedEntityData.defineId(TurretEntity.class,EntityDataSerializers.INT);
     private String team="";
     private long reloadUntil;
     private double reloadFraction;
     private int fireDelay;
+    private boolean repairing,destroyed;
+    private int repairTicks;
     public TurretEntity(EntityType<? extends LivingEntity> type,Level level){super(type,level);setNoGravity(true);}
-    @Override protected void defineSynchedData(){super.defineSynchedData();entityData.define(OWNER,Optional.empty());entityData.define(AMMO,250);entityData.define(CAPACITY,250);entityData.define(RELOAD_RANGE,3f);entityData.define(AIM,0f);}
+    @Override protected void defineSynchedData(){super.defineSynchedData();entityData.define(OWNER,Optional.empty());entityData.define(AMMO,120);entityData.define(CAPACITY,120);entityData.define(RELOAD_RANGE,3f);entityData.define(AIM,0f);entityData.define(COLOR,0xFFFFFF);entityData.define(TRACER,new org.joml.Vector3f());entityData.define(SHOTS,0);}
+    public int teamColor(){return entityData.get(COLOR);}
+    @Override public int getTeamColor(){return teamColor();}
+    public boolean ownerOutline(Player player){return player!=null&&player.getUUID().equals(owner());}
+    static boolean hits(float roll){return roll<.84f;}
     public UUID owner(){return entityData.get(OWNER).orElse(null);}
     public int ammo(){return entityData.get(AMMO);}
     public int capacity(){return entityData.get(CAPACITY);}
@@ -36,12 +46,15 @@ public final class TurretEntity extends LivingEntity {
     public float aimYaw(){return entityData.get(AIM);}
     public void setup(LivingEntity owner){
         entityData.set(OWNER,Optional.of(owner.getUUID()));team=owner.getTeam()==null?"":owner.getTeam().getName();
+        entityData.set(COLOR,team.equals("Red")?LobbyManager.options().color("ALPHA"):team.equals("Blue")?LobbyManager.options().color("BRAVO"):
+                owner.getTeam()!=null&&owner.getTeam().getColor().getColor()!=null?owner.getTeam().getColor().getColor():0xFFFFFF);
         entityData.set(CAPACITY,Turrets.config.capacity());entityData.set(AMMO,capacity());entityData.set(RELOAD_RANGE,(float)Turrets.config.reloadRange());
         getAttribute(Attributes.MAX_HEALTH).setBaseValue(Turrets.config.health());setHealth(getMaxHealth());entityData.set(AIM,getYRot());
     }
     public BlockPos anchor(){return BlockPos.containing(getX()-1,getY(),getZ()-1);}
-    void keepReloading(){reloadUntil=level().getGameTime()+15;}
-    void stopReload(){reloadUntil=0;reloadFraction=0;}
+    void keepReloading(){if(repairing){repairTicks=0;reloadFraction=0;}repairing=false;reloadUntil=level().getGameTime()+15;}
+    void keepRepairing(){if(!repairing){repairTicks=0;reloadFraction=0;}repairing=true;reloadUntil=level().getGameTime()+15;}
+    void stopReload(){reloadUntil=0;reloadFraction=0;repairTicks=0;repairing=false;}
     private LivingEntity ownerEntity(){return owner()!=null&&((ServerLevel)level()).getEntity(owner()) instanceof LivingEntity e?e:null;}
     @Override public void tick(){
         super.tick();setDeltaMovement(Vec3.ZERO);
@@ -58,7 +71,8 @@ public final class TurretEntity extends LivingEntity {
         if(owner()==null||Turrets.owned(owner())!=this||!Turrets.supported(level(),anchor())){discard();return;}
         var ownerEntity=ownerEntity();
         if(ownerEntity==null||!ownerEntity.isAlive()||ownerEntity.isSpectator()){discard();return;}
-        if(reloadUntil>level().getGameTime()&&ownerEntity instanceof ServerPlayer p&&p.containerMenu==p.inventoryMenu&&Turrets.canReload(p,this)){
+        if(reloadUntil>level().getGameTime()&&ownerEntity instanceof ServerPlayer p&&p.containerMenu==p.inventoryMenu&&(repairing?Turrets.canRepair(p,this):Turrets.canReload(p,this))){
+            if(repairing){if(++repairTicks>=2){heal(1);repairTicks=0;}return;}
             reloadFraction+=Turrets.config.reloadPerSecond()/20;
             int rounds=(int)reloadFraction;
             if(rounds>0){entityData.set(AMMO,Math.min(capacity(),ammo()+rounds));reloadFraction-=rounds;}
@@ -69,20 +83,36 @@ public final class TurretEntity extends LivingEntity {
         if(ammo()==0||SafeZones.contains(this)||SafeZones.contains(ownerEntity)||FreeForAllMatch.blocked(ownerEntity))return;
         if(MatchManager.preparationGate()!=null||MatchManager.bomb()!=null&&!MatchManager.bomb().activePlay())return;
         double range=Turrets.config.detectionRange();
-        var target=level().getEntitiesOfClass(LivingEntity.class,getBoundingBox().inflate(range),e->enemy(e)&&distanceToSqr(e)<=range*range&&clearShot(e))
-                .stream().min(Comparator.comparingDouble(this::distanceToSqr)).orElse(null);
+        // Nearest first, so the two ray casts of clearShot run only until a target is found.
+        var target=level().getEntitiesOfClass(LivingEntity.class,getBoundingBox().inflate(range),e->enemy(e)&&distanceToSqr(e)<=range*range)
+                .stream().sorted(Comparator.comparingDouble(this::distanceToSqr)).filter(this::clearShot).findFirst().orElse(null);
         if(target==null)return;
         Vec3 from=muzzle(),to=target.getBoundingBox().getCenter(),direction=to.subtract(from);
         entityData.set(AIM,(float)(Math.toDegrees(Math.atan2(direction.z,direction.x))-90));
         entityData.set(AMMO,ammo()-1);fireDelay=Turrets.config.fireIntervalTicks()-1;
         var source=new DamageSource(level().registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.DAMAGE_TYPE).getHolderOrThrow(BULLET),this,ownerEntity);
-        target.hurt(source,(float)Turrets.config.damage());
-        var server=(ServerLevel)level();
-        int steps=Math.max(1,(int)Math.ceil(direction.length()*3));
-        for(int i=1;i<=steps;i++){Vec3 point=from.lerp(to,(double)i/steps);server.sendParticles(ParticleTypes.CRIT,point.x,point.y,point.z,1,0,0,0,0);}
-        level().playSound(null,blockPosition(),net.minecraft.sounds.SoundEvents.FIREWORK_ROCKET_BLAST,net.minecraft.sounds.SoundSource.BLOCKS,.6f,1.8f);
+        boolean hit=hits(random.nextFloat());
+        if(hit)Turrets.bullet(target,source,(float)Turrets.config.damage());
+        else {
+            // A miss passes clearly outside the silhouette and never applies damage.
+            Vec3 side=new Vec3(-direction.z,0,direction.x).normalize().scale(target.getBbWidth()+.8);
+            to=to.add(random.nextBoolean()?side:side.scale(-1));
+            var obstruction=level().clip(new ClipContext(from,to,ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,this));
+            if(obstruction.getType()!=HitResult.Type.MISS)to=obstruction.getLocation();
+        }
+        entityData.set(TRACER,to.toVector3f());entityData.set(SHOTS,entityData.get(SHOTS)+1);
     }
-    private Vec3 muzzle(){return position().add(0,.574,0);}
+    @Override public void onSyncedDataUpdated(EntityDataAccessor<?> key){
+        super.onSyncedDataUpdated(key);
+        // TRACER is defined before SHOTS, so it is already applied. tickCount 0 is the spawn packet, not a shot.
+        if(!level().isClientSide||!SHOTS.equals(key)||tickCount==0)return;
+        Vec3 from=muzzle(),to=new Vec3(entityData.get(TRACER));
+        int steps=Math.min(24,Math.max(1,(int)Math.ceil(from.distanceTo(to))));
+        for(int i=1;i<=steps;i++){Vec3 point=from.lerp(to,(double)i/steps);level().addParticle(ParticleTypes.CRIT,point.x,point.y,point.z,0,0,0);}
+        level().playLocalSound(getX(),getY(),getZ(),TurretSounds.SHOT.get(),net.minecraft.sounds.SoundSource.BLOCKS,.55f,.96f+random.nextFloat()*.08f,false);
+    }
+    /** Barrel axis of the model (948 units at 1/800 block), on the yaw pivot. */
+    private Vec3 muzzle(){return position().add(0,1.185,0);}
     private boolean enemy(LivingEntity e){
         return (e instanceof Player||e instanceof BotEntity)&&e.isAlive()&&!e.isSpectator()&&!e.getUUID().equals(owner())
                 &&!(e instanceof Player p&&p.isCreative())&&!LobbyManager.respawning(e.getUUID())&&!FreeForAllMatch.blocked(e)&&!SafeZones.contains(e)
@@ -96,7 +126,14 @@ public final class TurretEntity extends LivingEntity {
     }
     @Override public boolean hurt(DamageSource source,float amount){
         if(level().isClientSide||isRemoved())return false;
-        invulnerableTime=0;boolean result=super.hurt(source,amount);if(getHealth()<=0)discard();return result;
+        invulnerableTime=0;boolean result=super.hurt(source,amount);if(getHealth()<=0){destruction();discard();}return result;
+    }
+    private void destruction(){
+        if(destroyed||!(level() instanceof ServerLevel server))return;destroyed=true;
+        server.sendParticles(ParticleTypes.EXPLOSION,getX(),getY()+.7,getZ(),2,.3,.3,.3,0);
+        server.sendParticles(ParticleTypes.SMOKE,getX(),getY()+.7,getZ(),24,.6,.5,.6,.06);
+        server.sendParticles(ParticleTypes.CRIT,getX(),getY()+.7,getZ(),20,.5,.4,.5,.2);
+        level().playSound(null,blockPosition(),net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,net.minecraft.sounds.SoundSource.BLOCKS,1,.9f);
     }
     @Override public boolean isPickable(){return !isRemoved();}
     @Override public boolean canBeCollidedWith(){return !isRemoved();}

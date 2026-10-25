@@ -29,6 +29,7 @@ public final class TurretModelSmokeChecks {
                 }
                 var item=mc.getItemRenderer().getModel(new ItemStack(GadgetItems.TURRET.get()),null,null,0);
                 if(item==mc.getModelManager().getMissingModel())throw new AssertionError("Missing turret item model");
+                if(mc.getSoundManager().getSoundEvent(dev.gungang.acoustics.server.TurretSounds.SHOT.get().getLocation())==null)throw new AssertionError("Missing turret gunshot sound");
                 mc.options.guiScale().set(2);mc.resizeDisplay();mc.setScreen(new Preview());shown=true;return;
             }
             if(++ticks<25)return;
@@ -39,7 +40,7 @@ public final class TurretModelSmokeChecks {
     private static final class Preview extends Screen {
         Preview(){super(Component.literal("Turret model"));}
         @Override public void render(net.minecraft.client.gui.GuiGraphics g,int mx,int my,float partial){
-            g.fill(0,0,width,height,0xFF202832);g.drawString(font,"IRON-NEST / ID 90",16,16,0xFFFFFFFF);
+            g.fill(0,0,width,height,0xFF202832);g.drawString(font,"TURRET / ID 90",16,16,0xFFFFFFFF);
             var mc=Minecraft.getInstance();var pose=g.pose();pose.pushPose();
             pose.translate(width*.5,height*.7,150);pose.scale(220,-220,220);
             pose.mulPose(com.mojang.math.Axis.XP.rotationDegrees(20));pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(145));
