@@ -1,0 +1,19 @@
+{
+  "id": "27",
+  "category": "소총",
+  "itemNbt": "{Count:1b,id:\"tacz:modern_kinetic_gun\",tag:{GunCurrentAmmoCount:389306385,GunFireMode:\"AUTO\",GunId:\"zeta:las_5\",HasBulletInBarrel:1b,HeatAmount:0.0f,OverHeated:0b}}",
+  "name": "LAS-5",
+  "description": "과열 비율에 따라 발당 피해가 2~4로 증가합니다. 피해 = 2 × (1 + 과열 비율). 초당 20발 기준 40~80 DPS이며 과열 59%에서는 63.6 DPS입니다. 헤드샷·방어·강화 효과 적용 전 수치입니다.",
+  "releaseDate": "2026-11-01",
+  "specs": {
+    "damage": "2~4 (과열 비례)",
+    "accuracy": "조준 시 높음",
+    "stability": "반동 없음",
+    "range": "총기 팩 설정 적용",
+    "fireRate": "1200 RPM / 초당 20발"
+  },
+  "stats": [{"name":"기본 DPS","value":"40~80"},{"name":"과열 배율","value":"100~200%"}],
+  "usage": "TaCZ 발사·조준·재장전 키를 사용합니다. 발사 시점의 과열 비율로 피해를 결정하며, 과열 잠금과 냉각은 기존 LAS-5 규칙을 따릅니다.",
+  "maxHealth": 100,
+  "movementSpeed": 100
+}

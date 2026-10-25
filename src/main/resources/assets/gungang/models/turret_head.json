@@ -1,0 +1,10 @@
+{
+  "loader": "forge:obj",
+  "model": "gungang:models/turret_head.obj",
+  "automatic_culling": false,
+  "flip_v": true,
+  "render_type": "minecraft:cutout",
+  "textures": {
+    "particle": "gungang:item/turret"
+  }
+}

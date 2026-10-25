@@ -157,6 +157,7 @@ public final class CombatGadgets {
     }
     public static Hud hud(ServerPlayer p) {
         var gauges=new ArrayList<Gauge>();long now=p.level().getGameTime();
+        var turret=Turrets.owned(p.getUUID());if(turret!=null)gauges.add(new Gauge("turret_ammo",turret.ammo(),turret.capacity(),false));
         if(MatchManager.bomb()!=null){var gauge=MatchManager.bomb().gauge(p);if(gauge!=null)gauges.add(gauge);}
         long jet=SurvivalGadgets.jetRemaining(p);if(jet>0)gauges.add(new Gauge("jetpack",jet,ExtraGadgetConfig.ticks(ExtraGadgetConfig.jet.durationSeconds()),true));
         if(holdingShield(p))gauges.add(new Gauge("shield",shield(p).health,(float)ExtraGadgetConfig.shield.capacity(),false));

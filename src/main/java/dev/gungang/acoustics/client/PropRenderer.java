@@ -39,9 +39,12 @@ public final class PropRenderer extends EntityRenderer<PropEntity> {
     @Override public void render(PropEntity entity,float yaw,float partial,PoseStack pose,MultiBufferSource buffers,int light){
         var mc=Minecraft.getInstance();var state=entity.state();pose.pushPose();
         if(entity.item().equals("minecraft:barrier")){
-            pose.translate(0,.075,0);pose.scale(.7f,.7f,.7f);
-            var item=net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(new ResourceLocation(entity.item()));
-            mc.getItemRenderer().renderStatic(new ItemStack(item),ItemDisplayContext.GROUND,light,OverlayTexture.NO_OVERLAY,pose,buffers,entity.level(),entity.getId());
+            // Invisible barrier body; only authorized viewers receive a cube in the outline mask.
+            if(mc.shouldEntityAppearGlowing(entity)){
+                pose.translate(-.5,0,-.5);
+                MultiBufferSource outlineOnly=type->buffers.getBuffer(RenderType.outline(TextureAtlas.LOCATION_BLOCKS));
+                mc.getBlockRenderer().renderSingleBlock(Blocks.WHITE_CONCRETE.defaultBlockState(),pose,outlineOnly,light,OverlayTexture.NO_OVERLAY);
+            }
         }else if(entity.item().equals("minecraft:painting")){
             var variants=entity.level().registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.PAINTING_VARIANT);
             var list=variants.holders().toList();

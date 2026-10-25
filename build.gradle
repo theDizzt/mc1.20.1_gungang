@@ -24,21 +24,29 @@ if (project.hasProperty('gungangPropSmoke')) sourceSets.main.java.srcDir('src/pr
 if (project.hasProperty('gungangBotSmoke')) sourceSets.main.java.srcDir('src/botSmoke/java')
 if (project.hasProperty('gungangAxeSmoke')) sourceSets.main.java.srcDir('src/axeSmoke/java')
 if (project.hasProperty('gungangBowSmoke')) sourceSets.main.java.srcDir('src/bowSmoke/java')
+if (project.hasProperty('gungangTurretSmoke')) sourceSets.main.java.srcDir('src/turretSmoke/java')
+if (project.hasProperty('gungangLasSmoke')) sourceSets.main.java.srcDir('src/lasSmoke/java')
+if (project.hasProperty('gungangOutlineSmoke')) sourceSets.main.java.srcDir('src/outlineSmoke/java')
+if (project.hasProperty('gungangTurretClientSmoke')) sourceSets.main.java.srcDir('src/turretClientSmoke/java')
 
 minecraft {
     mappings channel: 'official', version: '1.20.1'
     copyIdeResources = true
     runs {
         client {
-            workingDirectory project.file(project.hasProperty('gungangAxeSmoke') ? 'build/axe-client-smoke' : 'run')
+            workingDirectory project.file(project.hasProperty('gungangTurretClientSmoke') ? 'build/turret-client-smoke' : project.hasProperty('gungangAxeSmoke') ? 'build/axe-client-smoke' : 'run')
             property 'forge.logging.console.level', 'info'
             if (project.hasProperty('gungangScannerPreview')) property 'gungang.scannerPreview', 'true'
             if (project.hasProperty('gungangOrbitalPreview')) property 'gungang.orbitalPreview', 'true'
             mods { gungang_acoustics { source sourceSets.main } }
+            if (project.hasProperty('gungangOutlineSmoke')) workingDirectory project.file('build/outline-client-smoke')
         }
         server {
-            workingDirectory project.file(project.hasProperty('gungangBowSmoke') ? 'build/bow-smoke-run' : project.hasProperty('gungangAxeSmoke') ? 'build/axe-server-smoke' : project.hasProperty('gungangBotSmoke') ? 'build/bot-smoke-run' : project.hasProperty('gungangPropSmoke') ? 'build/prop-smoke-run' : project.hasProperty('gungangBombSmoke') ? 'build/bomb-smoke-run' : 'run-server')
+            if (project.hasProperty('gungangLasSmoke')) property 'gungang.lasSmoke', 'true'
+            workingDirectory project.file(project.hasProperty('gungangTurretSmoke') ? 'build/turret-smoke-run' : project.hasProperty('gungangBowSmoke') ? 'build/bow-smoke-run' : project.hasProperty('gungangAxeSmoke') ? 'build/axe-server-smoke' : project.hasProperty('gungangBotSmoke') ? 'build/bot-smoke-run' : project.hasProperty('gungangPropSmoke') ? 'build/prop-smoke-run' : project.hasProperty('gungangBombSmoke') ? 'build/bomb-smoke-run' : 'run-server')
             args '--nogui'
+            if (project.hasProperty('gungangOutlineSmoke')) workingDirectory project.file('build/outline-server-smoke')
+            if (project.hasProperty('gungangLasSmoke')) workingDirectory project.file('build/las-smoke-run')
             mods { gungang_acoustics { source sourceSets.main } }
         }
     }
@@ -74,6 +82,11 @@ tasks.named('jar', Jar).configure {
     exclude 'dev/gungang/acoustics/server/PropSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/server/BotSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/server/CompoundBowSmokeChecks*.class'
+    exclude 'dev/gungang/acoustics/server/TurretSmokeChecks*.class'
+    exclude 'dev/gungang/acoustics/server/Las5SmokeChecks*.class'
+    exclude 'dev/gungang/acoustics/server/OutlineSmokeWorld*.class'
+    exclude 'dev/gungang/acoustics/client/OutlineSmokeChecks*.class'
+    exclude 'dev/gungang/acoustics/client/TurretModelSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/server/HandAxeSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/client/HandAxeSmokeChecks*.class'
     archiveFileName = "gungang-realistic_1.20.1_${releaseName}.jar"
