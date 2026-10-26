@@ -1,4 +1,4 @@
 {
   "replace": false,
-  "values": ["gungang:turret_bullet"]
+  "values": ["gungang:turret_bullet", "gungang:arrow_fragment"]
 }
