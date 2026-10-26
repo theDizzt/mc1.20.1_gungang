@@ -56,6 +56,20 @@ public final class SecondaryRuntime {
         DEADLINES.computeIfAbsent(player.getUUID(),id->new HashMap<>()).put(tag.getString("GunGangSecondaryId"),end);
         player.inventoryMenu.broadcastChanges();
     }
+    static void turretDestroyed(Player player,ItemStack deployed) {
+        if(!secondary(deployed))return;
+        deployed.getOrCreateTag().putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(Turrets.config.cooldownSeconds()));
+        commit(player,deployed);
+        var tag=deployed.getTag();
+        for(int i=0;i<player.getInventory().getContainerSize();i++) {
+            var stack=player.getInventory().getItem(i);
+            if(secondary(stack)&&tag.getString("GunGangSecondaryId").equals(stack.getTag().getString("GunGangSecondaryId"))) {
+                stack.getTag().putInt("GunGangCooldownTicks",tag.getInt("GunGangCooldownTicks"));
+                stack.getTag().putLong("GunGangCooldownEnd",tag.getLong("GunGangCooldownEnd"));
+            }
+        }
+        player.inventoryMenu.broadcastChanges();
+    }
     public static <T> T use(ItemStack stack,LivingEntity entity,Supplier<T> action,T blocked) {
         if(FreeForAllMatch.blocked(entity))return blocked;
         if(SurvivalGadgets.jetting(entity))return blocked;

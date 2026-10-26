@@ -1,0 +1,12 @@
+Model Information:
+* title:	Rapier Sword
+* source:	https://sketchfab.com/3d-models/rapier-sword-98a14cb81f974fb89775b5cfe269bd28
+* author:	FedeOde (https://sketchfab.com/FedeOde)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Rapier Sword" (https://sketchfab.com/3d-models/rapier-sword-98a14cb81f974fb89775b5cfe269bd28) by FedeOde (https://sketchfab.com/FedeOde) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+Modifications: converted to OBJ, aligned blade along Y, scaled for Minecraft; base color retained, PBR maps omitted.

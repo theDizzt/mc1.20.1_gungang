@@ -14,12 +14,13 @@ import net.minecraftforge.fml.common.Mod;
 /** Actual Forge OBJ baking and renderer captures, excluded from release JARs. */
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID,value=Dist.CLIENT)
 public final class HandAxeSmokeChecks {
+    private static final boolean RAPIER=Boolean.getBoolean("gungang.rapierPreview");
     private static final boolean SCANNER=Boolean.getBoolean("gungang.scannerPreview");
     private static final boolean ORBITAL=Boolean.getBoolean("gungang.orbitalPreview");
-    private static ItemStack stack(){return new ItemStack(ORBITAL?GadgetItems.ORBITAL_STRIKE.get():SCANNER?GadgetItems.SCANNER.get():GadgetItems.HAND_AXE.get());}
+    private static ItemStack stack(){return new ItemStack(RAPIER?GadgetItems.RAPIER.get():ORBITAL?GadgetItems.ORBITAL_STRIKE.get():SCANNER?GadgetItems.SCANNER.get():GadgetItems.HAND_AXE.get());}
     private static String marker(){return ORBITAL?"GUNGANG_ORBITAL_CLIENT":SCANNER?"GUNGANG_SCANNER_CLIENT":"GUNGANG_HAND_AXE_CLIENT";}
-    private static int expectedQuads(){return ORBITAL?17496:SCANNER?7104:84;}
-    private static java.util.Set<String> textures(){return ORBITAL?java.util.Set.of("gungang:item/orbital_strike"):SCANNER?java.util.Set.of("gungang:item/infrared_scanner_0","gungang:item/infrared_scanner_1"):java.util.Set.of("gungang:item/hand_axe");}
+    private static int expectedQuads(){return RAPIER?1750:ORBITAL?17496:SCANNER?7104:84;}
+    private static java.util.Set<String> textures(){return RAPIER?java.util.Set.of("gungang:item/rapier"):ORBITAL?java.util.Set.of("gungang:item/orbital_strike"):SCANNER?java.util.Set.of("gungang:item/infrared_scanner_0","gungang:item/infrared_scanner_1"):java.util.Set.of("gungang:item/hand_axe");}
     private static int ticks;
     private static boolean opened;
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
@@ -40,7 +41,7 @@ public final class HandAxeSmokeChecks {
                 if(ORBITAL||SCANNER){System.out.println(marker()+"_PASS quads="+expectedQuads()+" texture=pass screenshot="+path);mc.stop();}
                 else mc.setScreen(new MotionScreen());
             }else if(ticks==80) {
-                var path=java.nio.file.Path.of("../ui-smoke/hand-axe-motion.png");
+                var path=java.nio.file.Path.of(RAPIER?"../ui-smoke/rapier-motion.png":"../ui-smoke/hand-axe-motion.png");
                 try(var image=net.minecraft.client.Screenshot.takeScreenshot(mc.getMainRenderTarget())){image.writeToFile(path);}
                 System.out.println(marker()+"_PASS quads="+expectedQuads()+" texture=pass screenshot="+path);mc.stop();
             }
@@ -48,9 +49,9 @@ public final class HandAxeSmokeChecks {
     }
     /** First-person chop frames at 70 FOV (top two rows) and the third-person arm seen from the side (bottom row). */
     private static final class MotionScreen extends Screen {
-        private static final float[] FIRST={-1,0,.08f,.16f,.26f,.31f,.36f,.43f,.6f,2};
-        private static final String[] FIRST_LABELS={"carry (offhand)","ready","draw back",".16 cocked",".26 strike",".31 strike",".36 impact",".43 rebound",".60 recover","throw charge"};
-        private static final float[] THIRD={0,.16f,.26f,.34f,.6f};
+        private static final float[] FIRST={-1,0,.24f,.34f,.46f,.59f,.76f,.90f,1,2};
+        private static final String[] FIRST_LABELS={"carry (offhand)","ready",".24 wind-up",".34 accelerate",".46 strike",".59 follow-through",".76 recover",".90 ready","1 ready","throw charge"};
+        private static final float[] THIRD={0,.24f,.46f,.59f,.76f};
         MotionScreen(){super(net.minecraft.network.chat.Component.literal("Hand axe motion"));}
         @Override public void render(GuiGraphics g,int mx,int my,float partial) {
             g.fill(0,0,width,height,0xff263747);
@@ -93,8 +94,8 @@ public final class HandAxeSmokeChecks {
             com.mojang.blaze3d.platform.Lighting.setupFor3DItems();
             var pose=new com.mojang.blaze3d.vertex.PoseStack();var buffers=minecraft.renderBuffers().bufferSource();
             var root=new org.joml.Matrix4f(pose.last().pose());
-            HandAxeAnimation.firstPerson(pose,true,t>1?0:t,t>1?1:0,0);
-            HandAxeAnimation.renderGrip(pose,buffers,15728880,stack(),model,skin,true,false,root,null,null,0);
+            if(RAPIER){RapierAnimation.firstPerson(pose,true,0,Math.max(0,Math.min(1,t)));pose.pushPose();pose.scale(.8f,.8f,.8f);HandAxeAnimation.renderForearm(pose,buffers,15728880,model,skin,true,false,root);pose.popPose();pose.scale(1.3f,1.3f,1.3f);pose.translate(0,.65,0);minecraft.getItemRenderer().renderStatic(stack(),ItemDisplayContext.NONE,15728880,net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,pose,buffers,null,0);} else HandAxeAnimation.firstPerson(pose,true,t>1?0:t,t>1?1:0,0);
+            if(!RAPIER)HandAxeAnimation.renderGrip(pose,buffers,15728880,stack(),model,skin,true,false,root,null,null,0);
             buffers.endBatch();
             com.mojang.blaze3d.systems.RenderSystem.setProjectionMatrix(old,com.mojang.blaze3d.vertex.VertexSorting.ORTHOGRAPHIC_Z);
             view.popPose();com.mojang.blaze3d.systems.RenderSystem.applyModelViewMatrix();

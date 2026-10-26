@@ -18,10 +18,22 @@ import net.minecraftforge.fml.common.Mod;
 public final class Turrets {
     public record Config(double damage,double detectionRange,double cooldownSeconds,double health,int capacity,
                          int fireIntervalTicks,double reloadPerSecond,double reloadRange,double placementRange) { }
-    public static Config config=new Config(10,16,210,100,250,5,20,3,5);
+    public static Config config=new Config(6,16,120,150,120,4,20,3,5);
+    private static final ThreadLocal<net.minecraft.world.entity.LivingEntity> BULLET_VICTIM=new ThreadLocal<>();
+    static void bullet(net.minecraft.world.entity.LivingEntity target,net.minecraft.world.damagesource.DamageSource source,float damage) {
+        var previous=BULLET_VICTIM.get();BULLET_VICTIM.set(target);
+        try{target.hurt(source,damage);}finally{if(previous==null)BULLET_VICTIM.remove();else BULLET_VICTIM.set(previous);}
+    }
+    @SubscribeEvent(priority=net.minecraftforge.eventbus.api.EventPriority.HIGHEST)
+    public static void knockback(net.minecraftforge.event.entity.living.LivingKnockBackEvent event){if(BULLET_VICTIM.get()==event.getEntity())event.setCanceled(true);}
     private static final Map<UUID,TurretEntity> OWNED=new HashMap<>();
     static void load(Map<String,com.google.gson.JsonObject> overrides,boolean apply)throws java.io.IOException {
-        var c=GadgetConfig.read("turret",Config.class,new Config(10,16,210,100,250,5,20,3,5),overrides,apply);
+        var c=GadgetConfig.read("turret",Config.class,new Config(6,16,120,150,120,4,20,3,5),overrides,apply);
+        // Upgrade earlier shipped configurations (1.0, then 1 damage every tick); preserve deliberately customized server settings.
+        if(!overrides.containsKey("turret")&&(c.equals(new Config(4,16,210,150,120,4,20,3,5))||c.equals(new Config(10,16,210,100,250,5,20,3,5))||c.equals(new Config(1,16,210,150,250,1,20,3,5)))) {
+            c=new Config(6,16,120,150,120,4,20,3,5);
+            if(apply)java.nio.file.Files.writeString(ServerFiles.root().resolve("item/turret.json"),ServerFiles.GSON.toJson(c));
+        }
         GadgetConfig.bounded(c.damage(),0,10000);GadgetConfig.bounded(c.detectionRange(),1,64);
         GadgetConfig.bounded(c.cooldownSeconds(),0,86400);GadgetConfig.bounded(c.health(),1,1024);
         GadgetConfig.bounded(c.capacity(),1,10000);GadgetConfig.bounded(c.fireIntervalTicks(),1,1200);
@@ -61,8 +73,15 @@ public final class Turrets {
         return point.distanceToSqr(x,y,z);
     }
     public static boolean canReload(Player p,TurretEntity turret) {
+        return canService(p,turret,false);
+    }
+    public static boolean canRepair(Player p,TurretEntity turret){return canService(p,turret,true);}
+    private static boolean canService(Player p,TurretEntity turret,boolean repair) {
+        return canInteract(p,turret)&&(repair?turret.getHealth()<turret.getMaxHealth():turret.ammo()<turret.capacity());
+    }
+    public static boolean canInteract(Player p,TurretEntity turret) {
         if(p==null||turret==null||p.level()!=turret.level()||!p.isAlive()||p.isSpectator()||!turret.isAlive()
-                ||!p.getUUID().equals(turret.owner())||turret.ammo()>=turret.capacity()||LobbyManager.respawning(p.getUUID())
+                ||!p.getUUID().equals(turret.owner())||LobbyManager.respawning(p.getUUID())
                 ||FreeForAllMatch.blocked(p)||SurvivalGadgets.jetting(p)||GadgetManager.placing(p)
                 ||distanceSquared(p,turret)>turret.reloadRange()*turret.reloadRange())return false;
         return p.level().clip(new ClipContext(p.getEyePosition(),turret.position().add(0,1,0),ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,p)).getType()==HitResult.Type.MISS;
@@ -71,6 +90,7 @@ public final class Turrets {
         var turret=owned(p.getUUID());if(turret==null)return;
         if(action.equals("up"))turret.stopReload();
         else if((action.equals("down")||action.equals("hold"))&&p.containerMenu==p.inventoryMenu&&canReload(p,turret))turret.keepReloading();
+        else if((action.equals("repair_down")||action.equals("repair_hold"))&&p.containerMenu==p.inventoryMenu&&canRepair(p,turret))turret.keepRepairing();
     }
     static void clear(MinecraftServer server,UUID owner) {var turret=owned(owner);if(turret!=null)turret.discard();OWNED.remove(owner);}
     static int clearAll(MinecraftServer server) {

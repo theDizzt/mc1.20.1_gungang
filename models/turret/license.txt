@@ -1,11 +1,11 @@
 Model Information:
-* title:	IRON-NEST Ver 2.0
-* source:	https://sketchfab.com/3d-models/iron-nest-ver-20-ebd5b99509174e9fa2906245f87bc3c9
-* author:	Maxy (https://sketchfab.com/Max.d.reyes)
+* title:	Turret
+* source:	https://sketchfab.com/3d-models/turret-e0e03e8eed174fa082c9a890c2217596
+* author:	FeelsBadMan (https://sketchfab.com/FeelsBadMan)
 
 Model License:
 * license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
 * requirements:	Author must be credited. Commercial use is allowed.
 
 If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
-This work is based on "IRON-NEST Ver 2.0" (https://sketchfab.com/3d-models/iron-nest-ver-20-ebd5b99509174e9fa2906245f87bc3c9) by Maxy (https://sketchfab.com/Max.d.reyes) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+This work is based on "Turret" (https://sketchfab.com/3d-models/turret-e0e03e8eed174fa082c9a890c2217596) by FeelsBadMan (https://sketchfab.com/FeelsBadMan) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

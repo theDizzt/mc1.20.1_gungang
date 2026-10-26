@@ -12,7 +12,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /** TaCZ targets read getDamage directly without firing LivingDamageEvent. */
 @Pseudo
 @Mixin(targets="com.tacz.guns.entity.EntityKineticBullet",remap=false)
-public abstract class TaczDamageMixin {
+public abstract class TaczDamageMixin implements dev.gungang.acoustics.server.Las5Damage.BulletAccess {
+    @org.spongepowered.asm.mixin.Shadow public abstract net.minecraft.resources.ResourceLocation getGunId();
     @Inject(method="getDamage",at=@At("RETURN"),cancellable=true,require=0)
     private void gungang$damage(Vec3 position,CallbackInfoReturnable<Float> cir) {
         var bullet=(Projectile)(Object)this;
@@ -22,6 +23,6 @@ public abstract class TaczDamageMixin {
         }
         double multiplier=AdrenalineDamage.multiplier(bullet.getOwner());
         bullet.getPersistentData().putDouble("GunGangRawDamageMultiplier",multiplier);
-        cir.setReturnValue((float)(cir.getReturnValue()*multiplier));
+        cir.setReturnValue((float)(dev.gungang.acoustics.server.Las5Damage.baseDamage(bullet,cir.getReturnValue())*multiplier));
     }
 }

@@ -1,10 +1,10 @@
 {
-  "damage": 10,
+  "damage": 6,
   "detectionRange": 16,
-  "cooldownSeconds": 210,
-  "health": 100,
-  "capacity": 250,
-  "fireIntervalTicks": 5,
+  "cooldownSeconds": 120,
+  "health": 150,
+  "capacity": 120,
+  "fireIntervalTicks": 4,
   "reloadPerSecond": 20,
   "reloadRange": 3,
   "placementRange": 5

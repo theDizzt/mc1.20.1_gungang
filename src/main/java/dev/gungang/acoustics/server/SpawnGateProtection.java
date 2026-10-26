@@ -13,9 +13,9 @@ public final class SpawnGateProtection {
     public static final String BLOCKED="GunGangSpawnGateBlocked";
     /** Geometry-only trace: a shooter's team must never make an attack ray pass through. */
     public static boolean crosses(BlockGetter level,Vec3 from,Vec3 to){
-        if(from==null||to==null||!Double.isFinite(from.lengthSqr())||!Double.isFinite(to.lengthSqr()))return false;
-        if(level.getBlockState(net.minecraft.core.BlockPos.containing(from)).getBlock() instanceof SpawnGateBlock)return true;
-        return BlockGetter.traverseBlocks(from,to,level,(world,pos)->world.getBlockState(pos).getBlock() instanceof SpawnGateBlock?Boolean.TRUE:null,world->Boolean.FALSE);
+        if(SpawnGateBlock.hologram()||from==null||to==null||!Double.isFinite(from.lengthSqr())||!Double.isFinite(to.lengthSqr()))return false;
+        if(SpawnGateBlock.barrier(level.getBlockState(net.minecraft.core.BlockPos.containing(from))))return true;
+        return BlockGetter.traverseBlocks(from,to,level,(world,pos)->SpawnGateBlock.barrier(world.getBlockState(pos))?Boolean.TRUE:null,world->Boolean.FALSE);
     }
     public static boolean shields(Entity target,Vec3 origin){
         return crosses(target.level(),origin,target.getBoundingBox().getCenter())||crosses(target.level(),origin,target.getEyePosition());
@@ -32,7 +32,7 @@ public final class SpawnGateProtection {
     }
     private static void absorb(Entity projectile){projectile.getPersistentData().putBoolean(BLOCKED,true);projectile.discard();}
     @SubscribeEvent(priority=EventPriority.HIGHEST) public static void impact(net.minecraftforge.event.entity.ProjectileImpactEvent event){
-        if(event.getRayTraceResult() instanceof BlockHitResult hit&&event.getEntity().level().getBlockState(hit.getBlockPos()).getBlock() instanceof SpawnGateBlock){
+        if(event.getRayTraceResult() instanceof BlockHitResult hit&&SpawnGateBlock.barrier(event.getEntity().level().getBlockState(hit.getBlockPos()))){
             if(!event.getEntity().level().isClientSide)absorb(event.getEntity());event.setCanceled(true);
         }
     }
@@ -47,7 +47,7 @@ public final class SpawnGateProtection {
         var type=(Class<Event>)Class.forName("com.tacz.guns.api.event.server.AmmoHitBlockEvent");var world=type.getMethod("getLevel");var hit=type.getMethod("getHitResult");var ammo=type.getMethod("getAmmo");
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST,false,type,event->{try{
             var level=(Level)world.invoke(event);var result=(BlockHitResult)hit.invoke(event);
-            if(!level.isClientSide&&level.getBlockState(result.getBlockPos()).getBlock() instanceof SpawnGateBlock){absorb((Entity)ammo.invoke(event));if(event.isCancelable())event.setCanceled(true);}
+            if(!level.isClientSide&&SpawnGateBlock.barrier(level.getBlockState(result.getBlockPos()))){absorb((Entity)ammo.invoke(event));if(event.isCancelable())event.setCanceled(true);}
         }catch(ReflectiveOperationException error){com.mojang.logging.LogUtils.getLogger().error("Spawn gate bullet interception failed",error);}});
     }catch(ClassNotFoundException absent){/* Optional gun integration. */}catch(ReflectiveOperationException error){com.mojang.logging.LogUtils.getLogger().warn("Spawn gate TaCZ hook unavailable",error);}}
     private SpawnGateProtection(){}

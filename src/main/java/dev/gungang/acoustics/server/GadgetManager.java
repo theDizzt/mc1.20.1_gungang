@@ -115,7 +115,7 @@ public final class GadgetManager {
             var turret=GadgetItems.TURRET_ENTITY.get().create(p.serverLevel());if(turret==null)return;
             turret.setPos(pos.getX()+1,pos.getY(),pos.getZ()+1);turret.setYRot(p.getYRot());turret.setup(p);
             if(!Turrets.claim(turret)){turret.discard();return;}
-            if(p.serverLevel().addFreshEntity(turret)){SecondaryRuntime.commit(p,stack);cancel(p);}
+            if(p.serverLevel().addFreshEntity(turret)){turret.deployment(stack);cancel(p);}
             else turret.discard();
             return;
         }

@@ -65,7 +65,7 @@ public final class EscortHud {
     /** Route track: pushed section in ALPHA, current leg highlighted, diamond checkpoints, goal flag and a cart pointer with a status chip. */
     private static void track(GuiGraphics g,EscortMatch.View v,int alpha,int bravo,double next){
         int y=TRACK,cart=x(v,v.distance());
-        g.fill(L-1,y-1,R+1,y+4,DeathmatchHud.EDGE);g.fill(L,y,R,y+3,0xFF2A3A50);
+        g.fill(L-1,y-1,R+1,y+4,DeathmatchHud.EDGE);g.fill(L,y,R,y+3,TacticalStyle.EDGE);
         g.fill(cart,y,x(v,next),y+3,0x40FFFFFF);
         g.fill(L,y,cart,y+3,alpha);
         for(int i=0;i<v.checkpoints().size();i++){
