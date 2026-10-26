@@ -12,6 +12,7 @@
   "item.gungang.life_support": "Life Support",
   "item.gungang.jetpack": "Jetpack",
   "item.gungang.turret": "Turret",
+  "item.gungang.rapier": "Rapier",
   "entity.gungang_acoustics.turret": "Turret",
   "death.attack.gungang.turret": "%1$s was shot by %2$s's turret"
 }

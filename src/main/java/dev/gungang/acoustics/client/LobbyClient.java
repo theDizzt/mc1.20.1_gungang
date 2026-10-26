@@ -22,11 +22,9 @@ public final class LobbyClient {
     public static TeamOptions options=TeamOptions.defaults();
     private static long requestedUntil;
     private static boolean hintVisible;
-    private static boolean lobbyAvailable;
     public static void acoustics(String json) { AcousticPolicy.receive(JsonParser.parseString(json).getAsJsonObject()); }
     public static void receive(String json) {
         var state = ServerFiles.GSON.fromJson(json, LobbySnapshot.class);
-        lobbyAvailable=state.enabled()&&state.phase().equals("LOBBY");
         var previousOptions=options;
         options=state.options()==null?TeamOptions.defaults():state.options();
         Minecraft mc = Minecraft.getInstance();
@@ -48,12 +46,18 @@ public final class LobbyClient {
         else if (next.show() && next.catalog() != null) { requestedUntil = 0; mc.setScreen(new LoadoutScreen(next)); }
     }
     public static void action(String action, String value, String target) { GungangNetwork.CHANNEL.sendToServer(new GungangNetwork.Action(action, value, target)); }
+    /** Reserve the configured key before vanilla opens advancements; let the server decide lobby availability. */
+    public static boolean lobbyKey(int key,int scan,int action){return lobbyInput(LOBBY.isActiveAndMatches(com.mojang.blaze3d.platform.InputConstants.getKey(key,scan)),action);}
+    public static boolean lobbyMouse(int button,int action){return lobbyInput(LOBBY.isActiveAndMatches(com.mojang.blaze3d.platform.InputConstants.Type.MOUSE.getOrCreate(button)),action);}
+    private static boolean lobbyInput(boolean matches,int input){
+        var mc=Minecraft.getInstance();
+        if(!matches||mc.player==null||mc.screen!=null||mc.getConnection()==null
+                ||!GungangNetwork.CHANNEL.isRemotePresent(mc.getConnection().getConnection()))return false;
+        if(input==GLFW.GLFW_PRESS)action("lobby","","");
+        return true;
+    }
     @SubscribeEvent public static void key(InputEvent.Key event) {
         var mc = Minecraft.getInstance();
-        if(event.getAction()==GLFW.GLFW_PRESS&&lobbyAvailable&&LOBBY.matches(event.getKey(),event.getScanCode())&&mc.player!=null&&mc.screen==null){
-            if(mc.options.keyAdvancements.matches(event.getKey(),event.getScanCode()))while(mc.options.keyAdvancements.consumeClick()) { }
-            action("lobby","","");return;
-        }
         if (event.getAction() == GLFW.GLFW_PRESS && LOADOUT.matches(event.getKey(), event.getScanCode())
                 && equipment != null && equipment.allowed() && mc.screen == null) {
             requestedUntil = System.nanoTime() + 1_000_000_000L;
@@ -76,7 +80,7 @@ public final class LobbyClient {
         else if(hintVisible)mc.gui.setOverlayMessage(Component.empty(),false);
         hintVisible=show;
     }
-    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event) { SafeZones.clearClient(); PreviewCache.clear(); AcousticPolicy.clear(); equipment = null; requestedUntil = 0; hintVisible=false; lobbyAvailable=false; options=TeamOptions.defaults(); }
-    @SubscribeEvent public static void login(ClientPlayerNetworkEvent.LoggingIn event) { AcousticPolicy.clear(); equipment = null;lobbyAvailable=false; }
+    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event) { SafeZones.clearClient(); PreviewCache.clear(); AcousticPolicy.clear(); equipment = null; requestedUntil = 0; hintVisible=false; options=TeamOptions.defaults(); }
+    @SubscribeEvent public static void login(ClientPlayerNetworkEvent.LoggingIn event) { AcousticPolicy.clear(); equipment = null; }
     private LobbyClient() { }
 }

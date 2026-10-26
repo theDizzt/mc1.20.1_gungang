@@ -6,7 +6,7 @@ import net.minecraft.client.gui.GuiGraphics;
 
 /** Flat score strip: team plates either side of a free-standing, shadowed match clock. */
 final class DeathmatchHud {
-    static final int SURFACE=0x9E0B121C,EDGE=0xB42A3A50,MUTED=0xFF9AAABD;
+    static final int SURFACE=0xB0141511,EDGE=0xB455564C,MUTED=TacticalStyle.MUTED;
     static int draw(GuiGraphics g,MatchSnapshot state) {
         int top=Math.max(2,BossBarHud.bottom+1);
         float scale=Math.min(.8f,(g.guiWidth()-12)/232f);
@@ -69,6 +69,7 @@ final class DeathmatchHud {
         g.fill(x1,y1,x2,y1+1,0x14FFFFFF);
         g.fill(x1,y2-2,x2,y2,color|0xFF000000);
         g.fill(fadeLeft?x1:x2-2,y1,fadeLeft?x1+2:x2,y2,color|0xFF000000);
+        if(bright)TacticalStyle.corner(g,x2,y1,4,color|0xFF000000);
     }
     static void small(GuiGraphics g,String text,int x,int y,float size,int color,boolean centered) { small(g,text,x,y,size,color,centered,true); }
     /** Scaled label; leftAnchor=false right-aligns it to x. */

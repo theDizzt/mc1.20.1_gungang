@@ -9,7 +9,7 @@ import net.minecraft.world.item.ItemStack;
 
 /** Prop hunt in the deathmatch/escort style: role plates around the LCD clock, a disguise tile row, and two TAB cards. */
 final class PropHuntHud {
-    static final int HIDER=0xFF75D9AD,SEEKER=0xFFFFB86C,FOUND=0xFFFF6B6B,DIM=0xFF5F6E80;
+    static final int HIDER=0xFF75D9AD,SEEKER=0xFFFFB86C,FOUND=0xFFFF6B6B,DIM=TacticalStyle.DIM;
     private static final int TILE=18,GAP=3,HEAD=28,COLS=13,ROW=18,FOOT=13,SPLIT=8;
     /** A TAB row from either snapshot; found is null when the source does not know it (match results). */
     private record Entry(String id,String name,boolean hider,Boolean found,int seconds,int finds) { }
@@ -79,7 +79,7 @@ final class PropHuntHud {
             if(row.found()) {
                 // Items render at z 150; the strike sits above them.
                 g.pose().pushPose();g.pose().translate(0,0,200);
-                g.fill(x,ty,x+TILE,ty+TILE,0x900B121C);
+                g.fill(x,ty,x+TILE,ty+TILE,0x90141511);
                 for(int d=2;d<TILE-2;d++){g.fill(x+d,ty+d,x+d+1,ty+d+1,FOUND);g.fill(x+TILE-1-d,ty+d,x+TILE-d,ty+d+1,FOUND);}
                 g.pose().popPose();
             }
@@ -110,16 +110,16 @@ final class PropHuntHud {
                              int left,int top,int width,int bottom,int page,int capacity,int pages) {
         var mc=Minecraft.getInstance();var font=mc.font;int right=left+width,rgb=color&0xFFFFFF;
         g.fill(right,top+2,right+2,bottom+2,0x40000000);g.fill(left+2,bottom,right,bottom+2,0x40000000);
-        g.fillGradient(left,top,right,bottom,0xA6131D2B,0xA60B121C);
+        g.fillGradient(left,top,right,bottom,0xB01D1F18,0xB010110E);
         g.fillGradient(left,top,right,top+HEAD,rgb|0x50000000,rgb|0x08000000);
         g.fill(left,top,right,top+2,color);g.fill(left+8,top+9,left+10,top+19,color);
         g.drawString(font,title,left+14,top+7,0xFFFFFFFF,false);
-        g.drawString(font,subtitle,left+14,top+17,0xFF9AAABD,false);
+        g.drawString(font,subtitle,left+14,top+17,TacticalStyle.MUTED,false);
         g.pose().pushPose();g.pose().translate(right-8-HudText.numberWidth(total)*2,top+6,0);g.pose().scale(2,2,1);
         g.drawString(font,HudText.number(total),0,0,0xFFFFFFFF,false);g.pose().popPose();
         // Hiders: status + hidden time; seekers: find count. Right-anchored so names keep the rest.
         int value=right-8,status=value-52,face=left+26,nameX=face+30,cy=top+HEAD,nameEnd=hider?status-34:value-30;
-        g.fill(left,cy,right,cy+COLS,0x30000000);g.fill(left,cy+COLS-1,right,cy+COLS,0xFF22324A);
+        g.fill(left,cy,right,cy+COLS,0x30000000);g.fill(left,cy+COLS-1,right,cy+COLS,TacticalStyle.EDGE);
         g.drawString(font,"#",left+8,cy+3,DIM,false);g.drawString(font,"플레이어",face,cy+3,DIM,false);
         if(hider){MatchHud.column(g,"상태",status,cy+3,DIM);MatchHud.column(g,"숨은 시간",value,cy+3,DIM);}
         else MatchHud.column(g,"발견",value,cy+3,DIM);
@@ -132,11 +132,11 @@ final class PropHuntHud {
             else if(i%2==1)g.fill(left,ry,right,ry+ROW,0x10FFFFFF);
             String number=String.valueOf(rank);
             g.drawString(font,HudText.number(number),left+8+(10-HudText.numberWidth(number))/2,ry+5,rank==1&&(hider?row.seconds()>0:row.finds()>0)?0xFFFFD166:DIM,false);
-            g.fill(face-1,ry+2,face+13,ry+16,mine?color:found?0xFF5A2A2A:0xFF2A3A50);
+            g.fill(face-1,ry+2,face+13,ry+16,mine?color:found?0xFF5A2A2A:TacticalStyle.EDGE);
             PlayerFaceRenderer.draw(g,MatchHud.skin(row.id()),face,ry+3,12);
-            if(found)g.fill(face,ry+3,face+12,ry+15,0x900B121C);
+            if(found)g.fill(face,ry+3,face+12,ry+15,0x90141511);
             PlayerLevels.draw(g,row.id(),face+15,ry+3,12);
-            g.drawString(font,font.plainSubstrByWidth(row.name(),Math.max(1,nameEnd-nameX)),nameX,ry+5,mine?0xFFFFFFFF:found?0xFF8A96A6:0xFFE2E8F0,false);
+            g.drawString(font,font.plainSubstrByWidth(row.name(),Math.max(1,nameEnd-nameX)),nameX,ry+5,mine?0xFFFFFFFF:found?0xFF8A96A6:TacticalStyle.INK,false);
             if(hider) {
                 if(row.found()!=null)MatchHud.column(g,found?"발견됨":"생존",status,ry+5,found?FOUND:HIDER);
                 MatchHud.column(g,MatchReport.time(row.seconds()),value,ry+5,0xFFFFFFFF);
@@ -144,7 +144,7 @@ final class PropHuntHud {
         }
         if(pages>1) {
             String label=(page+1)+" / "+pages+" · 휠";
-            g.fill(left+8,bottom-FOOT,right-8,bottom-FOOT+1,0xFF22324A);
+            g.fill(left+8,bottom-FOOT,right-8,bottom-FOOT+1,TacticalStyle.EDGE);
             g.drawString(font,label,right-8-font.width(label),bottom-FOOT+3,DIM,false);
         }
     }
