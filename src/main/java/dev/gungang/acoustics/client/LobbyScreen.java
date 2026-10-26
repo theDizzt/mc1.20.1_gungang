@@ -12,7 +12,9 @@ final class LobbyScreen extends ArenaScreen {
     private static final String RANDOM=dev.gungang.acoustics.server.LobbyRules.RANDOM_MAP;
     private LobbySnapshot state;
     private boolean maps,draggingMember,draggingPreview;
-    private int page,mapScroll;
+    private int mapScroll;
+    private final java.util.Map<String,Integer> memberScroll=new java.util.HashMap<>();
+    private String draggingScroll;
     private String target,previewMap,viewedMap,dragId;
     private double dragX,dragY,zoom=1,panX,panY;
     private int viewX,viewY,viewW,viewH,baseW,baseH;
@@ -27,7 +29,10 @@ final class LobbyScreen extends ArenaScreen {
     private int leftWidth(){return (width-22)*62/100;}
     private int rightX(){return 14+leftWidth();}
     private int rightWidth(){return width-8-rightX();}
-    private int lowerTop(){return height-8-Math.max(120,(height-16)*29/100);}
+    private int modeColumns(){return rightWidth()-10<130?4:7;}
+    private int modeSize(){return Math.max(14,Math.min(modeColumns()==4?18:36,(rightWidth()-10-(modeColumns()-1)*3)/modeColumns()));}
+    private int modeHeight(){return ((7+modeColumns()-1)/modeColumns())*(modeSize()+3)-3;}
+    private int lowerTop(){return height-8-Math.max(100+modeHeight(),(height-16)*29/100);}
     private Box alpha(){return new Box(8,48,(leftWidth()-6)/2,lowerTop()-54);}
     private Box bravo(){var a=alpha();return new Box(a.right()+6,a.y,leftWidth()-a.w-6,a.h);}
     private Box spectators(){return new Box(8,lowerTop(),leftWidth(),height-8-lowerTop());}
@@ -41,16 +46,19 @@ final class LobbyScreen extends ArenaScreen {
     private LobbySnapshot.Member member(String id){return state.members().stream().filter(m->m.id().equals(id)).findFirst().orElse(null);}
     private LobbySnapshot.MapView map(String id){return state.maps().stream().filter(m->m.id().equals(id)).findFirst().orElse(null);}
     private boolean admin(){return state.administrator()&&"LOBBY".equals(state.phase());}
-    private int pages(){return Math.max(1,Math.max((Math.max(team("ALPHA").size(),team("BRAVO").size())+capacity()-1)/capacity(),(neutral().size()+neutralCapacity()-1)/neutralCapacity()));}
+    private int maxMemberScroll(String zone){return zone.equals("SPECTATOR")?Math.max(0,(neutral().size()+1)/2-neutralRows()):Math.max(0,team(zone).size()-capacity());}
+    private int offset(String zone){return Math.max(0,Math.min(maxMemberScroll(zone),memberScroll.getOrDefault(zone,0)));}
+    private Box zoneBox(String zone){return zone.equals("ALPHA")?alpha():zone.equals("BRAVO")?bravo():spectators();}
+    private void scrollMembers(String zone,int next){memberScroll.put(zone,Math.max(0,Math.min(maxMemberScroll(zone),next)));rebuildWidgets();}
     private List<Row> rows(){
         var result=new ArrayList<Row>();
         for(String name:List.of("ALPHA","BRAVO")){
-            var b=name.equals("ALPHA")?alpha():bravo();var list=team(name);int start=page*capacity();
-            for(int i=start;i<Math.min(list.size(),start+capacity());i++)result.add(new Row(list.get(i),b.x+4,b.y+22+(i-start)*ROW,b.w-8));
+            var b=name.equals("ALPHA")?alpha():bravo();var list=team(name);int start=offset(name);
+            for(int i=start;i<Math.min(list.size(),start+capacity());i++)result.add(new Row(list.get(i),b.x+4,b.y+22+(i-start)*ROW,b.w-14));
         }
-        var b=spectators();var list=neutral();int start=page*neutralCapacity(),column=(b.w-12)/2;
+        var b=spectators();var list=neutral();int start=offset("SPECTATOR")*2,column=(b.w-18)/2;
         for(int i=start;i<Math.min(list.size(),start+neutralCapacity());i++){
-            int slot=i-start;result.add(new Row(list.get(i),b.x+4+(slot/neutralRows())*(column+4),b.y+22+(slot%neutralRows())*18,column));
+            int slot=i-start;result.add(new Row(list.get(i),b.x+4+(slot%2)*(column+4),b.y+22+(slot/2)*ROW,column));
         }
         return result;
     }
@@ -64,10 +72,8 @@ final class LobbyScreen extends ArenaScreen {
     }
     @Override public void onClose(){super.onClose();minecraft.gui.setOverlayMessage(Component.literal(LobbyClient.LOBBY.getTranslatedKeyMessage().getString()+" 키 또는 /gungang lobby로 대기실 다시 열기"),false);}
     @Override protected void init(){
-        page=Math.min(page,pages()-1);baseW=0;
-        int pageX=8+leftWidth()-46;
-        button("‹",pageX,17,20,18,page>0,MUTED,()->{page--;rebuildWidgets();});
-        button("›",pageX+24,17,20,18,page+1<pages(),MUTED,()->{page++;rebuildWidgets();});
+        baseW=0;
+        for(String zone:List.of("ALPHA","BRAVO","SPECTATOR"))memberScroll.put(zone,offset(zone));
         for(var row:rows()){
             var m=row.member();int color=m.team().equals("ALPHA")?LobbyClient.options.color("ALPHA"):m.team().equals("BRAVO")?LobbyClient.options.color("BRAVO"):MUTED;
             var label=Component.literal(m.name());
@@ -83,7 +89,7 @@ final class LobbyScreen extends ArenaScreen {
         y+=22;
         button(maps?"미리보기로":"맵 선택",x,y,half,h,true,ACCENT,()->{maps=!maps;draggingPreview=false;rebuildWidgets();});
         button("랜덤 팀 배치",x+half+4,y,w-half-4,h,admin(),MUTED,()->LobbyClient.action("random","",""));
-        y+=22;modeButtons(x,y,w,h);y+=22;
+        y+=22;modeButtons(x,y,w);y+=modeHeight()+4;
         boolean bots=admin()&&state.botEnabled()&&"DEATHMATCH".equals(state.selectedMode());
         button("봇 + "+state.botCount()+"/"+state.botMax(),x,y,half,h,bots&&state.botCount()<state.botMax(),MUTED,()->LobbyClient.action("botAdd","",""));
         button("선택한 봇 제거",x+half+4,y,w-half-4,h,bots&&picked!=null&&picked.bot(),MUTED,()->LobbyClient.action("botRemove","",picked.id()));
@@ -96,12 +102,20 @@ final class LobbyScreen extends ArenaScreen {
     private static String status(LobbySnapshot.Member m){return m.ready()?"준비":m.team().equals("UNASSIGNED")?"미배정":m.team().equals("SPECTATOR")?"관전":"대기";}
     private static int statusColor(LobbySnapshot.Member m){return m.ready()?READY:m.team().equals("ALPHA")||m.team().equals("BRAVO")?WAITING:MUTED;}
     private static String modeName(String mode){return switch(mode){case "PROP_HUNT"->"숨바꼭질";case "FREE_FOR_ALL"->"개인전";case "ESCORT"->"호위";case "BOMB"->"폭탄전";case "DEATHMATCH"->"팀 데스매치";case "NORMANDY"->"노르망디";default->"쟁탈전";};}
-    private void modeButtons(int x,int y,int w,int h){
-        var selected=map(state.selectedMap());if(selected==null){button("선택된 맵 없음",x,y,w,h,false,MUTED,()->{});return;}
-        String objective=switch(selected.gameMode()){case "숨바꼭질"->"PROP_HUNT";case "개인전"->"FREE_FOR_ALL";case "호위"->"ESCORT";case "노르망디"->"NORMANDY";default->selected.bomb()?"BOMB":"CONTROL";};
-        var modes=new ArrayList<String>();if(!selected.deathmatchOnly())modes.add(objective);if(selected.deathmatch())modes.add("DEATHMATCH");if(!modes.contains("PROP_HUNT"))modes.add("PROP_HUNT");
-        int cell=(w-(modes.size()-1)*4)/modes.size();
-        for(int i=0;i<modes.size();i++){String mode=modes.get(i);button(modeName(mode),x+i*(cell+4),y,i==modes.size()-1?w-i*(cell+4):cell,h,admin(),mode.equals(state.selectedMode())?ACCENT:MUTED,()->LobbyClient.action("mode",mode,selected.id()));}
+    private void modeButtons(int x,int y,int w){
+        var selected=map(state.selectedMap());var modes=new ArrayList<String>();
+        if(selected!=null){
+            if(selected.supportedModes()!=null)modes.addAll(selected.supportedModes());
+            else { // Compatibility with snapshots from older servers.
+                String objective=switch(selected.gameMode()){case "숨바꼭질"->"PROP_HUNT";case "개인전"->"FREE_FOR_ALL";case "호위"->"ESCORT";case "노르망디"->"NORMANDY";default->selected.bomb()?"BOMB":"CONTROL";};
+                if(!selected.deathmatchOnly())modes.add(objective);if(selected.deathmatch())modes.add("DEATHMATCH");modes.add("PROP_HUNT");
+            }
+        }
+        int size=modeSize(),columns=modeColumns(),left=x+(w-(size*columns+(columns-1)*3))/2;
+        for(int i=0;i<MissionButton.MODES.size();i++){
+            String mode=MissionButton.MODES.get(i);
+            addRenderableWidget(new MissionButton(left+(i%columns)*(size+3),y+(i/columns)*(size+3),size,mode,modeName(mode),selected!=null&&mode.equals(state.selectedMode()),modes.contains(mode),admin(),()->LobbyClient.action("mode",mode,selected.id())));
+        }
     }
     private boolean randomRow(){return !state.maps().isEmpty()&&map(RANDOM)==null;}
     private int mapCount(){return state.maps().size()+(randomRow()?1:0);}
@@ -150,7 +164,7 @@ final class LobbyScreen extends ArenaScreen {
         g.fillGradient(0,0,width,height,0xF00C0D0A,0xF01B1D16);TacticalStyle.grid(g,0,0,width,height,24,0x07FFFFFF);
         var head=new Box(8,8,leftWidth(),34);panel(g,head,ACCENT,0);
         g.fill(head.x+7,head.y+7,head.x+9,head.y+27,ACCENT);
-        text(g,"GUNGANG / MATCH LOBBY",head.x+14,head.y+7,leftWidth()-70,INK);text(g,"이름을 끌어 팀 이동 · "+(page+1)+" / "+pages()+" 페이지",head.x+14,head.y+20,leftWidth()-70,MUTED);
+        text(g,"GUNGANG / MATCH LOBBY",head.x+14,head.y+7,leftWidth()-24,INK);text(g,"이름을 끌어 팀 이동 · 명단 위에서 휠 스크롤",head.x+14,head.y+20,leftWidth()-24,MUTED);
         teamPanel(g,alpha(),"알파",team("ALPHA"),LobbyClient.options.color("ALPHA"));teamPanel(g,bravo(),"브라보",team("BRAVO"),LobbyClient.options.color("BRAVO"));
         var b=spectators();panel(g,b,MUTED,18);panelTitle(g,b,"관전 / 미배정",neutral().size()+"명",null,0,MUTED);
         if(neutral().isEmpty())text(g,"관전자 없음",b.x+12,b.y+29,b.w-18,DIM);
@@ -164,6 +178,7 @@ final class LobbyScreen extends ArenaScreen {
             PlayerLevels.draw(g,m.id(),row.x+EMBLEM,row.y+2,13);
             String status=status(m);badge(g,status,row.x+row.w-font.width(status)-11,row.y+3,statusColor(m));
         }
+        for(String zone:List.of("ALPHA","BRAVO","SPECTATOR"))renderScrollbar(g,zone);
         if(draggingMember)renderDrag(g,mx,my);
     }
     private void renderPreview(GuiGraphics g){
@@ -195,24 +210,35 @@ final class LobbyScreen extends ArenaScreen {
     private void clampPreview(){double maxX=Math.max(0,(baseW*zoom-viewW)/2),maxY=Math.max(0,(baseH*zoom-viewH)/2);panX=Math.max(-maxX,Math.min(maxX,panX));panY=Math.max(-maxY,Math.min(maxY,panY));}
     @Override public boolean mouseScrolled(double x,double y,double delta){
         if(maps&&preview().contains(x,y)){scrollMaps(mapScroll-(int)Math.signum(delta));return true;}
-        if(zoneAt(x,y)!=null){page=Math.max(0,Math.min(pages()-1,page-(int)Math.signum(delta)));rebuildWidgets();return true;}
+        String zone=zoneAt(x,y);if(zone!=null){scrollMembers(zone,offset(zone)-(int)Math.signum(delta));return true;}
         if(!overPreview(x,y))return super.mouseScrolled(x,y,delta);
         double previous=zoom;zoom=Math.max(1,Math.min(8,zoom*Math.pow(1.2,delta)));double dx=x-viewX-viewW/2.0,dy=y-viewY-viewH/2.0;panX=dx-(dx-panX)*zoom/previous;panY=dy-(dy-panY)*zoom/previous;clampPreview();return true;
     }
     @Override public boolean mouseClicked(double x,double y,int button){
+        if(button==0)for(String zone:List.of("ALPHA","BRAVO","SPECTATOR"))if(maxMemberScroll(zone)>0&&scrollTrack(zone).contains(x,y)){draggingScroll=zone;dragId=null;seekScroll(zone,y);return true;}
         if(button==0)for(var row:rows())if(x>=row.x&&x<row.x+row.w&&y>=row.y&&y<row.y+17&&(admin()||row.member.id().equals(state.you()))){dragId=row.member.id();dragX=x;dragY=y;draggingMember=false;target=dragId;break;}
         if(button==0&&overPreview(x,y)){draggingPreview=true;return true;}return super.mouseClicked(x,y,button);
     }
     @Override public boolean mouseDragged(double x,double y,int button,double dx,double dy){
+        if(button==0&&draggingScroll!=null){seekScroll(draggingScroll,y);return true;}
         if(button==0&&dragId!=null){if((x-dragX)*(x-dragX)+(y-dragY)*(y-dragY)>16)draggingMember=true;if(draggingMember)return true;}
         if(button==0&&draggingPreview){panX+=dx;panY+=dy;clampPreview();return true;}return super.mouseDragged(x,y,button,dx,dy);
     }
     @Override public boolean mouseReleased(double x,double y,int button){
+        if(button==0&&draggingScroll!=null){draggingScroll=null;return true;}
         if(button==0&&dragId!=null){var moved=member(dragId);String zone=zoneAt(x,y);boolean dropped=draggingMember;
             if(dropped&&moved!=null&&zone!=null&&!zone.equals(moved.team())&&!(moved.bot()&&zone.equals("SPECTATOR")))LobbyClient.action("team",zone,moved.id());
             dragId=null;draggingMember=false;rebuildWidgets();if(dropped)return true;
         }
         if(button==0&&draggingPreview){draggingPreview=false;return true;}return super.mouseReleased(x,y,button);
+    }
+    private Box scrollTrack(String zone){var b=zoneBox(zone);return new Box(b.right()-8,b.y+23,5,Math.max(1,b.h-27));}
+    private int thumbSize(String zone){var b=scrollTrack(zone);int visible=zone.equals("SPECTATOR")?neutralRows():capacity();return Math.min(b.h,Math.max(10,b.h*visible/(visible+maxMemberScroll(zone))));}
+    private void seekScroll(String zone,double y){var b=scrollTrack(zone);int thumb=thumbSize(zone);scrollMembers(zone,(int)Math.round((y-b.y-thumb/2.0)/Math.max(1,b.h-thumb)*maxMemberScroll(zone)));}
+    private void renderScrollbar(GuiGraphics g,String zone){
+        if(maxMemberScroll(zone)==0)return;
+        var b=scrollTrack(zone);int thumb=thumbSize(zone),top=b.y+(b.h-thumb)*offset(zone)/maxMemberScroll(zone);
+        g.fill(b.x,b.y,b.right(),b.bottom(),TacticalStyle.TRACK);g.fill(b.x,top,b.right(),top+thumb,zone.equals(draggingScroll)?ACCENT:MUTED);
     }
     private void renderDrag(GuiGraphics g,int mx,int my){
         var moved=member(dragId);if(moved==null)return;String zone=zoneAt(mx,my);

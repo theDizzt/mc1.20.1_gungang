@@ -1,0 +1,13 @@
+Model Information:
+* title:	Athom grenade
+* source:	https://sketchfab.com/3d-models/athom-grenade-c6e43eb37da349e2a5d91ec90c52e167
+* author:	BadVibes4EVER (https://sketchfab.com/BadVibes4EVER)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Athom grenade" (https://sketchfab.com/3d-models/athom-grenade-c6e43eb37da349e2a5d91ec90c52e167) by BadVibes4EVER (https://sketchfab.com/BadVibes4EVER) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+
+Modifications: node transforms baked; scale normalized; glTF converted to OBJ; base-color textures resized and converted to PNG; normal and metallic maps omitted.

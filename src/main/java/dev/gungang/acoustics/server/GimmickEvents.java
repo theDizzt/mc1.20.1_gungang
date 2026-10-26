@@ -7,6 +7,7 @@ public final class GimmickEvents {
     /** Adventure mode suppresses vanilla block digging packets; validate the attack on the server. */
     public static void request(net.minecraft.server.level.ServerPlayer p){
         if(!p.isAlive()||p.isSpectator()||p.isCreative()||LobbyManager.respawning(p.getUUID())||FreeForAllMatch.blocked(p))return;
+        if(p.getMainHandItem().getItem() instanceof RapierItem){RapierItem.thrust(p);return;}
         double reach=p.getMainHandItem().getItem() instanceof RapierItem?RapierItem.RANGE:hammer(p.getMainHandItem())?3.5:3;
         var eye=p.getEyePosition();var end=eye.add(p.getLookAngle().scale(reach));
         var hit=p.level().clip(new net.minecraft.world.level.ClipContext(eye,end,net.minecraft.world.level.ClipContext.Block.OUTLINE,net.minecraft.world.level.ClipContext.Fluid.NONE,p));
@@ -20,22 +21,22 @@ public final class GimmickEvents {
         if(GimmickEntity.at(e.getLevel(),e.getPos())==null)return;
         if(e.getAction()!=net.minecraftforge.event.entity.player.PlayerInteractEvent.LeftClickBlock.Action.START)return;
         var stack=p.getMainHandItem();
+        if(stack.getItem() instanceof RapierItem){e.setCanceled(true);RapierItem.thrust(p);return;}
         if(hammer(stack)){
             long now=p.level().getGameTime();var tag=p.getPersistentData();
             if(tag.contains("GimmickHammerTick")&&now-tag.getLong("GimmickHammerTick")<15)return;
             tag.putLong("GimmickHammerTick",now);e.setCanceled(true);
             GimmickEntity.hit(p.level(),e.getPos(),(float)(64*AdrenalineDamage.multiplier(p)));return;
         }
-        if(stack.getItem() instanceof RapierItem||HandAxeItem.is(stack)){
+        if(HandAxeItem.is(stack)){
             e.setCanceled(true);
             if(LobbyManager.respawning(p.getUUID())||FreeForAllMatch.blocked(p))return;
-            double range=stack.getItem() instanceof RapierItem?RapierItem.RANGE:3.0;
+            double range=3.0;
             var eye=p.getEyePosition();var end=eye.add(p.getLookAngle().scale(range));
             var hit=e.getLevel().clip(new net.minecraft.world.level.ClipContext(eye,end,net.minecraft.world.level.ClipContext.Block.COLLIDER,net.minecraft.world.level.ClipContext.Fluid.NONE,p));
             if(hit.getType()!=net.minecraft.world.phys.HitResult.Type.BLOCK||!hit.getBlockPos().equals(e.getPos()))return;
-            boolean rapier=stack.getItem() instanceof RapierItem;
-            if(!(rapier?RapierItem.beginAttack(p):HandAxeItem.beginSwing(p)))return;
-            GimmickEntity.hit(e.getLevel(),e.getPos(),(float)((rapier?33:ExtraGadgetConfig.handAxe.meleeDamage())*AdrenalineDamage.multiplier(p)));
+            if(!HandAxeItem.beginSwing(p))return;
+            GimmickEntity.hit(e.getLevel(),e.getPos(),(float)(ExtraGadgetConfig.handAxe.meleeDamage()*AdrenalineDamage.multiplier(p)));
             p.resetAttackStrengthTicker();return;
         }
         var itemId=net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(p.getMainHandItem().getItem());

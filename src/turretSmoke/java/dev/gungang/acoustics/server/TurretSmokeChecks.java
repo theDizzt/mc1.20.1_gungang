@@ -111,11 +111,36 @@ public final class TurretSmokeChecks {
             level.setBlockAndUpdate(pos.below(),Blocks.AIR.defaultBlockState());grounded.tick();check(grounded.isRemoved(),"Turret floated after floor removal");
             p.setPos(.5,240,4);p.setYRot(180);p.setXRot(0);p.setGameMode(net.minecraft.world.level.GameType.ADVENTURE);
             p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,new net.minecraft.world.item.ItemStack(GadgetItems.RAPIER.get()));
+            var thrustTarget=target(level,.5,1);
+            p.getPersistentData().remove("RapierAttackTick");
+            for(int damage:new int[]{21,24,27,30,33,36,36}){
+                float hp=thrustTarget.getHealth();
+                RapierItem.thrust(p);
+                check(thrustTarget.getHealth()==hp-damage,"Instant rapier combo damage incorrect: "+damage);
+                RapierItem.thrust(p);check(thrustTarget.getHealth()==hp-damage,"Duplicate click bypassed attack interval");
+                server.getWorldData().overworldData().setGameTime(level.getGameTime()+6);
+            }
+            p.setYRot(0);RapierItem.thrust(p);p.setYRot(180);
+            server.getWorldData().overworldData().setGameTime(level.getGameTime()+6);
+            float comboHp=thrustTarget.getHealth();RapierItem.thrust(p);
+            check(thrustTarget.getHealth()==comboHp-21,"Miss did not reset combo");
+            server.getWorldData().overworldData().setGameTime(level.getGameTime()+21);
+            comboHp=thrustTarget.getHealth();RapierItem.thrust(p);
+            check(thrustTarget.getHealth()==comboHp-21,"Expired combo did not reset");
+            var blockPos=new BlockPos(0,241,2);level.setBlockAndUpdate(blockPos,Blocks.STONE.defaultBlockState());
+            server.getWorldData().overworldData().setGameTime(level.getGameTime()+6);
+            comboHp=thrustTarget.getHealth();RapierItem.thrust(p);
+            check(thrustTarget.getHealth()==comboHp,"Rapier hit through a wall");
+            level.setBlockAndUpdate(blockPos,Blocks.AIR.defaultBlockState());
+            thrustTarget.setPos(.5,240,-1);
+            server.getWorldData().overworldData().setGameTime(level.getGameTime()+6);
+            RapierItem.thrust(p);check(thrustTarget.getHealth()==comboHp,"Rapier exceeded 4.5-block reach");
+            thrustTarget.discard();
             var wallPos=new BlockPos(0,241,2);
             level.setBlockAndUpdate(wallPos,GimmickBlocks.GIMMICKS.get("cracked_oak_planks").get().defaultBlockState());
             p.getPersistentData().remove("RapierAttackTick");GimmickEvents.request(p);
-            check(GimmickEntity.at(level,wallPos).health()==67,"Adventure rapier attack did not damage wall");
-            GimmickEvents.request(p);check(GimmickEntity.at(level,wallPos).health()==67,"Duplicate attack bypassed cooldown");
+            check(GimmickEntity.at(level,wallPos).health()==79,"Adventure rapier attack did not damage wall");
+            GimmickEvents.request(p);check(GimmickEntity.at(level,wallPos).health()==79,"Duplicate attack bypassed cooldown");
             level.setBlockAndUpdate(wallPos,GimmickBlocks.GAS.get().defaultBlockState());
             p.getPersistentData().remove("RapierAttackTick");GimmickEvents.request(p);
             check(!level.getBlockState(wallPos).getValue(GimmickBlock.ACTIVE),"Rapier did not explode gas barrel");

@@ -26,6 +26,7 @@ public final class SecondaryRuntime {
         OWNERS.put(player.getCooldowns(),new java.lang.ref.WeakReference<>(player));
         var tag=stack.getOrCreateTag();tag.putString("GunGangSecondaryId",weapon.id());
         tag.putInt("GunGangCooldownTicks",(int)Math.ceil(weapon.cooldownSeconds()*20));
+        if(CombatGadgets.is(stack,"arrow_grenade"))tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(ExtraGadgetConfig.arrowGrenade.cooldownSeconds()));
         if(CombatGadgets.is(stack,"turret"))tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(Turrets.config.cooldownSeconds()));
         if(CombatGadgets.is(stack,"molotov"))tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(ExtraGadgetConfig.molotov.cooldownSeconds()));
         if(HandAxeItem.is(stack)) {
