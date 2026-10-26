@@ -32,13 +32,13 @@ public final class TurretEntity extends LivingEntity {
     private double reloadFraction;
     private int fireDelay;
     private boolean repairing,destroyed;
-    private int repairTicks;
+    private ItemStack deploymentStack=ItemStack.EMPTY;
+    void deployment(ItemStack stack){deploymentStack=stack.copy();}
     public TurretEntity(EntityType<? extends LivingEntity> type,Level level){super(type,level);setNoGravity(true);}
     @Override protected void defineSynchedData(){super.defineSynchedData();entityData.define(OWNER,Optional.empty());entityData.define(AMMO,120);entityData.define(CAPACITY,120);entityData.define(RELOAD_RANGE,3f);entityData.define(AIM,0f);entityData.define(COLOR,0xFFFFFF);entityData.define(TRACER,new org.joml.Vector3f());entityData.define(SHOTS,0);}
     public int teamColor(){return entityData.get(COLOR);}
     @Override public int getTeamColor(){return teamColor();}
     public boolean ownerOutline(Player player){return player!=null&&player.getUUID().equals(owner());}
-    static boolean hits(float roll){return roll<.84f;}
     public UUID owner(){return entityData.get(OWNER).orElse(null);}
     public int ammo(){return entityData.get(AMMO);}
     public int capacity(){return entityData.get(CAPACITY);}
@@ -52,9 +52,9 @@ public final class TurretEntity extends LivingEntity {
         getAttribute(Attributes.MAX_HEALTH).setBaseValue(Turrets.config.health());setHealth(getMaxHealth());entityData.set(AIM,getYRot());
     }
     public BlockPos anchor(){return BlockPos.containing(getX()-1,getY(),getZ()-1);}
-    void keepReloading(){if(repairing){repairTicks=0;reloadFraction=0;}repairing=false;reloadUntil=level().getGameTime()+15;}
-    void keepRepairing(){if(!repairing){repairTicks=0;reloadFraction=0;}repairing=true;reloadUntil=level().getGameTime()+15;}
-    void stopReload(){reloadUntil=0;reloadFraction=0;repairTicks=0;repairing=false;}
+    void keepReloading(){if(repairing){reloadFraction=0;}repairing=false;reloadUntil=level().getGameTime()+15;}
+    void keepRepairing(){if(!repairing){reloadFraction=0;}repairing=true;reloadUntil=level().getGameTime()+15;}
+    void stopReload(){reloadUntil=0;reloadFraction=0;repairing=false;}
     private LivingEntity ownerEntity(){return owner()!=null&&((ServerLevel)level()).getEntity(owner()) instanceof LivingEntity e?e:null;}
     @Override public void tick(){
         super.tick();setDeltaMovement(Vec3.ZERO);
@@ -74,7 +74,7 @@ public final class TurretEntity extends LivingEntity {
         // Explicit leave/reset/loadout cleanup still removes deployed turrets.
         if(ownerEntity==null){stopReload();return;}
         if(reloadUntil>level().getGameTime()&&ownerEntity instanceof ServerPlayer p&&p.containerMenu==p.inventoryMenu&&(repairing?Turrets.canRepair(p,this):Turrets.canReload(p,this))){
-            if(repairing){if(++repairTicks>=2){heal(1);repairTicks=0;}return;}
+            if(repairing){heal(1);return;}
             reloadFraction+=Turrets.config.reloadPerSecond()/20;
             int rounds=(int)reloadFraction;
             if(rounds>0){entityData.set(AMMO,Math.min(capacity(),ammo()+rounds));reloadFraction-=rounds;}
@@ -93,17 +93,12 @@ public final class TurretEntity extends LivingEntity {
         entityData.set(AIM,(float)(Math.toDegrees(Math.atan2(direction.z,direction.x))-90));
         entityData.set(AMMO,ammo()-1);fireDelay=Turrets.config.fireIntervalTicks()-1;
         var source=new DamageSource(level().registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.DAMAGE_TYPE).getHolderOrThrow(BULLET),this,ownerEntity);
-        boolean hit=hits(random.nextFloat());
-        if(!hit) {
-            // A miss passes clearly outside the silhouette and never applies damage.
-            Vec3 side=new Vec3(-direction.z,0,direction.x).normalize().scale(target.getBbWidth()+.8);
-            to=to.add(random.nextBoolean()?side:side.scale(-1));
-        }
+        // Server-side hitscan: no spread, travel time or random misses.
         var obstruction=level().clip(new ClipContext(from,to,ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,this));
         if(obstruction.getType()!=HitResult.Type.MISS){
             to=obstruction.getLocation();
             GimmickEntity.hit(level(),obstruction.getBlockPos(),(float)Turrets.config.damage());
-        }else if(hit)Turrets.bullet(target,source,(float)Turrets.config.damage());
+        }else Turrets.bullet(target,source,(float)Turrets.config.damage());
         entityData.set(TRACER,to.toVector3f());entityData.set(SHOTS,entityData.get(SHOTS)+1);
     }
     @Override public void onSyncedDataUpdated(EntityDataAccessor<?> key){
@@ -138,6 +133,7 @@ public final class TurretEntity extends LivingEntity {
     }
     private void destruction(){
         if(destroyed||!(level() instanceof ServerLevel server))return;destroyed=true;
+        if(ownerEntity() instanceof ServerPlayer player)SecondaryRuntime.turretDestroyed(player,deploymentStack);
         server.sendParticles(ParticleTypes.EXPLOSION,getX(),getY()+.7,getZ(),2,.3,.3,.3,0);
         server.sendParticles(ParticleTypes.SMOKE,getX(),getY()+.7,getZ(),24,.6,.5,.6,.06);
         server.sendParticles(ParticleTypes.CRIT,getX(),getY()+.7,getZ(),20,.5,.4,.5,.2);

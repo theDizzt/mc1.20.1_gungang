@@ -35,6 +35,7 @@ minecraft {
     copyIdeResources = true
     runs {
         client {
+            if (project.hasProperty('gungangRapierPreview')) property 'gungang.rapierPreview', 'true'
             workingDirectory project.file(project.hasProperty('gungangTurretClientSmoke') ? 'build/turret-client-smoke' : project.hasProperty('gungangAxeSmoke') ? 'build/axe-client-smoke' : 'run')
             property 'forge.logging.console.level', 'info'
             if (project.hasProperty('gungangScannerPreview')) property 'gungang.scannerPreview', 'true'

@@ -50,20 +50,25 @@ public final class DeployableEntity extends LivingEntity {
         if(isRemoved()||wall()||tickCount<10)return;
         var config=GadgetConfig.mine;
         boolean triggered=level().getEntitiesOfClass(LivingEntity.class,getBoundingBox().inflate(config.triggerRadius()),this::enemy).stream().anyMatch(e->e.distanceTo(this)<=config.triggerRadius()+.5);
-        if(triggered) {
+        if(triggered)detonate();
+    }
+    private boolean detonating;
+    private void detonate(){
+        if(level().isClientSide||wall()||isRemoved()||detonating)return;
+        detonating=true;
+        var config=GadgetConfig.mine;
             // Any owner entity (players and the bot) gets the kill credit.
             var player=owner()==null?null:((net.minecraft.server.level.ServerLevel)level()).getEntity(owner());
             for(var victim:level().getEntitiesOfClass(LivingEntity.class,getBoundingBox().inflate(config.radius()),this::enemy))
                 if(victim.distanceTo(this)<=config.radius())victim.hurt(level().damageSources().explosion(this,player),(float)config.damage());
             level().playSound(null,blockPosition(),net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,net.minecraft.sounds.SoundSource.BLOCKS,1,1);
             ((net.minecraft.server.level.ServerLevel)level()).sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION,getX(),getY()+.2,getZ(),1,0,0,0,0);discard();
-        }
     }
     private boolean enemy(LivingEntity e) {return e!=this&&!(e instanceof DeployableEntity)&&e.isAlive()&&!e.isSpectator()&&!e.getUUID().equals(owner())&&(team().isEmpty()||e.getTeam()==null||!team().equals(e.getTeam().getName()));}
     @Override public boolean hurt(DamageSource source,float amount) {
         if(level().isClientSide||isRemoved())return false;
         invulnerableTime=0;
-        boolean hit=super.hurt(source,amount);if(getHealth()<=0)discard();return hit;
+        boolean hit=super.hurt(source,amount);if(hit&&getHealth()<=0){if(wall())discard();else detonate();}return hit;
     }
     @Override public boolean canBeCollidedWith() {return wall()&&!isRemoved();}
     @Override public boolean isPickable() {return !isRemoved();}

@@ -36,7 +36,7 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
     }
     for hand in ['righthand','lefthand']:
         display['firstperson_'+hand]=dict(rotation=[0,0,0],translation=[0,9,0],scale=[1]*3)
-        display['thirdperson_'+hand]=dict(rotation=[0,0,0],translation=[0,9,0],scale=[.9]*3)
+        display['thirdperson_'+hand]=dict(rotation=[0,0,0],translation=[0,14.04,0],scale=[1.35]*3)
     config=dict(loader='forge:obj',model='gungang:models/item/rapier.obj',automatic_culling=False,flip_v=True,render_type='minecraft:cutout',textures=dict(particle='gungang:item/rapier'),display=display)
     (model/'rapier.json').write_text(json.dumps(config,indent=2)+'\n',encoding='utf-8')
     credit=archive.read('license.txt').decode()+'\nModifications: converted to OBJ, aligned blade along Y, scaled for Minecraft; base color retained, PBR maps omitted.\n'
