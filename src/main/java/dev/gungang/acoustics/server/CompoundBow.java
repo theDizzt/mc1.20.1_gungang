@@ -63,7 +63,13 @@ public final class CompoundBow {
         static Epoch get(ServerLevel level){return level.getDataStorage().computeIfAbsent(tag->{var e=new Epoch();e.value=tag.getLong("Generation");return e;},Epoch::new,"gungang_bow_arrows");}
         @Override public CompoundTag save(CompoundTag tag){tag.putLong("Generation",value);return tag;}
     }
+    /** Bow arrows are issued per weapon, never loot: any arrow item the bow mod drops into the world is dropped. */
+    static boolean arrowItem(ItemStack stack){
+        var key=ForgeRegistries.ITEMS.getKey(stack.getItem());
+        return key!=null&&key.getNamespace().equals(AMMO.getNamespace())&&key.getPath().endsWith("_arrow");
+    }
     @SubscribeEvent public static void joined(EntityJoinLevelEvent event){
+        if(event.getLevel() instanceof ServerLevel&&event.getEntity() instanceof net.minecraft.world.entity.item.ItemEntity item&&arrowItem(item.getItem())){event.setCanceled(true);return;}
         if(!(event.getLevel() instanceof ServerLevel level)||!(event.getEntity() instanceof ArrowAccess))return;
         var data=event.getEntity().getPersistentData();long generation=Epoch.get(level).value;
         if(event.loadedFromDisk()&&data.getLong(EPOCH)!=generation){event.setCanceled(true);return;}

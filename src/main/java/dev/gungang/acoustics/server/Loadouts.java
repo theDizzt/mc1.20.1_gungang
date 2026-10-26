@@ -123,7 +123,7 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
         Path marker=directory.resolve(".gungang-combat-gadgets-created");if(Files.exists(marker))return;
         var existing=readCategory(directory);
         for(var weapon:List.of(
-                new Weapon("96_infrared-scanner","{id:'gungang:infrared_scanner',Count:1b}","적외선 스캐너","적 위치를 10초간 팀에 공유합니다. 쿨타임 120초.",null,"사용 키로 스캔. 적 팀 색상 실루엣이 벽 너머로 표시됩니다.","지원",100d,100d,120d),
+                new Weapon("96_infrared-scanner","{id:'gungang:infrared_scanner',Count:1b}","적외선 스캐너","적 위치를 10초간 팀에 공유합니다. 쿨타임 120초.",null,"사용 키로 스캔. 적 팀 색상 발광 테두리가 벽 너머로 표시됩니다.","지원",100d,100d,120d),
                 new Weapon("97_shield","{id:'gungang:shield',Count:1b}","방패","정면 피해 총 75 방어. 파손 후 90초 수리. 초과 피해는 체력에 적용됩니다.",null,"주손에 들 때만 방어하며 공격할 수 없습니다. 보조 손에 보관하면 주무기를 사용할 수 있습니다.","방어",100d,100d,90d))) {
             String item=weapon.id().startsWith("96_")?"infrared_scanner":"shield";
             if(existing.stream().noneMatch(w->w.id().equals(weapon.id())||w.itemNbt().contains("gungang:"+item)))

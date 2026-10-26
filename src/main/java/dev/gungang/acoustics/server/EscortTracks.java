@@ -78,7 +78,8 @@ public final class EscortTracks extends SavedData {
     }
     @SubscribeEvent public static void stopped(net.minecraftforge.event.server.ServerStoppedEvent e){DIRTY.clear();MATCH_HIDDEN.clear();}
     @SubscribeEvent public static void starting(net.minecraftforge.event.server.ServerStartingEvent e){
-        // A process crash must not leave editor markers permanently hidden.
+        // A process crash must not leave editor markers permanently hidden, nor escort spawn gates switched on.
+        EscortSpawnGateBlock.deactivate(e.getServer());
         for(var level:e.getServer().getAllLevels())for(var p:List.copyOf(get(level).markers)){
             var state=level.getBlockState(p);
             if(state.getBlock() instanceof EscortBlocks.Marker&&state.getValue(EscortBlocks.Marker.HIDDEN))level.setBlock(p,state.setValue(EscortBlocks.Marker.HIDDEN,false),3);

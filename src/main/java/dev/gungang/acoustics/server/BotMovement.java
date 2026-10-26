@@ -10,7 +10,7 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Bot locomotion. Travel: sampled waypoints between the spawns, kept until reached or stuck, so the bot does not
  * pace one line or re-path every half second. Combat: hold a distance band and strafe instead of standing still.
- * Work per call is bounded (a few ground probes and at most {@link #ATTEMPTS} path searches).
+ * Work per call is bounded: each selection stage tries at most {@link #ATTEMPTS} paths within the shared tick budget.
  */
 final class BotMovement {
     private static final int ATTEMPTS=3,STUCK_JUMP=40,STUCK_GIVE_UP=60;
@@ -19,11 +19,20 @@ final class BotMovement {
     void profile(BotCombatProfile value){profile=value;}
     private Vec3 goal,progressPos;
     private boolean chasing,strafing;
-    private int progressAt,strafeDir=1,nextFlip,fallback;
+    private int progressAt,strafeDir=1,nextFlip;
     private Vec3 reposition;
     private int repositionUntil,nextReposition;
 
     Vec3 goal() {return goal;}
+    private String failureReason="없음";
+    private Vec3 failurePoint;
+    private int failureAt;
+    String failureReason(){return failureReason;}
+    Vec3 failurePoint(){return failurePoint;}
+    int failureAt(){return failureAt;}
+    Vec3 diagnosticGoal(BotEntity bot){var path=bot.getNavigation().getPath();return path!=null&&!path.isDone()?Vec3.atBottomCenterOf(path.getTarget()):pendingMove||exit!=null?goal:null;}
+    String navigationState(BotEntity bot){return pendingMove?"경로 예산 대기":leavingSpawn()?"스폰 출구 이동":bot.getNavigation().isDone()?"경로 종료/대기":"이동 중";}
+    private void diagnose(Vec3 point,int now,String reason){failurePoint=point;failureAt=now;failureReason=reason;}
     private record FailedRoute(Vec3 from,Vec3 to,int until) { }
     private final java.util.ArrayDeque<FailedRoute> failedRoutes=new java.util.ArrayDeque<>();
     final BotRouteMemory routeMemory=new BotRouteMemory();
@@ -38,7 +47,11 @@ final class BotMovement {
         return failedRoutes.stream().anyMatch(f->f.from().distanceToSqr(from)<64&&f.to().distanceToSqr(to)<9);
     }
     private void failed(Vec3 from,Vec3 to,int now) {
+        failed(from,to,now,"목적지까지 도달 가능한 경로 없음");
+    }
+    private void failed(Vec3 from,Vec3 to,int now,String reason) {
         if(to==null)return;
+        diagnose(to,now,reason);
         failedRoutes.removeIf(f->now>=f.until());
         if(failedRoutes.size()>=32)failedRoutes.removeFirst();
         failedRoutes.addLast(new FailedRoute(from,to,now+200));
@@ -63,21 +76,23 @@ final class BotMovement {
         if(pathBudget<=0)return null;
         pathBudget--;return bot.getNavigation().createPath(target,accuracy);
     }
-    private boolean pendingMove,findExit;
+    private boolean pendingMove,findExit,departingSpawn;
     /** Standing spots just outside each team's own spawn gates, scanned once per map and team. */
     private static final java.util.Map<String,java.util.List<Vec3>> EXITS=new java.util.HashMap<>();
     static void forgetExits() {EXITS.clear();}
     private Vec3 exit;
     private int nextExitScan;
-    void prepareSpawnExit() {findExit=true;nextExitScan=0;}
-    boolean leavingSpawn() {return exit!=null;}
+    void prepareSpawnExit() {findExit=true;departingSpawn=true;nextExitScan=0;}
+    boolean leavingSpawn() {return exit!=null||departingSpawn;}
     private record ExitScan(java.util.List<Vec3> points,boolean complete) { }
     /** Resume the spawn route every tick, independently of the normal patrol path interval. */
     boolean exitSpawn(BotEntity bot,ArenaMap arena,String team,int now) {
+        if(departingSpawn&&clearOfSpawn(arena,team,bot.position()))departingSpawn=false;
         if(findExit&&now>=nextExitScan)leaveSpawn(bot,arena,team);
-        if(exit==null)return false;
-        travel(bot,arena,team,null,now,false);
-        return exit!=null;
+        if(exit==null&&!departingSpawn)return false;
+        // Keep advancing beyond the door. With no mapped gate, short local routes can still leave a winding room.
+        travel(bot,arena,team,null,now,exit==null);
+        return exit!=null||departingSpawn;
     }
     /** After a respawn, walk out through the nearest reachable own-team gate before patrolling. */
     void leaveSpawn(BotEntity bot,ArenaMap arena,String team) {
@@ -99,6 +114,7 @@ final class BotMovement {
             var path=path(bot,BlockPos.containing(candidate),0);
             if(path!=null&&path.canReach()) {findExit=false;exit=candidate;goal=candidate;chasing=false;bot.getNavigation().moveTo(path,1);return;}
             if(spent()) {findExit=true;return;}
+            diagnose(candidate,now,"스폰 출구 경로 탐색 실패");
         }
     }
     private static ExitScan scanExits(BotEntity bot,ArenaMap arena,String team) {
@@ -134,9 +150,11 @@ final class BotMovement {
         for(int z=Math.max(z0,section[2]<<4);z<=Math.min(z1,(section[2]<<4)+15);z++)
         for(int y=Math.max(y0,section[1]<<4);y<=Math.min(y1,(section[1]<<4)+15);y++) {
             pos.set(x,y,z);
-            if(!(level.getBlockState(pos).getBlock() instanceof SpawnGateBlock gate)||!gate.allows(bot))continue;
+            var state=level.getBlockState(pos);
+            if(!(state.getBlock() instanceof SpawnGateBlock gate)||!gate.present(state)||!gate.allows(bot))continue;
             // Only the bottom block of a gate column is where feet pass.
-            if(level.getBlockState(pos.below()).getBlock() instanceof SpawnGateBlock)continue;
+            var below=level.getBlockState(pos.below());
+            if(below.getBlock() instanceof SpawnGateBlock under&&under.present(below))continue;
             double inside=Vec3.atBottomCenterOf(pos).distanceToSqr(origin);
             for(var direction:Direction.Plane.HORIZONTAL) {
                 var out=pos.relative(direction,2);Vec3 point=Vec3.atBottomCenterOf(out);
@@ -159,7 +177,7 @@ final class BotMovement {
         Vec3 eye=bot.getEyePosition();
         bot.getLookControl().setLookAt(eye.x-Math.sin(angle)*8,eye.y,eye.z+Math.cos(angle)*8);
     }
-    void reset() {failedRoutes.clear();recent.clear();nextExitScan=0;searching=false;exit=null;pendingMove=false;findExit=false;goal=null;progressPos=null;chasing=false;strafing=false;nextFlip=0;reposition=null;nextReposition=0;}
+    void reset() {failureReason="없음";failurePoint=null;failureAt=0;failedRoutes.clear();recent.clear();nextExitScan=0;searching=false;exit=null;pendingMove=false;findExit=false;departingSpawn=false;goal=null;progressPos=null;chasing=false;strafing=false;nextFlip=0;reposition=null;nextReposition=0;}
     /** Another system (health packs) is steering; do not count that time as being stuck. */
     void interrupt() {progressPos=null;strafing=false;}
     /** Any other behaviour taking over the legs ends a strafe cleanly. */
@@ -194,11 +212,11 @@ final class BotMovement {
         else if(chase==null&&chasing) {goal=null;chasing=false;}
         if(goal!=null&&goal!=exit&&flat(bot.position(),goal)<4&&Math.abs(bot.getY()-goal.y)<1.5) {doneChasing=chasing;goal=null;chasing=false;}
         if(progressPos==null||bot.position().distanceToSqr(progressPos)>1) {progressPos=bot.position();progressAt=now;}
-        else if(now-progressAt>=STUCK_GIVE_UP&&!pendingMove) {failed(bot.position(),goal,now);nav.stop();doneChasing|=chasing;goal=null;exit=null;chasing=false;progressAt=now;}
+        else if(now-progressAt>=STUCK_GIVE_UP&&!pendingMove) {failed(bot.position(),goal,now,"3초간 위치 변화 부족: 경로 포기");nav.stop();doneChasing|=chasing;goal=null;exit=null;chasing=false;progressAt=now;}
         else if(now-progressAt>=STUCK_JUMP&&bot.onGround())bot.getJumpControl().jump();
         // Arrival picks the next waypoint in the same call, so there is no idle gap.
         if(goal==null&&patrolAfter) {goal=pick(bot,arena,team,now);changed=true;}
-        if(goal==null) {nav.stop();pendingMove=false;progressPos=null;return doneChasing;}
+        if(goal==null) {if(patrolAfter&&!spent())diagnose(bot.position(),now,"도달 가능한 순찰 후보 없음");nav.stop();pendingMove=false;progressPos=null;return doneChasing;}
         if(changed||nav.isDone()||pendingMove) {
             if(spent())pendingMove=true;
             else {
@@ -208,12 +226,12 @@ final class BotMovement {
                 var ground=ground(bot,arena,step);
                 boolean moved=false;
                 if(ground!=null) {
-                    if(exit!=null) {var route=nav.createPath(ground,0);moved=route!=null&&route.canReach()&&nav.moveTo(route,1);}
+                    if(exit!=null||chase==null) {var route=nav.createPath(ground,0);moved=route!=null&&route.canReach()&&nav.moveTo(route,1);}
                     else moved=nav.moveTo(ground.getX()+.5,ground.getY(),ground.getZ()+.5,1);
                 }
                 if(!moved) {
                     if(bot.parkour.start(bot,arena,goal,now))return false;
-                    failed(bot.position(),goal,now);nav.stop();doneChasing|=chasing;goal=null;exit=null;chasing=false;progressPos=null;
+                    failed(bot.position(),goal,now,ground==null?"목적지 주변에 안전한 지면 없음":"경로가 막혔거나 목적지까지 이어지지 않음");nav.stop();doneChasing|=chasing;goal=null;exit=null;chasing=false;progressPos=null;
                 }
             }
         }
@@ -287,13 +305,13 @@ final class BotMovement {
         var enemy=team.equals("ALPHA")?arena.bravoSpawn():arena.alphaSpawn();
         var room=team.equals("ALPHA")?arena.alphaArea():arena.bravoArea();
         Vec3 origin=new Vec3(own.x(),own.y(),own.z());
-        if(flat(bot.position(),origin)<144||spent())return null;
+        if(!clearOfSpawn(arena,team,bot.position())||spent())return null;
         Vec3 direction=new Vec3(enemy.x()-bot.getX(),0,enemy.z()-bot.getZ()).normalize();
         // Local approach probes avoid tracing across unloaded chunks on large maps.
         Vec3 front=bot.position().add(direction.scale(12)).add(0,1.6,0);
         Vec3 side=new Vec3(-direction.z,0,direction.x).scale(4);
         var cover=findCover(bot,arena,team,java.util.List.of(front,front.add(side),front.subtract(side)));
-        if(cover==null||flat(cover.spot(),origin)<144||crowded(cover.spot())||knownDanger(bot,cover.spot())
+        if(cover==null||!clearOfSpawn(arena,team,cover.spot())||crowded(cover.spot())||knownDanger(bot,cover.spot())
                 ||room!=null&&room.contains(cover.spot().x,cover.spot().y+.1,cover.spot().z))return null;
         return cover;
     }
@@ -486,21 +504,58 @@ final class BotMovement {
             // Anywhere from just past our spawn to the enemy's, spread across the map's width.
             double along=.2+random.nextDouble()*.8,across=(random.nextDouble()*2-1)*Math.max(6,length*.35);
             var ground=ground(bot,arena,nearby(bot,a.add(d.scale(along)).add(side.scale(across))));
-            // Waypoints never lead back into our own spawn room.
-            var room=team.equals("ALPHA")?arena.alphaArea():arena.bravoArea();
-            if(ground!=null&&room!=null&&room.contains(ground.getX()+.5,ground.getY()+.1,ground.getZ()+.5))continue;
             if(ground==null||flat(bot.position(),Vec3.atBottomCenterOf(ground))<36||crowded(Vec3.atBottomCenterOf(ground)))continue;
             var point=Vec3.atBottomCenterOf(ground);
+            if(nearSpawn(arena,team,point))continue;
             if(rejected(bot.position(),point,now)||routeRisk(point,now)>.5||recent.stream().anyMatch(r->r.distanceToSqr(point)<64))continue;
             if(spent())return null;
             var path=path(bot,ground,1);
             if(path!=null&&path.canReach()) {remember(point);return point;}
             failed(bot.position(),point,now);
         }
-        // No reachable sample this time: the old spawn-to-midline sweep keeps the bot moving.
-        for(int i=0;i<2;i++) {
-            fallback++;Vec3 point=fallback%2==0?b:a.add(b).scale(.5);
-            if(!rejected(bot.position(),point,now))return point;
+        // A wall toward the enemy must lead to a local side route, not repeated partial paths into that wall.
+        return localPatrol(bot,arena,team,now,a,b);
+    }
+    static boolean nearSpawn(ArenaMap arena,String team,Vec3 point) {
+        var spawn=team.equals("ALPHA")?arena.alphaSpawn():arena.bravoSpawn();
+        var room=team.equals("ALPHA")?arena.alphaArea():arena.bravoArea();
+        return flat(point,new Vec3(spawn.x(),spawn.y(),spawn.z()))<64
+                ||room!=null&&room.contains(spawn.x(),spawn.y(),spawn.z())&&room.contains(point.x,point.y,point.z);
+    }
+    static boolean clearOfSpawn(ArenaMap arena,String team,Vec3 point){
+        var spawn=team.equals("ALPHA")?arena.alphaSpawn():arena.bravoSpawn();
+        var enemy=team.equals("ALPHA")?arena.bravoSpawn():arena.alphaSpawn();
+        Vec3 origin=new Vec3(spawn.x(),spawn.y(),spawn.z());
+        double radius=Math.min(24,Math.max(8,Math.sqrt(flat(origin,new Vec3(enemy.x(),enemy.y(),enemy.z())))*.4));
+        return !nearSpawn(arena,team,point)&&flat(point,origin)>=radius*radius;
+    }
+    /** Idle teammates must not pull each other back toward spawn or chase one another in circles. */
+    static boolean forwardAlly(ArenaMap arena,String team,Vec3 bot,Vec3 ally){
+        var enemy=team.equals("ALPHA")?arena.bravoSpawn():arena.alphaSpawn();
+        Vec3 front=new Vec3(enemy.x(),enemy.y(),enemy.z());
+        return !nearSpawn(arena,team,ally)&&Math.sqrt(flat(ally,front))+8<Math.sqrt(flat(bot,front));
+    }
+    Vec3 localPatrol(BotEntity bot,ArenaMap arena,String team,int now,Vec3 own,Vec3 enemy) {
+        var candidates=new java.util.ArrayList<Vec3>();
+        double heading=Math.atan2(enemy.z-bot.getZ(),enemy.x-bot.getX());
+        boolean inside=nearSpawn(arena,team,bot.position());
+        for(double radius:new double[]{3,6,10,16})for(int i=0;i<12;i++) {
+            double angle=heading+i*Math.PI/6;
+            var ground=ground(bot,arena,bot.position().add(Math.cos(angle)*radius,0,Math.sin(angle)*radius));
+            if(ground==null)continue;
+            Vec3 point=Vec3.atBottomCenterOf(ground);
+            // A route through a spawn corridor is necessary to reach its door; only forbid returning after leaving.
+            if(!inside&&nearSpawn(arena,team,point)||rejected(bot.position(),point,now)||knownDanger(bot,point))continue;
+            candidates.add(point);
+        }
+        candidates.sort(java.util.Comparator.comparingDouble(p->Math.sqrt(flat(p,enemy))*.15
+                +Math.max(0,24-Math.sqrt(flat(p,own)))*2+routeRisk(p,now)*8
+                +(crowded(p)?10:0)+(recent.stream().anyMatch(r->r.distanceToSqr(p)<64)?20:0)));
+        for(var point:candidates.stream().limit(3).toList()) {
+            if(spent())return null;
+            var route=path(bot,BlockPos.containing(point),0);
+            if(route!=null&&route.canReach()){remember(point);return point;}
+            failed(bot.position(),point,now);
         }
         return null;
     }
@@ -523,6 +578,7 @@ final class BotMovement {
         int tries=0;
         for(var mapped:points) {
             var point=mapped.position();
+            if(nearSpawn(arena,team,point))continue;
             if(flat(bot.position(),point)<36||crowded(point)||recent.stream().anyMatch(r->r.distanceToSqr(point)<4))continue;
             if(rejected(bot.position(),point,now))continue;
             if(++tries>ATTEMPTS)break;

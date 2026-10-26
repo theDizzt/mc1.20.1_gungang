@@ -41,7 +41,20 @@ def main():
             path = ROOT / relative
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
-    print("Generated two team gate models and animated RGBA hologram texture")
+    pixels = bytearray()
+    for y in range(size):
+        pixels.append(0)
+        for x in range(size):
+            cross = 4 <= x < 28 and 4 <= y < 28 and (abs(x-y) <= 2 or abs(x+y-31) <= 2)
+            pixels.extend((255, 35, 35, 255 if cross else 0))
+    (ROOT / 'textures/block/escort_spawn_gate_locked.png').write_bytes(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, 6, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(pixels, 9)) + chunk(b"IEND", b""))
+    locked = json.loads(json.dumps(model))
+    locked['render_type'] = 'minecraft:cutout'
+    locked['textures']['all'] = 'gungang:block/escort_spawn_gate_locked'
+    for face in locked['elements'][0]['faces'].values():
+        face.pop('tintindex')
+    (ROOT / 'models/block/escort_spawn_gate_locked.json').write_text(json.dumps(locked, indent=2)+'\n', encoding='utf-8')
+    print("Generated team gates and locked escort red crosses")
 
 
 if __name__ == "__main__":

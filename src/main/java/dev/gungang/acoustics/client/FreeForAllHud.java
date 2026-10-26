@@ -14,12 +14,17 @@ import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID,value=Dist.CLIENT)
 public final class FreeForAllHud {
-    private static final int ACCENT=0xFF70CDBF,GOLD=0xFFFFD166,SILVER=0xFFC9D3DE,BRONZE=0xFFE0A070,DIM=0xFF5F6E80;
+    private static final int ACCENT=TacticalStyle.GOLD,GOLD=0xFFFFD166,SILVER=0xFFC9D3DE,BRONZE=0xFFE0A070,DIM=TacticalStyle.DIM;
     private static final int HEAD=28,COLS=13,ROW=18,FOOT=13;
     public static boolean blocked(){var p=Minecraft.getInstance().player;var r=p==null?null:row(p.getUUID());return r!=null&&r.protectionTicks()>0;}
     static boolean is(MatchSnapshot s){return s!=null&&s.point()!=null&&"FREE_FOR_ALL".equals(s.point().mode());}
     static MatchSnapshot.Row row(UUID id){var s=MatchHud.state();return !is(s)||!s.active()?null:s.players().stream().filter(r->r.id().equals(id.toString())).findFirst().orElse(null);}
-    @SubscribeEvent public static void hide(RenderPlayerEvent.Pre event){var mc=Minecraft.getInstance();var r=row(event.getEntity().getUUID());if(event.getEntity()!=mc.player&&r!=null&&r.protectionTicks()>0)event.setCanceled(true);}
+    /** Respawn protection hides both ways: nobody sees the protected player, and they see no one, held weapons included. */
+    @SubscribeEvent public static void hide(RenderPlayerEvent.Pre event){
+        var mc=Minecraft.getInstance();if(event.getEntity()==mc.player)return;
+        var r=row(event.getEntity().getUUID());
+        if(r!=null&&r.protectionTicks()>0||r!=null&&blocked())event.setCanceled(true);
+    }
     static int rankColor(int rank){return rank==1?GOLD:rank==2?SILVER:rank==3?BRONZE:DIM;}
 
     /**
@@ -48,7 +53,7 @@ public final class FreeForAllHud {
         DeathmatchHud.plate(g,x1,y1,x2,y2,color,left,rank==1);
         // Score progress replaces the plate underline: dim track, player-coloured fill from the centre.
         int fill=Math.round((x2-x1)*Math.max(0,Math.min(1,row.score()/(float)Math.max(1,goal))));
-        g.fill(x1,y2-2,x2,y2,0xFF2A3A50);
+        g.fill(x1,y2-2,x2,y2,TacticalStyle.EDGE);
         g.fill(left?x2-fill:x1,y2-2,left?x2:x1+fill,y2,color);
         var font=Minecraft.getInstance().font;String text=String.valueOf(row.score());int numberWidth=HudText.numberWidth(text);
         float size=Math.min(2f,36f/Math.max(1,numberWidth));int width=Math.round(numberWidth*size);
@@ -63,7 +68,7 @@ public final class FreeForAllHud {
         DeathmatchHud.small(g,name,left?cx+chipW+4:cx-4,y1+5,.7f,0xFFFFFFFF,false,left);
         if(lead!=null) {
             String tag=lead>0?"+"+lead:lead==0?"±0":String.valueOf(lead);
-            int tagColor=lead>0?0xFF7BE07B:lead==0?0xFF9AAABD:0xFFFF8A65,w=Math.round(font.width(tag)*.6f)+6;
+            int tagColor=lead>0?0xFF7BE07B:lead==0?TacticalStyle.MUTED:0xFFFF8A65,w=Math.round(font.width(tag)*.6f)+6;
             g.fill(edge,y1+14,edge+w,y1+21,(tagColor&0xFFFFFF)|0x40000000);g.fill(edge,y1+14,edge+1,y1+21,tagColor);
             DeathmatchHud.small(g,tag,edge+3,y1+15,.6f,tagColor,false,true);
         }
@@ -78,12 +83,12 @@ public final class FreeForAllHud {
         int shown=Math.max(1,Math.min(count,s.players().size()-page*count)),bottom=y+HEAD+COLS+shown*ROW+(pages>1?FOOT:4);
         int rgb=ACCENT&0xFFFFFF;
         g.fill(right,y+2,right+2,bottom+2,0x40000000);g.fill(x+2,bottom,right,bottom+2,0x40000000);
-        g.fillGradient(x,y,right,bottom,0xA6131D2B,0xA60B121C);
+        g.fillGradient(x,y,right,bottom,0xB01D1F18,0xB010110E);
         g.fillGradient(x,y,right,y+HEAD,rgb|0x50000000,rgb|0x08000000);
         g.fill(x,y,right,y+2,ACCENT);g.fill(x+8,y+9,x+10,y+19,ACCENT);
         g.drawString(font,"개인전",x+14,y+7,0xFFFFFFFF,false);
         long kills=s.players().stream().mapToLong(MatchSnapshot.Row::kills).sum();
-        g.drawString(font,s.players().size()+"명 · "+kills+" 킬 · 목표 "+s.point().goal()+"점",x+14,y+17,0xFF9AAABD,false);
+        g.drawString(font,s.players().size()+"명 · "+kills+" 킬 · 목표 "+s.point().goal()+"점",x+14,y+17,TacticalStyle.MUTED,false);
         var leader=s.players().isEmpty()?null:s.players().get(0);
         if(leader!=null) {
             String total=String.valueOf(leader.score()),label="1위";
@@ -92,7 +97,7 @@ public final class FreeForAllHud {
             g.drawString(font,label,right-12-HudText.numberWidth(total)*2-font.width(label),y+13,GOLD,false);
         }
         int dmg=right-8,assist=dmg-46,death=assist-22,kill=death-22,score=kill-30,face=x+26,nameX=face+30,cy=y+HEAD;
-        g.fill(x,cy,right,cy+COLS,0x30000000);g.fill(x,cy+COLS-1,right,cy+COLS,0xFF22324A);
+        g.fill(x,cy,right,cy+COLS,0x30000000);g.fill(x,cy+COLS-1,right,cy+COLS,TacticalStyle.EDGE);
         g.drawString(font,"#",x+8,cy+3,DIM,false);g.drawString(font,"플레이어",face,cy+3,DIM,false);
         MatchHud.column(g,"점수",score,cy+3,DIM);MatchHud.column(g,"K",kill,cy+3,DIM);MatchHud.column(g,"D",death,cy+3,DIM);
         MatchHud.column(g,"A",assist,cy+3,DIM);MatchHud.column(g,"DMG",dmg,cy+3,DIM);
@@ -105,19 +110,19 @@ public final class FreeForAllHud {
             g.fill(x,ry,x+2,ry+ROW,color);
             String number=String.valueOf(rank);
             g.drawString(font,HudText.number(number),x+8+(10-HudText.numberWidth(number))/2,ry+5,rank<=3&&r.score()>0?rankColor(rank):DIM,false);
-            g.fill(face-1,ry+2,face+13,ry+16,mine?color:0xFF2A3A50);
+            g.fill(face-1,ry+2,face+13,ry+16,mine?color:TacticalStyle.EDGE);
             PlayerFaceRenderer.draw(g,MatchHud.skin(r.id()),face,ry+3,12);
             PlayerLevels.draw(g,r.id(),face+15,ry+3,12);
             g.drawString(font,font.plainSubstrByWidth(r.name(),Math.max(1,score-30-nameX)),nameX,ry+5,mine?0xFFFFFFFF:color,false);
             MatchHud.column(g,String.valueOf(r.score()),score,ry+5,0xFFFFFFFF);
-            MatchHud.column(g,String.valueOf(r.kills()),kill,ry+5,0xFFE2E8F0);
+            MatchHud.column(g,String.valueOf(r.kills()),kill,ry+5,TacticalStyle.INK);
             MatchHud.column(g,String.valueOf(r.deaths()),death,ry+5,0xFFE08A8A);
-            MatchHud.column(g,String.valueOf(r.assists()),assist,ry+5,0xFF9AAABD);
+            MatchHud.column(g,String.valueOf(r.assists()),assist,ry+5,TacticalStyle.MUTED);
             MatchHud.column(g,String.format(Locale.ROOT,"%.1f",r.damage()),dmg,ry+5,0xFFFFC870);
         }
         if(pages>1) {
             String label=(page+1)+" / "+pages;
-            g.fill(x+8,bottom-FOOT,right-8,bottom-FOOT+1,0xFF22324A);
+            g.fill(x+8,bottom-FOOT,right-8,bottom-FOOT+1,TacticalStyle.EDGE);
             g.drawString(font,label,right-8-font.width(label),bottom-FOOT+3,DIM,false);
         }
         return pages;

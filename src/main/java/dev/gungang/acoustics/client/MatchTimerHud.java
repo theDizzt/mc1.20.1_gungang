@@ -52,7 +52,8 @@ final class MatchTimerHud {
         int cx=Math.round(centerX),x1=cx-30,x2=cx+30,y1=y-3,y2=y+19;
         g.fill(x1-1,y1-1,x2+1,y2+1,DeathmatchHud.EDGE);g.fill(x1,y1,x2,y2,DeathmatchHud.SURFACE);
         g.fill(x1,y1,x2,y1+1,0x14FFFFFF);
-        g.fill(x1,y2-1,x2,y2,warm?0xFFFF9A3C:0x50FFFFFF);
+        g.fill(x1,y2-1,x2,y2,warm?0xFFFF9A3C:TacticalStyle.GOLD);
+        TacticalStyle.corner(g,x2,y1,3,warm?0xFFFF9A3C:TacticalStyle.GOLD);
     }
     private static void glyphs(GuiGraphics g,String text,float x,float y,boolean warm,float colon) {
         g.pose().pushPose();

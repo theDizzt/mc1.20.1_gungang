@@ -16,7 +16,7 @@ public final class HandAxeRenderer extends EntityRenderer<HandAxeEntity> {
     public HandAxeRenderer(EntityRendererProvider.Context context) {super(context);items=context.getItemRenderer();}
     @Override public void render(HandAxeEntity axe,float yaw,float partial,PoseStack pose,MultiBufferSource buffers,int light) {
         pose.pushPose();
-        pose.translate(0,axe.embedded()?0:.15,0);
+        // Tumble around the simulated position, not 0.15 blocks above the aiming guide.
         pose.mulPose(Axis.YP.rotationDegrees(Mth.lerp(partial,axe.yRotO,axe.getYRot())-90));
         pose.mulPose(Axis.ZP.rotationDegrees(axe.embedded()?-axe.getXRot():-(axe.tickCount+partial)*40));
         items.renderStatic(axe.getItem(),ItemDisplayContext.FIXED,light,OverlayTexture.NO_OVERLAY,pose,buffers,axe.level(),axe.getId());

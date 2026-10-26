@@ -214,6 +214,7 @@ public final class BotManager {
         ProgressionService.broadcastLevels(server);
     }
     static void close(){
+        BotDiagnostics.clear();
         for(var a:agents)a.close();agents.clear();
         BotMovement.forgetExits();BotWaypoints.forget();arena=null;
     }
@@ -309,6 +310,10 @@ public final class BotManager {
     static void register(LiteralArgumentBuilder<CommandSourceStack> root){
         var commands=Commands.literal("bot").requires(s->s.hasPermission(2)).executes(c->{status(c.getSource());return 1;});
         commands.then(Commands.literal("status").executes(c->{status(c.getSource());return 1;}));
+        commands.then(Commands.literal("debug")
+                .then(slotArgument().executes(c->command(c.getSource(),()->BotDiagnostics.watch(c.getSource(),IntegerArgumentType.getInteger(c,"bot")-1))))
+                .then(Commands.literal("off").executes(c->command(c.getSource(),()->BotDiagnostics.off(c.getSource()))))
+                .then(Commands.literal("info").executes(c->command(c.getSource(),()->BotDiagnostics.info(c.getSource())))));
         commands.then(Commands.literal("name").then(slotArgument().then(Commands.argument("name",StringArgumentType.greedyString())
                 .executes(c->command(c.getSource(),()->{
                     requireLobby();requireDatabase();int slot=IntegerArgumentType.getInteger(c,"bot")-1;

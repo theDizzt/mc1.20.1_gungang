@@ -29,7 +29,13 @@ public final class PropSmokeChecks {
         var gun=new Loadouts.Weapon("test_shotgun","{id:\"tacz:modern_kinetic_gun\",Count:1b,tag:{GunId:\"tacz:m1014\",GunCurrentAmmoCount:6,HasBulletInBarrel:1b,GunFireMode:\"SEMI\"}}","M1014","",new Loadouts.Specs("","","","",""),"");
         var map=PropHuntRules.example();var loadouts=new Loadouts(List.of(gun),List.of(),null);
         if(net.minecraftforge.fml.ModList.get().isLoaded("tacz"))PropHuntMatch.validate(server,map,loadouts);
+        var gatePos=new net.minecraft.core.BlockPos(5,110,5);level.setBlock(gatePos,StationBlocks.ALPHA_GATE.get().defaultBlockState(),3);
+        var through=new net.minecraft.world.phys.Vec3(5.5,110.5,3.5);var beyond=new net.minecraft.world.phys.Vec3(5.5,110.5,7.5);
+        check(!level.getBlockState(gatePos).getCollisionShape(level,gatePos).isEmpty()&&SpawnGateProtection.crosses(level,through,beyond),"Outside prop hunt the gate stops bullets");
         var match=new PropHuntMatch(server,map,gun);field(MatchManager.class,"propHunt").set(null,match);
+        check(level.getBlockState(gatePos).getCollisionShape(level,gatePos).isEmpty()&&level.getBlockState(gatePos).getShape(level,gatePos).isEmpty()&&!SpawnGateProtection.crosses(level,through,beyond),"Prop hunt gate lets bullets and swings through");
+        check(level.clip(new net.minecraft.world.level.ClipContext(through,beyond,net.minecraft.world.level.ClipContext.Block.COLLIDER,net.minecraft.world.level.ClipContext.Fluid.NONE,a)).getType()==net.minecraft.world.phys.HitResult.Type.MISS,"Bullet ray passes the prop hunt gate");
+        level.setBlock(gatePos,net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(),3);
         try{
             match.equip(a);if(net.minecraftforge.fml.ModList.get().isLoaded("tacz"))match.equip(b);
             check(a.getMaxHealth()==50,"Hider health is 50");check(!a.isPickable(),"Invisible player cannot absorb bullets");

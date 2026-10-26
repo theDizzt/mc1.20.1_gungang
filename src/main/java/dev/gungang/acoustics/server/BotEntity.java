@@ -39,10 +39,10 @@ public final class BotEntity extends PathfinderMob {
                         return node;
                     }
                     @Override public BlockPathTypes getBlockPathType(net.minecraft.world.level.BlockGetter world,int x,int y,int z){
-                        var block=world.getBlockState(new net.minecraft.core.BlockPos(x,y,z)).getBlock();
+                        var state=world.getBlockState(new net.minecraft.core.BlockPos(x,y,z));
                         // An own-team gate is a doorway: walkable when it stands on a floor, open air above that.
                         // Reporting plain OPEN made the pathfinder see a hole with no floor and never route through it.
-                        if(block instanceof SpawnGateBlock gate&&gate.allows(BotEntity.this)){
+                        if(state.getBlock() instanceof SpawnGateBlock gate&&gate.present(state)&&gate.allows(BotEntity.this)){
                             var below=getBlockPathType(world,x,y-1,z);
                             return below==BlockPathTypes.OPEN||below==BlockPathTypes.WALKABLE||below==BlockPathTypes.WATER||below==BlockPathTypes.LAVA
                                     ?BlockPathTypes.OPEN:BlockPathTypes.WALKABLE;

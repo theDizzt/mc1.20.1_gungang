@@ -2,6 +2,8 @@
   "item.gungang.spatial_wand": "Spatial Wizard",
   "block.gungang.alpha_spawn_gate": "ALPHA / Attack Spawn Hologram Gate",
   "block.gungang.bravo_spawn_gate": "BRAVO / Defense Spawn Hologram Gate",
+  "block.gungang.escort_alpha_spawn_gate": "Escort ALPHA / Attack Spawn Hologram Gate",
+  "block.gungang.escort_bravo_spawn_gate": "Escort BRAVO / Defense Spawn Hologram Gate",
   "block.gungang.escort_path": "Escort Path Marker",
   "block.gungang.escort_start": "Escort Start Marker",
   "block.gungang.escort_end": "Escort Destination Marker",
