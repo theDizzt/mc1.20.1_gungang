@@ -1,0 +1,9 @@
+{
+  "damage": 16.0,
+  "projectileRange": 6.0,
+  "durationSeconds": 6.0,
+  "cooldownSeconds": 30.0,
+  "emissionIntervalTicks": 1,
+  "projectileSpeed": 1.2,
+  "throwSpeed": 1.1
+}

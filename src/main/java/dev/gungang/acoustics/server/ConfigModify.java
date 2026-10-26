@@ -37,6 +37,7 @@ public final class ConfigModify {
     private static Map<String,Object> settings(String kind){
         var result=new TreeMap<String,Object>();
         if(kind.equals("item")){
+            result.put("arrow_grenade",ExtraGadgetConfig.arrowGrenade);
             result.put("turret",Turrets.config);
             result.put("landmine",GadgetConfig.mine);result.put("recovery_potion",GadgetConfig.recovery);result.put("adrenaline",GadgetConfig.adrenaline);result.put("barrier",GadgetConfig.barrier);result.put("bear_trap",GadgetConfig.bearTrap);
             result.put("molotov",ExtraGadgetConfig.molotov);result.put("orbital_strike",ExtraGadgetConfig.orbital);result.put("life_support",ExtraGadgetConfig.life);result.put("jetpack",ExtraGadgetConfig.jet);result.put("infrared_scanner",ExtraGadgetConfig.scanner);result.put("shield",ExtraGadgetConfig.shield);result.put("hand_axe",ExtraGadgetConfig.handAxe);
