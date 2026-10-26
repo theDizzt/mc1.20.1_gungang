@@ -28,7 +28,7 @@ public final class RapierAnimation implements IClientItemExtensions {
         if(!(entity.getMainHandItem().getItem() instanceof dev.gungang.acoustics.server.RapierItem))return;
         boolean right=entity.getMainArm()==HumanoidArm.RIGHT;
         var arm=right?model.rightArm:model.leftArm;
-        float thrust=(float)Math.sin(Math.PI*model.attackTime);
+        float thrust=thrust(model.attackTime);
         arm.xRot=-.35f-.8f*thrust+model.head.xRot*.35f;
         arm.yRot=(right?-.12f:.12f)*(1-thrust);arm.zRot=0;
         model.body.yRot=0;
@@ -38,11 +38,12 @@ public final class RapierAnimation implements IClientItemExtensions {
     }
     public static void firstPerson(PoseStack pose,boolean right,float equip,float swing){
         int side=right?1:-1;
-        float thrust=swing<.3f?smooth(swing/.3f):swing<=.45f?1:1-smooth((swing-.45f)/.55f);
-        // At full extension the blade axis is camera -Z and crosses the crosshair.
-        pose.translate(side*.48*(1-thrust),-.38*(1-thrust)-equip*.5,-.95-.55*thrust);
-        pose.mulPose(Axis.XP.rotationDegrees(-35-55*thrust));
-        pose.mulPose(Axis.ZP.rotationDegrees(side*(-8+8*thrust)));
+        float thrust=thrust(swing);
+        // Keep the fist below/right (mirrored for left hand), so it cannot hide the thrusting tip.
+        pose.translate(side*(.48-.32*thrust),-.38+.26*thrust-equip*.5,-.95-.55*thrust);
+        pose.mulPose(Axis.XP.rotationDegrees(-35-51*thrust));
+        pose.mulPose(Axis.ZP.rotationDegrees(side*(-8+13*thrust)));
     }
+    private static float thrust(float swing){return swing<.15f?smooth(swing/.15f):swing<=.25f?1:1-smooth((swing-.25f)/.75f);}
     private static float smooth(float t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);}
 }

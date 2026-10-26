@@ -22,7 +22,7 @@ public final class GadgetManager {
         int count=CompoundBow.clearArrows(server);
         for(var level:server.getAllLevels()) {
             var attacks=new ArrayList<net.minecraft.world.entity.Entity>();
-            for(var entity:level.getAllEntities())if(entity instanceof OrdnanceEntity||entity instanceof MolotovEntity)attacks.add(entity);
+            for(var entity:level.getAllEntities())if(entity instanceof OrdnanceEntity||entity instanceof MolotovEntity||entity instanceof ArrowGrenadeEntity||entity instanceof ArrowFragmentEntity)attacks.add(entity);
             attacks.forEach(net.minecraft.world.entity.Entity::discard);
             var entities=new ArrayList<DeployableEntity>();
             for(var entity:level.getAllEntities())if(entity instanceof DeployableEntity placed)entities.add(placed);
@@ -47,17 +47,17 @@ public final class GadgetManager {
     }
     public static void use(ServerPlayer p,ItemStack stack,String kind) {
         if(SurvivalGadgets.jetting(p))return;
-        if((kind.equals("landmine")||kind.equals("molotov")||kind.equals("orbital_strike")||kind.equals("bear_trap")||kind.equals("turret"))&&SafeZones.contains(p))return;
+        if((kind.equals("landmine")||kind.equals("molotov")||kind.equals("arrow_grenade")||kind.equals("orbital_strike")||kind.equals("bear_trap")||kind.equals("turret"))&&SafeZones.contains(p))return;
         if(!p.isAlive()||p.isSpectator()||LobbyManager.respawning(p.getUUID())||!SecondaryRuntime.ready(p,stack))return;
         if(kind.equals("jetpack")) {SurvivalGadgets.startJet(p,stack);return;}
         if(CombatGadgets.use(p,stack,kind))return;
         if(GadgetItem.placement(kind)) {
             PREVIEW.put(p.getUUID(),new Preview(kind,p.getInventory().selected));GungangNetwork.send(p,new GungangNetwork.Gadget(kind));return;
         }
-        if(kind.equals("molotov")) {
-            var projectile=GadgetItems.MOLOTOV_PROJECTILE.get().create(p.serverLevel());if(projectile==null)return;
+        if(kind.equals("molotov")||kind.equals("arrow_grenade")) {
+            net.minecraft.world.entity.projectile.ThrowableItemProjectile projectile=kind.equals("arrow_grenade")?GadgetItems.ARROW_GRENADE_PROJECTILE.get().create(p.serverLevel()):GadgetItems.MOLOTOV_PROJECTILE.get().create(p.serverLevel());if(projectile==null)return;
             projectile.setOwner(p);projectile.setPos(p.getX(),p.getEyeY()-.1,p.getZ());
-            projectile.shootFromRotation(p,p.getXRot(),p.getYRot(),-10,1.1f,1);
+            projectile.shootFromRotation(p,p.getXRot(),p.getYRot(),-10,kind.equals("arrow_grenade")?(float)ExtraGadgetConfig.arrowGrenade.throwSpeed():1.1f,1);
             if(!p.serverLevel().addFreshEntity(projectile))return;
             p.level().playSound(null,p.blockPosition(),net.minecraft.sounds.SoundEvents.SPLASH_POTION_THROW,net.minecraft.sounds.SoundSource.PLAYERS,.7f,1);
         } else if(kind.equals("recovery_potion")) {

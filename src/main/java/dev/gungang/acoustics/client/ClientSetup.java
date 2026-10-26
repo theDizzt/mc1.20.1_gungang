@@ -32,6 +32,8 @@ public final class ClientSetup {
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.BEAR_TRAP_ENTITY.get(),BearTrapRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.TURRET_ENTITY.get(),TurretRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.MOLOTOV_PROJECTILE.get(),net.minecraft.client.renderer.entity.ThrownItemRenderer::new);
+        event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.ARROW_GRENADE_PROJECTILE.get(),ArrowGrenadeRenderer::new);
+        event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.ARROW_FRAGMENT.get(),ArrowFragmentRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.ORDNANCE.get(),OrdnanceRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.HAND_AXE_PROJECTILE.get(),HandAxeRenderer::new);
     }

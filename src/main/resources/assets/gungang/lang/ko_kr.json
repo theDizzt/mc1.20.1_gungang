@@ -14,5 +14,8 @@
   "item.gungang.turret": "터렛",
   "item.gungang.rapier": "레이피어",
   "entity.gungang_acoustics.turret": "터렛",
-  "death.attack.gungang.turret": "%1$s님이 %2$s님의 터렛에 사망했습니다"
+  "death.attack.gungang.turret": "%1$s님이 %2$s님의 터렛에 사망했습니다",
+  "item.gungang.arrow_grenade": "화살분열 수류탄",
+  "death.attack.gungang.arrow_fragment": "%1$s이(가) 수류탄 화살에 맞았습니다",
+  "death.attack.gungang.arrow_fragment.player": "%1$s이(가) %2$s의 수류탄 화살에 맞았습니다"
 }

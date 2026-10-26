@@ -19,6 +19,9 @@ public final class GadgetItems {
     public static final RegistryObject<Item> SCANNER=ITEMS.register("infrared_scanner",()->new GadgetItem("infrared_scanner"));
     public static final RegistryObject<Item> SHIELD=ITEMS.register("shield",()->new GadgetItem("shield"));
     public static final RegistryObject<Item> MOLOTOV=ITEMS.register("molotov",()->new GadgetItem("molotov"));
+    public static final RegistryObject<Item> ARROW_GRENADE=ITEMS.register("arrow_grenade",()->new GadgetItem("arrow_grenade"));
+    public static final RegistryObject<EntityType<ArrowGrenadeEntity>> ARROW_GRENADE_PROJECTILE=ENTITIES.register("arrow_grenade",()->EntityType.Builder.<ArrowGrenadeEntity>of(ArrowGrenadeEntity::new,MobCategory.MISC).sized(.3f,.3f).clientTrackingRange(8).updateInterval(1).build("gungang_acoustics:arrow_grenade"));
+    public static final RegistryObject<EntityType<ArrowFragmentEntity>> ARROW_FRAGMENT=ENTITIES.register("arrow_fragment",()->EntityType.Builder.<ArrowFragmentEntity>of(ArrowFragmentEntity::new,MobCategory.MISC).sized(.25f,.25f).clientTrackingRange(8).updateInterval(1).build("gungang_acoustics:arrow_fragment"));
     public static final RegistryObject<Item> ORBITAL_STRIKE=ITEMS.register("orbital_strike",()->new GadgetItem("orbital_strike"));
     public static final RegistryObject<Item> LIFE_SUPPORT=ITEMS.register("life_support",()->new GadgetItem("life_support"));
     public static final RegistryObject<Item> BEAR_TRAP=ITEMS.register("bear_trap",()->new GadgetItem("bear_trap"));
