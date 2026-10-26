@@ -19,7 +19,7 @@ public final class ProgressionHud {
         LevelEmblem.draw(g,progress.level(),x,y-3,14);
         int left=x+18,right=x+width,filled=Math.round((right-left)*progress.fraction());
         g.fill(left,y+5,right,y+7,0x50FFFFFF);
-        for(int i=0;i<filled;i+=2)g.fill(left+i,y+5,left+Math.min(filled,i+2),y+7,ArenaScreen.blend(0xFF70CDBF,0xFFFFFFFF,i/(float)Math.max(1,right-left)));
+        for(int i=0;i<filled;i+=2)g.fill(left+i,y+5,left+Math.min(filled,i+2),y+7,ArenaScreen.blend(TacticalStyle.GOLD,0xFFFFFFFF,i/(float)Math.max(1,right-left)));
     }
     private ProgressionHud() { }
 }

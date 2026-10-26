@@ -111,8 +111,8 @@ public final class MatchHud {
         if(mc.screen==null&&mc.options.keyPlayerList.isDown()) {
             String label="경과 시간",time=MatchReport.time(state.elapsedSeconds());
             int w=mc.font.width(label)+HudText.numberWidth(time)+20,cx=g.guiWidth()/2-w/2;
-            g.fill(cx,y+18,cx+w,y+31,0x900B121C);g.fill(cx,y+30,cx+w,y+31,0xFF70CDBF);
-            g.drawString(mc.font,label,cx+7,y+21,0xFF9AAABD,false);
+            g.fill(cx,y+18,cx+w,y+31,0x90141511);g.fill(cx,y+30,cx+w,y+31,TacticalStyle.GOLD);
+            g.drawString(mc.font,label,cx+7,y+21,TacticalStyle.MUTED,false);
             g.drawString(mc.font,HudText.number(time),cx+w-7-HudText.numberWidth(time),y+21,0xFFFFFFFF,false);
             int height=g.guiHeight()-y-48;
             if(state.bomb()!=null){
@@ -152,45 +152,45 @@ public final class MatchHud {
         var mc=Minecraft.getInstance();var font=mc.font;int right=left+width,rgb=color&0xFFFFFF;
         // Translucent card so the match stays faintly visible; shadow only on the exposed edges.
         g.fill(right,top+2,right+2,bottom+2,0x40000000);g.fill(left+2,bottom,right,bottom+2,0x40000000);
-        g.fillGradient(left,top,right,bottom,0xA6131D2B,0xA60B121C);
+        g.fillGradient(left,top,right,bottom,0xB01D1F18,0xB010110E);
         g.fillGradient(left,top,right,top+HEAD,rgb|0x50000000,rgb|0x08000000);
         g.fill(left,top,right,top+2,color|0xFF000000);
         g.fill(left+8,top+9,left+10,top+19,color|0xFF000000);
         g.drawString(font,name,left+14,top+7,0xFFFFFFFF,false);
         long kills=rows.stream().mapToLong(MatchSnapshot.Row::kills).sum();
-        g.drawString(font,rows.size()+"명 · "+kills+" 킬",left+14,top+17,0xFF9AAABD,false);
+        g.drawString(font,rows.size()+"명 · "+kills+" 킬",left+14,top+17,TacticalStyle.MUTED,false);
         String total=String.valueOf(score);
         g.pose().pushPose();g.pose().translate(right-8-HudText.numberWidth(total)*2,top+6,0);g.pose().scale(2,2,1);
         g.drawString(font,HudText.number(total),0,0,leading?0xFFFFFFFF:0xFFB4C0CE,false);g.pose().popPose();
         // Columns are right-anchored so the name gets every remaining pixel.
         int dmg=right-8,assist=dmg-46,death=assist-22,kill=death-22,face=left+26,nameX=face+30,cy=top+HEAD;
-        g.fill(left,cy,right,cy+COLS,0x30000000);g.fill(left,cy+COLS-1,right,cy+COLS,0xFF22324A);
-        g.drawString(font,"#",left+8,cy+3,0xFF5F6E80,false);
-        g.drawString(font,"플레이어",face,cy+3,0xFF5F6E80,false);
-        column(g,"K",kill,cy+3,0xFF5F6E80);column(g,"D",death,cy+3,0xFF5F6E80);
-        column(g,"A",assist,cy+3,0xFF5F6E80);column(g,"DMG",dmg,cy+3,0xFF5F6E80);
+        g.fill(left,cy,right,cy+COLS,0x30000000);g.fill(left,cy+COLS-1,right,cy+COLS,TacticalStyle.EDGE);
+        g.drawString(font,"#",left+8,cy+3,TacticalStyle.DIM,false);
+        g.drawString(font,"플레이어",face,cy+3,TacticalStyle.DIM,false);
+        column(g,"K",kill,cy+3,TacticalStyle.DIM);column(g,"D",death,cy+3,TacticalStyle.DIM);
+        column(g,"A",assist,cy+3,TacticalStyle.DIM);column(g,"DMG",dmg,cy+3,TacticalStyle.DIM);
         String self=mc.player==null?"":mc.player.getUUID().toString();
         int start=page*capacity,count=Math.max(0,Math.min(capacity,rows.size()-start));
-        if(count==0)g.drawString(font,"플레이어 없음",left+(width-font.width("플레이어 없음"))/2,cy+COLS+5,0xFF5F6E80,false);
+        if(count==0)g.drawString(font,"플레이어 없음",left+(width-font.width("플레이어 없음"))/2,cy+COLS+5,TacticalStyle.DIM,false);
         for(int i=0;i<count;i++) {
             var row=rows.get(start+i);int ry=cy+COLS+i*ROW,rank=start+i+1;boolean mine=row.id().equals(self);
             if(mine){g.fill(left,ry,right,ry+ROW,rgb|0x38000000);g.fill(left,ry,left+2,ry+ROW,color|0xFF000000);}
             else if(i%2==1)g.fill(left,ry,right,ry+ROW,0x10FFFFFF);
             String number=String.valueOf(rank);
-            g.drawString(font,HudText.number(number),left+8+(10-HudText.numberWidth(number))/2,ry+5,rank==1&&row.kills()>0?0xFFFFD166:0xFF5F6E80,false);
-            g.fill(face-1,ry+2,face+13,ry+16,mine?color|0xFF000000:0xFF2A3A50);
+            g.drawString(font,HudText.number(number),left+8+(10-HudText.numberWidth(number))/2,ry+5,rank==1&&row.kills()>0?0xFFFFD166:TacticalStyle.DIM,false);
+            g.fill(face-1,ry+2,face+13,ry+16,mine?color|0xFF000000:TacticalStyle.EDGE);
             PlayerFaceRenderer.draw(g,row.skin()!=null&&!row.skin().isEmpty()?BotRenderer.texture(row.skin()):skin(row.id()),face,ry+3,12);
             PlayerLevels.draw(g,row.id(),face+15,ry+3,12);
-            g.drawString(font,font.plainSubstrByWidth(row.name(),Math.max(1,kill-22-nameX)),nameX,ry+5,mine?0xFFFFFFFF:0xFFE2E8F0,false);
+            g.drawString(font,font.plainSubstrByWidth(row.name(),Math.max(1,kill-22-nameX)),nameX,ry+5,mine?0xFFFFFFFF:TacticalStyle.INK,false);
             column(g,String.valueOf(row.kills()),kill,ry+5,0xFFFFFFFF);
             column(g,String.valueOf(row.deaths()),death,ry+5,0xFFE08A8A);
-            column(g,String.valueOf(row.assists()),assist,ry+5,0xFF9AAABD);
+            column(g,String.valueOf(row.assists()),assist,ry+5,TacticalStyle.MUTED);
             column(g,String.format(Locale.ROOT,"%.1f",row.damage()),dmg,ry+5,0xFFFFC870);
         }
         if(pages>1) {
             String label=(page+1)+" / "+pages;
-            g.fill(left+8,bottom-FOOT,right-8,bottom-FOOT+1,0xFF22324A);
-            g.drawString(font,label,right-8-font.width(label),bottom-FOOT+3,0xFF5F6E80,false);
+            g.fill(left+8,bottom-FOOT,right-8,bottom-FOOT+1,TacticalStyle.EDGE);
+            g.drawString(font,label,right-8-font.width(label),bottom-FOOT+3,TacticalStyle.DIM,false);
         }
     }
     static void column(GuiGraphics g,String text,int right,int y,int color) {

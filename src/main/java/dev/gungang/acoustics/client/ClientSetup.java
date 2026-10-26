@@ -74,6 +74,7 @@ public final class ClientSetup {
     public static void overlays(RegisterGuiOverlaysEvent event) {
         event.registerBelow(VanillaGuiOverlay.HOTBAR.id(), "damage_vignette", DamageVignette::render);
         event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "shooter_hud", ShooterHud::render);
+        event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "rapier_energy", TaczAmmoHud::rapier);
     }
     @SubscribeEvent
     public static void setup(FMLClientSetupEvent event) {

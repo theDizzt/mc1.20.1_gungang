@@ -102,7 +102,7 @@ public final class AcousticConfigScreen extends Screen {
                 // Inputs sit right of their label; list inputs go under it.
                 int inputWidth = option.list ? option.width : columns() ? option.width * 2 / 5 : option.width / 2;
                 int inputY = option.list ? option.y + 15 : option.y;
-                EditBox box = new EditBox(font, option.x + option.width - inputWidth, inputY, inputWidth, 20, text(option.key));
+                EditBox box = new TacticalEditBox(font, option.x + option.width - inputWidth, inputY, inputWidth, 20, text(option.key));
                 box.setMaxLength(Math.max(32767, option.draft.length()));
                 box.setValue(option.draft);
                 box.setTooltip(tip);

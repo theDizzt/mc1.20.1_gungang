@@ -187,12 +187,13 @@ public final class ShooterHud {
             }
         }
     }
-    static final int SURFACE = 0xFF0B121C, EDGE = 0xFF2A3A50, BAR_EDGE = 0xFF465264;
+    static final int SURFACE = TacticalStyle.PANEL, EDGE = TacticalStyle.EDGE, BAR_EDGE = 0xFF77786B;
     /** Opaque card: soft edge, faint top highlight and an optional accent underline inside the border. */
     static void card(GuiGraphics g, int x, int y, int width, int height, int edge, int background, int accent) {
         panel(g, x, y, width, height, edge, background);
         g.fill(x + 1, y + 1, x + width - 1, y + 2, 0x14FFFFFF);
         if (accent != 0) g.fill(x + 1, y + height - 3, x + width - 1, y + height - 1, accent);
+        if(accent!=0&&height>=16)TacticalStyle.corner(g,x+width-1,y+1,4,accent);
     }
     /** Portrait frame: dark tile with a team tint fading in toward the bottom and a solid team underline below the face inset. */
     static void portrait(GuiGraphics g, int x, int y, int size, int team) {

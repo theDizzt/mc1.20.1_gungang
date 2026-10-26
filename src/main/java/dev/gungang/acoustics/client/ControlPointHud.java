@@ -94,7 +94,7 @@ final class ControlPointHud {
         DeathmatchHud.plate(g,x1,y1,x2,y2,color,left,owner);
         // Score progress replaces the plate underline: dim track, team-coloured fill from the centre.
         int fill=Math.round((x2-x1)*fraction);
-        g.fill(x1,y2-2,x2,y2,0xFF2A3A50);
+        g.fill(x1,y2-2,x2,y2,TacticalStyle.EDGE);
         g.fill(left?x2-fill:x1,y2-2,left?x2:x1+fill,y2,color|0xFF000000);
         String text=String.valueOf(score);int numberWidth=HudText.numberWidth(text);
         float size=Math.min(1.7f,30f/Math.max(1,numberWidth));int width=Math.round(numberWidth*size);

@@ -34,7 +34,7 @@ public final class TeamHud {
         Kill(DeathNotice notice, long started, long expires) { this.notice = notice; this.started = started; this.expires = expires; }
     }
     /** Softer charcoal than the card surface behind a teammate's missing health. */
-    private static final int BAR_TRACK = 0xFF232A33;
+    private static final int BAR_TRACK = 0xFF292B24;
     private static final long ENTER_NS = 280_000_000L, EXIT_NS = 400_000_000L, LIFE_NS = 8_000_000_000L;
     private static long lastFrame;
     private static final ArrayDeque<Kill> KILLS = new ArrayDeque<>();

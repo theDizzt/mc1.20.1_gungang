@@ -5,7 +5,8 @@ package dev.gungang.acoustics.server;
  * crosshair) and drops under gravity; a throw while looking level lands {@code distance} blocks away on flat ground.
  */
 public final class HandAxeRules {
-    public static final double GRAVITY=.05,DRAG=.99,EYE_HEIGHT=1.62;
+    // Vanilla stores these as floats; keep their exact promoted values in the predictor.
+    public static final double GRAVITY=(double).05f,DRAG=(double).99f,EYE_HEIGHT=1.52;
     /** Held ticks to throw distance, linear from min to max over the charge time. */
     public static double distance(int heldTicks,double min,double max,double chargeSeconds) {
         double charge=Math.max(0,Math.min(1,heldTicks/Math.max(1,chargeSeconds*20)));
