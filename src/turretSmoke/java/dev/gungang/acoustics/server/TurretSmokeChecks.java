@@ -22,6 +22,8 @@ public final class TurretSmokeChecks {
     @SubscribeEvent public static void started(ServerStartedEvent event){
         var server=event.getServer();var level=server.overworld();long start=level.getGameTime();
         try {
+            // Exercise a fixed fixture independently of live server tuning.
+            Turrets.config=new Turrets.Config(1,16,210,150,250,1,20,3,5);
             var p=FakePlayerFactory.get(level,new com.mojang.authlib.GameProfile(UUID.randomUUID(),"TurretOwner"));
             p.setPos(0,240,4);p.setHealth(20);level.addNewPlayer(p);
             var pos=new BlockPos(0,240,0);
@@ -94,6 +96,12 @@ public final class TurretSmokeChecks {
             turret.tick();turret.tick();check(turret.ammo()==250,"Reload exceeded magazine capacity");
             reloadTag.putInt("Ammo",100);turret.readAdditionalSaveData(reloadTag);Turrets.key(p,"down");
             server.getWorldData().overworldData().setGameTime(start+100);turret.tick();check(turret.ammo()==100,"Stale held-key packet kept reloading");
+            p.setHealth(0);turret.tick();
+            check(!turret.isRemoved()&&Turrets.owned(p.getUUID())==turret,"Owner death removed turret");
+            p.setHealth(20);p.setGameMode(net.minecraft.world.level.GameType.SPECTATOR);turret.tick();
+            check(!turret.isRemoved(),"Respawn spectator camera removed turret");
+            p.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);turret.tick();
+            check(Turrets.owned(p.getUUID())==turret,"Respawn lost ownership");
             float ownerHealth=p.getHealth();turret.hurt(level.damageSources().generic(),150);check(turret.isRemoved()&&Turrets.owned(p.getUUID())==null,"Destruction did not release owner slot");
             check(p.getHealth()==ownerHealth&&level.getBlockState(pos.below()).is(Blocks.STONE),"Destruction effect caused damage or changed terrain");
             var grounded=GadgetItems.TURRET_ENTITY.get().create(level);grounded.setPos(1,240,1);grounded.setup(p);Turrets.claim(grounded);level.addFreshEntity(grounded);

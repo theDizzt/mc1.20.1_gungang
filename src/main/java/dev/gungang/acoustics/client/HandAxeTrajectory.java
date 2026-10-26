@@ -3,6 +3,7 @@ package dev.gungang.acoustics.client;
 import dev.gungang.acoustics.GungangAcoustics;
 import dev.gungang.acoustics.server.HandAxeItem;
 import dev.gungang.acoustics.server.HandAxeRules;
+import dev.gungang.acoustics.server.HandAxeFlight;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.RenderType;
@@ -17,6 +18,8 @@ import net.minecraftforge.fml.common.Mod;
 /** Local-only aiming guide, using the same launch parameters and discrete physics as the axe. */
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID,value=Dist.CLIENT)
 public final class HandAxeTrajectory {
+    private static dev.gungang.acoustics.server.HandAxeEntity probe;
+    @SubscribeEvent public static void logout(net.minecraftforge.client.event.ClientPlayerNetworkEvent.LoggingOut event){probe=null;}
     @SubscribeEvent public static void render(RenderLevelStageEvent event) {
         if(event.getStage()!=RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS)return;
         var mc=Minecraft.getInstance();var player=mc.player;
@@ -24,21 +27,24 @@ public final class HandAxeTrajectory {
         var tag=player.getUseItem().getTag();
         if(tag==null||!tag.contains("AxeArcDegrees"))return;
         double distance=HandAxeRules.distance(player.getTicksUsingItem(),tag.getDouble("AxeMinRange"),tag.getDouble("AxeMaxRange"),tag.getDouble("AxeChargeSeconds"));
-        float pitch=HandAxeRules.pitch(player.getXRot(),tag.getDouble("AxeArcDegrees"));
-        Vec3 velocity=Vec3.directionFromRotation(pitch,player.getYRot()).scale((float)HandAxeRules.speed(distance,tag.getDouble("AxeArcDegrees")));
-        var motion=player.getDeltaMovement();velocity=velocity.add(motion.x,player.onGround()?0:motion.y,motion.z);
-        Vec3 point=player.getEyePosition(event.getPartialTick()).add(0,-.1,0);
+        Vec3 velocity=HandAxeFlight.velocity(player,distance,tag.getDouble("AxeArcDegrees"));
+        Vec3 point=HandAxeFlight.origin(player);
+        // Use the projectile itself for collision context and owner filtering, without adding/ticking it in the world.
+        if(probe==null||probe.level()!=mc.level)probe=dev.gungang.acoustics.server.GadgetItems.HAND_AXE_PROJECTILE.get().create(mc.level);
+        if(probe==null)return;probe.setOwner(player);
         var pose=event.getPoseStack();var camera=event.getCamera().getPosition();
         pose.pushPose();pose.translate(-camera.x,-camera.y,-camera.z);
         var buffers=mc.renderBuffers().bufferSource();var lines=buffers.getBuffer(RenderType.lines());
         boolean hit=false;
         for(int tick=0;tick<160;tick++) {
+            probe.setPos(point);probe.setDeltaMovement(velocity);
+            boolean water=probe.updateFluidHeightAndDoFluidPushing(net.minecraft.tags.FluidTags.WATER,.014);
+            velocity=probe.getDeltaMovement();
             Vec3 end=point.add(velocity);
-            var block=mc.level.clip(new ClipContext(point,end,ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,player));
+            var block=mc.level.clip(new ClipContext(point,end,ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,probe));
             hit=block.getType()!=HitResult.Type.MISS;if(hit)end=block.getLocation();
-            for(var target:mc.level.getEntitiesOfClass(LivingEntity.class,new AABB(point,end).inflate(.6),e->e!=player&&!e.isSpectator()&&e.isPickable()&&!e.isPassengerOfSameVehicle(player))) {
-                var box=target.getBoundingBox().inflate(.3);var intersection=box.clip(point,end);
-                if(box.contains(point)){end=point;hit=true;break;}
+            for(var target:mc.level.getEntitiesOfClass(LivingEntity.class,probe.getBoundingBox().expandTowards(velocity).inflate(1),e->e!=player&&e.isAlive()&&!e.isSpectator()&&e.isPickable()&&!e.isPassengerOfSameVehicle(player))) {
+                var intersection=target.getBoundingBox().inflate((double).3f).clip(point,end);
                 if(intersection.isPresent()){end=intersection.get();hit=true;}
             }
             Vec3 normal=end.subtract(point).normalize();
@@ -47,8 +53,7 @@ public final class HandAxeTrajectory {
                 lines.vertex(pose.last().pose(),(float)end.x,(float)end.y,(float)end.z).color(.3f,1f,.85f,.85f).normal(pose.last().normal(),(float)normal.x,(float)normal.y,(float)normal.z).endVertex();
             }
             point=end;if(hit)break;
-            double drag=mc.level.getFluidState(net.minecraft.core.BlockPos.containing(point)).is(net.minecraft.tags.FluidTags.WATER)?.8:HandAxeRules.DRAG;
-            velocity=velocity.scale(drag).add(0,-HandAxeRules.GRAVITY,0);
+            velocity=HandAxeFlight.nextVelocity(velocity,water);
             if(point.y<mc.level.getMinBuildHeight())break;
         }
         if(hit)LevelRenderer.renderLineBox(pose,lines,new AABB(point,point).inflate(.12),1,.75f,.2f,1);

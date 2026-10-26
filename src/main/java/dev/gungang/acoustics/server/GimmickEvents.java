@@ -7,6 +7,20 @@ public final class GimmickEvents {
     @SubscribeEvent public static void punch(net.minecraftforge.event.entity.player.PlayerInteractEvent.LeftClickBlock e){
         var p=e.getEntity();if(e.getLevel().isClientSide||p.isCreative()||p.isSpectator()||CombatGadgets.holdingShield(p)||SurvivalGadgets.jetting(p)||SafeZones.contains(p))return;
         if(GimmickEntity.at(e.getLevel(),e.getPos())==null)return;
+        if(e.getAction()!=net.minecraftforge.event.entity.player.PlayerInteractEvent.LeftClickBlock.Action.START)return;
+        var stack=p.getMainHandItem();
+        if(stack.getItem() instanceof RapierItem||HandAxeItem.is(stack)){
+            e.setCanceled(true);
+            if(LobbyManager.respawning(p.getUUID())||FreeForAllMatch.blocked(p))return;
+            double range=stack.getItem() instanceof RapierItem?RapierItem.RANGE:3.0;
+            var eye=p.getEyePosition();var end=eye.add(p.getLookAngle().scale(range));
+            var hit=e.getLevel().clip(new net.minecraft.world.level.ClipContext(eye,end,net.minecraft.world.level.ClipContext.Block.COLLIDER,net.minecraft.world.level.ClipContext.Fluid.NONE,p));
+            if(hit.getType()!=net.minecraft.world.phys.HitResult.Type.BLOCK||!hit.getBlockPos().equals(e.getPos()))return;
+            boolean rapier=stack.getItem() instanceof RapierItem;
+            if(!(rapier?RapierItem.beginAttack(p):HandAxeItem.beginSwing(p)))return;
+            GimmickEntity.hit(e.getLevel(),e.getPos(),(float)((rapier?33:ExtraGadgetConfig.handAxe.meleeDamage())*AdrenalineDamage.multiplier(p)));
+            p.resetAttackStrengthTicker();return;
+        }
         var itemId=net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(p.getMainHandItem().getItem());
         if(itemId!=null&&itemId.getNamespace().equals("tacz"))return;
         long now=e.getLevel().getGameTime();var tag=p.getPersistentData();

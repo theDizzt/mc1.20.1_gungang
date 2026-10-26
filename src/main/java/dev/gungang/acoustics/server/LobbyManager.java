@@ -131,7 +131,8 @@ public final class LobbyManager {
         FREE_SELECTION.remove(p.getUUID());
         LAST_EQUIPMENT.remove(p.getUUID());
         // A departure must never trigger an unexpected match start.
-        if (phase.equals("LOBBY")) PLAYERS.values().forEach(e -> e.ready = false);
+        if (phase.equals("LOBBY") && entry!=null && (entry.team.equals("ALPHA")||entry.team.equals("BRAVO")))
+            PLAYERS.values().forEach(e -> e.ready = false);
         broadcast(false);
     }
     private static void add(ServerPlayer p) {
@@ -297,17 +298,22 @@ public final class LobbyManager {
                 }
                 case "botRemove" -> {admin(sender);BotManager.lobbyRemove(action.target().isEmpty()?null:UUID.fromString(action.target()));botChanged();return;}
                 case "map" -> { admin(sender); select(action.value()); }
-                case "mode" -> { admin(sender); selectMode(action.value()); }
+                case "mode" -> { admin(sender); if(!action.target().isEmpty()&&!selected.equals(action.target())){send(sender,false);return;} selectMode(action.value()); }
                 case "random" -> { admin(sender); randomize(); }
                 case "team" -> {
                     UUID target = action.target().isEmpty() ? sender.getUUID() : UUID.fromString(action.target());
                     if (!target.equals(sender.getUUID())) admin(sender);
-                    if(BotManager.identity(target)){BotManager.lobbyTeam(target,action.value());botChanged();return;}
+                    if(BotManager.identity(target)){boolean changed=!BotManager.team(target).equals(action.value());BotManager.lobbyTeam(target,action.value());if(changed)botChanged();else send(sender,false);return;}
                     var player = server.getPlayerList().getPlayer(target);
                     if (player == null || !PLAYERS.containsKey(target)) return;
                     setTeam(player, action.value());
                 }
-                case "ready" -> { var e = PLAYERS.get(sender.getUUID()); if (e.team.equals("ALPHA") || e.team.equals("BRAVO")) e.ready = !e.ready; }
+                case "ready" -> {
+                    if(!action.target().isEmpty()&&!action.target().equals(selected+":"+selectedMode)){send(sender,false);return;}
+                    var e = PLAYERS.get(sender.getUUID());
+                    if (e.team.equals("ALPHA") || e.team.equals("BRAVO"))
+                        e.ready = action.value().isEmpty() ? !e.ready : Boolean.parseBoolean(action.value());
+                }
                 default -> { return; }
             }
             if (allReady()) prepare();
@@ -318,6 +324,7 @@ public final class LobbyManager {
     private static void select(String id) {
         if (LobbyRules.RANDOM_MAP.equals(id) && files != null && files.maps().stream().noneMatch(m -> m.id().equals(id))) { randomMap(); return; }
         if (!enabled || !phase.equals("LOBBY") || files.maps().stream().noneMatch(m -> m.id().equals(id))) throw new IllegalArgumentException("선택할 수 없는 맵입니다.");
+        if(selected.equals(id))return;
         var candidate=files.maps().stream().filter(m->m.id().equals(id)).findFirst().orElseThrow();
         if(candidate.escort()!=null){var route=EscortMatch.validate(server,candidate);EscortTracks.get(level(candidate)).rebuild(level(candidate),route);}
         selected = id; normalizeMode(); PLAYERS.values().forEach(e -> e.ready = false); broadcast(false);
@@ -417,6 +424,7 @@ public final class LobbyManager {
     private static ArenaMap selectedArena() { return files==null?null:files.maps().stream().filter(m->m.id().equals(selected)).findFirst().orElse(null); }
     private static void normalizeMode() {
         var arena=selectedArena();
+        if(arena!=null&&modes(arena).contains(selectedMode))return;
         if(arena!=null&&arena.propHunt()!=null){selectedMode="PROP_HUNT";return;}
         if(selectedMode.equals("PROP_HUNT")&&PropHuntRules.supported(arena))return;
         if(arena!=null&&arena.freeForAll()!=null){if(!selectedMode.equals("DEATHMATCH"))selectedMode="FREE_FOR_ALL";return;}
@@ -431,11 +439,14 @@ public final class LobbyManager {
         if(arena==null||!modes(arena).contains(mode)
                 ||(mode.equals("BOMB")&&arena.bomb()==null)||(mode.equals("CONTROL")&&arena.capture()==null)
                 ||(mode.equals("DEATHMATCH")&&!DeathmatchRules.supported(arena)))throw new IllegalArgumentException("선택할 수 없는 경기 모드입니다.");
+        if(selectedMode.equals(mode))return;
         selectedMode=mode;PLAYERS.values().forEach(e->e.ready=false);
     }
     private static void setTeam(ServerPlayer p, String team) {
         if (!Set.of("ALPHA", "BRAVO", "SPECTATOR").contains(team)) throw new IllegalArgumentException("ALPHA / BRAVO / SPECTATOR 중 선택하세요.");
-        Entry e = PLAYERS.get(p.getUUID()); e.team = team;
+        Entry e = PLAYERS.get(p.getUUID());
+        if(e.team.equals(team))return;
+        e.team = team;
         PLAYERS.values().forEach(entry -> entry.ready = false);
         if (team.equals("SPECTATOR")) { server.getScoreboard().removePlayerFromTeam(p.getScoreboardName()); p.setGameMode(GameType.SPECTATOR); }
         else {

@@ -70,7 +70,9 @@ public final class TurretEntity extends LivingEntity {
         }
         if(owner()==null||Turrets.owned(owner())!=this||!Turrets.supported(level(),anchor())){discard();return;}
         var ownerEntity=ownerEntity();
-        if(ownerEntity==null||!ownerEntity.isAlive()||ownerEntity.isSpectator()){discard();return;}
+        // Death and the spectator respawn camera must not retire the owner's slot.
+        // Explicit leave/reset/loadout cleanup still removes deployed turrets.
+        if(ownerEntity==null){stopReload();return;}
         if(reloadUntil>level().getGameTime()&&ownerEntity instanceof ServerPlayer p&&p.containerMenu==p.inventoryMenu&&(repairing?Turrets.canRepair(p,this):Turrets.canReload(p,this))){
             if(repairing){if(++repairTicks>=2){heal(1);repairTicks=0;}return;}
             reloadFraction+=Turrets.config.reloadPerSecond()/20;
@@ -80,7 +82,7 @@ public final class TurretEntity extends LivingEntity {
         }
         stopReload();
         if(fireDelay>0){fireDelay--;return;}
-        if(ammo()==0||SafeZones.contains(this)||SafeZones.contains(ownerEntity)||FreeForAllMatch.blocked(ownerEntity))return;
+        if(ammo()==0||SafeZones.contains(this))return;
         if(MatchManager.preparationGate()!=null||MatchManager.bomb()!=null&&!MatchManager.bomb().activePlay())return;
         double range=Turrets.config.detectionRange();
         // Nearest first, so the two ray casts of clearShot run only until a target is found.
@@ -92,14 +94,16 @@ public final class TurretEntity extends LivingEntity {
         entityData.set(AMMO,ammo()-1);fireDelay=Turrets.config.fireIntervalTicks()-1;
         var source=new DamageSource(level().registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.DAMAGE_TYPE).getHolderOrThrow(BULLET),this,ownerEntity);
         boolean hit=hits(random.nextFloat());
-        if(hit)Turrets.bullet(target,source,(float)Turrets.config.damage());
-        else {
+        if(!hit) {
             // A miss passes clearly outside the silhouette and never applies damage.
             Vec3 side=new Vec3(-direction.z,0,direction.x).normalize().scale(target.getBbWidth()+.8);
             to=to.add(random.nextBoolean()?side:side.scale(-1));
-            var obstruction=level().clip(new ClipContext(from,to,ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,this));
-            if(obstruction.getType()!=HitResult.Type.MISS)to=obstruction.getLocation();
         }
+        var obstruction=level().clip(new ClipContext(from,to,ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,this));
+        if(obstruction.getType()!=HitResult.Type.MISS){
+            to=obstruction.getLocation();
+            GimmickEntity.hit(level(),obstruction.getBlockPos(),(float)Turrets.config.damage());
+        }else if(hit)Turrets.bullet(target,source,(float)Turrets.config.damage());
         entityData.set(TRACER,to.toVector3f());entityData.set(SHOTS,entityData.get(SHOTS)+1);
     }
     @Override public void onSyncedDataUpdated(EntityDataAccessor<?> key){
@@ -120,9 +124,13 @@ public final class TurretEntity extends LivingEntity {
     }
     private boolean clearShot(LivingEntity target){
         Vec3 from=muzzle(),to=target.getBoundingBox().getCenter();
-        if(level().clip(new ClipContext(from,to,ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,this)).getType()!=HitResult.Type.MISS)return false;
+        var block=level().clip(new ClipContext(from,to,ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,this));
+        boolean gimmick=block.getType()!=HitResult.Type.MISS&&GimmickEntity.at(level(),block.getBlockPos())!=null
+                &&!(level().getBlockState(block.getBlockPos()).getBlock() instanceof NozzleBlock);
+        if(block.getType()!=HitResult.Type.MISS&&!gimmick)return false;
+        if(gimmick)to=block.getLocation();
         var hit=ProjectileUtil.getEntityHitResult(level(),this,from,to,new AABB(from,to).inflate(.1),e->e!=this&&e.isPickable()&&!e.isSpectator());
-        return hit!=null&&hit.getEntity()==target;
+        return gimmick?hit==null:hit!=null&&hit.getEntity()==target;
     }
     @Override public boolean hurt(DamageSource source,float amount){
         if(level().isClientSide||isRemoved())return false;

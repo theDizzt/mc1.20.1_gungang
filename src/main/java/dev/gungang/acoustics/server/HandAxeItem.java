@@ -42,8 +42,10 @@ public final class HandAxeItem extends Item {
         var c=ExtraGadgetConfig.handAxe;
         double distance=HandAxeRules.distance(getUseDuration(stack)-remaining,c.minThrowDistance(),c.maxThrowDistance(),c.chargeSeconds());
         var axe=GadgetItems.HAND_AXE_PROJECTILE.get().create(level);if(axe==null)return;
-        axe.setOwner(player);axe.setItem(stack.copyWithCount(1));axe.setPos(player.getX(),player.getEyeY()-.1,player.getZ());
-        axe.shootFromRotation(player,HandAxeRules.pitch(player.getXRot(),c.arcDegrees()),player.getYRot(),0,(float)HandAxeRules.speed(distance,c.arcDegrees()),0);
+        axe.setOwner(player);axe.setItem(stack.copyWithCount(1));axe.setPos(HandAxeFlight.origin(player));
+        var launch=HandAxeFlight.velocity(player,distance,c.arcDegrees());
+        axe.shoot(launch.x,launch.y,launch.z,(float)launch.length(),0);
+        axe.setDeltaMovement(launch);
         axe.expireAfter(ExtraGadgetConfig.ticks(c.cooldownSeconds()));
         if(!level.addFreshEntity(axe))return;
         level.playSound(null,player.blockPosition(),SoundEvents.TRIDENT_THROW,SoundSource.PLAYERS,.8f,1.2f);
@@ -54,10 +56,15 @@ public final class HandAxeItem extends Item {
     @SubscribeEvent(priority=EventPriority.HIGH) public static void swing(AttackEntityEvent event) {
         var player=event.getEntity();var stack=player.getMainHandItem();
         if(!is(stack)||player.level().isClientSide)return;
+        if(!beginSwing(player))event.setCanceled(true);
+    }
+    static boolean beginSwing(Player player){
+        var stack=player.getMainHandItem();
         long now=player.level().getGameTime();
         if(SecondaryRuntime.remaining(player,stack)>0
-                ||now-LAST_SWING.getOrDefault(player.getUUID(),Long.MIN_VALUE/2)<ExtraGadgetConfig.ticks(ExtraGadgetConfig.handAxe.meleeCooldownSeconds())) {event.setCanceled(true);return;}
+                ||now-LAST_SWING.getOrDefault(player.getUUID(),Long.MIN_VALUE/2)<ExtraGadgetConfig.ticks(ExtraGadgetConfig.handAxe.meleeCooldownSeconds()))return false;
         LAST_SWING.put(player.getUUID(),now);
+        return true;
     }
     /** Fixed melee damage: no attack-strength scaling or critical bonus. Shields and boosts apply afterwards. */
     @SubscribeEvent(priority=EventPriority.HIGHEST) public static void melee(LivingHurtEvent event) {

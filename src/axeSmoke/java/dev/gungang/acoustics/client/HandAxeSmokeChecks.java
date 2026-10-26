@@ -48,9 +48,9 @@ public final class HandAxeSmokeChecks {
     }
     /** First-person chop frames at 70 FOV (top two rows) and the third-person arm seen from the side (bottom row). */
     private static final class MotionScreen extends Screen {
-        private static final float[] FIRST={-1,0,.12f,.23f,.31f,.39f,.48f,.70f,.90f,2};
-        private static final String[] FIRST_LABELS={"carry (offhand)","ready",".12 wind-up",".23 accelerate",".31 strike",".39 follow-through",".48 recoil",".70 recover",".90 ready","throw charge"};
-        private static final float[] THIRD={0,.12f,.31f,.39f,.70f};
+        private static final float[] FIRST={-1,0,.24f,.34f,.46f,.59f,.76f,.90f,1,2};
+        private static final String[] FIRST_LABELS={"carry (offhand)","ready",".24 wind-up",".34 accelerate",".46 strike",".59 follow-through",".76 recover",".90 ready","1 ready","throw charge"};
+        private static final float[] THIRD={0,.24f,.46f,.59f,.76f};
         MotionScreen(){super(net.minecraft.network.chat.Component.literal("Hand axe motion"));}
         @Override public void render(GuiGraphics g,int mx,int my,float partial) {
             g.fill(0,0,width,height,0xff263747);

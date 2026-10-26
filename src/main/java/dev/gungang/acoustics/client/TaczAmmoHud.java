@@ -26,6 +26,24 @@ public final class TaczAmmoHud {
     /** Guns without a real magazine (LAS-5's capacity is Integer.MAX_VALUE): the count shows heat in percent instead. */
     private static final java.util.Set<String> HEAT_GAUGE=java.util.Set.of("zeta:las_5");
     private static Api api;
+    /** Same fixed-pixel position and number styling as ammo; independent of TaCZ being installed. */
+    public static void rapier(net.minecraftforge.client.gui.overlay.ForgeGui gui,GuiGraphics g,float partial,int screenWidth,int screenHeight){
+        var mc=Minecraft.getInstance();if(mc.player==null||mc.options.hideGui||mc.player.isSpectator())return;
+        var stack=mc.player.getMainHandItem();if(!(stack.getItem() instanceof dev.gungang.acoustics.server.RapierItem))return;
+        int amount=dev.gungang.acoustics.server.RapierItem.gauge(stack),color=amount<35?0xFFFF6565:TacticalStyle.GOLD;
+        int right=mc.getWindow().getWidth()/2-MARGIN,bottom=mc.getWindow().getHeight()/2-MARGIN;
+        int w=Math.round(3*digitCell(mc.font)*AMMO_SCALE),top=bottom-26;
+        float scale=(float)(2.0/mc.getWindow().getGuiScale());g.pose().pushPose();g.pose().scale(scale,scale,1);
+        text(g,mc.font,"레이피어 · 대시 35",right-mc.font.width("레이피어 · 대시 35"),top-12,TacticalStyle.INK);
+        String value=String.valueOf(amount),padding="0".repeat(3-value.length());
+        g.pose().pushPose();g.pose().translate(right-w,top,0);g.pose().scale(AMMO_SCALE,AMMO_SCALE,1);
+        digits(g,mc.font,padding,0,TacticalStyle.DIM);digits(g,mc.font,value,padding.length(),color);g.pose().popPose();
+        g.fill(right-w,bottom-4,right,bottom-1,0xAA3A3B32);
+        g.fill(right-w,bottom-4,right-w+Math.round(w*amount/100f),bottom-1,color);
+        // Cost marker: immediately see whether the next backstep is available.
+        int mark=right-w+Math.round(w*.35f);g.fill(mark,bottom-5,mark+1,bottom,TacticalStyle.INK);
+        g.pose().popPose();
+    }
     private static boolean unavailable;
     private record Api(Method getIGun,Method current,Method barrel,Method gunId,Method display,Method hud,Method hudEmpty,
                        Method index,Method gunData,Method bolt,Method capacity,Object hudEnabled,Method inventoryAmmo,Method refresh,Method fireMode,Method fireModes,Heat heat) {
@@ -124,7 +142,7 @@ public final class TaczAmmoHud {
         float ratio=capacity>0?Math.max(0,Math.min(1,ammo/(float)capacity)):ammo>0?1:0;
         int fill=Math.round(countW*ratio);
         g.fill(right-countW+1,barTop+1,right+1,barTop+BAR_H+1,SHADOW);
-        g.fill(right-countW,barTop,right,barTop+BAR_H,0x80303A4A);
+        g.fill(right-countW,barTop,right,barTop+BAR_H,0x803A3B32);
         g.fill(right-countW,barTop,right-countW+fill,barTop+BAR_H,color);
         g.pose().pushPose();g.pose().translate(right-countW,countTop,0);g.pose().scale(AMMO_SCALE,AMMO_SCALE,1);
         // An empty magazine shows a solid red "000" instead of dimmed padding.

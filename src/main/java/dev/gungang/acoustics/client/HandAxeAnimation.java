@@ -41,14 +41,13 @@ public final class HandAxeAnimation {
     private static final int SMOOTH=0,ACCELERATE=1,DECELERATE=2;
     /** First-person grip keys for the right hand: progress, camera-space x/y/z, then pitch/yaw/roll degrees, easing. */
     private static final float[][] CHOP={
-            {0f,   .52f,-.48f, -.95f, -12, 45, -10, SMOOTH},     // ready: head up, blade angled in
-            {.12f, .48f,-.24f,-1.05f,  18, 36, -16, DECELERATE}, // compact wind-up, blade stays visible beside the aiming line
-            {.23f, .36f,-.34f,-1.13f, -42, 30,   8, ACCELERATE}, // shoulder leads the diagonal cut
-            {.31f, .04f,-.59f,-1.23f,-104,  8,  42, ACCELERATE}, // fast cut across the aiming line
-            {.39f,-.05f,-.72f,-1.17f,-118, -4,  50, DECELERATE}, // follow-through carries the weight past the strike
-            {.48f, .04f,-.60f,-1.10f, -96, 12,  34, DECELERATE}, // restrained wrist recoil, including on a missed swing
-            {.70f, .38f,-.47f,-1.01f, -30, 40,  -2, SMOOTH},     // lift the handle back along an outward arc
-            {1f,   .52f,-.48f, -.95f, -12, 45, -10, SMOOTH}};    // recover to ready
+            {0f,   .48f,-.46f, -.82f, -10, 28, -12, SMOOTH},
+            {.24f, .42f,-.28f,-1.02f,  14, 22, -18, DECELERATE}, // compact wind-up keeps the axe head inside the view
+            {.34f, .42f,-.26f, -.91f, -24, 24, -10, ACCELERATE},
+            {.46f, .08f,-.45f,-1.12f, -78, 24,  24, ACCELERATE}, // single decisive diagonal strike
+            {.59f,-.08f,-.65f,-1.03f, -96, 16,  34, DECELERATE}, // uninterrupted follow-through (no rubbery reversal)
+            {.76f, .20f,-.61f, -.84f, -58, 12,  14, SMOOTH},
+            {1f,   .48f,-.46f, -.82f, -10, 28, -12, SMOOTH}};
     private static final float[] THROW={.45f,-.20f,-.90f,30,40,-25};
     /** Carried in the offhand beside a gun: lower and further out than the ready stance so it stays out of the sights. */
     private static final float[] CARRY={.64f,-.72f,-1.02f,-6,40,-6};
@@ -57,12 +56,11 @@ public final class HandAxeAnimation {
     /** Third-person keys: progress, arm xRot/zRot (right arm), body yRot (right-handed), wrist degrees, easing. */
     private static final float[][] ARM={
             {0f,   -.55f, .05f,  0f,    0, SMOOTH},
-            {.12f, -2.90f, .38f, -.36f,  42, DECELERATE},
-            {.23f, -2.10f, .10f, -.08f, -30, ACCELERATE},
-            {.31f, -1.10f,-.30f,  .46f,-125, ACCELERATE},
-            {.39f,  -.92f,-.40f,  .54f,-137, DECELERATE},
-            {.48f, -1.20f,-.24f,  .38f,-111, DECELERATE},
-            {.70f,  -.80f, .02f,  .10f, -30, SMOOTH},
+            {.24f, -2.35f, .30f, -.24f,  24, DECELERATE},
+            {.34f, -1.95f, .16f, -.12f, -12, ACCELERATE},
+            {.46f, -1.18f,-.20f,  .28f, -82, ACCELERATE},
+            {.59f,  -.72f,-.32f,  .36f,-104, DECELERATE},
+            {.76f,  -.82f,-.08f,  .12f, -48, SMOOTH},
             {1f,   -.55f, .05f,  0f,    0, SMOOTH}};
     /** Grip point on the OBJ handle (model units), the model scale in hand, and the turn that faces the blade forward. */
     private static final float GRIP_Y=.2f,SCALE=1.1f,BLADE_YAW=-90;
@@ -111,7 +109,7 @@ public final class HandAxeAnimation {
         pose.popPose();
     }
 
-    private static void renderForearm(PoseStack pose,MultiBufferSource buffers,int light,PlayerModel<?> model,ResourceLocation skin,boolean right,boolean slim,Matrix4f root) {
+    public static void renderForearm(PoseStack pose,MultiBufferSource buffers,int light,PlayerModel<?> model,ResourceLocation skin,boolean right,boolean slim,Matrix4f root) {
         var arm=right?model.rightArm:model.leftArm;var sleeve=right?model.rightSleeve:model.leftSleeve;
         PartPose armPose=arm.storePose(),sleevePose=sleeve.storePose();
         arm.loadPose(PartPose.ZERO);sleeve.loadPose(PartPose.ZERO);
@@ -123,7 +121,7 @@ public final class HandAxeAnimation {
         pose.pushPose();
         // The arm box runs shoulder (y -2) to hand (y 10); +Y points at the fist (y 8), stretched to reach the elbow.
         pose.mulPose(new Quaternionf().rotationTo(0,1,0,elbow.x,elbow.y,elbow.z));
-        pose.scale(1,Math.max(1,reach/(10/16f)),1);
+        pose.scale(1,Mth.clamp(reach/(10/16f),.9f,1.15f),1);
         pose.translate(-(right?-1:1)*(slim?.5f:1f)/16f,-8/16f,0);
         arm.render(pose,buffers.getBuffer(RenderType.entitySolid(skin)),light,OverlayTexture.NO_OVERLAY);
         sleeve.render(pose,buffers.getBuffer(RenderType.entityTranslucent(skin)),light,OverlayTexture.NO_OVERLAY);
