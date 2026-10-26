@@ -26,9 +26,16 @@ class OrdnanceRulesTest {
         assertSame(custom,OrdnanceLoadouts.upgradePlaceholder(custom));
         var other=new Loadouts.Weapon("82","zeta:p92","old","개발중",null,"");
         assertSame(other,OrdnanceLoadouts.upgradePlaceholder(other));
+        var arrows=new Loadouts.Weapon("79","zeta:p92","old","[id: 79] 개발중...",null,"");
+        assertTrue(OrdnanceLoadouts.upgradePlaceholder(arrows).itemNbt().contains("gungang:arrow_grenade"));
+        var previous=new Loadouts.Weapon("79","gungang:arrow_grenade","custom","Custom damage",null,"왼손 아이템 좌클릭 후 복귀 매크로 키(기본 G)로 투척합니다. 주손에 든 경우 우클릭으로 던질 수 있습니다.","투척형",150d,100d,45d);
+        var updated=OrdnanceLoadouts.upgradePlaceholder(previous);
+        assertTrue(updated.usage().contains("기본 H"));assertEquals(45d,updated.cooldownSeconds());assertEquals("Custom damage",updated.description());
     }
     @Test void catalogHasRequestedIdsAndCooldowns() {
         var definitions=OrdnanceLoadouts.defaults();
+        var grenade=definitions.stream().filter(w->w.id().equals("79")).findFirst().orElseThrow();
+        assertEquals(30d,grenade.cooldownSeconds());assertTrue(grenade.itemNbt().contains("gungang:arrow_grenade"));
         assertEquals("81",definitions.get(0).id());assertEquals(36d,definitions.get(0).cooldownSeconds());
         assertEquals("87",definitions.get(1).id());assertEquals(240d,definitions.get(1).cooldownSeconds());
         var trap=definitions.stream().filter(w->w.id().equals("89")).findFirst().orElseThrow();

@@ -133,7 +133,7 @@ public final class OffhandMacro {
                 try {
                     // Objectives validate their own ray trace on the server. Avoid an interactive
                     // floor block or a gun input handler consuming the macro's single use click.
-                    if (objectiveAction) mc.gameMode.useItem(owner, InteractionHand.MAIN_HAND);
+                    if (objectiveAction||(use&&dev.gungang.acoustics.server.CombatGadgets.is(owner.getMainHandItem(),"arrow_grenade"))) mc.gameMode.useItem(owner, InteractionHand.MAIN_HAND);
                     else if (use) ((Clicks) mc).gungang$use();
                     else ((Clicks) mc).gungang$attack();
                 } finally { click = false; }
