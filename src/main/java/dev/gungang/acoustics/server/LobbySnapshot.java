@@ -13,7 +13,8 @@ public record LobbySnapshot(boolean enabled, boolean show, boolean administrator
                          List<MapView> maps,List<Member> members,TeamOptions options,String selectedMode){
         this(enabled,show,administrator,you,selectedMap,phase,seconds,maps,members,options,selectedMode,false,false,0,4);
     }
-    public record MapView(String id, String name, String description, int seconds, String gameMode, boolean deathmatch,String previewImage,boolean bomb,boolean deathmatchOnly,String weather,String timeOfDay,String releaseDate) {
+    public record MapView(String id, String name, String description, int seconds, String gameMode, boolean deathmatch,String previewImage,boolean bomb,boolean deathmatchOnly,String weather,String timeOfDay,String releaseDate,List<String> supportedModes) {
+        public MapView(String id,String name,String description,int seconds,String gameMode,boolean deathmatch,String previewImage,boolean bomb,boolean deathmatchOnly,String weather,String timeOfDay,String releaseDate){this(id,name,description,seconds,gameMode,deathmatch,previewImage,bomb,deathmatchOnly,weather,timeOfDay,releaseDate,null);}
         public MapView(String id,String name,String description,int seconds,String gameMode,boolean deathmatch,String previewImage,boolean bomb,boolean deathmatchOnly,String weather,String timeOfDay){this(id,name,description,seconds,gameMode,deathmatch,previewImage,bomb,deathmatchOnly,weather,timeOfDay,"");}
         public MapView(String id,String name,String description,int seconds,String gameMode,boolean deathmatch,String previewImage,boolean bomb,boolean deathmatchOnly){this(id,name,description,seconds,gameMode,deathmatch,previewImage,bomb,deathmatchOnly,"clear","day");}
         public MapView(String id,String name,String description,int seconds,String gameMode,boolean deathmatch,String previewImage,boolean bomb){this(id,name,description,seconds,gameMode,deathmatch,previewImage,bomb,false);}

@@ -33,7 +33,7 @@ public final class RapierItem extends Item {
     }
     private static final String ENERGY="RapierEnergy",WAIT="RapierRecovery",ATTACK="RapierAttackTick";
     private final Multimap<Attribute,AttributeModifier> attributes=ImmutableMultimap.<Attribute,AttributeModifier>builder()
-            .put(Attributes.ATTACK_DAMAGE,new AttributeModifier(BASE_ATTACK_DAMAGE_UUID,"Rapier damage",32,AttributeModifier.Operation.ADDITION))
+            .put(Attributes.ATTACK_DAMAGE,new AttributeModifier(BASE_ATTACK_DAMAGE_UUID,"Rapier damage",20,AttributeModifier.Operation.ADDITION))
             .put(Attributes.ATTACK_SPEED,new AttributeModifier(BASE_ATTACK_SPEED_UUID,"Rapier speed",-2.0/3,AttributeModifier.Operation.ADDITION))
             .put(net.minecraftforge.common.ForgeMod.ENTITY_REACH.get(),new AttributeModifier(java.util.UUID.fromString("ecdf4756-1d78-45af-9792-098cbb4c5f28"),"Rapier reach",1.5,AttributeModifier.Operation.ADDITION)).build();
     public RapierItem(){super(new Properties().stacksTo(1));}
@@ -68,26 +68,54 @@ public final class RapierItem extends Item {
     }
     @net.minecraftforge.eventbus.api.SubscribeEvent public static void tick(net.minecraftforge.event.TickEvent.PlayerTickEvent event){
         var p=event.player;if(event.phase!=net.minecraftforge.event.TickEvent.Phase.END||p.level().isClientSide)return;
+        if(!(p.getMainHandItem().getItem() instanceof RapierItem)||!p.isAlive())resetCombo(p);
         if(p.getPersistentData().contains(ENERGY))save(p,energy(p).tick());sync(p);
     }
     @net.minecraftforge.eventbus.api.SubscribeEvent(priority=net.minecraftforge.eventbus.api.EventPriority.LOWEST)
     public static void attack(net.minecraftforge.event.entity.player.AttackEntityEvent event){
         var p=event.getEntity();if(!(p.getMainHandItem().getItem() instanceof RapierItem))return;
         event.setCanceled(true);
-        if(p.level().isClientSide||p.isSpectator()||!p.isAlive()||LobbyManager.respawning(p.getUUID())||SafeZones.contains(p)||SafeZones.contains(event.getTarget()))return;
-        if(!(event.getTarget() instanceof net.minecraft.world.entity.LivingEntity target)||!target.isAlive())return;
+        if(!p.level().isClientSide)thrust(p);
+    }
+    /** One authoritative ray for every click, including clicks that the client considers empty space. */
+    public static void thrust(Player p){
+        if(p.level().isClientSide||!(p.getMainHandItem().getItem() instanceof RapierItem)||p.isSpectator()||!p.isAlive()
+                ||LobbyManager.respawning(p.getUUID())||FreeForAllMatch.blocked(p)||SafeZones.contains(p)
+                ||CombatGadgets.holdingShield(p)||SurvivalGadgets.jetting(p)||GadgetManager.placing(p))return;
         if(!beginAttack(p))return;
         var eye=p.getEyePosition();var end=eye.add(p.getLookAngle().scale(RANGE));
-        var hit=target.getBoundingBox().clip(eye,end);if(hit.isEmpty())return;
         var block=p.level().clip(new net.minecraft.world.level.ClipContext(eye,end,net.minecraft.world.level.ClipContext.Block.COLLIDER,net.minecraft.world.level.ClipContext.Fluid.NONE,p));
-        if(block.getType()!=net.minecraft.world.phys.HitResult.Type.MISS&&eye.distanceToSqr(block.getLocation())<eye.distanceToSqr(hit.get()))return;
-        if(target instanceof Player victim&&!p.canHarmPlayer(victim))return;
-        boolean head=hit.get().y>=target.getEyeY()-.2;
-        int immunity=target.invulnerableTime;target.invulnerableTime=0;
-        if(!target.hurt(p.damageSources().playerAttack(p),head?55:33))target.invulnerableTime=immunity;
-        else p.level().playSound(null,target.blockPosition(),net.minecraft.sounds.SoundEvents.PLAYER_ATTACK_STRONG,net.minecraft.sounds.SoundSource.PLAYERS,.65f,1.35f);
+        if(block.getType()!=net.minecraft.world.phys.HitResult.Type.MISS)end=block.getLocation();
+        net.minecraft.world.entity.Entity hit=null;
+        double nearest=eye.distanceToSqr(end);
+        for(var candidate:p.level().getEntities(p,p.getBoundingBox().expandTowards(end.subtract(eye)).inflate(1),e->e.isPickable()&&!e.isSpectator())){
+            var box=candidate.getBoundingBox();
+            var point=box.contains(eye)?java.util.Optional.of(eye):box.clip(eye,end);
+            if(point.isPresent()&&eye.distanceToSqr(point.get())<nearest){nearest=eye.distanceToSqr(point.get());hit=candidate;}
+        }
+        int damage=comboDamage(p);
         p.resetAttackStrengthTicker();
+        if(hit==null){
+            // Scenery cannot build a combat combo.
+            resetCombo(p);
+            if(block.getType()!=net.minecraft.world.phys.HitResult.Type.MISS)GimmickEntity.hit(p.level(),block.getBlockPos(),(float)(21*AdrenalineDamage.multiplier(p)));
+            return;
+        }
+        if(!(hit instanceof net.minecraft.world.entity.LivingEntity target)||!target.isAlive()||SafeZones.contains(target)
+                ||target instanceof Player victim&&!p.canHarmPlayer(victim)){resetCombo(p);return;}
+        int immunity=target.invulnerableTime;target.invulnerableTime=0;
+        if(!target.hurt(p.damageSources().playerAttack(p),damage)){target.invulnerableTime=immunity;resetCombo(p);}
+        else {
+            p.getPersistentData().putInt("RapierComboDamage",Math.min(36,damage+3));
+            p.getPersistentData().putLong("RapierComboHit",p.level().getGameTime());
+            p.level().playSound(null,target.blockPosition(),net.minecraft.sounds.SoundEvents.PLAYER_ATTACK_STRONG,net.minecraft.sounds.SoundSource.PLAYERS,.65f,1.35f);
+        }
     }
+    static int comboDamage(Player p){
+        var tag=p.getPersistentData();long elapsed=p.level().getGameTime()-tag.getLong("RapierComboHit");
+        return tag.contains("RapierComboHit")&&elapsed>=0&&elapsed<=20?Math.max(21,Math.min(36,tag.getInt("RapierComboDamage"))):21;
+    }
+    private static void resetCombo(Player p){p.getPersistentData().remove("RapierComboHit");p.getPersistentData().remove("RapierComboDamage");}
     static boolean beginAttack(Player p){
         long now=p.level().getGameTime();var tag=p.getPersistentData();
         if(tag.contains(ATTACK)&&now-tag.getLong(ATTACK)>=0&&now-tag.getLong(ATTACK)<6)return false;

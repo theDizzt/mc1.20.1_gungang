@@ -13,9 +13,21 @@ import net.minecraftforge.fml.common.Mod;
 /** Isolated opt-in integration checks; excluded from release jars. */
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID)
 public class ArrowGrenadeSmokeChecks {
+    private static net.minecraft.server.MinecraftServer pending;
+    private static int warmup;
     static void check(boolean value,String message){if(!value)throw new AssertionError(message);}
     @SubscribeEvent public static void started(ServerStartedEvent event){
-        var server=event.getServer();var level=server.overworld();long start=level.getGameTime();
+        pending=event.getServer();warmup=40;
+        // A fresh world's spawn may be far from the fixture. Entity queries only
+        // expose loaded sections after their chunk-status callbacks have run.
+        for(int x=-1;x<=0;x++)for(int z=-1;z<=0;z++)pending.overworld().setChunkForced(x,z,true);
+    }
+    @SubscribeEvent public static void ready(net.minecraftforge.event.TickEvent.ServerTickEvent event){
+        if(event.phase!=net.minecraftforge.event.TickEvent.Phase.END||pending==null||--warmup>0)return;
+        var server=pending;pending=null;run(server);
+    }
+    private static void run(net.minecraft.server.MinecraftServer server){
+        var level=server.overworld();long start=level.getGameTime();
         try {
             for(int x=-8;x<=8;x++)for(int z=-8;z<=8;z++)for(int y=249;y<=253;y++)
                 level.setBlockAndUpdate(new BlockPos(x,y,z),Blocks.AIR.defaultBlockState());
@@ -29,7 +41,7 @@ public class ArrowGrenadeSmokeChecks {
             check(stack.getTag().getInt("GunGangCooldownTicks")==600,"30-second cooldown");
             var origin=new Vec3(0,250,0);
             var grenade=GadgetItems.ARROW_GRENADE_PROJECTILE.get().create(level);
-            grenade.setPos(origin);grenade.setOwner(owner);level.addFreshEntity(grenade);
+            grenade.setPos(origin);grenade.setOwner(owner);check(level.addFreshEntity(grenade),"Grenade spawn rejected");
             grenade.onHitBlock(new BlockHitResult(origin,Direction.UP,BlockPos.containing(origin),false));
             int count=0;
             for(int t=0;t<=120;t++){
@@ -86,6 +98,6 @@ public class ArrowGrenadeSmokeChecks {
             check(player.getHealth()==4,"Player owner at center must take self damage even with team friendly fire disabled, health="+player.getHealth());
             System.out.println("ARROW_GRENADE_SMOKE_PASS: cooldown, 120 emissions, 6 seconds, range, damage, wall collision, center overlap, self damage, widened hit margin");
         } catch(Throwable failure){failure.printStackTrace();System.out.println("ARROW_GRENADE_SMOKE_FAIL");}
-        finally{server.getWorldData().overworldData().setGameTime(start);server.halt(false);}
+        finally{for(int x=-1;x<=0;x++)for(int z=-1;z<=0;z++)level.setChunkForced(x,z,false);server.getWorldData().overworldData().setGameTime(start);server.halt(false);}
     }
 }

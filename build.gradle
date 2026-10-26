@@ -22,6 +22,7 @@ if (project.hasProperty('gungangArrowClientSmoke')) sourceSets.main.java.srcDir(
 // Explicit development-only server smoke checks; never included in a normal build/JAR.
 if (project.hasProperty('gungangSmoke')) sourceSets.main.java.srcDir('src/smoke/java')
 if (project.hasProperty('gungangClientSmoke')) sourceSets.main.java.srcDir('src/clientSmoke/java')
+if (project.hasProperty('gungangLobbyUiSmoke')) sourceSets.main.java.srcDir('src/lobbyUiSmoke/java')
 if (project.hasProperty('gungangPropSmoke')) sourceSets.main.java.srcDir('src/propSmoke/java')
 if (project.hasProperty('gungangBotSmoke')) sourceSets.main.java.srcDir('src/botSmoke/java')
 if (project.hasProperty('gungangAxeSmoke')) sourceSets.main.java.srcDir('src/axeSmoke/java')
@@ -39,6 +40,7 @@ minecraft {
         client {
             if (project.hasProperty('gungangRapierPreview')) property 'gungang.rapierPreview', 'true'
             workingDirectory project.file(project.hasProperty('gungangTurretClientSmoke') ? 'build/turret-client-smoke' : project.hasProperty('gungangAxeSmoke') ? 'build/axe-client-smoke' : 'run')
+            if (project.hasProperty('gungangLobbyUiSmoke')) workingDirectory project.file('build/lobby-ui-smoke')
             property 'forge.logging.console.level', 'info'
             if (project.hasProperty('gungangArrowClientSmoke')) workingDirectory project.file('build/arrow-client-smoke')
             if (project.hasProperty('gungangScannerPreview')) property 'gungang.scannerPreview', 'true'
@@ -87,6 +89,7 @@ mixin {
 tasks.named('jar', Jar).configure {
     exclude 'dev/gungang/acoustics/server/ArrowGrenadeSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/client/ArrowGrenadeModelSmokeChecks*.class'
+    exclude 'dev/gungang/acoustics/client/LobbyUiSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/server/GadgetSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/client/PreviewSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/server/PropSmokeChecks*.class'
