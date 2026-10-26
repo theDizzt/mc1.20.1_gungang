@@ -17,7 +17,7 @@ final class BotGadgetScore {
     static float score(String kind,Situation s) {
         return switch(kind) {
             // Throwables: best at mid range, useless point-blank or beyond a throw.
-            case "molotov","use"->s.seen()?bell(s.distance(),13,12):0;
+            case "molotov","arrow_grenade","use"->s.seen()?bell(s.distance(),13,12):0;
             // Traps go down on quiet stretches of the route, the longer since the last contact the likelier.
             case "landmine","bear_trap"->!s.seen()&&s.traveling()?clamp(s.sinceSeen()/200f)*.75f:0;
             // Cover when hurt and under fire.

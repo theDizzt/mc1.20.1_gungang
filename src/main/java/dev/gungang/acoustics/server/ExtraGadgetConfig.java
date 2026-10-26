@@ -4,6 +4,8 @@ import java.io.IOException;
 
 /** Configurations for equipment whose original implementations used fixed constants. */
 public final class ExtraGadgetConfig {
+    public record ArrowGrenade(double damage,double projectileRange,double durationSeconds,double cooldownSeconds,int emissionIntervalTicks,double projectileSpeed,double throwSpeed) { }
+    public static ArrowGrenade arrowGrenade=new ArrowGrenade(16,6,6,30,1,1.2,1.1);
     public record Molotov(double radius,double durationSeconds,int burnSeconds,double cooldownSeconds,double burnDamage) {
         public Molotov(double radius,double duration,int burn,double cooldown){this(radius,duration,burn,cooldown,1);}
     }
@@ -31,6 +33,10 @@ public final class ExtraGadgetConfig {
         load(java.util.Map.of(),true);
     }
     static void load(java.util.Map<String,com.google.gson.JsonObject> overrides,boolean apply)throws IOException {
+        var ag=GadgetConfig.read("arrow_grenade",ArrowGrenade.class,new ArrowGrenade(16,6,6,30,1,1.2,1.1),overrides,apply);
+        GadgetConfig.bounded(ag.damage(),0,10000);GadgetConfig.bounded(ag.projectileRange(),.1,16);GadgetConfig.bounded(ag.durationSeconds(),.05,60);
+        GadgetConfig.bounded(ag.cooldownSeconds(),0,86400);GadgetConfig.bounded(ag.emissionIntervalTicks(),1,1200);
+        GadgetConfig.bounded(ag.projectileSpeed(),.5,4);GadgetConfig.bounded(ag.throwSpeed(),.1,3);
         var m=GadgetConfig.read("molotov",Molotov.class,new Molotov(5,8,3,36),overrides,apply);
         var o=GadgetConfig.read("orbital_strike",Orbital.class,new Orbital(24,256,84,5,64,240),overrides,apply);
         var l=GadgetConfig.read("life_support",Life.class,new Life(30,2.9,1,.1,120),overrides,apply);
@@ -48,7 +54,7 @@ public final class ExtraGadgetConfig {
         GadgetConfig.bounded(s.durationSeconds(),.05,300);GadgetConfig.bounded(h.capacity(),1,10000);GadgetConfig.bounded(h.repairSeconds(),0,86400);
         GadgetConfig.bounded(h.movementPenaltyPercent(),0,99);GadgetConfig.bounded(h.regenDelaySeconds(),0,300);GadgetConfig.bounded(h.regenPerSecond(),0,10000);GadgetConfig.bounded(h.meleeReductionPercent(),0,100);
         for(double c:new double[]{m.cooldownSeconds(),o.cooldownSeconds(),l.cooldownSeconds(),j.cooldownSeconds(),s.cooldownSeconds(),x.cooldownSeconds()})GadgetConfig.bounded(c,0,86400);
-        if(apply){molotov=m;orbital=o;life=l;jet=j;scanner=s;shield=h;handAxe=x;}
+        if(apply){molotov=m;orbital=o;life=l;jet=j;scanner=s;shield=h;handAxe=x;arrowGrenade=ag;}
     }
     private ExtraGadgetConfig() { }
 }

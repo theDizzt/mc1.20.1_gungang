@@ -13,7 +13,7 @@ public final class GadgetItem extends Item {
         if(player.isSpectator())return InteractionResultHolder.fail(stack);
         // A primary weapon returning PASS must not activate the carried deployable.
         // The explicit H macro swaps it into MAIN_HAND before invoking use.
-        if(hand==InteractionHand.OFF_HAND&&placement(kind))return InteractionResultHolder.pass(stack);
+        if(hand==InteractionHand.OFF_HAND&&(placement(kind)||kind.equals("arrow_grenade")))return InteractionResultHolder.pass(stack);
         // A set, unsprung trap is recalled by holding use; this works during the cooldown.
         if(kind.equals("bear_trap")&&BearTraps.recallable(player)) {player.getPersistentData().putBoolean("GunGangRecalling",true);player.startUsingItem(hand);return InteractionResultHolder.consume(stack);}
         var aimed=kind.equals("landmine")?GadgetManager.aimedMine(player):null;

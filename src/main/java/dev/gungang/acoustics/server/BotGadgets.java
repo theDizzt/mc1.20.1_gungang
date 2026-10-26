@@ -49,6 +49,7 @@ final class BotGadgets {
         if(kind.isEmpty())return;
         cooldown=switch(kind) {
             case "molotov"->ExtraGadgetConfig.ticks(ExtraGadgetConfig.molotov.cooldownSeconds());
+            case "arrow_grenade"->ExtraGadgetConfig.ticks(ExtraGadgetConfig.arrowGrenade.cooldownSeconds());
             case "orbital_strike"->ExtraGadgetConfig.ticks(ExtraGadgetConfig.orbital.cooldownSeconds());
             case "life_support"->ExtraGadgetConfig.ticks(ExtraGadgetConfig.life.cooldownSeconds());
             case "jetpack"->ExtraGadgetConfig.ticks(ExtraGadgetConfig.jet.cooldownSeconds());
@@ -107,7 +108,7 @@ final class BotGadgets {
         if(lastScore+bot.getRandom().nextFloat()*.15f<BotGadgetScore.THRESHOLD)return;
         try {
             boolean used=switch(kind) {
-                case "molotov"->throwMolotov(bot,target);
+                case "molotov","arrow_grenade"->throwGrenade(bot,target,kind.equals("arrow_grenade"));
                 case "landmine","bear_trap"->bot.onGround()&&placeTrap(bot,level,kind.equals("bear_trap"));
                 case "barrier"->placeBarrier(bot,level,target);
                 case "orbital_strike"->strike(bot,level,team,target);
@@ -192,12 +193,12 @@ final class BotGadgets {
         bot.level().playSound(null,bot.blockPosition(),shieldHealth==0?SoundEvents.SHIELD_BREAK:SoundEvents.SHIELD_BLOCK,SoundSource.PLAYERS,1,1);
     }
 
-    private static boolean throwMolotov(BotEntity bot,net.minecraft.world.entity.LivingEntity target) {
-        var projectile=GadgetItems.MOLOTOV_PROJECTILE.get().create(bot.level());if(projectile==null)return false;
+    private static boolean throwGrenade(BotEntity bot,net.minecraft.world.entity.LivingEntity target,boolean arrows) {
+        net.minecraft.world.entity.projectile.ThrowableItemProjectile projectile=arrows?GadgetItems.ARROW_GRENADE_PROJECTILE.get().create(bot.level()):GadgetItems.MOLOTOV_PROJECTILE.get().create(bot.level());if(projectile==null)return false;
         projectile.setOwner(bot);projectile.setPos(bot.getX(),bot.getEyeY()-.1,bot.getZ());
         Vec3 d=target.position().subtract(projectile.position());double flat=d.horizontalDistance();
         // Lob: aim above the feet in proportion to range so the low-gravity bottle lands near the target.
-        projectile.shoot(d.x,d.y+flat*.12,d.z,1.1f,2);
+        projectile.shoot(d.x,d.y+flat*.12,d.z,arrows?(float)ExtraGadgetConfig.arrowGrenade.throwSpeed():1.1f,2);
         if(!bot.level().addFreshEntity(projectile))return false;
         bot.level().playSound(null,bot.blockPosition(),SoundEvents.SPLASH_POTION_THROW,SoundSource.PLAYERS,.7f,1);
         bot.swing(InteractionHand.OFF_HAND);return true;

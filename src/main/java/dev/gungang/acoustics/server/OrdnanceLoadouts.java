@@ -3,6 +3,7 @@ package dev.gungang.acoustics.server;
 import java.util.List;
 
 final class OrdnanceLoadouts {
+    private static final String ARROW_USAGE="왼손 아이템 우클릭 후 복귀 매크로 키(기본 H)로 투척합니다. 주손에 든 경우 우클릭으로 던질 수 있습니다.";
     static List<Loadouts.Weapon> defaults() {
         return List.of(
                 new Loadouts.Weapon("81","{id:'gungang:molotov',Count:1b}","몰로토프 칵테일",
@@ -25,12 +26,18 @@ final class OrdnanceLoadouts {
                         "반경 16블록 안의 적을 명중 확률 100%로 자동 사격합니다. 피해 6, 4틱마다 1발, 넉백 없음. 탄약 120발, 체력 150. 빈 2×2×2 공간에 최대 1개 설치. 쿨타임 120초.",null,
                         "사용 후 우클릭 설치 / 좌클릭 취소. 설치자가 외곽 3블록 이내에서 왼손 사용 후 복귀 키(기본 H)를 길게 눌러 초당 20발 재장전, 왼손 공격 후 복귀 키(기본 G)를 길게 눌러 1틱당 체력 1 수리. 작업 중 사격 중지.","설치형",100d,100d,120d,"",false,"2026-11-01",
                         List.of(new Loadouts.Stat("피해","1"),new Loadouts.Stat("명중 확률","100%"),new Loadouts.Stat("탄약","250발"),new Loadouts.Stat("체력","150"),new Loadouts.Stat("재장전","20발/초"))),
+                new Loadouts.Weapon("79","{id:'gungang:arrow_grenade',Count:1b}","화살분열 수류탄",
+                        "착탄 지점에서 6초 동안 무작위 방향으로 화살을 계속 발사합니다. 화살 피해 16, 최대 이동 거리 6블록, 초당 20발. 벽에 막히며 쿨타임은 투척부터 30초입니다.",null,
+                        ARROW_USAGE,"투척형",100d,100d,30d,"",false,"2026-10-27",
+                        List.of(new Loadouts.Stat("투사체 피해","16"),new Loadouts.Stat("투사체 사거리","6블록"),new Loadouts.Stat("지속 시간","6초"),new Loadouts.Stat("발사 속도","20발/초"))),
                 new Loadouts.Weapon("80","{id:'gungang:hand_axe',Count:1b}","손도끼",
                         "좌클릭 근접 공격 35 피해. 우클릭을 길게 눌렀다 떼면 조준 방향으로 곧게 던져 66 피해. 중력을 받아 멀리 갈수록 조금씩 떨어집니다. 투척 거리는 누른 시간에 따라 5블록에서 최대 24블록까지 늘어납니다. 던진 뒤 16초 동안 다시 사용할 수 없습니다. 내구도 없음.",null,
                         "키보드 F 로 보조무기 전환 후 좌클릭 근접 공격, 우클릭을 길게 눌렀다 떼서 투척. 보조 손 공격/사용 키로도 사용할 수 있습니다.","근접·투척형",100d,100d,16d,"",false,"2026-10-22",
                         List.of(new Loadouts.Stat("근접 피해","35"),new Loadouts.Stat("투척 피해","66"),new Loadouts.Stat("투척 거리","5~24블록"),new Loadouts.Stat("투척 쿨타임","16초"))));
     }
     static Loadouts.Weapon upgradePlaceholder(Loadouts.Weapon weapon) {
+        if(weapon.itemNbt().contains("gungang:arrow_grenade")&&"왼손 아이템 좌클릭 후 복귀 매크로 키(기본 G)로 투척합니다. 주손에 든 경우 우클릭으로 던질 수 있습니다.".equals(weapon.usage()))
+            return new Loadouts.Weapon(weapon.id(),weapon.itemNbt(),weapon.name(),weapon.description(),weapon.specs(),ARROW_USAGE,weapon.category(),weapon.maxHealth(),weapon.movementSpeed(),weapon.cooldownSeconds(),weapon.command(),weapon.jetpackVerticalFlight(),weapon.releaseDate(),weapon.stats());
         if(weapon.description()!=null&&weapon.description().contains("개발중")&&(weapon.itemNbt().contains("zeta:p92")||weapon.itemNbt().contains("bf1:sw_model3")))
             for(var replacement:defaults())if(replacement.id().equals(weapon.id()))return replacement;
         return weapon;
