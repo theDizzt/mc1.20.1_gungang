@@ -33,6 +33,10 @@ public class GimmickBlock extends BaseEntityBlock {
     @Override public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level,BlockState s,BlockEntityType<T> type){return level.isClientSide?null:createTickerHelper(type,GimmickBlocks.ENTITY.get(),GimmickEntity::tick);}
     @Override public void onProjectileHit(Level level,BlockState state,BlockHitResult hit,Projectile projectile){
         if(net.minecraftforge.registries.ForgeRegistries.ENTITY_TYPES.getKey(projectile.getType()).getNamespace().equals("tacz"))return;
+        if(projectile instanceof HandAxeEntity){
+            if(!level.isClientSide&&!SafeZones.contains(projectile.getOwner()))GimmickEntity.hit(level,hit.getBlockPos(),(float)(ExtraGadgetConfig.handAxe.throwDamage()*AdrenalineDamage.multiplier(projectile.getOwner())));
+            return;
+        }
         if(!level.isClientSide)GimmickEntity.hit(level,hit.getBlockPos(),projectile instanceof AbstractArrow arrow?(float)Math.max(1,arrow.getBaseDamage()*arrow.getDeltaMovement().length()):1);
     }
     @Override public void onBlockExploded(BlockState state,Level level,BlockPos pos,Explosion explosion){GimmickEntity.hit(level,pos,100);}

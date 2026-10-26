@@ -19,6 +19,23 @@ public final class HandAxeSmokeChecks {
     @SubscribeEvent public static void started(ServerStartedEvent event) {
         var server=event.getServer();var level=server.overworld();long time=level.getGameTime();
         try {
+            for(boolean water:new boolean[]{false,true}) {
+                var origin=new BlockPos(40,240,40);
+                for(var cell:BlockPos.betweenClosed(origin.offset(-5,-8,-5),origin.offset(5,5,5)))
+                    level.setBlockAndUpdate(cell,water?Blocks.WATER.defaultBlockState():Blocks.AIR.defaultBlockState());
+                var flying=GadgetItems.HAND_AXE_PROJECTILE.get().create(level);
+                var probe=GadgetItems.HAND_AXE_PROJECTILE.get().create(level);
+                Vec3 position=Vec3.atCenterOf(origin),velocity=new Vec3(.1,.15,-.1);
+                flying.setPos(position);flying.setDeltaMovement(velocity);flying.expireAfter(100);
+                for(int step=0;step<20;step++) {
+                    probe.setPos(position);probe.setDeltaMovement(velocity);
+                    boolean wet=probe.updateFluidHeightAndDoFluidPushing(net.minecraft.tags.FluidTags.WATER,.014);
+                    velocity=probe.getDeltaMovement();position=position.add(velocity);velocity=HandAxeFlight.nextVelocity(velocity,wet);
+                    flying.tick();
+                    check(flying.position().distanceTo(position)<1e-7,"Trajectory position mismatch water="+water+" tick="+step);
+                    check(flying.getDeltaMovement().distanceTo(velocity)<1e-7,"Trajectory velocity mismatch water="+water+" tick="+step);
+                }
+            }
             var previewStack=new net.minecraft.world.item.ItemStack(GadgetItems.HAND_AXE.get());
             HandAxeItem.configurePreview(previewStack);
             var preview=previewStack.getTag();var config=ExtraGadgetConfig.handAxe;
