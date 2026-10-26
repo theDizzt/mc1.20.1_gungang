@@ -10,6 +10,13 @@ public final class GimmickAttackInput {
     @SubscribeEvent(receiveCanceled=true) public static void attack(net.minecraftforge.client.event.InputEvent.InteractionKeyMappingTriggered event){
         var mc=net.minecraft.client.Minecraft.getInstance();
         if(!event.isAttack()||mc.player==null||mc.level==null||mc.screen!=null)return;
+        if(mc.player.getMainHandItem().getItem() instanceof RapierItem){
+            if(event.isCanceled())return;
+            GungangNetwork.CHANNEL.sendToServer(new GungangNetwork.Action("rapierAttack","",""));
+            event.setCanceled(true);event.setSwingHand(false);
+            mc.player.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
+            return;
+        }
         if(mc.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit&&mc.level.getBlockState(hit.getBlockPos()).getBlock() instanceof GimmickBlock){
             GungangNetwork.CHANNEL.sendToServer(new GungangNetwork.Action("gimmickAttack","",""));
         }

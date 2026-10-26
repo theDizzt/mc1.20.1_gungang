@@ -1,0 +1,32 @@
+{
+  "id": "79",
+  "itemNbt": "{id:\u0027gungang:arrow_grenade\u0027,Count:1b}",
+  "name": "화살분열 수류탄",
+  "description": "착탄 지점에서 6초 동안 무작위 방향으로 화살을 계속 발사합니다. 화살 피해 16, 최대 이동 거리 6블록, 초당 20발. 벽에 막히며 쿨타임은 투척부터 30초입니다.",
+  "usage": "왼손 아이템 우클릭 후 복귀 매크로 키(기본 H)로 투척합니다. 주손에 든 경우 우클릭으로 던질 수 있습니다.",
+  "category": "투척형",
+  "maxHealth": 100.0,
+  "movementSpeed": 100.0,
+  "cooldownSeconds": 30.0,
+  "command": "",
+  "jetpackVerticalFlight": false,
+  "releaseDate": "2026-10-27",
+  "stats": [
+    {
+      "name": "투사체 피해",
+      "value": "16"
+    },
+    {
+      "name": "투사체 사거리",
+      "value": "6블록"
+    },
+    {
+      "name": "지속 시간",
+      "value": "6초"
+    },
+    {
+      "name": "발사 속도",
+      "value": "20발/초"
+    }
+  ]
+}
