@@ -10,10 +10,27 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.Level;
 
-/** Server-authoritative crosshair thrust and player-owned backstep energy. */
+/** Server-authoritative crosshair thrust and player-owned dash energy. */
 @net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid=dev.gungang.acoustics.GungangAcoustics.ID)
 public final class RapierItem extends Item {
     public static final double RANGE=4.5;
+    public static final int DASH_TICKS=6;
+    private static final String DASH="RapierDashUntil";
+    @net.minecraftforge.eventbus.api.SubscribeEvent(priority=net.minecraftforge.eventbus.api.EventPriority.HIGHEST)
+    public static void dodge(net.minecraftforge.event.entity.living.LivingAttackEvent event){
+        var p=event.getEntity();long left=p.getPersistentData().getLong(DASH)-p.level().getGameTime();
+        if(p instanceof Player&&left>0&&left<=DASH_TICKS&&!event.getSource().is(net.minecraft.tags.DamageTypeTags.BYPASSES_INVULNERABILITY))event.setCanceled(true);
+    }
+    @Override public boolean onEntitySwing(ItemStack stack,net.minecraft.world.entity.LivingEntity entity){
+        if(!entity.level().isClientSide){
+            long now=entity.level().getGameTime();var tag=entity.getPersistentData();
+            if(!tag.contains("RapierSoundTick")||now-tag.getLong("RapierSoundTick")>=6){
+                tag.putLong("RapierSoundTick",now);
+                entity.level().playSound(null,entity.blockPosition(),net.minecraft.sounds.SoundEvents.PLAYER_ATTACK_SWEEP,net.minecraft.sounds.SoundSource.PLAYERS,.8f,1.35f);
+            }
+        }
+        return false;
+    }
     private static final String ENERGY="RapierEnergy",WAIT="RapierRecovery",ATTACK="RapierAttackTick";
     private final Multimap<Attribute,AttributeModifier> attributes=ImmutableMultimap.<Attribute,AttributeModifier>builder()
             .put(Attributes.ATTACK_DAMAGE,new AttributeModifier(BASE_ATTACK_DAMAGE_UUID,"Rapier damage",32,AttributeModifier.Operation.ADDITION))
@@ -27,12 +44,14 @@ public final class RapierItem extends Item {
     @Override public InteractionResultHolder<ItemStack> use(Level level,Player player,InteractionHand hand){
         var stack=player.getItemInHand(hand);
         if(hand!=InteractionHand.MAIN_HAND||player.getMainHandItem().getItem()!=this||stack.getItem()!=this||player.isSpectator()||!player.isAlive()||!player.onGround()||player.isPassenger()
-                ||LobbyManager.respawning(player.getUUID())||(!level.isClientSide&&!energy(player).canStep()))return InteractionResultHolder.fail(stack);
+                ||player.getCooldowns().isOnCooldown(this)||LobbyManager.respawning(player.getUUID())||(!level.isClientSide&&!energy(player).canStep()))return InteractionResultHolder.fail(stack);
         if(!level.isClientSide){
             // Velocity uses vanilla collision resolution, so the player cannot teleport through walls.
             double angle=Math.toRadians(player.getYRot());
             player.setDeltaMovement(-Math.sin(angle)*1.1,Math.max(0,player.getDeltaMovement().y),Math.cos(angle)*1.1);
             player.hurtMarked=true;save(player,energy(player).spend());sync(player);
+            player.getPersistentData().putLong(DASH,level.getGameTime()+DASH_TICKS);
+            player.getCooldowns().addCooldown(this,DASH_TICKS);
             level.playSound(null,player.blockPosition(),net.minecraft.sounds.SoundEvents.PLAYER_ATTACK_SWEEP,net.minecraft.sounds.SoundSource.PLAYERS,.55f,1.5f);
         }
         return InteractionResultHolder.sidedSuccess(stack,level.isClientSide);

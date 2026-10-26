@@ -251,6 +251,7 @@ public final class LobbyManager {
     public static void action(ServerPlayer sender, GungangNetwork.Action action) {
         if (server == null) return;
         if(action.action().equals("turretReload")){Turrets.key(sender,action.value());return;}
+        if(action.action().equals("gimmickAttack")){GimmickEvents.request(sender);return;}
         // Plant/defuse key: press and release must both arrive, so it bypasses the action rate limit.
         if(action.action().equals("bomb")){var bomb=MatchManager.bomb();if(bomb!=null)bomb.key(sender,action.value().equals("down"));return;}
         if(action.action().equals("prop")){if(MatchManager.propHunt()!=null)MatchManager.propHunt().action(sender,action.value());return;}
@@ -331,7 +332,7 @@ public final class LobbyManager {
     }
     private static List<String> modes(ArenaMap arena) {
         if(arena.propHunt()!=null)return List.of("PROP_HUNT");
-        var modes=new ArrayList<>(arena.freeForAll()!=null?List.of("FREE_FOR_ALL","DEATHMATCH"):arena.escort()!=null?List.of("ESCORT","DEATHMATCH"):LobbyRules.modes(arena.normandy() != null, arena.capture() != null, arena.bomb() != null));
+        var modes=new ArrayList<>(arena.freeForAll()!=null?(arena.bomb()!=null?List.of("BOMB","FREE_FOR_ALL","DEATHMATCH"):List.of("FREE_FOR_ALL","DEATHMATCH")):arena.escort()!=null?List.of("ESCORT","DEATHMATCH"):LobbyRules.modes(arena.normandy() != null, arena.capture() != null, arena.bomb() != null));
         if(PropHuntRules.supported(arena))modes.add("PROP_HUNT");
         return modes;
     }
@@ -427,7 +428,7 @@ public final class LobbyManager {
         if(arena!=null&&modes(arena).contains(selectedMode))return;
         if(arena!=null&&arena.propHunt()!=null){selectedMode="PROP_HUNT";return;}
         if(selectedMode.equals("PROP_HUNT")&&PropHuntRules.supported(arena))return;
-        if(arena!=null&&arena.freeForAll()!=null){if(!selectedMode.equals("DEATHMATCH"))selectedMode="FREE_FOR_ALL";return;}
+        if(arena!=null&&arena.freeForAll()!=null&&arena.bomb()==null){if(!selectedMode.equals("DEATHMATCH"))selectedMode="FREE_FOR_ALL";return;}
         if(arena!=null&&arena.escort()!=null){if(!selectedMode.equals("DEATHMATCH"))selectedMode="ESCORT";}
         else if(arena!=null&&arena.normandy()!=null)selectedMode="NORMANDY";
         else if(DeathmatchRules.exclusive(arena))selectedMode="DEATHMATCH";
@@ -525,6 +526,8 @@ public final class LobbyManager {
         DeathmatchRules deathmatch=selectedMode.equals("DEATHMATCH")?options().deathmatch():null;
         if(deathmatch!=null)activeMap=deathmatch.arena(activeMap);
         if(selectedMode.equals("PROP_HUNT"))activeMap=PropHuntRules.arena(activeMap);
+        if(selectedMode.equals("BOMB")&&activeMap.freeForAll()!=null)activeMap=activeMap.withoutFreeForAll();
+        if(selectedMode.equals("FREE_FOR_ALL")&&activeMap.bomb()!=null)activeMap=activeMap.withoutBomb();
         level(activeMap);
         if(activeMap.propHunt()!=null)PropHuntMatch.validate(server,activeMap,loadouts);
         if(activeMap.escort()!=null)EscortMatch.validate(server,activeMap);
@@ -864,7 +867,7 @@ public final class LobbyManager {
     private static void send(ServerPlayer p, boolean show) {
         var mapViews = files == null ? List.<LobbySnapshot.MapView>of() : files.maps().stream().map(m -> new LobbySnapshot.MapView(m.id(),m.name(),m.description(),
                 selectedMode.equals("DEATHMATCH")&&DeathmatchRules.supported(m)?options().deathmatch().timeLimitSeconds():m.timeLimitSeconds(),
-                m.propHunt()!=null?"숨바꼭질":m.freeForAll()!=null?"개인전":m.escort()!=null?"호위":m.normandy()!=null?"노르망디":(DeathmatchRules.exclusive(m)||selectedMode.equals("DEATHMATCH")&&DeathmatchRules.supported(m))?"팀 데스매치":m.bomb()!=null?"폭탄전":"쟁탈전",DeathmatchRules.supported(m),m.previewArea()!=null?"@generated":m.previewImage(),m.bomb()!=null,DeathmatchRules.exclusive(m),m.weather(),m.timeOfDay(),m.releaseDate())).toList();
+                m.propHunt()!=null?"숨바꼭질":m.freeForAll()!=null&&(m.bomb()==null||m.id().equals(selected)&&selectedMode.equals("FREE_FOR_ALL"))?"개인전":m.escort()!=null?"호위":m.normandy()!=null?"노르망디":(DeathmatchRules.exclusive(m)||selectedMode.equals("DEATHMATCH")&&DeathmatchRules.supported(m))?"팀 데스매치":m.bomb()!=null?"폭탄전":"쟁탈전",DeathmatchRules.supported(m),m.previewArea()!=null?"@generated":m.previewImage(),m.bomb()!=null,DeathmatchRules.exclusive(m),m.weather(),m.timeOfDay(),m.releaseDate())).toList();
         List<LobbySnapshot.Member> members = new ArrayList<>();
         for (var entry : PLAYERS.entrySet()) { var player = server.getPlayerList().getPlayer(entry.getKey()); if (player != null) members.add(new LobbySnapshot.Member(entry.getKey().toString(),player.getGameProfile().getName(),entry.getValue().team,entry.getValue().ready)); }
         if(selectedMode.equals("DEATHMATCH"))for(var bot:BotManager.lobbyIds())members.add(new LobbySnapshot.Member(bot.toString(),BotManager.name(bot),BotManager.team(bot),true,BotManager.skin(bot)));

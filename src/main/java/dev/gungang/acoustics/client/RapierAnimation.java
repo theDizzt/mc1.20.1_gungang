@@ -16,9 +16,11 @@ public final class RapierAnimation implements IClientItemExtensions {
         boolean right=(event.getHand()==net.minecraft.world.InteractionHand.MAIN_HAND)==(player.getMainArm()==HumanoidArm.RIGHT);
         var pose=event.getPoseStack();pose.pushPose();var root=new org.joml.Matrix4f(pose.last().pose());
         firstPerson(pose,right,event.getSwingProgress()>0?0:event.getEquipProgress(),event.getSwingProgress());
+        pose.pushPose();pose.scale(.8f,.8f,.8f);
         if(mc.getEntityRenderDispatcher().getRenderer(player) instanceof net.minecraft.client.renderer.entity.player.PlayerRenderer renderer)
             HandAxeAnimation.renderForearm(pose,event.getMultiBufferSource(),event.getPackedLight(),renderer.getModel(),player.getSkinTextureLocation(),right,"slim".equals(player.getModelName()),root);
-        pose.translate(0,.65,0); // hilt centre at the fist; bypass item display transforms that offset the blade
+        pose.popPose();
+        pose.scale(1.3f,1.3f,1.3f);pose.translate(0,.65,0); // hilt centre at the fist; bypass item display transforms that offset the blade
         mc.getItemRenderer().renderStatic(player,event.getItemStack(),net.minecraft.world.item.ItemDisplayContext.NONE,!right,pose,event.getMultiBufferSource(),player.level(),event.getPackedLight(),net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,player.getId());
         pose.popPose();event.setCanceled(true);
     }
@@ -38,8 +40,8 @@ public final class RapierAnimation implements IClientItemExtensions {
         int side=right?1:-1;
         float thrust=swing<.3f?smooth(swing/.3f):swing<=.45f?1:1-smooth((swing-.45f)/.55f);
         // At full extension the blade axis is camera -Z and crosses the crosshair.
-        pose.translate(side*.48*(1-thrust),-.48*(1-thrust)-equip*.5,-.62-.65*thrust);
-        pose.mulPose(Axis.XP.rotationDegrees(-72-18*thrust));
+        pose.translate(side*.48*(1-thrust),-.38*(1-thrust)-equip*.5,-.95-.55*thrust);
+        pose.mulPose(Axis.XP.rotationDegrees(-35-55*thrust));
         pose.mulPose(Axis.ZP.rotationDegrees(side*(-8+8*thrust)));
     }
     private static float smooth(float t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);}

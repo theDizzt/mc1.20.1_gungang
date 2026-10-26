@@ -46,7 +46,7 @@ public record ArenaMap(String id, String name, String description, boolean enabl
     }
     public ArenaMap {
         if(propHunt!=null)timeLimitSeconds=propHuntMinutes==null?600:propHuntMinutes*60;
- if(freeForAll!=null)timeLimitSeconds=freeForAll.timeLimitSeconds();
+ if(freeForAll!=null&&bomb==null)timeLimitSeconds=freeForAll.timeLimitSeconds();
         if(escort!=null&&timeLimitSeconds==0)timeLimitSeconds=240;
         deathZones=deathZones==null?java.util.List.of():java.util.List.copyOf(deathZones);
         if(bomb!=null){
@@ -125,9 +125,16 @@ public record ArenaMap(String id, String name, String description, boolean enabl
                 throw new IllegalArgumentException("Invalid spawn coordinates");
         }
     }
+    /** A map with both bomb and free-for-all rules plays one of them per match. */
+    public ArenaMap withoutBomb() {
+        return new ArenaMap(id,name,description,enabled,timeLimitSeconds,gameMode,dimension,alphaSpawn,bravoSpawn,spectatorSpawn,alphaArea,bravoArea,capture,onPrepare,onStart,onEnd,normandy,previewImage,weather,timeOfDay,null,deathZones,previewArea,escort,freeForAll,propHunt,releaseDate,propHuntMinutes);
+    }
+    public ArenaMap withoutFreeForAll() {
+        return new ArenaMap(id,name,description,enabled,timeLimitSeconds,gameMode,dimension,alphaSpawn,bravoSpawn,spectatorSpawn,alphaArea,bravoArea,capture,onPrepare,onStart,onEnd,normandy,previewImage,weather,timeOfDay,bomb,deathZones,previewArea,escort,null,propHunt,releaseDate,propHuntMinutes);
+    }
     public ArenaMap validate() {
         if(propHunt!=null&&(freeForAll!=null||escort!=null||bomb!=null||capture!=null||normandy!=null))throw new IllegalArgumentException("Prop hunt requires a dedicated map");
-        if(freeForAll!=null){freeForAll.validate();if(escort!=null||bomb!=null||capture!=null||normandy!=null)throw new IllegalArgumentException("Free-for-all requires a dedicated map");}
+        if(freeForAll!=null){freeForAll.validate();if(escort!=null||capture!=null||normandy!=null)throw new IllegalArgumentException("Free-for-all shares a map only with bomb rules");}
  if(escort!=null){escort.validate();if(capture!=null||normandy!=null||bomb!=null||timeLimitSeconds<1)throw new IllegalArgumentException("Escort requires its own map without other objective rules");}
         if(previewArea!=null)previewArea.validate();
         if(deathZones.size()>128)throw new IllegalArgumentException("At most 128 death zones per map");

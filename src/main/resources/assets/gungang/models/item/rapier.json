@@ -1,126 +1,126 @@
 {
-  "loader": "forge:obj",
-  "model": "gungang:models/item/rapier.obj",
-  "automatic_culling": false,
-  "flip_v": true,
-  "render_type": "minecraft:cutout",
-  "textures": {
-    "particle": "gungang:item/rapier"
-  },
-  "display": {
-    "gui": {
-      "rotation": [
-        0,
-        0,
-        -40
-      ],
-      "translation": [
-        0,
-        0,
-        0
-      ],
-      "scale": [
-        0.58,
-        0.58,
-        0.58
-      ]
-    },
-    "ground": {
-      "rotation": [
-        0,
-        0,
-        90
-      ],
-      "translation": [
-        0,
-        3,
-        0
-      ],
-      "scale": [
-        0.5,
-        0.5,
-        0.5
-      ]
-    },
-    "fixed": {
-      "rotation": [
-        0,
-        0,
-        -40
-      ],
-      "scale": [
-        0.65,
-        0.65,
-        0.65
-      ]
-    },
-    "firstperson_righthand": {
-      "rotation": [
-        0,
-        0,
-        0
-      ],
-      "translation": [
-        0,
-        9,
-        0
-      ],
-      "scale": [
-        1,
-        1,
-        1
-      ]
-    },
-    "thirdperson_righthand": {
-      "rotation": [
-        0,
-        0,
-        0
-      ],
-      "translation": [
-        0,
-        9,
-        0
-      ],
-      "scale": [
-        0.9,
-        0.9,
-        0.9
-      ]
-    },
-    "firstperson_lefthand": {
-      "rotation": [
-        0,
-        0,
-        0
-      ],
-      "translation": [
-        0,
-        9,
-        0
-      ],
-      "scale": [
-        1,
-        1,
-        1
-      ]
-    },
-    "thirdperson_lefthand": {
-      "rotation": [
-        0,
-        0,
-        0
-      ],
-      "translation": [
-        0,
-        9,
-        0
-      ],
-      "scale": [
-        0.9,
-        0.9,
-        0.9
-      ]
-    }
-  }
+    "loader":  "forge:obj",
+    "model":  "gungang:models/item/rapier.obj",
+    "automatic_culling":  false,
+    "flip_v":  true,
+    "render_type":  "minecraft:cutout",
+    "textures":  {
+                     "particle":  "gungang:item/rapier"
+                 },
+    "display":  {
+                    "gui":  {
+                                "rotation":  [
+                                                 0,
+                                                 0,
+                                                 -40
+                                             ],
+                                "translation":  [
+                                                    0,
+                                                    0,
+                                                    0
+                                                ],
+                                "scale":  [
+                                              0.58,
+                                              0.58,
+                                              0.58
+                                          ]
+                            },
+                    "ground":  {
+                                   "rotation":  [
+                                                    0,
+                                                    0,
+                                                    90
+                                                ],
+                                   "translation":  [
+                                                       0,
+                                                       3,
+                                                       0
+                                                   ],
+                                   "scale":  [
+                                                 0.5,
+                                                 0.5,
+                                                 0.5
+                                             ]
+                               },
+                    "fixed":  {
+                                  "rotation":  [
+                                                   0,
+                                                   0,
+                                                   -40
+                                               ],
+                                  "scale":  [
+                                                0.65,
+                                                0.65,
+                                                0.65
+                                            ]
+                              },
+                    "firstperson_righthand":  {
+                                                  "rotation":  [
+                                                                   0,
+                                                                   0,
+                                                                   0
+                                                               ],
+                                                  "translation":  [
+                                                                      0,
+                                                                      9,
+                                                                      0
+                                                                  ],
+                                                  "scale":  [
+                                                                1,
+                                                                1,
+                                                                1
+                                                            ]
+                                              },
+                    "thirdperson_righthand":  {
+                                                  "rotation":  [
+                                                                   0,
+                                                                   0,
+                                                                   0
+                                                               ],
+                                                  "translation":  [
+                                                                      0,
+                                                                      14.04,
+                                                                      0
+                                                                  ],
+                                                  "scale":  [
+                                                                1.35,
+                                                                1.35,
+                                                                1.35
+                                                            ]
+                                              },
+                    "firstperson_lefthand":  {
+                                                 "rotation":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                                 "translation":  [
+                                                                     0,
+                                                                     9,
+                                                                     0
+                                                                 ],
+                                                 "scale":  [
+                                                               1,
+                                                               1,
+                                                               1
+                                                           ]
+                                             },
+                    "thirdperson_lefthand":  {
+                                                 "rotation":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                                 "translation":  [
+                                                                     0,
+                                                                     14.04,
+                                                                     0
+                                                                 ],
+                                                 "scale":  [
+                                                               1.35,
+                                                               1.35,
+                                                               1.35
+                                                           ]
+                                             }
+                }
 }

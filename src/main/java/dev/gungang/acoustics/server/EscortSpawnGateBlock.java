@@ -23,13 +23,13 @@ import net.minecraft.world.phys.shapes.*;
 /**
  * Escort-only team spawn gate. Each gate belongs to one respawn stage: 0 is the opening spawn, N the spawn the escort
  * rules switch to once checkpoint N is cleared. Only during an escort match, and only while its team spawns at that
- * stage, is it ACTIVE and works exactly like a team spawn gate. Gates of the other stages stay invisible but LOCKED,
+ * stage, is it ACTIVE and works exactly like a team spawn gate. Gates of the other stages display red crosses and stay LOCKED,
  * keeping every player out of spawns no longer in use. Outside escort matches a gate is invisible and does nothing.
  * Creative editors holding one see inactive gates as markers and right-click a gate to cycle its stage.
  */
 public final class EscortSpawnGateBlock extends SpawnGateBlock {
     public static final BooleanProperty ACTIVE=BooleanProperty.create("active");
-    /** During an escort match an inactive gate is an invisible wall no player may pass; bullets still fly through. */
+    /** During an escort match an inactive gate is a red-cross wall no player may pass; bullets still fly through. */
     public static final BooleanProperty LOCKED=BooleanProperty.create("locked");
     public static final IntegerProperty STAGE=IntegerProperty.create("stage",0,3);
     /** Client: the local player is a creative editor holding an escort gate; set by ClientSetup. */
@@ -39,6 +39,7 @@ public final class EscortSpawnGateBlock extends SpawnGateBlock {
         registerDefaultState(stateDefinition.any().setValue(ACTIVE,false).setValue(LOCKED,false).setValue(STAGE,0));
     }
     @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> builder){builder.add(ACTIVE,LOCKED,STAGE);}
+    @Override public net.minecraft.world.level.block.RenderShape getRenderShape(BlockState state){return state.getValue(ACTIVE)||state.getValue(LOCKED)?net.minecraft.world.level.block.RenderShape.MODEL:net.minecraft.world.level.block.RenderShape.INVISIBLE;}
     @Override public boolean present(BlockState state){return state.getValue(ACTIVE);}
     @Override public VoxelShape getCollisionShape(BlockState state,BlockGetter level,BlockPos pos,CollisionContext context){
         if(!present(state)&&state.getValue(LOCKED))

@@ -3,8 +3,11 @@
     "active=true": {
       "model": "gungang:block/alpha_spawn_gate"
     },
-    "active=false": {
+    "active=false,locked=false": {
       "model": "gungang:block/escort_spawn_gate_hidden"
+    },
+    "active=false,locked=true": {
+      "model": "gungang:block/escort_spawn_gate_locked"
     }
   }
 }
