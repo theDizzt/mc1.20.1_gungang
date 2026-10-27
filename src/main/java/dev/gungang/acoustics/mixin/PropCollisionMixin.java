@@ -10,13 +10,14 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-/** Disguises collide with their real block shapes, so others can stand on them instead of walking through. */
+/** Disguises and the escort cart collide with their real model shapes, so others can stand on them instead of walking through. */
 @Mixin(Entity.class)
 public abstract class PropCollisionMixin {
     @Redirect(method="collide",at=@At(value="INVOKE",target="Lnet/minecraft/world/level/Level;getEntityCollisions(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/phys/AABB;)Ljava/util/List;"))
     private List<VoxelShape> gungang$propCollisions(Level level,Entity entity,AABB box) {
         var shapes=level.getEntityCollisions(entity,box);
-        var props=PropEntity.collisions(level,entity,box);
+        var props=new java.util.ArrayList<VoxelShape>(PropEntity.collisions(level,entity,box));
+        props.addAll(dev.gungang.acoustics.server.EscortCart.collisions(level,entity,box));
         if(props.isEmpty())return shapes;
         var merged=new java.util.ArrayList<VoxelShape>(shapes);merged.addAll(props);return merged;
     }

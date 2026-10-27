@@ -18,7 +18,7 @@ public final class HandAxeSmokeChecks {
     private static final boolean SCANNER=Boolean.getBoolean("gungang.scannerPreview");
     private static final boolean ORBITAL=Boolean.getBoolean("gungang.orbitalPreview");
     private static ItemStack stack(){return new ItemStack(RAPIER?GadgetItems.RAPIER.get():ORBITAL?GadgetItems.ORBITAL_STRIKE.get():SCANNER?GadgetItems.SCANNER.get():GadgetItems.HAND_AXE.get());}
-    private static String marker(){return ORBITAL?"GUNGANG_ORBITAL_CLIENT":SCANNER?"GUNGANG_SCANNER_CLIENT":"GUNGANG_HAND_AXE_CLIENT";}
+    private static String marker(){return RAPIER?"GUNGANG_RAPIER_CLIENT":ORBITAL?"GUNGANG_ORBITAL_CLIENT":SCANNER?"GUNGANG_SCANNER_CLIENT":"GUNGANG_HAND_AXE_CLIENT";}
     private static int expectedQuads(){return RAPIER?1750:ORBITAL?17496:SCANNER?7104:84;}
     private static java.util.Set<String> textures(){return RAPIER?java.util.Set.of("gungang:item/rapier"):ORBITAL?java.util.Set.of("gungang:item/orbital_strike"):SCANNER?java.util.Set.of("gungang:item/infrared_scanner_0","gungang:item/infrared_scanner_1"):java.util.Set.of("gungang:item/hand_axe");}
     private static int ticks;
@@ -49,20 +49,21 @@ public final class HandAxeSmokeChecks {
     }
     /** First-person chop frames at 70 FOV (top two rows) and the third-person arm seen from the side (bottom row). */
     private static final class MotionScreen extends Screen {
-        private static final float[] FIRST={-1,0,.24f,.34f,.46f,.59f,.76f,.90f,1,2};
-        private static final String[] FIRST_LABELS={"carry (offhand)","ready",".24 wind-up",".34 accelerate",".46 strike",".59 follow-through",".76 recover",".90 ready","1 ready","throw charge"};
-        private static final float[] THIRD={0,.24f,.46f,.59f,.76f};
+        private static final float[] FIRST=RAPIER?new float[]{0,.16f,.36f,.72f,1,0,.18f,.38f,.56f,.84f}:new float[]{-1,0,.24f,.34f,.46f,.59f,.76f,.90f,1,2};
+        private static final String[] FIRST_LABELS=RAPIER?new String[]{"thrust: guard","thrust: draw","thrust: extend","thrust: return","thrust: guard","dash: guard","dash: gather","dash: beat","dash: sweep out","dash: recover"}:new String[]{"carry (offhand)","ready",".24 wind-up",".34 accelerate",".46 strike",".59 follow-through",".76 recover",".90 ready","1 ready","throw charge"};
+        private static final float[] THIRD=RAPIER?new float[]{0,.36f,.18f,.56f,1}:new float[]{0,.24f,.46f,.59f,.76f};
         MotionScreen(){super(net.minecraft.network.chat.Component.literal("Hand axe motion"));}
         @Override public void render(GuiGraphics g,int mx,int my,float partial) {
             g.fill(0,0,width,height,0xff263747);
             var model=new net.minecraft.client.model.PlayerModel<net.minecraft.client.player.AbstractClientPlayer>(minecraft.getEntityModels().bakeLayer(net.minecraft.client.model.geom.ModelLayers.PLAYER),false);
+            model.young=false;
             var skin=new net.minecraft.resources.ResourceLocation("minecraft","textures/entity/player/wide/steve.png");
             int cw=width/5,ch=height/3;
             for(int i=0;i<FIRST.length;i++) {
                 int x=(i%5)*cw,y=(i/5)*ch;
                 g.fill(x+1,y+1,x+cw-1,y+ch-1,0xff5f7d93);g.fill(x+cw/2,y+ch/2-3,x+cw/2+1,y+ch/2+4,0xffff4444);g.fill(x+cw/2-3,y+ch/2,x+cw/2+4,y+ch/2+1,0xffff4444);
                 g.flush();
-                firstPerson(x,y,cw,ch,model,skin,FIRST[i]);
+                firstPerson(x,y,cw,ch,model,skin,FIRST[i],RAPIER&&i>=5);
                 g.drawString(font,FIRST_LABELS[i],x+4,y+4,0xffffffff);
             }
             for(int i=0;i<THIRD.length;i++) {
@@ -72,18 +73,20 @@ public final class HandAxeSmokeChecks {
                 pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(90));
                 for(var part:new net.minecraft.client.model.geom.ModelPart[]{model.body,model.rightArm,model.leftArm})part.resetPose();
                 model.rightArm.xRot=-.3f;
-                HandAxeAnimation.poseArm(model,true,THIRD[i],false);
+                if(RAPIER)RapierAnimation.poseArm(model,true,THIRD[i],i>=2,true);
+                else HandAxeAnimation.poseArm(model,true,THIRD[i],false);
                 model.rightSleeve.copyFrom(model.rightArm);model.leftSleeve.copyFrom(model.leftArm);model.jacket.copyFrom(model.body);
                 var buffers=g.bufferSource();com.mojang.blaze3d.platform.Lighting.setupFor3DItems();
                 model.renderToBuffer(pose,buffers.getBuffer(net.minecraft.client.renderer.RenderType.entityCutoutNoCull(skin)),15728880,net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,1,1,1,1);
                 model.translateToHand(net.minecraft.world.entity.HumanoidArm.RIGHT,pose);
                 pose.mulPose(com.mojang.math.Axis.XP.rotationDegrees(-90));pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(180));pose.translate(1/16f,.125f,-.625f);
-                pose.mulPose(com.mojang.math.Axis.XP.rotationDegrees(HandAxeAnimation.wrist(THIRD[i])));
+                if(!RAPIER)pose.mulPose(com.mojang.math.Axis.XP.rotationDegrees(HandAxeAnimation.wrist(THIRD[i])));
+                else pose.mulPose(com.mojang.math.Axis.XP.rotationDegrees(RapierMotion.wrist(i>=2,THIRD[i])));
                 minecraft.getItemRenderer().renderStatic(stack(),ItemDisplayContext.THIRD_PERSON_RIGHT_HAND,15728880,net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,pose,buffers,null,0);
                 g.flush();pose.popPose();
             }
         }
-        private void firstPerson(int x,int y,int w,int h,net.minecraft.client.model.PlayerModel<?> model,net.minecraft.resources.ResourceLocation skin,float t) {
+        private void firstPerson(int x,int y,int w,int h,net.minecraft.client.model.PlayerModel<?> model,net.minecraft.resources.ResourceLocation skin,float t,boolean sweep) {
             var window=minecraft.getWindow();double scale=window.getGuiScale();
             int px=(int)(x*scale),py=(int)(y*scale),pw=(int)(w*scale),ph=(int)(h*scale);
             var old=new org.joml.Matrix4f(com.mojang.blaze3d.systems.RenderSystem.getProjectionMatrix());
@@ -94,7 +97,7 @@ public final class HandAxeSmokeChecks {
             com.mojang.blaze3d.platform.Lighting.setupFor3DItems();
             var pose=new com.mojang.blaze3d.vertex.PoseStack();var buffers=minecraft.renderBuffers().bufferSource();
             var root=new org.joml.Matrix4f(pose.last().pose());
-            if(RAPIER){RapierAnimation.firstPerson(pose,true,0,Math.max(0,Math.min(1,t)));pose.pushPose();pose.scale(.8f,.8f,.8f);HandAxeAnimation.renderForearm(pose,buffers,15728880,model,skin,true,false,root);pose.popPose();pose.scale(1.3f,1.3f,1.3f);pose.translate(0,.65,0);minecraft.getItemRenderer().renderStatic(stack(),ItemDisplayContext.NONE,15728880,net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,pose,buffers,null,0);} else HandAxeAnimation.firstPerson(pose,true,t>1?0:t,t>1?1:0,0);
+            if(RAPIER){RapierAnimation.firstPerson(pose,true,0,t,sweep?t:-1);pose.pushPose();pose.scale(.8f,.8f,.8f);HandAxeAnimation.renderForearm(pose,buffers,15728880,model,skin,true,false,root);pose.popPose();pose.scale(1.3f,1.3f,1.3f);pose.translate(0,.65,0);minecraft.getItemRenderer().renderStatic(stack(),ItemDisplayContext.NONE,15728880,net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,pose,buffers,null,0);} else HandAxeAnimation.firstPerson(pose,true,t>1?0:t,t>1?1:0,0);
             if(!RAPIER)HandAxeAnimation.renderGrip(pose,buffers,15728880,stack(),model,skin,true,false,root,null,null,0);
             buffers.endBatch();
             com.mojang.blaze3d.systems.RenderSystem.setProjectionMatrix(old,com.mojang.blaze3d.vertex.VertexSorting.ORTHOGRAPHIC_Z);

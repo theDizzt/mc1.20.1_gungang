@@ -4,7 +4,6 @@ import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.DustParticleOptions;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
@@ -103,10 +102,12 @@ public final class NozzleBlock extends GimmickBlock implements LiquidBlockContai
     public AABB column(BlockPos pos){return new AABB(pos.getX()+.3,pos.getY()+1,pos.getZ()+.3,pos.getX()+.7,pos.getY()+1+height(),pos.getZ()+.7);}
     public void particles(ServerLevel level,BlockPos pos){
         int perSecond=acid()?GimmickConfig.acidNozzle.particlesPerSecond():GimmickConfig.nozzle.particlesPerSecond();
-        if(level.getGameTime()%4==0)for(int i=0;i<Math.max(1,perSecond/5);i++){
-            double y=pos.getY()+1+level.random.nextDouble()*height();
-            if(acid())level.sendParticles(ACID_SPRAY,pos.getX()+.5,y,pos.getZ()+.5,1,.06,.02,.06,0);
-            else level.sendParticles(ParticleTypes.SPLASH,pos.getX()+.5,y,pos.getZ()+.5,1,.06,.02,.06,.015);
+        if(level.getGameTime()%4!=0||perSecond<=0)return;
+        double height=height();
+        var packet=new GungangNetwork.NozzleBurst(pos,acid(),height,Math.max(1,perSecond/5));
+        for(var player:level.players()){
+            double nearestY=Math.max(pos.getY()+1,Math.min(pos.getY()+1+height,player.getY()));
+            if(player.distanceToSqr(pos.getX()+.5,nearestY,pos.getZ()+.5)<=32*32)GungangNetwork.send(player,packet);
         }
     }
 

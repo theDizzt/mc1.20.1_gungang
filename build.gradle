@@ -18,6 +18,7 @@ version = "${nextUpdate}.${releaseDate}"
 base { archivesName = 'gungang-realistic_1.20.1' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 if (project.hasProperty('gungangArrowSmoke')) sourceSets.main.java.srcDir('src/arrowSmoke/java')
+if (project.hasProperty('gungangAcidSmoke')) sourceSets.main.java.srcDir('src/acidSmoke/java')
 if (project.hasProperty('gungangArrowClientSmoke')) sourceSets.main.java.srcDir('src/arrowClientSmoke/java')
 // Explicit development-only server smoke checks; never included in a normal build/JAR.
 if (project.hasProperty('gungangSmoke')) sourceSets.main.java.srcDir('src/smoke/java')
@@ -54,6 +55,7 @@ minecraft {
             workingDirectory project.file(project.hasProperty('gungangTurretSmoke') ? 'build/turret-smoke-run' : project.hasProperty('gungangBowSmoke') ? 'build/bow-smoke-run' : project.hasProperty('gungangAxeSmoke') ? 'build/axe-server-smoke' : project.hasProperty('gungangBotSmoke') ? 'build/bot-smoke-run' : project.hasProperty('gungangPropSmoke') ? 'build/prop-smoke-run' : project.hasProperty('gungangBombSmoke') ? 'build/bomb-smoke-run' : 'run-server')
             args '--nogui'
             if (project.hasProperty('gungangArrowSmoke')) workingDirectory project.file('build/arrow-smoke-run')
+            if (project.hasProperty('gungangAcidSmoke')) workingDirectory project.file('build/acid-smoke-run')
             if (project.hasProperty('gungangOutlineSmoke')) workingDirectory project.file('build/outline-server-smoke')
             if (project.hasProperty('gungangLobbySmoke')) workingDirectory project.file('build/lobby-server-smoke')
             if (project.hasProperty('gungangLasSmoke')) workingDirectory project.file('build/las-smoke-run')
@@ -87,6 +89,7 @@ mixin {
     config 'gungang_acoustics.mixins.json'
 }
 tasks.named('jar', Jar).configure {
+    exclude 'dev/gungang/acoustics/server/AcidSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/server/ArrowGrenadeSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/client/ArrowGrenadeModelSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/client/LobbyUiSmokeChecks*.class'

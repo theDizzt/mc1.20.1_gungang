@@ -241,9 +241,17 @@ final class LoadoutScreen extends ArenaScreen {
         return rows;
     }
     /** One line per stat: label, bar, value. Rows without a comparable number show the value text only. */
+    private static final int VALUE_W=64;
+    private static final List<String> FIXED_LABELS=List.of("최대 체력","이동 속도","피해량","명중률","안정성","사거리","연사력","재사용 대기시간");
+    /** Widest label any weapon can show, so bar length does not depend on the selected weapon's text. */
+    private int labelColumn(){
+        int width=0;
+        for(var label:FIXED_LABELS)width=Math.max(width,font.width(label));
+        for(var weapon:state.catalog().secondary())for(var row:weapon.stats())width=Math.max(width,font.width(row.name()));
+        return width;
+    }
     private void statPanel(GuiGraphics g,List<Row> rows,int x1,int y1,int x2,int h){
-        int labelW=0,valueW=0;
-        for(var row:rows){labelW=Math.max(labelW,font.width(row.label()));valueW=Math.max(valueW,Math.min(64,font.width(row.value())));}
+        int labelW=labelColumn(),valueW=VALUE_W;
         int barX=x1+labelW+8,barEnd=x2-valueW-8,y=y1+Math.max(0,(h-rows.size()*STAT_ROW)/2)+3;
         g.enableScissor(x1,y1,x2,y1+h);
         for(var row:rows){

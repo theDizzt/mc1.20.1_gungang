@@ -527,6 +527,7 @@ public final class LobbyManager {
         DeathmatchRules deathmatch=selectedMode.equals("DEATHMATCH")?options().deathmatch():null;
         if(deathmatch!=null)activeMap=deathmatch.arena(activeMap);
         if(selectedMode.equals("PROP_HUNT"))activeMap=PropHuntRules.arena(activeMap);
+        if(selectedMode.equals("ESCORT"))activeMap=activeMap.escortStart();
         if(selectedMode.equals("BOMB")&&activeMap.freeForAll()!=null)activeMap=activeMap.withoutFreeForAll();
         if(selectedMode.equals("FREE_FOR_ALL")&&activeMap.bomb()!=null)activeMap=activeMap.withoutBomb();
         level(activeMap);
@@ -616,7 +617,10 @@ public final class LobbyManager {
                 || phase.equals("LOBBY") || !p.level().dimension().location().toString().equals(activeMap.dimension())) return false;
         var area = e.team.equals("ALPHA") ? activeMap.alphaArea() : activeMap.bravoArea();
         if(MatchManager.bomb()!=null)area=MatchManager.bomb().area(e.team);
-        if(phase.equals("RUNNING")&&MatchManager.escort()!=null){var s=MatchManager.escort().spawn(e.team);return p.distanceToSqr(s.x(),s.y(),s.z())<=16;}
+        if(phase.equals("RUNNING")&&MatchManager.escort()!=null){
+            area=MatchManager.escort().area(e.team);
+            if(area==null){var s=MatchManager.escort().spawn(e.team);return p.distanceToSqr(s.x(),s.y(),s.z())<=16;}
+        }
         if(phase.equals("RUNNING")&&e.team.equals("BRAVO")&&activeMap.normandy()!=null) {
             var s=MatchManager.attackSpawn();
             return p.distanceToSqr(s.x(),s.y(),s.z())<=16;

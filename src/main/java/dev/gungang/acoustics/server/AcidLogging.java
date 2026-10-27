@@ -17,7 +17,7 @@ public final class AcidLogging {
 
     public static boolean supports(Block block){return block instanceof CrossCollisionBlock||block instanceof StairBlock;}
     public static boolean acid(BlockState state){return state.hasProperty(ACIDLOGGED)&&state.getValue(ACIDLOGGED);}
-    private static boolean isAcid(Fluid fluid){return fluid==GimmickBlocks.ACID_SOURCE.get();}
+    private static boolean isAcid(Fluid fluid){return GimmickBlocks.ACID_SOURCE.get().isSame(fluid);}
 
     public static BlockState placement(BlockState state,LevelReader level,BlockPos pos){
         return state!=null&&state.hasProperty(ACIDLOGGED)&&isAcid(level.getFluidState(pos).getType())?state.setValue(ACIDLOGGED,true):state;

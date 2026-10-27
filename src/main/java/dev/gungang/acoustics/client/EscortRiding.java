@@ -39,12 +39,9 @@ public final class EscortRiding {
      * collision ignores shapes already overlapped. Push out the shortest way, stepping up onto the deck when that is short.
      */
     private static void shove(net.minecraft.client.player.LocalPlayer p,EscortCart cart){
-        var box=cart.getBoundingBox();var body=p.getBoundingBox();
-        if(p.isSpectator()||!box.deflate(1e-3).intersects(body))return;
-        double east=box.maxX-body.minX,west=body.maxX-box.minX,south=box.maxZ-body.minZ,north=body.maxZ-box.minZ,up=box.maxY-body.minY;
-        double side=Math.min(Math.min(east,west),Math.min(south,north));
-        Vec3 out=up<=.6&&up<=side?new Vec3(0,up+.01,0):side==east?new Vec3(east+.01,0,0):side==west?new Vec3(-west-.01,0,0):side==south?new Vec3(0,0,south+.01):new Vec3(0,0,-north-.01);
-        p.move(MoverType.SELF,out);
+        if(p.isSpectator())return;
+        Vec3 out=cart.pushOut(p.getBoundingBox());
+        if(out!=null)p.move(MoverType.SELF,out);
     }
     private EscortRiding(){}
 }

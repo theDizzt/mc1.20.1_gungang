@@ -132,6 +132,13 @@ public record ArenaMap(String id, String name, String description, boolean enabl
     public ArenaMap withoutFreeForAll() {
         return new ArenaMap(id,name,description,enabled,timeLimitSeconds,gameMode,dimension,alphaSpawn,bravoSpawn,spectatorSpawn,alphaArea,bravoArea,capture,onPrepare,onStart,onEnd,normandy,previewImage,weather,timeOfDay,bomb,deathZones,previewArea,escort,null,propHunt,releaseDate,propHuntMinutes);
     }
+    /** Escort plays from its own team bases when the map sets them; other modes keep the top-level ones. */
+    public ArenaMap escortStart() {
+        if(escort==null||escort.alphaSpawn()==null&&escort.bravoSpawn()==null)return this;
+        var aSpawn=escort.alphaSpawn()==null?alphaSpawn:escort.alphaSpawn();var bSpawn=escort.bravoSpawn()==null?bravoSpawn:escort.bravoSpawn();
+        var aArea=escort.alphaArea()==null?alphaArea:escort.alphaArea();var bArea=escort.bravoArea()==null?bravoArea:escort.bravoArea();
+        return new ArenaMap(id,name,description,enabled,timeLimitSeconds,gameMode,dimension,aSpawn,bSpawn,spectatorSpawn,aArea,bArea,capture,onPrepare,onStart,onEnd,normandy,previewImage,weather,timeOfDay,bomb,deathZones,previewArea,escort,freeForAll,propHunt,releaseDate,propHuntMinutes);
+    }
     public ArenaMap validate() {
         if(propHunt!=null&&(freeForAll!=null||escort!=null||bomb!=null||capture!=null||normandy!=null))throw new IllegalArgumentException("Prop hunt requires a dedicated map");
         if(freeForAll!=null){freeForAll.validate();if(escort!=null||capture!=null||normandy!=null)throw new IllegalArgumentException("Free-for-all shares a map only with bomb rules");}
