@@ -2,12 +2,24 @@ package dev.gungang.acoustics.server;
 
 import java.util.List;
 
-/** Map-owned escort settings. Speeds are blocks per second; durations are seconds. */
+/**
+ * Map-owned escort settings. Speeds are blocks per second; durations are seconds.
+ * The optional alpha/bravo spawn and area replace the map's team bases in escort only, so team deathmatch keeps its own.
+ */
 public record EscortRules(ArenaMap.Area scanArea, Double linkDistance, Double speed,
         Double extraPlayerMultiplier, Double maxMultiplier, Double radius,
         Integer checkpointStopSeconds, Integer checkpointBonusSeconds,
         Integer rollbackDelaySeconds, Double rollbackSpeed, List<Integer> rollbackSections,
-        Integer healIntervalTicks, Float healAmount, List<Respawn> respawns) {
+        Integer healIntervalTicks, Float healAmount, List<Respawn> respawns,
+        ArenaMap.Spawn alphaSpawn, ArenaMap.Spawn bravoSpawn, ArenaMap.Area alphaArea, ArenaMap.Area bravoArea) {
+    public EscortRules(ArenaMap.Area scanArea, Double linkDistance, Double speed,
+            Double extraPlayerMultiplier, Double maxMultiplier, Double radius,
+            Integer checkpointStopSeconds, Integer checkpointBonusSeconds,
+            Integer rollbackDelaySeconds, Double rollbackSpeed, List<Integer> rollbackSections,
+            Integer healIntervalTicks, Float healAmount, List<Respawn> respawns) {
+        this(scanArea,linkDistance,speed,extraPlayerMultiplier,maxMultiplier,radius,checkpointStopSeconds,checkpointBonusSeconds,
+                rollbackDelaySeconds,rollbackSpeed,rollbackSections,healIntervalTicks,healAmount,respawns,null,null,null,null);
+    }
     public EscortRules {
         linkDistance=linkDistance==null?16:linkDistance;
         speed=speed==null?1.0:speed;
@@ -23,7 +35,10 @@ public record EscortRules(ArenaMap.Area scanArea, Double linkDistance, Double sp
         healAmount=healAmount==null?1f:healAmount;
         respawns=respawns==null?List.of():List.copyOf(respawns);
     }
-    public record Respawn(int checkpoint, ArenaMap.Spawn alpha, ArenaMap.Spawn bravo) {}
+    /** Spawns from this checkpoint on; an area marks that spawn's base for loadout changes. */
+    public record Respawn(int checkpoint, ArenaMap.Spawn alpha, ArenaMap.Spawn bravo, ArenaMap.Area alphaArea, ArenaMap.Area bravoArea) {
+        public Respawn(int checkpoint, ArenaMap.Spawn alpha, ArenaMap.Spawn bravo) {this(checkpoint,alpha,bravo,null,null);}
+    }
     public static ArenaMap example(){
         var base=ArenaMap.example();
         var rules=new EscortRules(new ArenaMap.Area(-5,64,5,85,75,35),null,null,null,null,null,null,null,null,null,List.of(0,1),null,null,List.of(new Respawn(1,new ArenaMap.Spawn(24.5,65,.5,0,0),new ArenaMap.Spawn(70.5,65,.5,180,0))));
@@ -41,6 +56,12 @@ public record EscortRules(ArenaMap.Area scanArea, Double linkDistance, Double sp
         if(linkDistance<1||linkDistance>64||speed<=0||speed>10||maxMultiplier<1||maxMultiplier>5||radius<1||radius>32||rollbackSpeed>10||checkpointStopSeconds<0||checkpointStopSeconds>60||checkpointBonusSeconds<0||checkpointBonusSeconds>3600||rollbackDelaySeconds<1||rollbackDelaySeconds>3600||healIntervalTicks<1||healIntervalTicks>1200||healAmount>100)throw new IllegalArgumentException("Escort setting out of range");
         if(rollbackSections.stream().anyMatch(i->i==null||i<0||i>3))throw new IllegalArgumentException("rollbackSections must contain section indices 0..3");
         var seen=new java.util.HashSet<Integer>();
-        for(var r:respawns){if(r==null||r.checkpoint()<1||r.checkpoint()>3||!seen.add(r.checkpoint()))throw new IllegalArgumentException("Invalid escort respawn checkpoint");if(r.alpha()!=null)r.alpha().validate();if(r.bravo()!=null)r.bravo().validate();}
+        for(var r:respawns){if(r==null||r.checkpoint()<1||r.checkpoint()>3||!seen.add(r.checkpoint()))throw new IllegalArgumentException("Invalid escort respawn checkpoint");base(r.alpha(),r.alphaArea());base(r.bravo(),r.bravoArea());}
+        base(alphaSpawn,alphaArea);base(bravoSpawn,bravoArea);
+        if((alphaSpawn==null)!=(alphaArea==null)||(bravoSpawn==null)!=(bravoArea==null))throw new IllegalArgumentException("Escort start spawn and area must be set together");
+    }
+    private static void base(ArenaMap.Spawn spawn,ArenaMap.Area area){
+        if(spawn!=null)spawn.validate();
+        if(area!=null){if(spawn==null)throw new IllegalArgumentException("Escort base area needs a spawn");area.validateRoom(spawn);}
     }
 }

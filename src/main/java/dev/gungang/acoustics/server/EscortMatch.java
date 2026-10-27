@@ -63,6 +63,13 @@ public final class EscortMatch {
         for(var r:game.rules.respawns().stream().sorted(Comparator.comparingInt(EscortRules.Respawn::checkpoint)).toList())if(r.checkpoint()<=game.completed){var s=team.equals("ALPHA")?r.alpha():r.bravo();if(s!=null)result=s;}
         return result;
     }
+    /** The base around this team's current spawn, or null when that respawn entry sets no area. */
+    public ArenaMap.Area area(String team){
+        int stage=stage(team);
+        if(stage==0)return team.equals("ALPHA")?map.alphaArea():map.bravoArea();
+        for(var r:game.rules.respawns())if(r.checkpoint()==stage)return team.equals("ALPHA")?r.alphaArea():r.bravoArea();
+        return null;
+    }
     /** The checkpoint whose respawn entry sets this team's current spawn, or 0 for the map's own spawn. */
     public int stage(String team){
         int stage=0;

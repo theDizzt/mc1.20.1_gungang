@@ -15,13 +15,15 @@ public final class AcidBlock extends LiquidBlock {
         if(!level.isClientSide&&BotEntity.participant(entity)&&entity instanceof net.minecraft.world.entity.LivingEntity p
                 &&!(p instanceof net.minecraft.world.entity.player.Player player&&PropDimensions.prop(player)!=null)){
             int amplifier=GimmickConfig.acid.amplifier();
-            int interval=Math.max(1,25>>amplifier);
+            int interval=AcidPoisonEffect.interval(amplifier);
             int duration=Math.max(interval+1,ExtraGadgetConfig.ticks(GimmickConfig.acid.poisonSeconds()));
-            var current=p.getEffect(net.minecraft.world.effect.MobEffects.POISON);
+            var current=p.getEffect(GimmickBlocks.ACID_POISON.get());
             // Preserve the poison tick phase when refreshing while submerged.
             if(current!=null&&current.getAmplifier()==amplifier)
                 duration-=Math.floorMod(duration-current.getDuration(),interval);
-            p.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.POISON,duration,amplifier));
+            // Multiple overlapping acid cells often contact the same entity in one tick.
+            if(current!=null&&current.getAmplifier()==amplifier&&current.getDuration()>=duration)return;
+            p.addEffect(new net.minecraft.world.effect.MobEffectInstance(GimmickBlocks.ACID_POISON.get(),duration,amplifier));
         }
     }
 }

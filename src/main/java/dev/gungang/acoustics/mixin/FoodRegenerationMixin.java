@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.*;
 public abstract class FoodRegenerationMixin {
     @Redirect(method="tick",at=@At(value="INVOKE",target="Lnet/minecraft/world/entity/player/Player;isHurt()Z"))
     private boolean customRegeneration(Player player) {
-        // Disable only hunger-based healing; potions and other direct healing still work.
+        // Hunger healing is replaced by HealthRegeneration; explicit item healing still works.
         return player.level().isClientSide&&player.isHurt();
     }
 }
