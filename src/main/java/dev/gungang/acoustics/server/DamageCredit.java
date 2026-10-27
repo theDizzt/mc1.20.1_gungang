@@ -34,6 +34,7 @@ public final class DamageCredit {
     }
     /** The attacker to credit, or null for damage nobody caused (map hazards, falls, own fire). */
     public static Entity attacker(LivingEntity victim,DamageSource source){
+        if(AcidPoisonEffect.active())return null;
         var attacker=direct(source);if(attacker!=null)return attacker;
         if(!(victim.level() instanceof ServerLevel level))return null;
         long now=level.getGameTime();UUID owner=null;

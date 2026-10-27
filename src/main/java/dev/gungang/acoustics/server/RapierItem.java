@@ -15,6 +15,8 @@ import net.minecraft.world.level.Level;
 public final class RapierItem extends Item {
     public static final double RANGE=4.5;
     public static final int DASH_TICKS=6;
+    public static final String SWEEP_ANIMATION="RapierSweepTick";
+    public static final int SWEEP_ANIMATION_TICKS=10;
     private static final String DASH="RapierDashUntil";
     @net.minecraftforge.eventbus.api.SubscribeEvent(priority=net.minecraftforge.eventbus.api.EventPriority.HIGHEST)
     public static void dodge(net.minecraftforge.event.entity.living.LivingAttackEvent event){
@@ -49,8 +51,11 @@ public final class RapierItem extends Item {
             // Velocity uses vanilla collision resolution, so the player cannot teleport through walls.
             double angle=Math.toRadians(player.getYRot());
             player.setDeltaMovement(-Math.sin(angle)*1.1,Math.max(0,player.getDeltaMovement().y),Math.cos(angle)*1.1);
-            player.hurtMarked=true;save(player,energy(player).spend());sync(player);
+            player.hurtMarked=true;save(player,energy(player).spend());
             player.getPersistentData().putLong(DASH,level.getGameTime()+DASH_TICKS);
+            // Vanilla inventory/equipment synchronization also carries this to third-person observers.
+            stack.getOrCreateTag().putLong(SWEEP_ANIMATION,level.getGameTime());
+            sync(player);
             player.getCooldowns().addCooldown(this,DASH_TICKS);
             level.playSound(null,player.blockPosition(),net.minecraft.sounds.SoundEvents.PLAYER_ATTACK_SWEEP,net.minecraft.sounds.SoundSource.PLAYERS,.55f,1.5f);
         }
@@ -66,10 +71,18 @@ public final class RapierItem extends Item {
         }
         if(changed)p.inventoryMenu.broadcastChanges();
     }
+    @Override public void inventoryTick(ItemStack stack,Level level,net.minecraft.world.entity.Entity entity,int slot,boolean selected){
+        if(!level.isClientSide&&entity instanceof Player p){
+            int amount=p.getPersistentData().contains(ENERGY)?p.getPersistentData().getInt(ENERGY):100;
+            if(!stack.hasTag()||!stack.getTag().contains(ENERGY)||gauge(stack)!=amount)
+                stack.getOrCreateTag().putInt(ENERGY,amount);
+            // Vanilla menu/equipment updates publish changed stacks, including newly acquired rapiers.
+        }
+    }
     @net.minecraftforge.eventbus.api.SubscribeEvent public static void tick(net.minecraftforge.event.TickEvent.PlayerTickEvent event){
         var p=event.player;if(event.phase!=net.minecraftforge.event.TickEvent.Phase.END||p.level().isClientSide)return;
         if(!(p.getMainHandItem().getItem() instanceof RapierItem)||!p.isAlive())resetCombo(p);
-        if(p.getPersistentData().contains(ENERGY))save(p,energy(p).tick());sync(p);
+        if(p.getPersistentData().contains(ENERGY)&&p.getPersistentData().getInt(ENERGY)<100)save(p,energy(p).tick());
     }
     @net.minecraftforge.eventbus.api.SubscribeEvent(priority=net.minecraftforge.eventbus.api.EventPriority.LOWEST)
     public static void attack(net.minecraftforge.event.entity.player.AttackEntityEvent event){
@@ -83,6 +96,11 @@ public final class RapierItem extends Item {
                 ||LobbyManager.respawning(p.getUUID())||FreeForAllMatch.blocked(p)||SafeZones.contains(p)
                 ||CombatGadgets.holdingShield(p)||SurvivalGadgets.jetting(p)||GadgetManager.placing(p))return;
         if(!beginAttack(p))return;
+        // A new thrust can interrupt the visual recovery of the blade beat.
+        var animation=p.getMainHandItem().getTag();
+        if(animation!=null&&animation.contains(SWEEP_ANIMATION)){
+            animation.remove(SWEEP_ANIMATION);p.inventoryMenu.broadcastChanges();
+        }
         var eye=p.getEyePosition();var end=eye.add(p.getLookAngle().scale(RANGE));
         var block=p.level().clip(new net.minecraft.world.level.ClipContext(eye,end,net.minecraft.world.level.ClipContext.Block.COLLIDER,net.minecraft.world.level.ClipContext.Fluid.NONE,p));
         if(block.getType()!=net.minecraft.world.phys.HitResult.Type.MISS)end=block.getLocation();
