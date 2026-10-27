@@ -11,10 +11,10 @@ import net.minecraftforge.network.simple.SimpleChannel;
 
 public final class GungangNetwork {
     private static boolean accepts(String version) {
-        return version.equals("3") || version.equals(NetworkRegistry.ABSENT) || version.equals(NetworkRegistry.ACCEPTVANILLA);
+        return version.equals("4") || version.equals(NetworkRegistry.ABSENT) || version.equals(NetworkRegistry.ACCEPTVANILLA);
     }
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-            new ResourceLocation(GungangAcoustics.ID, "server"), () -> "3", GungangNetwork::accepts, GungangNetwork::accepts);
+            new ResourceLocation(GungangAcoustics.ID, "server"), () -> "4", GungangNetwork::accepts, GungangNetwork::accepts);
     public record Acoustics(String json) { }
     public record Lobby(String json) { }
     public record Equipment(String json) { }
@@ -37,7 +37,12 @@ public final class GungangNetwork {
     public record Levels(String json) { }
     public record TeamPointRequest() { }
     public record TeamPointView(String json) { }
+    public record NozzleBurst(net.minecraft.core.BlockPos pos,boolean acid,double height,int count) { }
     public static void register() {
+        CHANNEL.registerMessage(20,NozzleBurst.class,(p,b)->{b.writeBlockPos(p.pos);b.writeBoolean(p.acid);b.writeDouble(p.height);b.writeVarInt(p.count);},
+                b->new NozzleBurst(b.readBlockPos(),b.readBoolean(),b.readDouble(),b.readVarInt()),(p,context)->{
+                    var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.NozzleParticles.receive(p)));ctx.setPacketHandled(true);
+                },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(18,TeamPointRequest.class,(p,b)->{},b->new TeamPointRequest(),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->TeamPoints.request(ctx.getSender()));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_SERVER));

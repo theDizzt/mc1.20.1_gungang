@@ -23,6 +23,7 @@ public abstract class HandAxeWristMixin {
     private void gungang$wrist(LivingEntity entity,ItemStack stack,ItemDisplayContext context,HumanoidArm arm,PoseStack pose,MultiBufferSource buffers,int light,CallbackInfo ci) {
         if(((RenderLayer<?,?>)(Object)this).getParentModel() instanceof HumanoidModel<?> model) {
             float degrees=HandAxeAnimation.wrist(model,entity,arm);
+            degrees+=dev.gungang.acoustics.client.RapierAnimation.wrist(model,entity,arm);
             if(degrees!=0)pose.mulPose(Axis.XP.rotationDegrees(degrees));
         }
     }
