@@ -107,6 +107,7 @@ tasks.named('jar', Jar).configure {
     exclude 'dev/gungang/acoustics/server/GadgetSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/client/PreviewSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/server/PropSmokeChecks*.class'
+    exclude 'dev/gungang/acoustics/server/RecoveryImpulseChecks*.class'
     exclude 'dev/gungang/acoustics/server/PropExpansionChecks*.class'
     exclude 'dev/gungang/acoustics/server/BotSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/server/CompoundBowSmokeChecks*.class'

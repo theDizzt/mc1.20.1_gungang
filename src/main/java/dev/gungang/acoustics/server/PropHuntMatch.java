@@ -20,6 +20,7 @@ public final class PropHuntMatch {
     final PropAbilities abilities=new PropAbilities(this);
     int now(){return server.getTickCount();}
     boolean hunting(){return !reviewing&&phase()==PropHuntGame.Phase.HUNTING;}
+    boolean hiding(){return !reviewing&&phase()==PropHuntGame.Phase.HIDING;}
     List<ServerPlayer> players(){return members.keySet().stream().map(id->server.getPlayerList().getPlayer(id)).filter(Objects::nonNull).toList();}
     List<ServerPlayer> seekers(){return players().stream().filter(p->!hider(p.getUUID())&&!frozen(p.getUUID())&&p.isAlive()&&!p.isSpectator()).toList();}
     boolean locked(UUID id){var m=members.get(id);return m!=null&&m.fixed;}
@@ -295,7 +296,7 @@ public final class PropHuntMatch {
         }
         sync();
     }
-    private void mark(Member m){m.prop.setGlowingTag(true);m.prop.setCustomName(Component.literal(m.name));m.prop.setCustomNameVisible(true);}
+    private void mark(Member m){m.prop.markFound();m.prop.setCustomName(Component.literal(m.name));m.prop.setCustomNameVisible(true);}
     public void leave(ServerPlayer p){if(test){test(p,null,"");return;}var m=members.get(p.getUUID());if(m==null)return;if(hider(m.id)){game.eliminate(m.id,null);if(m.prop!=null)mark(m);}restore(p,m);}
     private void restore(ServerPlayer p,Member m){abilities.remove(p);rush(p,false);p.setInvisible(m.invisible);p.removeEffect(MobEffects.BLINDNESS);p.getAttribute(Attributes.MAX_HEALTH).setBaseValue(m.health);p.setHealth(Math.min(p.getHealth(),p.getMaxHealth()));}
     public void close(){abilities.clear();PropSummons.clear(server);arrows.forEach(net.minecraft.world.entity.Entity::discard);arrows.clear();if(test){for(var id:List.copyOf(members.keySet())){var p=server.getPlayerList().getPlayer(id);if(p!=null)stop(p);}return;}reviewing=true;PropInteraction.clear();for(var m:members.values()){if(m.prop!=null)m.prop.discard();var p=server.getPlayerList().getPlayer(m.id);if(p!=null){restore(p,m);p.refreshDimensions();}}for(var p:server.getPlayerList().getPlayers())GungangNetwork.send(p,new GungangNetwork.PropHunt(ServerFiles.GSON.toJson(new PropHuntSnapshot(false,"",0,0,List.of()))));}

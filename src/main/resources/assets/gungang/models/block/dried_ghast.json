@@ -1,42 +1,30 @@
 {
     "parent":  "minecraft:block/block",
+    "display":  {
+                    "gui":  {
+                                "rotation":  [
+                                                 30,
+                                                 225,
+                                                 0
+                                             ],
+                                "translation":  [
+                                                    0.4,
+                                                    1.6,
+                                                    0
+                                                ],
+                                "scale":  [
+                                              0.8,
+                                              0.8,
+                                              0.8
+                                          ]
+                            }
+                },
     "elements":  [
                      {
-                         "faces":  {
-                                       "south":  {
-                                                     "texture":  "#skin"
-                                                 },
-                                       "north":  {
-                                                     "uv":  [
-                                                                0,
-                                                                0,
-                                                                16,
-                                                                16
-                                                            ],
-                                                     "texture":  "#face"
-                                                 },
-                                       "up":  {
-                                                  "uv":  [
-                                                             0,
-                                                             0,
-                                                             16,
-                                                             16
-                                                         ],
-                                                  "texture":  "#skin"
-                                              },
-                                       "west":  {
-                                                    "texture":  "#skin"
-                                                },
-                                       "down":  {
-                                                    "texture":  "#skin"
-                                                },
-                                       "east":  {
-                                                    "texture":  "#skin"
-                                                }
-                                   },
+                         "name":  "body",
                          "from":  [
                                       3,
-                                      2,
+                                      0,
                                       3
                                   ],
                          "to":  [
@@ -44,363 +32,575 @@
                                     10,
                                     13
                                 ],
-                         "shade":  false
-                     },
-                     {
+                         "rotation":  {
+                                          "angle":  0,
+                                          "axis":  "y",
+                                          "origin":  [
+                                                         11,
+                                                         0,
+                                                         11
+                                                     ]
+                                      },
                          "faces":  {
-                                       "south":  {
-                                                     "texture":  "#skin"
-                                                 },
                                        "north":  {
-                                                     "texture":  "#skin"
+                                                     "uv":  [
+                                                                0,
+                                                                0,
+                                                                10,
+                                                                10
+                                                            ],
+                                                     "texture":  "#north"
                                                  },
+                                       "east":  {
+                                                    "uv":  [
+                                                               0,
+                                                               0,
+                                                               10,
+                                                               10
+                                                           ],
+                                                    "texture":  "#east"
+                                                },
+                                       "south":  {
+                                                     "uv":  [
+                                                                0,
+                                                                0,
+                                                                10,
+                                                                10
+                                                            ],
+                                                     "texture":  "#south"
+                                                 },
+                                       "west":  {
+                                                    "uv":  [
+                                                               0,
+                                                               0,
+                                                               10,
+                                                               10
+                                                           ],
+                                                    "texture":  "#west"
+                                                },
                                        "up":  {
                                                   "uv":  [
                                                              0,
                                                              0,
-                                                             16,
-                                                             16
+                                                             10,
+                                                             10
                                                          ],
-                                                  "texture":  "#skin"
+                                                  "rotation":  180,
+                                                  "texture":  "#top"
                                               },
-                                       "west":  {
-                                                    "texture":  "#skin"
-                                                },
                                        "down":  {
-                                                    "texture":  "#skin"
-                                                },
-                                       "east":  {
-                                                    "texture":  "#skin"
+                                                    "uv":  [
+                                                               10,
+                                                               0,
+                                                               0,
+                                                               10
+                                                           ],
+                                                    "texture":  "#bottom",
+                                                    "cullface":  "down"
                                                 }
-                                   },
-                         "from":  [
-                                      3,
-                                      0,
-                                      3
-                                  ],
-                         "to":  [
-                                    5,
-                                    3,
-                                    5
-                                ],
-                         "shade":  false
+                                   }
                      },
                      {
-                         "faces":  {
-                                       "south":  {
-                                                     "texture":  "#skin"
-                                                 },
-                                       "north":  {
-                                                     "texture":  "#skin"
-                                                 },
-                                       "up":  {
-                                                  "uv":  [
-                                                             0,
-                                                             0,
-                                                             16,
-                                                             16
-                                                         ],
-                                                  "texture":  "#skin"
-                                              },
-                                       "west":  {
-                                                    "texture":  "#skin"
-                                                },
-                                       "down":  {
-                                                    "texture":  "#skin"
-                                                },
-                                       "east":  {
-                                                    "texture":  "#skin"
-                                                }
-                                   },
+                         "name":  "left_tent_1",
                          "from":  [
-                                      3,
                                       0,
-                                      7
+                                      0,
+                                      5
                                   ],
                          "to":  [
-                                    5,
                                     3,
-                                    9
+                                    1,
+                                    7
                                 ],
-                         "shade":  false
+                         "rotation":  {
+                                          "angle":  0,
+                                          "axis":  "y",
+                                          "origin":  [
+                                                         8,
+                                                         0,
+                                                         13
+                                                     ]
+                                      },
+                         "faces":  {
+                                       "north":  {
+                                                     "uv":  [
+                                                                1,
+                                                                1.5,
+                                                                2.5,
+                                                                2
+                                                            ],
+                                                     "texture":  "#tentacles"
+                                                 },
+                                       "east":  {
+                                                    "uv":  [
+                                                               0,
+                                                               1.5,
+                                                               1,
+                                                               2
+                                                           ],
+                                                    "texture":  "#tentacles"
+                                                },
+                                       "south":  {
+                                                     "uv":  [
+                                                                3.5,
+                                                                1.5,
+                                                                5,
+                                                                2
+                                                            ],
+                                                     "texture":  "#tentacles"
+                                                 },
+                                       "west":  {
+                                                    "uv":  [
+                                                               2.5,
+                                                               1.5,
+                                                               3.5,
+                                                               2
+                                                           ],
+                                                    "texture":  "#tentacles",
+                                                    "cullface":  "west"
+                                                },
+                                       "up":  {
+                                                  "uv":  [
+                                                             2.5,
+                                                             1.5,
+                                                             1.5,
+                                                             0
+                                                         ],
+                                                  "rotation":  90,
+                                                  "texture":  "#tentacles"
+                                              },
+                                       "down":  {
+                                                    "uv":  [
+                                                               2.5,
+                                                               1.5,
+                                                               3.5,
+                                                               0
+                                                           ],
+                                                    "rotation":  90,
+                                                    "texture":  "#tentacles",
+                                                    "cullface":  "down"
+                                                }
+                                   }
                      },
                      {
-                         "faces":  {
-                                       "south":  {
-                                                     "texture":  "#skin"
-                                                 },
-                                       "north":  {
-                                                     "texture":  "#skin"
-                                                 },
-                                       "up":  {
-                                                  "uv":  [
-                                                             0,
-                                                             0,
-                                                             16,
-                                                             16
-                                                         ],
-                                                  "texture":  "#skin"
-                                              },
-                                       "west":  {
-                                                    "texture":  "#skin"
-                                                },
-                                       "down":  {
-                                                    "texture":  "#skin"
-                                                },
-                                       "east":  {
-                                                    "texture":  "#skin"
-                                                }
-                                   },
+                         "name":  "left_tent_2",
                          "from":  [
-                                      3,
                                       0,
-                                      11
+                                      0,
+                                      9
                                   ],
                          "to":  [
-                                    5,
                                     3,
-                                    13
+                                    1,
+                                    11
                                 ],
-                         "shade":  false
+                         "rotation":  {
+                                          "angle":  0,
+                                          "axis":  "y",
+                                          "origin":  [
+                                                         8,
+                                                         0,
+                                                         17
+                                                     ]
+                                      },
+                         "faces":  {
+                                       "north":  {
+                                                     "uv":  [
+                                                                1,
+                                                                3.5,
+                                                                2.5,
+                                                                4
+                                                            ],
+                                                     "texture":  "#tentacles"
+                                                 },
+                                       "east":  {
+                                                    "uv":  [
+                                                               0,
+                                                               3.5,
+                                                               1,
+                                                               4
+                                                           ],
+                                                    "texture":  "#tentacles"
+                                                },
+                                       "south":  {
+                                                     "uv":  [
+                                                                3.5,
+                                                                3.5,
+                                                                5,
+                                                                4
+                                                            ],
+                                                     "texture":  "#tentacles"
+                                                 },
+                                       "west":  {
+                                                    "uv":  [
+                                                               2.5,
+                                                               3.5,
+                                                               3.5,
+                                                               4
+                                                           ],
+                                                    "texture":  "#tentacles",
+                                                    "cullface":  "west"
+                                                },
+                                       "up":  {
+                                                  "uv":  [
+                                                             2.5,
+                                                             3.5,
+                                                             1.5,
+                                                             2
+                                                         ],
+                                                  "rotation":  90,
+                                                  "texture":  "#tentacles"
+                                              },
+                                       "down":  {
+                                                    "uv":  [
+                                                               2.5,
+                                                               3.5,
+                                                               3.5,
+                                                               2
+                                                           ],
+                                                    "rotation":  90,
+                                                    "texture":  "#tentacles",
+                                                    "cullface":  "down"
+                                                }
+                                   }
                      },
                      {
-                         "faces":  {
-                                       "south":  {
-                                                     "texture":  "#skin"
-                                                 },
-                                       "north":  {
-                                                     "texture":  "#skin"
-                                                 },
-                                       "up":  {
-                                                  "uv":  [
-                                                             0,
-                                                             0,
-                                                             16,
-                                                             16
-                                                         ],
-                                                  "texture":  "#skin"
-                                              },
-                                       "west":  {
-                                                    "texture":  "#skin"
-                                                },
-                                       "down":  {
-                                                    "texture":  "#skin"
-                                                },
-                                       "east":  {
-                                                    "texture":  "#skin"
-                                                }
-                                   },
+                         "name":  "right_tent_1",
                          "from":  [
-                                      7,
+                                      13,
                                       0,
-                                      3
+                                      5
                                   ],
                          "to":  [
-                                    9,
-                                    3,
-                                    5
+                                    16,
+                                    1,
+                                    7
                                 ],
-                         "shade":  false
+                         "rotation":  {
+                                          "angle":  0,
+                                          "axis":  "y",
+                                          "origin":  [
+                                                         8,
+                                                         0,
+                                                         13
+                                                     ]
+                                      },
+                         "faces":  {
+                                       "north":  {
+                                                     "uv":  [
+                                                                2.5,
+                                                                7.5,
+                                                                1,
+                                                                8
+                                                            ],
+                                                     "texture":  "#tentacles"
+                                                 },
+                                       "east":  {
+                                                    "uv":  [
+                                                               3.5,
+                                                               7.5,
+                                                               2.5,
+                                                               8
+                                                           ],
+                                                    "texture":  "#tentacles",
+                                                    "cullface":  "east"
+                                                },
+                                       "south":  {
+                                                     "uv":  [
+                                                                5,
+                                                                7.5,
+                                                                3.5,
+                                                                8
+                                                            ],
+                                                     "texture":  "#tentacles"
+                                                 },
+                                       "west":  {
+                                                    "uv":  [
+                                                               1,
+                                                               7.5,
+                                                               0,
+                                                               8
+                                                           ],
+                                                    "texture":  "#tentacles"
+                                                },
+                                       "up":  {
+                                                  "uv":  [
+                                                             2.5,
+                                                             6,
+                                                             1.5,
+                                                             7.5
+                                                         ],
+                                                  "rotation":  90,
+                                                  "texture":  "#tentacles"
+                                              },
+                                       "down":  {
+                                                    "uv":  [
+                                                               2.5,
+                                                               6,
+                                                               3.5,
+                                                               7.5
+                                                           ],
+                                                    "rotation":  90,
+                                                    "texture":  "#tentacles",
+                                                    "cullface":  "down"
+                                                }
+                                   }
                      },
                      {
-                         "faces":  {
-                                       "south":  {
-                                                     "texture":  "#skin"
-                                                 },
-                                       "north":  {
-                                                     "texture":  "#skin"
-                                                 },
-                                       "up":  {
-                                                  "uv":  [
-                                                             0,
-                                                             0,
-                                                             16,
-                                                             16
-                                                         ],
-                                                  "texture":  "#skin"
-                                              },
-                                       "west":  {
-                                                    "texture":  "#skin"
-                                                },
-                                       "down":  {
-                                                    "texture":  "#skin"
-                                                },
-                                       "east":  {
-                                                    "texture":  "#skin"
-                                                }
-                                   },
+                         "name":  "right_tent_2",
                          "from":  [
-                                      7,
+                                      13,
                                       0,
-                                      7
+                                      9
                                   ],
                          "to":  [
-                                    9,
-                                    3,
-                                    9
+                                    16,
+                                    1,
+                                    11
                                 ],
-                         "shade":  false
+                         "rotation":  {
+                                          "angle":  0,
+                                          "axis":  "y",
+                                          "origin":  [
+                                                         8,
+                                                         0,
+                                                         17
+                                                     ]
+                                      },
+                         "faces":  {
+                                       "north":  {
+                                                     "uv":  [
+                                                                2.5,
+                                                                5.5,
+                                                                1,
+                                                                6
+                                                            ],
+                                                     "texture":  "#tentacles"
+                                                 },
+                                       "east":  {
+                                                    "uv":  [
+                                                               3.5,
+                                                               5.5,
+                                                               2.5,
+                                                               6
+                                                           ],
+                                                    "texture":  "#tentacles",
+                                                    "cullface":  "east"
+                                                },
+                                       "south":  {
+                                                     "uv":  [
+                                                                5,
+                                                                5.5,
+                                                                3.5,
+                                                                6
+                                                            ],
+                                                     "texture":  "#tentacles"
+                                                 },
+                                       "west":  {
+                                                    "uv":  [
+                                                               1,
+                                                               5.5,
+                                                               0,
+                                                               6
+                                                           ],
+                                                    "texture":  "#tentacles"
+                                                },
+                                       "up":  {
+                                                  "uv":  [
+                                                             2.5,
+                                                             4,
+                                                             1.5,
+                                                             5.5
+                                                         ],
+                                                  "rotation":  90,
+                                                  "texture":  "#tentacles"
+                                              },
+                                       "down":  {
+                                                    "uv":  [
+                                                               2.5,
+                                                               4,
+                                                               3.5,
+                                                               5.5
+                                                           ],
+                                                    "rotation":  90,
+                                                    "texture":  "#tentacles",
+                                                    "cullface":  "down"
+                                                }
+                                   }
                      },
                      {
-                         "faces":  {
-                                       "south":  {
-                                                     "texture":  "#skin"
-                                                 },
-                                       "north":  {
-                                                     "texture":  "#skin"
-                                                 },
-                                       "up":  {
-                                                  "uv":  [
-                                                             0,
-                                                             0,
-                                                             16,
-                                                             16
-                                                         ],
-                                                  "texture":  "#skin"
-                                              },
-                                       "west":  {
-                                                    "texture":  "#skin"
-                                                },
-                                       "down":  {
-                                                    "texture":  "#skin"
-                                                },
-                                       "east":  {
-                                                    "texture":  "#skin"
-                                                }
-                                   },
+                         "name":  "back_tent_2",
                          "from":  [
-                                      7,
+                                      9,
                                       0,
-                                      11
+                                      13
                                   ],
                          "to":  [
-                                    9,
-                                    3,
-                                    13
+                                    11,
+                                    1,
+                                    16
                                 ],
-                         "shade":  false
+                         "rotation":  {
+                                          "angle":  0,
+                                          "axis":  "y",
+                                          "origin":  [
+                                                         10.5,
+                                                         0.5,
+                                                         14.5
+                                                     ]
+                                      },
+                         "faces":  {
+                                       "north":  {
+                                                     "uv":  [
+                                                                6,
+                                                                2.5,
+                                                                5,
+                                                                3
+                                                            ],
+                                                     "texture":  "#tentacles"
+                                                 },
+                                       "east":  {
+                                                    "uv":  [
+                                                               7.5,
+                                                               2.5,
+                                                               6,
+                                                               3
+                                                           ],
+                                                    "texture":  "#tentacles"
+                                                },
+                                       "south":  {
+                                                     "uv":  [
+                                                                8.5,
+                                                                2.5,
+                                                                7.5,
+                                                                3
+                                                            ],
+                                                     "texture":  "#tentacles",
+                                                     "cullface":  "south"
+                                                 },
+                                       "west":  {
+                                                    "uv":  [
+                                                               10,
+                                                               2.5,
+                                                               8.5,
+                                                               3
+                                                           ],
+                                                    "texture":  "#tentacles"
+                                                },
+                                       "up":  {
+                                                  "uv":  [
+                                                             6,
+                                                             2.5,
+                                                             7.5,
+                                                             1.5
+                                                         ],
+                                                  "rotation":  90,
+                                                  "texture":  "#tentacles"
+                                              },
+                                       "down":  {
+                                                    "uv":  [
+                                                               7.5,
+                                                               1.5,
+                                                               9,
+                                                               2.5
+                                                           ],
+                                                    "rotation":  270,
+                                                    "texture":  "#tentacles",
+                                                    "cullface":  "down"
+                                                }
+                                   }
                      },
                      {
-                         "faces":  {
-                                       "south":  {
-                                                     "texture":  "#skin"
-                                                 },
-                                       "north":  {
-                                                     "texture":  "#skin"
-                                                 },
-                                       "up":  {
-                                                  "uv":  [
-                                                             0,
-                                                             0,
-                                                             16,
-                                                             16
-                                                         ],
-                                                  "texture":  "#skin"
-                                              },
-                                       "west":  {
-                                                    "texture":  "#skin"
-                                                },
-                                       "down":  {
-                                                    "texture":  "#skin"
-                                                },
-                                       "east":  {
-                                                    "texture":  "#skin"
-                                                }
-                                   },
+                         "name":  "back_tent_1",
                          "from":  [
-                                      11,
+                                      5,
                                       0,
-                                      3
+                                      13
                                   ],
                          "to":  [
-                                    13,
-                                    3,
-                                    5
+                                    7,
+                                    1,
+                                    16
                                 ],
-                         "shade":  false
-                     },
-                     {
+                         "rotation":  {
+                                          "angle":  0,
+                                          "axis":  "y",
+                                          "origin":  [
+                                                         5.5,
+                                                         0.5,
+                                                         14.5
+                                                     ]
+                                      },
                          "faces":  {
-                                       "south":  {
-                                                     "texture":  "#skin"
-                                                 },
                                        "north":  {
-                                                     "texture":  "#skin"
+                                                     "uv":  [
+                                                                6,
+                                                                1,
+                                                                5,
+                                                                1.5
+                                                            ],
+                                                     "texture":  "#tentacles"
                                                  },
+                                       "east":  {
+                                                    "uv":  [
+                                                               7.5,
+                                                               1,
+                                                               6,
+                                                               1.5
+                                                           ],
+                                                    "texture":  "#tentacles"
+                                                },
+                                       "south":  {
+                                                     "uv":  [
+                                                                8.5,
+                                                                1,
+                                                                7.5,
+                                                                1.5
+                                                            ],
+                                                     "texture":  "#tentacles",
+                                                     "cullface":  "south"
+                                                 },
+                                       "west":  {
+                                                    "uv":  [
+                                                               10,
+                                                               1,
+                                                               8.5,
+                                                               1.5
+                                                           ],
+                                                    "texture":  "#tentacles"
+                                                },
                                        "up":  {
                                                   "uv":  [
-                                                             0,
-                                                             0,
-                                                             16,
-                                                             16
+                                                             6,
+                                                             1,
+                                                             7.5,
+                                                             0
                                                          ],
-                                                  "texture":  "#skin"
+                                                  "rotation":  90,
+                                                  "texture":  "#tentacles"
                                               },
-                                       "west":  {
-                                                    "texture":  "#skin"
-                                                },
                                        "down":  {
-                                                    "texture":  "#skin"
-                                                },
-                                       "east":  {
-                                                    "texture":  "#skin"
+                                                    "uv":  [
+                                                               7.5,
+                                                               0,
+                                                               9,
+                                                               1
+                                                           ],
+                                                    "rotation":  270,
+                                                    "texture":  "#tentacles",
+                                                    "cullface":  "down"
                                                 }
-                                   },
-                         "from":  [
-                                      11,
-                                      0,
-                                      7
-                                  ],
-                         "to":  [
-                                    13,
-                                    3,
-                                    9
-                                ],
-                         "shade":  false
-                     },
-                     {
-                         "faces":  {
-                                       "south":  {
-                                                     "texture":  "#skin"
-                                                 },
-                                       "north":  {
-                                                     "texture":  "#skin"
-                                                 },
-                                       "up":  {
-                                                  "uv":  [
-                                                             0,
-                                                             0,
-                                                             16,
-                                                             16
-                                                         ],
-                                                  "texture":  "#skin"
-                                              },
-                                       "west":  {
-                                                    "texture":  "#skin"
-                                                },
-                                       "down":  {
-                                                    "texture":  "#skin"
-                                                },
-                                       "east":  {
-                                                    "texture":  "#skin"
-                                                }
-                                   },
-                         "from":  [
-                                      11,
-                                      0,
-                                      11
-                                  ],
-                         "to":  [
-                                    13,
-                                    3,
-                                    13
-                                ],
-                         "shade":  false
+                                   }
                      }
                  ],
     "textures":  {
-                     "face":  "gungang:block/dried_ghast_face",
-                     "skin":  "gungang:block/dried_ghast_skin",
-                     "particle":  "gungang:block/dried_ghast_skin"
+                     "bottom":  "gungang:block/dried_ghast_hydration_3_bottom",
+                     "east":  "gungang:block/dried_ghast_hydration_3_east",
+                     "north":  "gungang:block/dried_ghast_hydration_3_north",
+                     "particle":  "gungang:block/dried_ghast_hydration_3_north",
+                     "south":  "gungang:block/dried_ghast_hydration_3_south",
+                     "tentacles":  "gungang:block/dried_ghast_hydration_3_tentacles",
+                     "top":  "gungang:block/dried_ghast_hydration_3_top",
+                     "west":  "gungang:block/dried_ghast_hydration_3_west"
                  }
 }

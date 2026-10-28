@@ -21,6 +21,7 @@ public final class PropSummons {
         mob.addTag(TAG);mob.getPersistentData().putUUID("PropOwner",owner);mob.getPersistentData().putLong("PropEpoch",GimmickEpoch.get(level).generation);
         mob.getPersistentData().putFloat("PropDamage",damage);mob.getPersistentData().putInt("PropAttack",0);
         mob.setNoAi(true);mob.setPersistenceRequired();mob.setMaxUpStep(1);mob.setInvulnerable(invulnerable);
+        if(mob instanceof Bee)mob.setNoGravity(true);
         mob.getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);mob.setHealth(health);
         if(mob.getAttribute(Attributes.ATTACK_DAMAGE)!=null)mob.getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(damage);
         mob.setPos(at);if(!level.addFreshEntity(mob))return null;return mob;
@@ -34,11 +35,13 @@ public final class PropSummons {
     public static void tick(PropHuntMatch match,Mob mob,Vec3 orbit,int index){
         if(mob==null||mob.isRemoved())return;
         if(!mob.isAlive()){mob.discard();return;}
-        if(!match.hunting()||GimmickEpoch.get((ServerLevel)mob.level()).generation!=mob.getPersistentData().getLong("PropEpoch")){mob.discard();return;}
-        var target=match.seekers().stream().filter(p->p.level()==mob.level()&&p.distanceToSqr(mob)<48*48).min(Comparator.comparingDouble(p->p.distanceToSqr(mob))).orElse(null);
         boolean bee=mob instanceof Bee;
+        boolean hiding=match.hiding();
+        if((!match.hunting()&&!(bee&&hiding))||GimmickEpoch.get((ServerLevel)mob.level()).generation!=mob.getPersistentData().getLong("PropEpoch")){mob.discard();return;}
+        var target=match.hunting()?match.seekers().stream().filter(p->p.level()==mob.level()&&p.distanceToSqr(mob)<48*48&&(!bee||p.distanceToSqr(orbit)<=16*16)).min(Comparator.comparingDouble(p->p.distanceToSqr(mob))).orElse(null):null;
+        if(bee&&target==null&&mob.distanceToSqr(orbit)>12*12)mob.setPos(orbit.add(Math.cos(index*2.1)*1.8,1.2,Math.sin(index*2.1)*1.8));
         Vec3 goal=target==null?orbit:target.position().add(0,bee?1:0,0);
-        if(bee&&(target==null||target.distanceToSqr(orbit)>16*16))goal=orbit.add(Math.cos(mob.tickCount*.05+index*2.1)*1.8,1.2+Math.sin(mob.tickCount*.07)*.3,Math.sin(mob.tickCount*.05+index*2.1)*1.8);
+        if(bee&&target==null)goal=orbit.add(Math.cos(match.now()*.05+index*2.1)*1.8,1.2+Math.sin(match.now()*.07+index)*.3,Math.sin(match.now()*.05+index*2.1)*1.8);
         var delta=goal.subtract(mob.position());double speed=bee?.18:.17;
         Vec3 motion=delta.lengthSqr()<.04?Vec3.ZERO:delta.normalize().scale(speed);
         if(!bee)motion=new Vec3(motion.x,mob.horizontalCollision?.3:-.12,motion.z);

@@ -37,6 +37,7 @@ public final class PropSmokeChecks {
         var gatePos=new net.minecraft.core.BlockPos(5,110,5);level.setBlock(gatePos,StationBlocks.ALPHA_GATE.get().defaultBlockState(),3);
         var through=new net.minecraft.world.phys.Vec3(5.5,110.5,3.5);var beyond=new net.minecraft.world.phys.Vec3(5.5,110.5,7.5);
         check(!level.getBlockState(gatePos).getCollisionShape(level,gatePos).isEmpty()&&SpawnGateProtection.crosses(level,through,beyond),"Outside prop hunt the gate stops bullets");
+        RecoveryImpulseChecks.run(server,a);
         var match=new PropHuntMatch(server,map,gun);field(MatchManager.class,"propHunt").set(null,match);
         check(level.getBlockState(gatePos).getCollisionShape(level,gatePos).isEmpty()&&level.getBlockState(gatePos).getShape(level,gatePos).isEmpty()&&!SpawnGateProtection.crosses(level,through,beyond),"Prop hunt gate lets bullets and swings through");
         check(level.clip(new net.minecraft.world.level.ClipContext(through,beyond,net.minecraft.world.level.ClipContext.Block.COLLIDER,net.minecraft.world.level.ClipContext.Fluid.NONE,a)).getType()==net.minecraft.world.phys.HitResult.Type.MISS,"Bullet ray passes the prop hunt gate");
@@ -52,6 +53,9 @@ public final class PropSmokeChecks {
             match.action(a,"next");check(a.isSpectator()&&a.getCamera()==b,"Fixed hider can watch hunter through server camera");
             match.tick();check(match.prop(a.getUUID()).position().distanceToSqr(hiddenAt)<.001,"Watching never moves the real disguise");
             match.action(a,"home");check(!a.isSpectator()&&a.getCamera()==a&&a.position().distanceToSqr(hiddenAt)<.001,"R returns to real hiding place without unlocking");
+            var nest=match.prop(a.getUUID());nest.setup(a.getUUID(),"minecraft:bee_nest",0);match.abilities.initialize(a,nest);match.abilities.tick(a,nest);
+            var bees=level.getEntitiesOfClass(net.minecraft.world.entity.animal.Bee.class,nest.getBoundingBox().inflate(5));check(bees.size()==3,"Bees exist during hiding without active seekers");
+            var beeAt=bees.get(0).position();match.abilities.tick(a,nest);check(!bees.get(0).isRemoved()&&bees.get(0).position().distanceToSqr(beeAt)>0,"Idle bees orbit during hiding");
             for(int i=0;i<PropHuntGame.HIDE;i++)match.game.tick();
             check(!match.frozen(b.getUUID()),"Hunters released after one minute");
             match.eliminate(b,null);check(!b.isSpectator()&&match.frozen(b.getUUID()),"Hunter death uses stationary waiting, not spectator");

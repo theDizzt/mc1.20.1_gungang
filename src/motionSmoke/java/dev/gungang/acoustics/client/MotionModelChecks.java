@@ -18,6 +18,9 @@ public final class MotionModelChecks {
     private static boolean opened;
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent e){
         if(e.phase!=TickEvent.Phase.END)return;var mc=Minecraft.getInstance();
+        // This preview has no world: Minecraft does not tick texture animations
+        // on the title screen, so advance the atlas as an unpaused world would.
+        if(opened)mc.getTextureManager().tick();
         try{
             if(!opened){
                 if(mc.screen==null||mc.getOverlay()!=null)return;
@@ -26,11 +29,18 @@ public final class MotionModelChecks {
                     var model=mc.getBlockRenderer().getBlockModel(state);var quads=model.getQuads(state,null,net.minecraft.util.RandomSource.create(42));
                     if(quads.isEmpty())throw new AssertionError("Empty model: "+state);
                     for(var q:quads)if(q.getSprite().contents().name().getPath().equals("missingno"))throw new AssertionError("Missing texture: "+state);
+                    if(block==MotionBlocks.CONVEYOR.get()){
+                        var top=quads.stream().filter(q->q.getDirection()==net.minecraft.core.Direction.UP).findFirst().orElseThrow();
+                        if(top.getSprite().contents().getUniqueFrames().count()!=16)throw new AssertionError("Missing conveyor animation: "+state);
+                    }
                     states++;
                 }
                 System.out.println("GUNGANG_MOTION_MODELS_PASS states="+states);
                 mc.options.guiScale().set(2);mc.resizeDisplay();mc.setScreen(new Preview());opened=true;
-            }else if(++ticks==35){
+            }else if(++ticks==31){
+                var path=java.nio.file.Path.of("../ui-smoke/conveyor-animation-a.png");java.nio.file.Files.createDirectories(path.getParent());
+                try(var image=net.minecraft.client.Screenshot.takeScreenshot(mc.getMainRenderTarget())){image.writeToFile(path);}
+            }else if(ticks==35){
                 var path=java.nio.file.Path.of("../ui-smoke/movement-blocks.png");java.nio.file.Files.createDirectories(path.getParent());
                 try(var image=net.minecraft.client.Screenshot.takeScreenshot(mc.getMainRenderTarget())){image.writeToFile(path);}
                 ConveyorScreen.open(new GungangNetwork.ConveyorView(net.minecraft.core.BlockPos.ZERO,10));
@@ -44,7 +54,7 @@ public final class MotionModelChecks {
     private static final class Preview extends Screen {
         Preview(){super(Component.literal("Movement blocks"));}
         @Override public void render(GuiGraphics g,int mx,int my,float partial){
-            g.fill(0,0,width,height,0xFF182330);g.drawCenteredString(font,"u138 / CONVEYOR & HARDLIGHT",width/2,12,0xD9F8FF);
+            g.fill(0,0,width,height,0xFF182330);g.drawCenteredString(font,"ANIMATED CONVEYOR & HARDLIGHT",width/2,12,0xD9F8FF);
             int cx=width/4,cy=height/3;
             for(int group=0;group<4;group++){
                 int x=group%2==0?cx:cx*3,y=group<2?cy:cy*2+40;
