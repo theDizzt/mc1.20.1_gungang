@@ -23,7 +23,11 @@ public final class HandAxeEntity extends ThrowableItemProjectile {
     @Override protected void onHitEntity(EntityHitResult hit) {
         super.onHitEntity(hit);
         if(level().isClientSide)return;
-        hit.getEntity().hurt(damageSources().thrown(this,getOwner()),(float)ExtraGadgetConfig.handAxe.throwDamage());
+        var target=(LivingEntity)hit.getEntity();
+        // EntityHitResult may contain the entity center; recover the actual flight contact.
+        var contact=target.getBoundingBox().clip(position(),position().add(getDeltaMovement())).orElse(hit.getLocation());
+        boolean headshot=HandAxeRules.headshot(contact.y,target.getY(),target.getBbHeight(),target.getEyeY());
+        target.hurt(damageSources().thrown(this,getOwner()),(float)HandAxeRules.damage(ExtraGadgetConfig.handAxe.throwDamage(),headshot));
         level().playSound(null,blockPosition(),net.minecraft.sounds.SoundEvents.TRIDENT_HIT,net.minecraft.sounds.SoundSource.PLAYERS,1,1);
         discard();
     }
