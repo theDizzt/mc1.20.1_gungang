@@ -116,9 +116,7 @@ public final class OffhandMacro {
                 if(!USE.isDown()||!dev.gungang.acoustics.server.CombatGadgets.is(owner.getMainHandItem(),"shield"))finish(mc);
                 return;
             }
-            // A hand axe chop plays out in the main hand before the axe goes back to the offhand.
-            boolean chopping = !use && owner.swinging && dev.gungang.acoustics.server.HandAxeItem.is(owner.getMainHandItem());
-            MacroSequence.Step step = sequence.next(chopping || use && USE.isDown() && (gunAction || (holdingUse && owner.isUsingItem())));
+            MacroSequence.Step step = sequence.next(use && USE.isDown() && (gunAction || (holdingUse && owner.isUsingItem())));
             if (step == MacroSequence.Step.WAIT) return;
             if (step == MacroSequence.Step.RESTORE) { finish(mc); return; }
             if (step == MacroSequence.Step.ACT) {
@@ -133,7 +131,7 @@ public final class OffhandMacro {
                 try {
                     // Objectives validate their own ray trace on the server. Avoid an interactive
                     // floor block or a gun input handler consuming the macro's single use click.
-                    if (objectiveAction||(use&&dev.gungang.acoustics.server.CombatGadgets.is(owner.getMainHandItem(),"arrow_grenade"))) mc.gameMode.useItem(owner, InteractionHand.MAIN_HAND);
+                    if (objectiveAction||(use&&(dev.gungang.acoustics.server.HandAxeItem.is(owner.getMainHandItem())||dev.gungang.acoustics.server.CombatGadgets.is(owner.getMainHandItem(),"arrow_grenade")))) mc.gameMode.useItem(owner, InteractionHand.MAIN_HAND);
                     else if (use) ((Clicks) mc).gungang$use();
                     else ((Clicks) mc).gungang$attack();
                 } finally { click = false; }
@@ -152,7 +150,6 @@ public final class OffhandMacro {
                 mc.options.keyUse.setDown(true);
                 return;
             }
-            if (chopping) return;
             finish(mc);
         } catch (RuntimeException failure) {
             LogUtils.getLogger().error("Offhand macro failed; restoring hands", failure);

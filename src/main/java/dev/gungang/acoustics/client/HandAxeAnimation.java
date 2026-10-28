@@ -30,38 +30,15 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-/**
- * Hatchet chop: the axe rests cocked by the shoulder, draws back, accelerates into a diagonal downward chop,
- * follows through with its weight, recoils at the wrist, then recovers outward. Holding use winds the axe behind the head to throw.
- * First person draws the arm with the axe gripped in the fist; third person drives the arm and body.
- */
+/** Throwing hatchet carry and charge poses. */
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID,value=Dist.CLIENT)
 public final class HandAxeAnimation {
-    // Easing for the segment that ends at a key.
-    private static final int SMOOTH=0,ACCELERATE=1,DECELERATE=2;
-    /** First-person grip keys for the right hand: progress, camera-space x/y/z, then pitch/yaw/roll degrees, easing. */
-    private static final float[][] CHOP={
-            {0f,   .48f,-.46f, -.82f, -10, 28, -12, SMOOTH},
-            {.24f, .42f,-.28f,-1.02f,  14, 22, -18, DECELERATE}, // compact wind-up keeps the axe head inside the view
-            {.34f, .42f,-.26f, -.91f, -24, 24, -10, ACCELERATE},
-            {.46f, .08f,-.45f,-1.12f, -78, 24,  24, ACCELERATE}, // single decisive diagonal strike
-            {.59f,-.08f,-.65f,-1.03f, -96, 16,  34, DECELERATE}, // uninterrupted follow-through (no rubbery reversal)
-            {.76f, .20f,-.61f, -.84f, -58, 12,  14, SMOOTH},
-            {1f,   .48f,-.46f, -.82f, -10, 28, -12, SMOOTH}};
+    private static final float[] READY={.48f,-.46f,-.82f,-10,28,-12};
     private static final float[] THROW={.45f,-.20f,-.90f,30,40,-25};
     /** Carried in the offhand beside a gun: lower and further out than the ready stance so it stays out of the sights. */
     private static final float[] CARRY={.64f,-.72f,-1.02f,-6,40,-6};
     /** Where the forearm comes from (camera space, right hand), well below the bottom-right of the view. */
     private static final float[] ELBOW={.70f,-1.25f,-.25f};
-    /** Third-person keys: progress, arm xRot/zRot (right arm), body yRot (right-handed), wrist degrees, easing. */
-    private static final float[][] ARM={
-            {0f,   -.55f, .05f,  0f,    0, SMOOTH},
-            {.24f, -2.35f, .30f, -.24f,  24, DECELERATE},
-            {.34f, -1.95f, .16f, -.12f, -12, ACCELERATE},
-            {.46f, -1.18f,-.20f,  .28f, -82, ACCELERATE},
-            {.59f,  -.72f,-.32f,  .36f,-104, DECELERATE},
-            {.76f,  -.82f,-.08f,  .12f, -48, SMOOTH},
-            {1f,   -.55f, .05f,  0f,    0, SMOOTH}};
     /** Grip point on the OBJ handle (model units), the model scale in hand, and the turn that faces the blade forward. */
     private static final float GRIP_Y=.2f,SCALE=1.1f,BLADE_YAW=-90;
 
@@ -73,8 +50,7 @@ public final class HandAxeAnimation {
         float charge=charging?Mth.clamp((player.getTicksUsingItem()+event.getPartialTick())/10f,0,1):0;
         var pose=event.getPoseStack();pose.pushPose();
         var root=new Matrix4f(pose.last().pose());
-        // The attack-cooldown dip would drag the chop down, so the equip offset only applies at rest.
-        float swing=event.getSwingProgress();
+        float swing=0;
         boolean carry=event.getHand()==InteractionHand.OFF_HAND&&swing<=0&&!charging;
         firstPerson(pose,right,carry?-1:swing,charge,swing>0?0:event.getEquipProgress());
         PlayerModel<AbstractClientPlayer> model=mc.getEntityRenderDispatcher().getRenderer(player) instanceof PlayerRenderer renderer?renderer.getModel():null;
@@ -85,7 +61,7 @@ public final class HandAxeAnimation {
 
     /** Moves the pose to the fist: handle along +Y, blade toward -Z, forearm back along +Z. A negative swing means carried. */
     public static void firstPerson(PoseStack pose,boolean right,float swing,float charge,float equip) {
-        float[] p=swing<0?CARRY.clone():sample(CHOP,swing,6);
+        float[] p=swing<0?CARRY.clone():READY.clone();
         float c=smooth(charge);
         for(int i=0;i<6;i++)p[i]=Mth.lerp(c,p[i],THROW[i]);
         int side=right?1:-1;
@@ -133,14 +109,15 @@ public final class HandAxeAnimation {
         var hand=entity.swingingArm==null?InteractionHand.MAIN_HAND:entity.swingingArm;
         boolean charging=entity.isUsingItem()&&HandAxeItem.is(entity.getUseItem());
         if(charging)hand=entity.getUsedItemHand();
-        if(!HandAxeItem.is(entity.getItemInHand(hand))||(!charging&&model.attackTime<=0))return;
+        if(!charging)return;
         poseArm(model,(hand==InteractionHand.MAIN_HAND)==(entity.getMainArm()==HumanoidArm.RIGHT),model.attackTime,charging);
     }
 
     public static void poseArm(HumanoidModel<?> model,boolean right,float t,boolean charging) {
+        if(!charging)return;
         int side=right?1:-1;
         var arm=right?model.rightArm:model.leftArm;
-        float[] p=charging?new float[]{-2.75f,.28f,-.22f}:sample(ARM,t,4);
+        float[] p=new float[]{-2.75f,.28f,-.22f};
         float turn=side*p[2]-model.body.yRot;
         model.body.yRot+=turn;
         // Keep the shoulders on the turned body, as vanilla's attack animation does.
@@ -152,30 +129,14 @@ public final class HandAxeAnimation {
         (right?model.leftArm:model.rightArm).yRot+=turn;
     }
 
-    /** Extra wrist turn for the axe in a third-person hand, so the head trails on the draw and leads into the chop. */
+    /** Extra wrist turn while charging a throw. */
     public static float wrist(HumanoidModel<?> model,LivingEntity entity,HumanoidArm side) {
         if(entity.isUsingItem()&&HandAxeItem.is(entity.getUseItem()))return entity.getUsedItemHand()==handOn(entity,side)?35:0;
-        var hand=entity.swingingArm==null?InteractionHand.MAIN_HAND:entity.swingingArm;
-        if(model.attackTime<=0||hand!=handOn(entity,side)||!HandAxeItem.is(entity.getItemInHand(hand)))return 0;
-        return wrist(model.attackTime);
+        return 0;
     }
-    public static float wrist(float t) {return sample(ARM,t,4)[3];}
+    public static float wrist(float t) {return 0;}
     private static InteractionHand handOn(LivingEntity entity,HumanoidArm side) {return side==entity.getMainArm()?InteractionHand.MAIN_HAND:InteractionHand.OFF_HAND;}
 
-    /** Interpolates keyframes rows {t, values..., easing} at progress t. */
-    private static float[] sample(float[][] keys,float t,int values) {
-        t=Mth.clamp(t,0,1);
-        int i=1;while(i<keys.length-1&&t>keys[i][0])i++;
-        float[] a=keys[i-1],b=keys[i];
-        float u=ease((int)b[values+1],(t-a[0])/(b[0]-a[0]));
-        float[] out=new float[values];
-        for(int v=0;v<values;v++)out[v]=Mth.lerp(u,a[v+1],b[v+1]);
-        return out;
-    }
-    private static float ease(int type,float t) {
-        t=Mth.clamp(t,0,1);
-        return switch(type){case ACCELERATE->t*t;case DECELERATE->1-(1-t)*(1-t);default->smooth(t);};
-    }
     private static float smooth(float t) {t=Mth.clamp(t,0,1);return t*t*(3-2*t);}
     private HandAxeAnimation() { }
 }

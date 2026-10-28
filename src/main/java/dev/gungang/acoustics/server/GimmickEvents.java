@@ -28,17 +28,7 @@ public final class GimmickEvents {
             tag.putLong("GimmickHammerTick",now);e.setCanceled(true);
             GimmickEntity.hit(p.level(),e.getPos(),(float)(64*AdrenalineDamage.multiplier(p)));return;
         }
-        if(HandAxeItem.is(stack)){
-            e.setCanceled(true);
-            if(LobbyManager.respawning(p.getUUID())||FreeForAllMatch.blocked(p))return;
-            double range=3.0;
-            var eye=p.getEyePosition();var end=eye.add(p.getLookAngle().scale(range));
-            var hit=e.getLevel().clip(new net.minecraft.world.level.ClipContext(eye,end,net.minecraft.world.level.ClipContext.Block.COLLIDER,net.minecraft.world.level.ClipContext.Fluid.NONE,p));
-            if(hit.getType()!=net.minecraft.world.phys.HitResult.Type.BLOCK||!hit.getBlockPos().equals(e.getPos()))return;
-            if(!HandAxeItem.beginSwing(p))return;
-            GimmickEntity.hit(e.getLevel(),e.getPos(),(float)(ExtraGadgetConfig.handAxe.meleeDamage()*AdrenalineDamage.multiplier(p)));
-            p.resetAttackStrengthTicker();return;
-        }
+        if(HandAxeItem.is(stack)){e.setCanceled(true);return;}
         var itemId=net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(p.getMainHandItem().getItem());
         if(itemId!=null&&itemId.getNamespace().equals("tacz"))return;
         long now=e.getLevel().getGameTime();var tag=p.getPersistentData();
