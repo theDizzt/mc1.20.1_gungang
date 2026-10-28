@@ -85,7 +85,7 @@ public final class PropHuntClient {
         if(key==GLFW.GLFW_KEY_E){if(action==GLFW.GLFW_PRESS)action("interact");return true;}
         if(key==GLFW.GLFW_KEY_G){if(action==GLFW.GLFW_PRESS)action("horn");return true;}
         if(mc.options.keyJump.matches(key,scan)){
-            if(self().active()>elapsed(0)&&self().block().equals("minecraft:command_block"))return false;
+            if(self().active()>elapsed(0)&&self().block().equals("minecraft:command_block"))return true;
             if(action==GLFW.GLFW_PRESS&&!fixed()){charging=true;action("charge");}
             if(action==GLFW.GLFW_RELEASE&&charging){charging=false;action("jump");}
             return true;
@@ -122,7 +122,8 @@ public final class PropHuntClient {
         action(e.getScrollDelta()>0?"previous":"next");
     }
     @SubscribeEvent public static void movement(MovementInputUpdateEvent e){
-        if(!hider())return;var input=e.getInput();if(self().active()<=elapsed(0))input.jumping=false;
+        if(!hider())return;var input=e.getInput();input.jumping=false;
+        if(self().active()>elapsed(0)&&self().block().equals("minecraft:command_block")){input.shiftKeyDown=false;e.getEntity().setDeltaMovement(e.getEntity().getDeltaMovement().multiply(1,0,1));}
         if(fixed()||self().stunned()){input.forwardImpulse=0;input.leftImpulse=0;input.jumping=false;input.shiftKeyDown=false;input.up=false;input.down=false;input.left=false;input.right=false;}
     }
     @SubscribeEvent public static void hide(RenderPlayerEvent.Pre e){if(hidden(e.getEntity().getUUID()))e.setCanceled(true);}

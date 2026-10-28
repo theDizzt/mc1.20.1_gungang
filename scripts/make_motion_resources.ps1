@@ -20,24 +20,12 @@ Texture 'block/conveyor_side' {param($b,$g)
     for($x=3;$x -lt 32;$x+=8){$g.FillRectangle([Drawing.Brushes]::Black,$x,11,5,10);$g.FillRectangle([Drawing.Brushes]::Gold,$x,13,3,2)}
 }
 $ports=@{north_south=@(0,-1,0,1);east_west=@(-1,0,1,0);north_east=@(0,-1,1,0);north_west=@(0,-1,-1,0);south_east=@(0,1,1,0);south_west=@(0,1,-1,0)}
+. "$PSScriptRoot/make_conveyor_textures.ps1"
 $variants=@{}
 foreach($shape in $ports.Keys){foreach($reverse in $false,$true){
     $v=$ports[$shape];if($reverse){$v=@($v[2],$v[3],$v[0],$v[1])}
     $suffix=if($reverse){'reverse'}else{'forward'};$texture="conveyor_${shape}_${suffix}"
-    Texture "block/$texture" {param($b,$g)
-        $g.Clear((Color '#1A2431'))
-        for($i=0;$i -lt 32;$i+=4){$p=Pen '#273744' 1;$g.DrawLine($p,0,$i,32,$i);$p.Dispose()}
-        $points=New-Object 'Drawing.PointF[]' 33
-        for($i=0;$i -le 32;$i++){$t=$i/32.0;$points[$i]=New-Object Drawing.PointF (16+16*((1-$t)*(1-$t)*$v[0]+$t*$t*$v[2])),(16+16*((1-$t)*(1-$t)*$v[1]+$t*$t*$v[3]))}
-        $p=Pen '#D7A73B' 25;$g.DrawLines($p,$points);$p.Dispose();$p=Pen '#354353' 21;$g.DrawLines($p,$points);$p.Dispose()
-        foreach($t in .2,.5,.8){
-            $x=16+16*((1-$t)*(1-$t)*$v[0]+$t*$t*$v[2]);$z=16+16*((1-$t)*(1-$t)*$v[1]+$t*$t*$v[3])
-            $dx=- (1-$t)*$v[0]+$t*$v[2];$dz=- (1-$t)*$v[1]+$t*$v[3];$n=[Math]::Sqrt($dx*$dx+$dz*$dz);$dx/=$n;$dz/=$n
-            $p=Pen '#5CEBFF' 2
-            $g.DrawLine($p,[single]($x-$dx*3-$dz*4),[single]($z-$dz*3+$dx*4),[single]($x+$dx*2),[single]($z+$dz*2))
-            $g.DrawLine($p,[single]($x-$dx*3+$dz*4),[single]($z-$dz*3-$dx*4),[single]($x+$dx*2),[single]($z+$dz*2));$p.Dispose()
-        }
-    }
+    ConveyorTexture $texture $v
     foreach($half in 'bottom','top'){
         $min=if($half -eq 'top'){8}else{0};$model="${texture}_${half}"
         Json "assets/gungang/models/block/$model.json" @{parent='minecraft:block/block';textures=@{top="gungang:block/$texture";side='gungang:block/conveyor_side';particle='gungang:block/conveyor_side'};elements=@((Element @(0,$min,0) @(16,($min+8),16) '#top' '#side'))}

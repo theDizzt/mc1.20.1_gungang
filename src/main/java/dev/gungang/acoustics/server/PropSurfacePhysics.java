@@ -14,7 +14,13 @@ public final class PropSurfacePhysics {
     static PropEntity support(LivingEntity e){
         return e.level().getEntitiesOfClass(PropEntity.class,e.getBoundingBox().inflate(.05,.2,.05),p->!p.marker()&&!e.getUUID().equals(p.owner())&&Math.abs(e.getY()-p.getBoundingBox().maxY)<.15).stream().findFirst().orElse(null);
     }
-    public static double jump(LivingEntity e,double fallback){var prop=support(e);return prop!=null&&prop.state().getBlock() instanceof JumpPadBlock pad?MotionRules.jumpVelocity(pad.height):fallback;}
+    public static double jump(LivingEntity e,double fallback){
+        var pos=net.minecraft.core.BlockPos.containing(e.getX(),e.getY()-.04,e.getZ());
+        JumpPadBlock pad=e.level().getBlockState(pos).getBlock() instanceof JumpPadBlock block&&Math.abs(e.getY()-(pos.getY()+.125))<.08?block:null;
+        if(pad==null){var prop=support(e);if(prop!=null&&prop.state().getBlock() instanceof JumpPadBlock block)pad=block;}
+        if(pad==null)return fallback;
+        e.fallDistance=0;e.getPersistentData().putBoolean("GunGangPadJump",true);return MotionRules.jumpVelocity(pad.height);
+    }
     @SubscribeEvent public static void jumped(LivingEvent.LivingJumpEvent event){var e=event.getEntity();double velocity=jump(e,e.getDeltaMovement().y);if(velocity!=e.getDeltaMovement().y){e.setDeltaMovement(e.getDeltaMovement().x,velocity,e.getDeltaMovement().z);e.getPersistentData().putBoolean("GunGangPadJump",true);}}
     @SubscribeEvent public static void tick(LivingEvent.LivingTickEvent event){
         var e=event.getEntity();if(e instanceof PropEntity||!e.onGround()||e.isSpectator())return;

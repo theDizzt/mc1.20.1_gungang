@@ -16,7 +16,7 @@ public final class PropAbilities {
     private static final UUID CART=UUID.fromString("ca3ad028-bc47-4995-9a62-d91fdc065319"),BEACON=UUID.fromString("bcbd5028-bc47-4995-9a62-d91fdc065319");
     static final class Runtime {
         int cooldown,active,stun,born,contact;boolean mayfly,flying,flight,bees;
-        Vec3 stunPosition,lastPosition;
+        Vec3 stunPosition,lastPosition;double flightY;
         final List<Mob> mobs=new ArrayList<>();
         final List<Bolt> bolts=new ArrayList<>();
     }
@@ -69,10 +69,10 @@ public final class PropAbilities {
                 var disguise=match.prop(target.getUUID());var box=disguise==null?target.getBoundingBox():disguise.getBoundingBox();
                 if(target!=p&&target.level()==prop.level()&&(!target.isSpectator()||disguise!=null)&&box.inflate(.15).intersects(prop.getBoundingBox()))match.relocate(target,match.randomMapPosition(p));
             }}
-            case "minecraft:lodestone"->{for(var target:match.players()){var other=match.prop(target.getUUID());if(target!=p&&other!=null&&other.level()==prop.level()&&other.distanceToSqr(prop)<=24*24){match.unlock(target);var vector=prop.position().subtract(target.position());target.setDeltaMovement(vector.normalize().scale(Math.min(2,vector.length()*.25)).add(0,.2,0));target.hurtMarked=true;}}}
+            case "minecraft:lodestone"->{for(var target:match.players()){var other=match.prop(target.getUUID());if(target!=p&&other!=null&&other.level()==prop.level()&&other.distanceToSqr(prop)<=24*24){match.unlock(target);var vector=prop.position().subtract(target.position());PlayerImpulse.apply(target,vector.normalize().scale(Math.min(2,vector.length()*.25)).add(0,.2,0));}}}
             case "gungang:blue_jump_pad","gungang:lime_jump_pad"->prop.toggle();
             case "gungang:conveyor_belt"->{prop.mode((prop.mode()+1)%4);prop.state(prop.state().setValue(ConveyorBlock.REVERSED,prop.mode()%2==1));}
-            case "minecraft:command_block"->{match.unlock(p);r.mayfly=p.getAbilities().mayfly;r.flying=p.getAbilities().flying;r.flight=true;r.active=now+100;r.cooldown=now+600;p.getAbilities().mayfly=true;p.getAbilities().flying=true;p.setNoGravity(true);p.onUpdateAbilities();}
+            case "minecraft:command_block"->{match.unlock(p);r.mayfly=p.getAbilities().mayfly;r.flying=p.getAbilities().flying;r.flight=true;r.flightY=p.getY();r.active=now+100;r.cooldown=now+600;p.getAbilities().mayfly=true;p.getAbilities().flying=true;p.setNoGravity(true);p.setDeltaMovement(p.getDeltaMovement().multiply(1,0,1));p.hurtMarked=true;p.onUpdateAbilities();}
             case "minecraft:oak_sign"->{
                 var all=match.players().stream().filter(q->match.hider(q.getUUID())).toList();var teammate=all.isEmpty()?p:all.get(p.getRandom().nextInt(all.size()));
                 var pos=match.prop(teammate.getUUID())==null?teammate.blockPosition():match.prop(teammate.getUUID()).blockPosition();
@@ -90,14 +90,16 @@ public final class PropAbilities {
         var r=data(p.getUUID());int now=match.now();String item=prop.item();
         boolean moving=r.lastPosition!=null&&p.position().subtract(r.lastPosition).horizontalDistanceSqr()>.0001;r.lastPosition=p.position();
         if(r.flight&&now>=r.active)stopFlight(p,r);
+        if(r.flight){p.setDeltaMovement(p.getDeltaMovement().multiply(1,0,1));p.fallDistance=0;if(Math.abs(p.getY()-r.flightY)>.001){p.setPos(p.getX(),r.flightY,p.getZ());p.connection.teleport(p.getX(),r.flightY,p.getZ(),p.getYRot(),p.getXRot());prop.setPos(p.position());}}
         if(r.stun>now){p.setDeltaMovement(Vec3.ZERO);p.hurtMarked=true;if(r.stunPosition!=null)p.connection.teleport(r.stunPosition.x,r.stunPosition.y,r.stunPosition.z,p.getYRot(),p.getXRot());}
         boolean beacon=match.players().stream().map(q->match.prop(q.getUUID())).anyMatch(other->other!=null&&other.item().equals("minecraft:beacon")&&other.open());
         modifier(p,BEACON,beacon?.2:0);
         if(item.equals("minecraft:sugar_cane")){int height=Math.min(3,1+(now-r.born)/1200);if(prop.height()!=height){prop.height(height);p.refreshDimensions();}}
         if(item.equals("minecraft:oak_sign")&&!match.locked(p.getUUID()))prop.state(prop.state().setValue(StandingSignBlock.ROTATION,Math.floorMod(Math.round(p.getYRot()*16/360),16)));
-        if(!match.hunting())return;
+        if(item.equals("minecraft:minecart")&&!match.locked(p.getUUID())){prop.setYRot(p.getYRot());prop.setYHeadRot(p.getYRot());prop.setYBodyRot(p.getYRot());}
         if(item.equals("minecraft:bee_nest")&&!r.bees){r.bees=true;for(int i=0;i<3;i++){var mob=PropSummons.spawn(p.serverLevel(),EntityType.BEE,p.getUUID(),prop.position().add(Math.cos(i*2.1),1,Math.sin(i*2.1)),100,36,true);if(mob!=null)r.mobs.add(mob);}}
         r.mobs.removeIf(Entity::isRemoved);for(int i=0;i<r.mobs.size();i++)PropSummons.tick(match,r.mobs.get(i),prop.position(),i);
+        if(!match.hunting())return;
         for(var it=r.bolts.iterator();it.hasNext();){var bolt=it.next();var target=match.seekers().stream().filter(q->q.getUUID().equals(bolt.target)&&q.level()==prop.level()).findFirst().orElse(null);
             if(target==null||++bolt.age>100){it.remove();continue;}
             var goal=target.getBoundingBox().getCenter();var step=goal.subtract(bolt.pos);var next=bolt.pos.add(step.normalize().scale(Math.min(.6,step.length())));
@@ -111,7 +113,7 @@ public final class PropAbilities {
             if(target.level()!=prop.level()||!target.getBoundingBox().inflate(.1).intersects(prop.getBoundingBox()))continue;
             if(item.equals("minecraft:fire")||item.equals("minecraft:soul_fire")){target.hurt(p.damageSources().inFire(),50);target.setSecondsOnFire(10);r.contact=now+20;}
             if(item.equals("minecraft:torchflower")){target.setSecondsOnFire(10);r.contact=now+20;}
-            if(item.equals("minecraft:minecart")&&moving){target.hurt(p.damageSources().generic(),50);var away=target.position().subtract(prop.position()).normalize();target.push(away.x*1.4,.5,away.z*1.4);target.hurtMarked=true;r.stun=now+20;r.stunPosition=p.position();r.contact=now+20;}
+            if(item.equals("minecraft:minecart")&&moving){target.hurt(p.damageSources().generic(),50);var away=target.position().subtract(prop.position()).normalize();PlayerImpulse.apply(target,target.getDeltaMovement().add(away.x*1.4,.5,away.z*1.4));r.stun=now+20;r.stunPosition=p.position();r.contact=now+20;}
         }
     }
     public void struck(ServerPlayer owner,PropEntity prop){

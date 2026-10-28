@@ -24,10 +24,11 @@ public final class PropEntity extends LivingEntity {
     private static final EntityDataAccessor<Optional<UUID>> SKIN=SynchedEntityData.defineId(PropEntity.class,EntityDataSerializers.OPTIONAL_UUID);
     private static final EntityDataAccessor<Integer> MODE=SynchedEntityData.defineId(PropEntity.class,EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> HEIGHT=SynchedEntityData.defineId(PropEntity.class,EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Boolean> FOUND=SynchedEntityData.defineId(PropEntity.class,EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Optional<UUID>> OWNER=SynchedEntityData.defineId(PropEntity.class,EntityDataSerializers.OPTIONAL_UUID);
     public PropEntity(EntityType<? extends LivingEntity> type,Level level){super(type,level);setNoGravity(true);}
     public static void register(net.minecraftforge.eventbus.api.IEventBus bus){TYPES.register(bus);bus.addListener((net.minecraftforge.event.entity.EntityAttributeCreationEvent e)->e.put(TYPE.get(),LivingEntity.createLivingAttributes().build()));}
-    @Override protected void defineSynchedData(){super.defineSynchedData();entityData.define(STATE,0);entityData.define(ITEM,"");entityData.define(PAINTING,0);entityData.define(ROTATION,0);entityData.define(OPEN,false);entityData.define(OWNER,Optional.empty());entityData.define(TEXT,"");entityData.define(SKIN,Optional.empty());entityData.define(MODE,0);entityData.define(HEIGHT,1);}
+    @Override protected void defineSynchedData(){super.defineSynchedData();entityData.define(STATE,0);entityData.define(ITEM,"");entityData.define(PAINTING,0);entityData.define(ROTATION,0);entityData.define(OPEN,false);entityData.define(OWNER,Optional.empty());entityData.define(TEXT,"");entityData.define(SKIN,Optional.empty());entityData.define(MODE,0);entityData.define(HEIGHT,1);entityData.define(FOUND,false);}
     public String text(){return entityData.get(TEXT);}public void text(String text){entityData.set(TEXT,text);}
     public UUID skin(){return entityData.get(SKIN).orElse(owner());}public void skin(UUID id){entityData.set(SKIN,Optional.ofNullable(id));}
     public int mode(){return entityData.get(MODE);}public void mode(int mode){entityData.set(MODE,mode);}
@@ -54,13 +55,14 @@ public final class PropEntity extends LivingEntity {
         entityData.set(ROTATION,(rotation()+1)%4);state(state().rotate(net.minecraft.world.level.block.Rotation.CLOCKWISE_90));
     }
     public UUID owner(){return entityData.get(OWNER).orElse(null);}
-    public void setup(UUID owner,String item,int painting){entityData.set(OWNER,Optional.of(owner));entityData.set(ITEM,item);entityData.set(PAINTING,painting);entityData.set(MODE,0);entityData.set(HEIGHT,1);entityData.set(TEXT,"");entityData.set(OPEN,false);state(PropCatalog.state(item));}
-    public boolean marker(){return isCurrentlyGlowing();}
+    public void setup(UUID owner,String item,int painting){entityData.set(OWNER,Optional.of(owner));entityData.set(ITEM,item);entityData.set(PAINTING,painting);entityData.set(MODE,0);entityData.set(HEIGHT,1);entityData.set(TEXT,"");entityData.set(OPEN,false);entityData.set(FOUND,false);setGlowingTag(false);state(PropCatalog.state(item));}
+    public boolean marker(){return entityData.get(FOUND);}
+    public void markFound(){entityData.set(FOUND,true);setGlowingTag(true);}
     @Override public void tick(){super.tick();setDeltaMovement(0,0,0);setBoundingBox(makeBoundingBox());if(!level().isClientSide&&MatchManager.propHunt()==null)discard();}
     @Override protected AABB makeBoundingBox(){
         if(entityData==null)return super.makeBoundingBox();
         if(item().equals("minecraft:minecart"))return new AABB(getX()-.49,getY(),getZ()-.49,getX()+.49,getY()+.7,getZ()+.49);
-        if(item().equals("minecraft:end_crystal"))return new AABB(getX()-.5,getY(),getZ()-.5,getX()+.5,getY()+2,getZ()+.5);
+        if(item().equals("minecraft:end_crystal"))return new AABB(getX()-.875,getY(),getZ()-.875,getX()+.875,getY()+3.3,getZ()+.875);
         if(item().equals("minecraft:painting")){
             var list=level().registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.PAINTING_VARIANT).holders().toList();
             var variant=list.get(Math.floorMod(painting(),list.size())).value();double w=variant.getWidth()/16d,h=variant.getHeight()/16d;

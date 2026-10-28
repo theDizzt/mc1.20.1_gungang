@@ -11,9 +11,12 @@ final class PropObjectRenderer {
         var mc=Minecraft.getInstance();
         if(prop.item().equals("minecraft:minecart")||prop.item().equals("minecraft:end_crystal")){
             net.minecraft.world.entity.Entity object=prop.item().equals("minecraft:minecart")?EntityType.MINECART.create(prop.level()):EntityType.END_CRYSTAL.create(prop.level());
-            object.setPos(prop.position());object.tickCount=prop.tickCount;
+            object.setPos(prop.position());object.xOld=object.getX();object.yOld=object.getY();object.zOld=object.getZ();object.setId(prop.getId());object.tickCount=prop.tickCount;
             if(object instanceof net.minecraft.world.entity.boss.enderdragon.EndCrystal crystal){crystal.time=prop.tickCount;crystal.setShowBottom(true);}
-            mc.getEntityRenderDispatcher().render(object,0,0,0,prop.rotation()*90,partial,pose,buffers,prop.item().equals("minecraft:end_crystal")?LightTexture.pack(15,LightTexture.sky(light)):light);return true;
+            // Vanilla crystal origin is one block above its base; props are anchored at floor height.
+            boolean crystal=prop.item().equals("minecraft:end_crystal");
+            float yaw=net.minecraft.util.Mth.rotLerp(partial,prop.yRotO,prop.getYRot())+90;
+            mc.getEntityRenderDispatcher().render(object,0,crystal?1:0,0,crystal?0:yaw,partial,pose,buffers,crystal?LightTexture.pack(15,LightTexture.sky(light)):light);return true;
         }
         if(!prop.item().equals("gungang:mannequin"))return false;
         var info=mc.getConnection()==null?null:mc.getConnection().getPlayerInfo(prop.skin());boolean slim=info!=null&&info.getModelName().equals("slim");
