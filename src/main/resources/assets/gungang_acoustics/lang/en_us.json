@@ -168,5 +168,25 @@
   "gungang.controls.backup.saved": "Key bindings saved",
   "gungang.controls.backup.loaded": "Key bindings loaded",
   "gungang.controls.backup.count": "%s controls applied",
-  "gungang.controls.backup.failed": "Could not use the key binding file"
+  "gungang.controls.backup.failed": "Could not use the key binding file",
+
+    "block.gungang.conveyor_belt":  "Conveyor Belt",
+    "block.gungang.blue_jump_pad":  "Blue Jump Pad",
+    "block.gungang.lime_jump_pad":  "Lime Jump Pad",
+    "item.gungang.wrench":  "Wrench",
+    "gungang.conveyor.title":  "Conveyor Settings",
+    "gungang.conveyor.network":  "Applies to the entire connected route",
+    "gungang.conveyor.speed":  "Speed: %sx",
+    "gungang.conveyor.forward":  "Direction: keep current",
+    "gungang.conveyor.reverse":  "Direction: reverse current",
+    "gungang.conveyor.apply":  "Apply to all",
+    "gungang.conveyor.applied":  "Updated %s belts to %sx speed and selected direction",
+    "gungang.conveyor.too_large":  "The connected route exceeds 4,096 belts",
+    "gungang.conveyor.unloaded":  "Load all chunks along this route before applying",
+    "gungang.conveyor.protected":  "A belt on this route is protected",
+    "gungang.conveyor.invalid":  "Check the route connections",
+
+    "block.gungang.dried_ghast":  "Dried Ghast",
+    "block.gungang.wildflowers":  "Wildflowers",
+    "block.gungang.mannequin":  "Mannequin"
 }

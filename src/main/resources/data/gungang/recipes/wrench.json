@@ -1,0 +1,16 @@
+{
+    "key":  {
+                "I":  {
+                          "item":  "minecraft:iron_ingot"
+                      }
+            },
+    "pattern":  [
+                    "I I",
+                    " I ",
+                    " I "
+                ],
+    "result":  {
+                   "item":  "gungang:wrench"
+               },
+    "type":  "minecraft:crafting_shaped"
+}

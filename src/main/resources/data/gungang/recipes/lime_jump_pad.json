@@ -1,0 +1,25 @@
+{
+    "key":  {
+                "D":  {
+                          "item":  "minecraft:lime_dye"
+                      },
+                "R":  {
+                          "item":  "minecraft:redstone"
+                      },
+                "G":  {
+                          "item":  "minecraft:glowstone_dust"
+                      },
+                "I":  {
+                          "item":  "minecraft:iron_ingot"
+                      }
+            },
+    "pattern":  [
+                    "DGD",
+                    "IRI"
+                ],
+    "result":  {
+                   "count":  4,
+                   "item":  "gungang:lime_jump_pad"
+               },
+    "type":  "minecraft:crafting_shaped"
+}

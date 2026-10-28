@@ -29,6 +29,7 @@ public final class TaczAmmoHud {
     /** Same fixed-pixel position and number styling as ammo; independent of TaCZ being installed. */
     public static void rapier(net.minecraftforge.client.gui.overlay.ForgeGui gui,GuiGraphics g,float partial,int screenWidth,int screenHeight){
         var mc=Minecraft.getInstance();if(mc.player==null||mc.options.hideGui||mc.player.isSpectator())return;
+        if(PropAbilityHud.ammo(g,partial))return;
         var stack=mc.player.getMainHandItem();if(!(stack.getItem() instanceof dev.gungang.acoustics.server.RapierItem))return;
         int amount=dev.gungang.acoustics.server.RapierItem.gauge(stack),color=amount<20?0xFFFF6565:TacticalStyle.GOLD;
         int right=mc.getWindow().getWidth()/2-MARGIN,bottom=mc.getWindow().getHeight()/2-MARGIN;

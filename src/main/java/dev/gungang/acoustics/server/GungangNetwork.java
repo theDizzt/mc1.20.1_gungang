@@ -38,7 +38,15 @@ public final class GungangNetwork {
     public record TeamPointRequest() { }
     public record TeamPointView(String json) { }
     public record NozzleBurst(net.minecraft.core.BlockPos pos,boolean acid,double height,int count) { }
+    public record ConveyorView(net.minecraft.core.BlockPos pos,int speed) { }
+    public record ConveyorSet(net.minecraft.core.BlockPos pos,int speed,boolean reverse) { }
     public static void register() {
+        CHANNEL.registerMessage(21,ConveyorView.class,(p,b)->{b.writeBlockPos(p.pos);b.writeVarInt(p.speed);},b->new ConveyorView(b.readBlockPos(),b.readVarInt()),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.ConveyorScreen.open(p)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(22,ConveyorSet.class,(p,b)->{b.writeBlockPos(p.pos);b.writeVarInt(p.speed);b.writeBoolean(p.reverse);},b->new ConveyorSet(b.readBlockPos(),b.readVarInt(),b.readBoolean()),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->ConveyorWrench.apply(ctx.getSender(),p.pos,p.speed,p.reverse));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(20,NozzleBurst.class,(p,b)->{b.writeBlockPos(p.pos);b.writeBoolean(p.acid);b.writeDouble(p.height);b.writeVarInt(p.count);},
                 b->new NozzleBurst(b.readBlockPos(),b.readBoolean(),b.readDouble(),b.readVarInt()),(p,context)->{
                     var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.NozzleParticles.receive(p)));ctx.setPacketHandled(true);

@@ -1,5 +1,7 @@
 # 숨바꼭질
 
+u139: [100~139번 신규 변신과 능력](PROP-HUNT-139.md). 마네킹은 기본 체력 50의 예외로 체력 255이며, 재사용 대기는 AMMO HUD에 표시됩니다.
+
 서버와 클라이언트 모두 숨바꼭질 지원 버전을 설치해야 합니다. TaCZ와 실제 산탄총 데이터가 필요합니다.
 
 `config/gungang/server/maps/prop_hunt.json`은 서버 설정을 불러올 때 비활성 예제로 자동 생성됩니다. [예제](server-examples/prop_hunt.json)의 스폰 좌표를 실제 맵에 맞춰 바꾸고 `enabled: true`로 설정한 뒤 `/gungang reload`를 실행합니다. `bravoSpawn`은 술래가 기다리고 부활하는 대기실입니다. `propHunt`가 있는 맵은 숨바꼭질 전용이며 다른 목표 모드 설정을 함께 넣을 수 없습니다.

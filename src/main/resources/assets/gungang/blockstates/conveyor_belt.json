@@ -1,0 +1,76 @@
+{
+    "variants":  {
+                     "half=bottom,reversed=true,shape=north_east":  {
+                                                                        "model":  "gungang:block/conveyor_north_east_reverse_bottom"
+                                                                    },
+                     "half=bottom,reversed=false,shape=east_west":  {
+                                                                        "model":  "gungang:block/conveyor_east_west_forward_bottom"
+                                                                    },
+                     "half=top,reversed=false,shape=east_west":  {
+                                                                     "model":  "gungang:block/conveyor_east_west_forward_top"
+                                                                 },
+                     "half=top,reversed=true,shape=north_west":  {
+                                                                     "model":  "gungang:block/conveyor_north_west_reverse_top"
+                                                                 },
+                     "half=top,reversed=true,shape=north_east":  {
+                                                                     "model":  "gungang:block/conveyor_north_east_reverse_top"
+                                                                 },
+                     "half=top,reversed=false,shape=south_east":  {
+                                                                      "model":  "gungang:block/conveyor_south_east_forward_top"
+                                                                  },
+                     "half=top,reversed=true,shape=north_south":  {
+                                                                      "model":  "gungang:block/conveyor_north_south_reverse_top"
+                                                                  },
+                     "half=bottom,reversed=true,shape=south_east":  {
+                                                                        "model":  "gungang:block/conveyor_south_east_reverse_bottom"
+                                                                    },
+                     "half=top,reversed=false,shape=north_east":  {
+                                                                      "model":  "gungang:block/conveyor_north_east_forward_top"
+                                                                  },
+                     "half=top,reversed=false,shape=north_west":  {
+                                                                      "model":  "gungang:block/conveyor_north_west_forward_top"
+                                                                  },
+                     "half=top,reversed=true,shape=south_east":  {
+                                                                     "model":  "gungang:block/conveyor_south_east_reverse_top"
+                                                                 },
+                     "half=top,reversed=true,shape=south_west":  {
+                                                                     "model":  "gungang:block/conveyor_south_west_reverse_top"
+                                                                 },
+                     "half=bottom,reversed=false,shape=south_west":  {
+                                                                         "model":  "gungang:block/conveyor_south_west_forward_bottom"
+                                                                     },
+                     "half=bottom,reversed=true,shape=north_south":  {
+                                                                         "model":  "gungang:block/conveyor_north_south_reverse_bottom"
+                                                                     },
+                     "half=bottom,reversed=false,shape=south_east":  {
+                                                                         "model":  "gungang:block/conveyor_south_east_forward_bottom"
+                                                                     },
+                     "half=top,reversed=true,shape=east_west":  {
+                                                                    "model":  "gungang:block/conveyor_east_west_reverse_top"
+                                                                },
+                     "half=bottom,reversed=false,shape=north_east":  {
+                                                                         "model":  "gungang:block/conveyor_north_east_forward_bottom"
+                                                                     },
+                     "half=bottom,reversed=false,shape=north_west":  {
+                                                                         "model":  "gungang:block/conveyor_north_west_forward_bottom"
+                                                                     },
+                     "half=top,reversed=false,shape=north_south":  {
+                                                                       "model":  "gungang:block/conveyor_north_south_forward_top"
+                                                                   },
+                     "half=bottom,reversed=true,shape=north_west":  {
+                                                                        "model":  "gungang:block/conveyor_north_west_reverse_bottom"
+                                                                    },
+                     "half=bottom,reversed=true,shape=south_west":  {
+                                                                        "model":  "gungang:block/conveyor_south_west_reverse_bottom"
+                                                                    },
+                     "half=top,reversed=false,shape=south_west":  {
+                                                                      "model":  "gungang:block/conveyor_south_west_forward_top"
+                                                                  },
+                     "half=bottom,reversed=false,shape=north_south":  {
+                                                                          "model":  "gungang:block/conveyor_north_south_forward_bottom"
+                                                                      },
+                     "half=bottom,reversed=true,shape=east_west":  {
+                                                                       "model":  "gungang:block/conveyor_east_west_reverse_bottom"
+                                                                   }
+                 }
+}

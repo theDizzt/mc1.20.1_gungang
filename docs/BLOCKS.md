@@ -1,8 +1,12 @@
 # 커스텀 블록 목록과 설치법
 
+u139: `gungang:mannequin`(마네킹), `gungang:dried_ghast`(마른 가스트), `gungang:wildflowers`(들꽃)을 추가했습니다. [숨바꼭질 신규 능력](PROP-HUNT-139.md).
+
 [문서 안내](../README.md) · [데이터 등록](DATA.md) · [아이템](ITEMS.md) · [블록](#) · [명령어](COMMANDS.md)
 
 기능 블록·팀 출입구·전장 기믹·호위 경로 블록을 모았습니다. 모든 ID 앞에는 `gungang:`을 붙입니다.
+
+u138: [컨베이어 벨트·렌치·점프 발판](MOVEMENT-BLOCKS.md)을 추가했습니다. `conveyor_belt`는 반블록 높이의 직선/코너 경로이며 렌치로 연결 경로 전체의 0.1~3.0배속과 양방향을 설정합니다. `blue_jump_pad`와 `lime_jump_pad`는 각각 8/16블록 점프를 지원합니다.
 
 - [로비·장비·팀 선택·회복 블록](#stations)
 - [팀 스폰 홀로그램 출입구](#spawn-gates)

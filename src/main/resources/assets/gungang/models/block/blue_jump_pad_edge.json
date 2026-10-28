@@ -1,0 +1,53 @@
+{
+    "parent":  "minecraft:block/block",
+    "ambientocclusion":  false,
+    "elements":  [
+                     {
+                         "faces":  {
+                                       "south":  {
+                                                     "texture":  "#edge"
+                                                 },
+                                       "north":  {
+                                                     "texture":  "#edge"
+                                                 },
+                                       "up":  {
+                                                  "texture":  "#edge",
+                                                  "forge_data":  {
+                                                                     "ambient_occlusion":  false,
+                                                                     "sky_light":  15,
+                                                                     "block_light":  15
+                                                                 },
+                                                  "uv":  [
+                                                             0,
+                                                             0,
+                                                             16,
+                                                             16
+                                                         ]
+                                              },
+                                       "west":  {
+                                                    "texture":  "#edge"
+                                                },
+                                       "down":  {
+                                                    "texture":  "#edge"
+                                                },
+                                       "east":  {
+                                                    "texture":  "#edge"
+                                                }
+                                   },
+                         "from":  [
+                                      0,
+                                      2,
+                                      0
+                                  ],
+                         "to":  [
+                                    16,
+                                    2.02,
+                                    1
+                                ],
+                         "shade":  false
+                     }
+                 ],
+    "textures":  {
+                     "edge":  "gungang:block/blue_pad_edge"
+                 }
+}
