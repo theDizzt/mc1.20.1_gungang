@@ -1,0 +1,406 @@
+{
+    "parent":  "minecraft:block/block",
+    "elements":  [
+                     {
+                         "faces":  {
+                                       "south":  {
+                                                     "texture":  "#skin"
+                                                 },
+                                       "north":  {
+                                                     "uv":  [
+                                                                0,
+                                                                0,
+                                                                16,
+                                                                16
+                                                            ],
+                                                     "texture":  "#face"
+                                                 },
+                                       "up":  {
+                                                  "uv":  [
+                                                             0,
+                                                             0,
+                                                             16,
+                                                             16
+                                                         ],
+                                                  "texture":  "#skin"
+                                              },
+                                       "west":  {
+                                                    "texture":  "#skin"
+                                                },
+                                       "down":  {
+                                                    "texture":  "#skin"
+                                                },
+                                       "east":  {
+                                                    "texture":  "#skin"
+                                                }
+                                   },
+                         "from":  [
+                                      3,
+                                      2,
+                                      3
+                                  ],
+                         "to":  [
+                                    13,
+                                    10,
+                                    13
+                                ],
+                         "shade":  false
+                     },
+                     {
+                         "faces":  {
+                                       "south":  {
+                                                     "texture":  "#skin"
+                                                 },
+                                       "north":  {
+                                                     "texture":  "#skin"
+                                                 },
+                                       "up":  {
+                                                  "uv":  [
+                                                             0,
+                                                             0,
+                                                             16,
+                                                             16
+                                                         ],
+                                                  "texture":  "#skin"
+                                              },
+                                       "west":  {
+                                                    "texture":  "#skin"
+                                                },
+                                       "down":  {
+                                                    "texture":  "#skin"
+                                                },
+                                       "east":  {
+                                                    "texture":  "#skin"
+                                                }
+                                   },
+                         "from":  [
+                                      3,
+                                      0,
+                                      3
+                                  ],
+                         "to":  [
+                                    5,
+                                    3,
+                                    5
+                                ],
+                         "shade":  false
+                     },
+                     {
+                         "faces":  {
+                                       "south":  {
+                                                     "texture":  "#skin"
+                                                 },
+                                       "north":  {
+                                                     "texture":  "#skin"
+                                                 },
+                                       "up":  {
+                                                  "uv":  [
+                                                             0,
+                                                             0,
+                                                             16,
+                                                             16
+                                                         ],
+                                                  "texture":  "#skin"
+                                              },
+                                       "west":  {
+                                                    "texture":  "#skin"
+                                                },
+                                       "down":  {
+                                                    "texture":  "#skin"
+                                                },
+                                       "east":  {
+                                                    "texture":  "#skin"
+                                                }
+                                   },
+                         "from":  [
+                                      3,
+                                      0,
+                                      7
+                                  ],
+                         "to":  [
+                                    5,
+                                    3,
+                                    9
+                                ],
+                         "shade":  false
+                     },
+                     {
+                         "faces":  {
+                                       "south":  {
+                                                     "texture":  "#skin"
+                                                 },
+                                       "north":  {
+                                                     "texture":  "#skin"
+                                                 },
+                                       "up":  {
+                                                  "uv":  [
+                                                             0,
+                                                             0,
+                                                             16,
+                                                             16
+                                                         ],
+                                                  "texture":  "#skin"
+                                              },
+                                       "west":  {
+                                                    "texture":  "#skin"
+                                                },
+                                       "down":  {
+                                                    "texture":  "#skin"
+                                                },
+                                       "east":  {
+                                                    "texture":  "#skin"
+                                                }
+                                   },
+                         "from":  [
+                                      3,
+                                      0,
+                                      11
+                                  ],
+                         "to":  [
+                                    5,
+                                    3,
+                                    13
+                                ],
+                         "shade":  false
+                     },
+                     {
+                         "faces":  {
+                                       "south":  {
+                                                     "texture":  "#skin"
+                                                 },
+                                       "north":  {
+                                                     "texture":  "#skin"
+                                                 },
+                                       "up":  {
+                                                  "uv":  [
+                                                             0,
+                                                             0,
+                                                             16,
+                                                             16
+                                                         ],
+                                                  "texture":  "#skin"
+                                              },
+                                       "west":  {
+                                                    "texture":  "#skin"
+                                                },
+                                       "down":  {
+                                                    "texture":  "#skin"
+                                                },
+                                       "east":  {
+                                                    "texture":  "#skin"
+                                                }
+                                   },
+                         "from":  [
+                                      7,
+                                      0,
+                                      3
+                                  ],
+                         "to":  [
+                                    9,
+                                    3,
+                                    5
+                                ],
+                         "shade":  false
+                     },
+                     {
+                         "faces":  {
+                                       "south":  {
+                                                     "texture":  "#skin"
+                                                 },
+                                       "north":  {
+                                                     "texture":  "#skin"
+                                                 },
+                                       "up":  {
+                                                  "uv":  [
+                                                             0,
+                                                             0,
+                                                             16,
+                                                             16
+                                                         ],
+                                                  "texture":  "#skin"
+                                              },
+                                       "west":  {
+                                                    "texture":  "#skin"
+                                                },
+                                       "down":  {
+                                                    "texture":  "#skin"
+                                                },
+                                       "east":  {
+                                                    "texture":  "#skin"
+                                                }
+                                   },
+                         "from":  [
+                                      7,
+                                      0,
+                                      7
+                                  ],
+                         "to":  [
+                                    9,
+                                    3,
+                                    9
+                                ],
+                         "shade":  false
+                     },
+                     {
+                         "faces":  {
+                                       "south":  {
+                                                     "texture":  "#skin"
+                                                 },
+                                       "north":  {
+                                                     "texture":  "#skin"
+                                                 },
+                                       "up":  {
+                                                  "uv":  [
+                                                             0,
+                                                             0,
+                                                             16,
+                                                             16
+                                                         ],
+                                                  "texture":  "#skin"
+                                              },
+                                       "west":  {
+                                                    "texture":  "#skin"
+                                                },
+                                       "down":  {
+                                                    "texture":  "#skin"
+                                                },
+                                       "east":  {
+                                                    "texture":  "#skin"
+                                                }
+                                   },
+                         "from":  [
+                                      7,
+                                      0,
+                                      11
+                                  ],
+                         "to":  [
+                                    9,
+                                    3,
+                                    13
+                                ],
+                         "shade":  false
+                     },
+                     {
+                         "faces":  {
+                                       "south":  {
+                                                     "texture":  "#skin"
+                                                 },
+                                       "north":  {
+                                                     "texture":  "#skin"
+                                                 },
+                                       "up":  {
+                                                  "uv":  [
+                                                             0,
+                                                             0,
+                                                             16,
+                                                             16
+                                                         ],
+                                                  "texture":  "#skin"
+                                              },
+                                       "west":  {
+                                                    "texture":  "#skin"
+                                                },
+                                       "down":  {
+                                                    "texture":  "#skin"
+                                                },
+                                       "east":  {
+                                                    "texture":  "#skin"
+                                                }
+                                   },
+                         "from":  [
+                                      11,
+                                      0,
+                                      3
+                                  ],
+                         "to":  [
+                                    13,
+                                    3,
+                                    5
+                                ],
+                         "shade":  false
+                     },
+                     {
+                         "faces":  {
+                                       "south":  {
+                                                     "texture":  "#skin"
+                                                 },
+                                       "north":  {
+                                                     "texture":  "#skin"
+                                                 },
+                                       "up":  {
+                                                  "uv":  [
+                                                             0,
+                                                             0,
+                                                             16,
+                                                             16
+                                                         ],
+                                                  "texture":  "#skin"
+                                              },
+                                       "west":  {
+                                                    "texture":  "#skin"
+                                                },
+                                       "down":  {
+                                                    "texture":  "#skin"
+                                                },
+                                       "east":  {
+                                                    "texture":  "#skin"
+                                                }
+                                   },
+                         "from":  [
+                                      11,
+                                      0,
+                                      7
+                                  ],
+                         "to":  [
+                                    13,
+                                    3,
+                                    9
+                                ],
+                         "shade":  false
+                     },
+                     {
+                         "faces":  {
+                                       "south":  {
+                                                     "texture":  "#skin"
+                                                 },
+                                       "north":  {
+                                                     "texture":  "#skin"
+                                                 },
+                                       "up":  {
+                                                  "uv":  [
+                                                             0,
+                                                             0,
+                                                             16,
+                                                             16
+                                                         ],
+                                                  "texture":  "#skin"
+                                              },
+                                       "west":  {
+                                                    "texture":  "#skin"
+                                                },
+                                       "down":  {
+                                                    "texture":  "#skin"
+                                                },
+                                       "east":  {
+                                                    "texture":  "#skin"
+                                                }
+                                   },
+                         "from":  [
+                                      11,
+                                      0,
+                                      11
+                                  ],
+                         "to":  [
+                                    13,
+                                    3,
+                                    13
+                                ],
+                         "shade":  false
+                     }
+                 ],
+    "textures":  {
+                     "face":  "gungang:block/dried_ghast_face",
+                     "skin":  "gungang:block/dried_ghast_skin",
+                     "particle":  "gungang:block/dried_ghast_skin"
+                 }
+}

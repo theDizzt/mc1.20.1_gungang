@@ -29,6 +29,15 @@ public final class PropInteraction {
             else if(state.hasProperty(BlockStateProperties.LIT))state=state.cycle(BlockStateProperties.LIT);
             else if(state.hasProperty(BlockStateProperties.LEVEL_COMPOSTER))state=state.cycle(BlockStateProperties.LEVEL_COMPOSTER);
             else if(state.hasProperty(BlockStateProperties.OCCUPIED))state=state.cycle(BlockStateProperties.OCCUPIED);
+            else if(state.hasProperty(BlockStateProperties.RAIL_SHAPE))state=state.cycle(BlockStateProperties.RAIL_SHAPE);
+            else if(state.hasProperty(BlockStateProperties.STAIRS_SHAPE))state=state.cycle(BlockStateProperties.STAIRS_SHAPE);
+            else if(state.hasProperty(BlockStateProperties.SLAB_TYPE))state=state.cycle(BlockStateProperties.SLAB_TYPE);
+            else if(state.hasProperty(BlockStateProperties.AXIS))state=state.cycle(BlockStateProperties.AXIS);
+            else if(state.hasProperty(BlockStateProperties.FACING))state=state.cycle(BlockStateProperties.FACING);
+            else if(state.hasProperty(BlockStateProperties.HORIZONTAL_FACING))state=state.cycle(BlockStateProperties.HORIZONTAL_FACING);
+            else if(state.hasProperty(BlockStateProperties.HORIZONTAL_AXIS))state=state.cycle(BlockStateProperties.HORIZONTAL_AXIS);
+            else if(state.hasProperty(BlockStateProperties.ROTATION_16))state=state.cycle(BlockStateProperties.ROTATION_16);
+            else {prop.rotate();state=prop.state();}
             if(id.equals("minecraft:cauldron"))state=state.is(net.minecraft.world.level.block.Blocks.CAULDRON)?net.minecraft.world.level.block.Blocks.WATER_CAULDRON.defaultBlockState():state.hasProperty(BlockStateProperties.LEVEL_CAULDRON)&&state.getValue(BlockStateProperties.LEVEL_CAULDRON)<3?state.cycle(BlockStateProperties.LEVEL_CAULDRON):net.minecraft.world.level.block.Blocks.CAULDRON.defaultBlockState();
             prop.state(state);
         }

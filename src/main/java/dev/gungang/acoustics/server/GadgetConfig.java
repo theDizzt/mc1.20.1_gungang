@@ -59,7 +59,11 @@ public final class GadgetConfig {
         if(Files.exists(path)&&Files.size(path)>65536)throw new IOException("Item config too large: "+path);
         var json=overrides.containsKey(id)?overrides.get(id):Files.exists(path)?com.google.gson.JsonParser.parseString(Files.readString(path)).getAsJsonObject():new com.google.gson.JsonObject();
         var merged=ServerFiles.GSON.toJsonTree(defaults).getAsJsonObject();
-        for(var e:json.entrySet()) { if(!merged.has(e.getKey()))throw new IllegalArgumentException("Unknown item option: "+e.getKey());merged.add(e.getKey(),e.getValue()); }
+        for(var e:json.entrySet()) {
+            // Pre-throw-only hand axes had these keys. Ignore them when upgrading existing servers.
+            if(id.equals("hand_axe")&&java.util.Set.of("meleeDamage","meleeCooldownSeconds").contains(e.getKey()))continue;
+            if(!merged.has(e.getKey()))throw new IllegalArgumentException("Unknown item option: "+e.getKey());merged.add(e.getKey(),e.getValue());
+        }
         return ServerFiles.GSON.fromJson(merged,type);
     }
     private GadgetConfig() { }

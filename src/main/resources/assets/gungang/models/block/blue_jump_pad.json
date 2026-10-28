@@ -1,0 +1,55 @@
+{
+    "parent":  "minecraft:block/block",
+    "ambientocclusion":  false,
+    "elements":  [
+                     {
+                         "faces":  {
+                                       "south":  {
+                                                     "texture":  "#side"
+                                                 },
+                                       "north":  {
+                                                     "texture":  "#side"
+                                                 },
+                                       "up":  {
+                                                  "texture":  "#top",
+                                                  "forge_data":  {
+                                                                     "ambient_occlusion":  false,
+                                                                     "sky_light":  15,
+                                                                     "block_light":  15
+                                                                 },
+                                                  "uv":  [
+                                                             0,
+                                                             0,
+                                                             16,
+                                                             16
+                                                         ]
+                                              },
+                                       "west":  {
+                                                    "texture":  "#side"
+                                                },
+                                       "down":  {
+                                                    "texture":  "#side"
+                                                },
+                                       "east":  {
+                                                    "texture":  "#side"
+                                                }
+                                   },
+                         "from":  [
+                                      0,
+                                      0,
+                                      0
+                                  ],
+                         "to":  [
+                                    16,
+                                    2,
+                                    16
+                                ],
+                         "shade":  false
+                     }
+                 ],
+    "textures":  {
+                     "top":  "gungang:block/blue_pad",
+                     "side":  "gungang:block/conveyor_side",
+                     "particle":  "gungang:block/blue_pad"
+                 }
+}

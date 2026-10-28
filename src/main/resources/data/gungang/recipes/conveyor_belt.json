@@ -1,0 +1,22 @@
+{
+    "key":  {
+                "R":  {
+                          "item":  "minecraft:redstone"
+                      },
+                "K":  {
+                          "item":  "minecraft:dried_kelp"
+                      },
+                "I":  {
+                          "item":  "minecraft:iron_ingot"
+                      }
+            },
+    "pattern":  [
+                    "KKK",
+                    "IRI"
+                ],
+    "result":  {
+                   "count":  6,
+                   "item":  "gungang:conveyor_belt"
+               },
+    "type":  "minecraft:crafting_shaped"
+}

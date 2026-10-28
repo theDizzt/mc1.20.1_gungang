@@ -47,14 +47,14 @@ public final class PropEffects {
         for(var entity:level.entitiesForRendering()){
             if(!(entity instanceof PropEntity prop)||prop.isRemoved())continue;
             seen.add(prop.getId());
-            int emission=0;
+            int emission=prop.item().equals("minecraft:end_crystal")?15:0;
             particleOffset=new net.minecraft.world.phys.Vec3(prop.getX()-.5-prop.blockPosition().getX(),prop.getY()-prop.blockPosition().getY(),prop.getZ()-.5-prop.blockPosition().getZ());
             try{
-                for(var part:PropGeometry.parts(prop.state())){
+                for(var part:PropGeometry.parts(prop)){
                     var state=part.state();var pos=prop.blockPosition().offset(part.offset());
                     emission=Math.max(emission,state.getLightEmission());
                     if(level.random.nextInt(ANIMATE_CHANCE)==0)state.getBlock().animateTick(state,level,pos,level.random);
-                    if(state.getBlock() instanceof EntityBlock block)clientTicker(level,block,state,pos,blockEntity(prop,part.offset(),state,block));
+                    if(state.getBlock() instanceof EntityBlock block&&!(block instanceof dev.gungang.acoustics.server.ConveyorBlock))clientTicker(level,block,state,pos,blockEntity(prop,part.offset(),state,block));
                 }
             }finally{particleOffset=net.minecraft.world.phys.Vec3.ZERO;}
             BlockPos cell=BlockPos.containing(prop.getX(),prop.getY()+.5,prop.getZ());
@@ -73,8 +73,14 @@ public final class PropEffects {
             be=block.newBlockEntity(prop.blockPosition().offset(offset),state);
             if(be==null){cache.remove(offset);return null;}
             be.setLevel(prop.level());cache.put(offset,be);
+            if(be instanceof net.minecraft.world.level.block.entity.SpawnerBlockEntity spawner)spawner.getSpawner().setEntityId(net.minecraft.world.entity.EntityType.CAVE_SPIDER,prop.level(),prop.level().random,prop.blockPosition());
         }
         be.setBlockState(state);
+        if(be instanceof net.minecraft.world.level.block.entity.SignBlockEntity sign){
+            var text=sign.getFrontText();String[] lines=prop.text().split(", ",3);
+            for(int i=0;i<4;i++)text=text.setMessage(i,net.minecraft.network.chat.Component.literal(i<lines.length?lines[i]:""));
+            sign.setText(text,true);sign.setText(text,false);
+        }
         return be;
     }
     @SuppressWarnings("unchecked")

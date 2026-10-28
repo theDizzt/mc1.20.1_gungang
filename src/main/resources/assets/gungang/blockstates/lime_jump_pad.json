@@ -1,0 +1,45 @@
+{
+    "multipart":  [
+                      {
+                          "apply":  {
+                                        "model":  "gungang:block/lime_jump_pad"
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "north":  "false"
+                                   },
+                          "apply":  {
+                                        "model":  "gungang:block/lime_jump_pad_edge",
+                                        "y":  0
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "east":  "false"
+                                   },
+                          "apply":  {
+                                        "model":  "gungang:block/lime_jump_pad_edge",
+                                        "y":  90
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "south":  "false"
+                                   },
+                          "apply":  {
+                                        "model":  "gungang:block/lime_jump_pad_edge",
+                                        "y":  180
+                                    }
+                      },
+                      {
+                          "when":  {
+                                       "west":  "false"
+                                   },
+                          "apply":  {
+                                        "model":  "gungang:block/lime_jump_pad_edge",
+                                        "y":  270
+                                    }
+                      }
+                  ]
+}
