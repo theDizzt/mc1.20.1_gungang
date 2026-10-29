@@ -28,6 +28,11 @@ public final class UtilityHud {
         var mc=Minecraft.getInstance();if(mc.player==null||!mc.player.isAlive()||mc.player.isSpectator())return;
         int y=healthBarY-36-height;
         y=PropAbilityHud.gauges(g,center,y,width,height,partial);
+        var awn=PropAwn.is(mc.player.getMainHandItem())?mc.player.getMainHandItem():mc.player.getOffhandItem();
+        if(PropAwn.is(awn)){
+            long remaining=SecondaryRuntime.remaining(mc.player,awn);
+            if(remaining>0){gauge(g,center,y,width,height,remaining,600,"AWN 재장전 "+(remaining+19)/20+"초",partial);y-=height+4;}
+        }
         var protection=FreeForAllHud.row(mc.player.getUUID());
         if(protection!=null&&protection.protectionTicks()>0){
             gauge(g,center,y,width,height,protection.protectionTicks(),protection.protectionTotal(),"무적 "+(protection.protectionTicks()+19)/20+"초",partial);

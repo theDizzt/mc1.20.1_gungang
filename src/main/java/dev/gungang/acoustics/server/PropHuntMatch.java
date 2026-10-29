@@ -110,6 +110,7 @@ public final class PropHuntMatch {
         p.setCamera(p);p.setGameMode(GameType.ADVENTURE);equip(p);p.refreshDimensions();sync();
     }
     private void stop(ServerPlayer p){
+        PropAwn.clear(p.getUUID());
         abilities.remove(p);
         var m=members.remove(p.getUUID());if(m==null)return;
         home(p,m);if(m.prop!=null){PropInteraction.remove(m.prop);m.prop.discard();}
@@ -133,6 +134,7 @@ public final class PropHuntMatch {
         if(m.team.equals("BRAVO")){
             var stack=shotgun.stack();stack.getOrCreateTag().putBoolean("GunGangPropShotgun",true);stack.getOrCreateTag().putInt("DummyAmmo",9999);stack.getOrCreateTag().putInt("MaxDummyAmmo",9999);
             LoadoutSlots.mark(stack,"GunGangIssued",0);p.getInventory().setItem(0,stack);p.getInventory().selected=0;
+            p.getInventory().setItem(40,PropAwn.create(p));
         }else{p.setInvisible(true);if(m.prop==null)change(p,m);}
         p.inventoryMenu.broadcastChanges();
     }
@@ -180,13 +182,14 @@ public final class PropHuntMatch {
                     if(phase()==PropHuntGame.Phase.HIDING)p.addEffect(new MobEffectInstance(MobEffects.BLINDNESS,30,0,false,false,false));
                     p.stopUsingItem();
                 }else p.removeEffect(MobEffects.BLINDNESS);
-                // The mode permits only its issued primary; no pickups or secondary gadgets.
-                if(!p.getInventory().getItem(0).getOrCreateTag().getBoolean("GunGangPropShotgun")){
-                    ItemStack gun=ItemStack.EMPTY;
-                    for(int i=1;i<p.getInventory().getContainerSize();i++)if(p.getInventory().getItem(i).getOrCreateTag().getBoolean("GunGangPropShotgun")){gun=p.getInventory().getItem(i);p.getInventory().setItem(i,ItemStack.EMPTY);break;}
-                    if(!gun.isEmpty())p.getInventory().setItem(0,gun);
+                // Preserve either hand order, including the offhand macro's temporary swap.
+                for(int i=1;i<p.getInventory().getContainerSize();i++){
+                    var stack=p.getInventory().getItem(i);
+                    if(PropAwn.issued(stack)){
+                        if(i!=40){int home=PropAwn.is(stack)?40:0;if(p.getInventory().getItem(home).isEmpty()){p.getInventory().setItem(home,stack);p.getInventory().setItem(i,ItemStack.EMPTY);}}
+                    }else p.getInventory().setItem(i,ItemStack.EMPTY);
                 }
-                for(int i=1;i<p.getInventory().getContainerSize();i++)p.getInventory().setItem(i,ItemStack.EMPTY);
+                PropAwn.tick(p,p.getInventory().getItem(0));PropAwn.tick(p,p.getOffhandItem());
                 p.getInventory().selected=0;
             }
         }
@@ -247,7 +250,7 @@ public final class PropHuntMatch {
         if(reviewing||phase()!=PropHuntGame.Phase.HUNTING||!game.alive(prop.owner())||!Float.isFinite(amount)||amount<=0||SpawnGateProtection.blocked(prop,source)||SafeZones.blocked(prop,source))return false;
         if(!(source.getEntity() instanceof ServerPlayer shooter)||hider(shooter.getUUID())||!participant(shooter.getUUID())||frozen(shooter.getUUID()))return false;
         var direct=source.getDirectEntity();
-        if(direct==null||!direct.getClass().getName().equals("com.tacz.guns.entity.EntityKineticBullet")||!shooter.getMainHandItem().getOrCreateTag().getBoolean("GunGangPropShotgun"))return false;
+        if(direct==null||!direct.getClass().getName().equals("com.tacz.guns.entity.EntityKineticBullet")||!(PropAwn.issued(shooter.getMainHandItem())||PropAwn.issued(shooter.getOffhandItem())))return false;
         var p=server.getPlayerList().getPlayer(prop.owner());if(p==null)return false;
         if(p.getHealth()<=amount)eliminate(p,shooter);else {p.setHealth(p.getHealth()-amount);abilities.struck(p,prop);}
         if(prop.item().equals("gungang:gas_barrel")){
@@ -298,7 +301,7 @@ public final class PropHuntMatch {
     }
     private void mark(Member m){m.prop.markFound();m.prop.setCustomName(Component.literal(m.name));m.prop.setCustomNameVisible(true);}
     public void leave(ServerPlayer p){if(test){test(p,null,"");return;}var m=members.get(p.getUUID());if(m==null)return;if(hider(m.id)){game.eliminate(m.id,null);if(m.prop!=null)mark(m);}restore(p,m);}
-    private void restore(ServerPlayer p,Member m){abilities.remove(p);rush(p,false);p.setInvisible(m.invisible);p.removeEffect(MobEffects.BLINDNESS);p.getAttribute(Attributes.MAX_HEALTH).setBaseValue(m.health);p.setHealth(Math.min(p.getHealth(),p.getMaxHealth()));}
+    private void restore(ServerPlayer p,Member m){PropAwn.clear(p.getUUID());abilities.remove(p);rush(p,false);p.setInvisible(m.invisible);p.removeEffect(MobEffects.BLINDNESS);p.getAttribute(Attributes.MAX_HEALTH).setBaseValue(m.health);p.setHealth(Math.min(p.getHealth(),p.getMaxHealth()));}
     public void close(){abilities.clear();PropSummons.clear(server);arrows.forEach(net.minecraft.world.entity.Entity::discard);arrows.clear();if(test){for(var id:List.copyOf(members.keySet())){var p=server.getPlayerList().getPlayer(id);if(p!=null)stop(p);}return;}reviewing=true;PropInteraction.clear();for(var m:members.values()){if(m.prop!=null)m.prop.discard();var p=server.getPlayerList().getPlayer(m.id);if(p!=null){restore(p,m);p.refreshDimensions();}}for(var p:server.getPlayerList().getPlayers())GungangNetwork.send(p,new GungangNetwork.PropHunt(ServerFiles.GSON.toJson(new PropHuntSnapshot(false,"",0,0,List.of()))));}
     public List<MatchSnapshot.Row> rows(List<MatchSnapshot.Row> original){return original.stream().map(r->new MatchSnapshot.Row(r.id(),r.name(),r.team(),game.found(UUID.fromString(r.id())),r.deaths(),r.assists(),r.damage(),game.hidden(UUID.fromString(r.id())))).toList();}
     public void action(ServerPlayer p,String action){

@@ -54,15 +54,16 @@ public final class PropAbilities {
     private static void stopFlight(ServerPlayer p,Runtime r){if(!r.flight)return;r.flight=false;p.getAbilities().mayfly=r.mayfly;p.getAbilities().flying=r.flying;p.setNoGravity(false);p.fallDistance=0;p.onUpdateAbilities();}
     public boolean use(ServerPlayer p,PropEntity prop){
         String item=prop.item();var r=data(p.getUUID());int now=match.now();
-        if(Set.of("minecraft:spawner","minecraft:nether_portal","minecraft:lodestone","minecraft:command_block","minecraft:end_crystal").contains(item)&&!match.hunting())return true;
+        if(Set.of("minecraft:nether_portal","minecraft:lodestone","minecraft:command_block","minecraft:end_crystal").contains(item)&&!match.hunting())return true;
+        if(item.equals("minecraft:spawner")&&!match.hunting()&&!match.hiding())return true;
         if(cooldown(item)>0&&r.cooldown>now)return true;
         switch(item){
             case "minecraft:anvil"->{prop.state(prop.state().is(Blocks.ANVIL)?Blocks.CHIPPED_ANVIL.defaultBlockState():prop.state().is(Blocks.CHIPPED_ANVIL)?Blocks.DAMAGED_ANVIL.defaultBlockState():Blocks.ANVIL.defaultBlockState());}
             case "minecraft:flower_pot"->{var pots=net.minecraftforge.registries.ForgeRegistries.BLOCKS.getValues().stream().filter(b->b instanceof FlowerPotBlock).toList();prop.state(pots.get(p.getRandom().nextInt(pots.size())).defaultBlockState());}
             case "minecraft:spawner"->{
-                var target=nearest(p.serverLevel(),prop.position(),Double.MAX_VALUE);if(target==null)return true;
-                Vec3 at=target.position().add(2,0,0);
-                for(int i=0;i<16;i++){double a=i*Math.PI/8;var candidate=target.position().add(Math.cos(a)*2,0,Math.sin(a)*2);if(p.level().noCollision(new AABB(candidate.x-.4,candidate.y,candidate.z-.4,candidate.x+.4,candidate.y+.6,candidate.z+.4))){at=candidate;break;}}
+                var target=nearest(p.serverLevel(),prop.position(),Double.MAX_VALUE);
+                Vec3 origin=target==null?prop.position():target.position(),at=origin.add(2,0,0);
+                for(int i=0;i<16;i++){double a=i*Math.PI/8;var candidate=origin.add(Math.cos(a)*2,0,Math.sin(a)*2);if(p.level().noCollision(new AABB(candidate.x-.4,candidate.y,candidate.z-.4,candidate.x+.4,candidate.y+.6,candidate.z+.4))){at=candidate;break;}}
                 var mob=PropSummons.spawn(p.serverLevel(),EntityType.CAVE_SPIDER,p.getUUID(),at,100,16,false);if(mob!=null){r.mobs.add(mob);r.cooldown=now+1680;}
             }
             case "minecraft:nether_portal"->{for(var target:match.players()){
@@ -77,6 +78,9 @@ public final class PropAbilities {
                 var all=match.players().stream().filter(q->match.hider(q.getUUID())).toList();var teammate=all.isEmpty()?p:all.get(p.getRandom().nextInt(all.size()));
                 var pos=match.prop(teammate.getUUID())==null?teammate.blockPosition():match.prop(teammate.getUUID()).blockPosition();
                 var labels=List.of(p.getGameProfile().getName(),"(●´꒳`●)","(｡>﹏<｡)","(❀╹◡╹)","凸(｀0´)凸","٩( ᐛ )و","Σ(￣□￣;)",pos.getX()+", "+pos.getY()+", "+pos.getZ());prop.text(labels.get(p.getRandom().nextInt(labels.size())));
+            }
+            case "minecraft:infested_stone"->{
+                if((match.hunting()||match.hiding())&&match.seekers().isEmpty()&&r.mobs.stream().noneMatch(m->m.isAlive()&&!m.isRemoved()))found(p,prop);
             }
             case "gungang:mannequin"->prop.mode((prop.mode()+1)%6);
             case "minecraft:beacon"->prop.toggle();
@@ -96,7 +100,7 @@ public final class PropAbilities {
         modifier(p,BEACON,beacon?.2:0);
         if(item.equals("minecraft:sugar_cane")){int height=Math.min(3,1+(now-r.born)/1200);if(prop.height()!=height){prop.height(height);p.refreshDimensions();}}
         if(item.equals("minecraft:oak_sign")&&!match.locked(p.getUUID()))prop.state(prop.state().setValue(StandingSignBlock.ROTATION,Math.floorMod(Math.round(p.getYRot()*16/360),16)));
-        if(item.equals("minecraft:minecart")&&!match.locked(p.getUUID())){prop.setYRot(p.getYRot());prop.setYHeadRot(p.getYRot());prop.setYBodyRot(p.getYRot());}
+        if(Set.of("minecraft:minecart","gungang:mannequin","gungang:dried_ghast").contains(item)&&!match.locked(p.getUUID())){prop.setYRot(p.getYRot());prop.setYHeadRot(p.getYRot());prop.setYBodyRot(p.getYRot());}
         if(item.equals("minecraft:bee_nest")&&!r.bees){r.bees=true;for(int i=0;i<3;i++){var mob=PropSummons.spawn(p.serverLevel(),EntityType.BEE,p.getUUID(),prop.position().add(Math.cos(i*2.1),1,Math.sin(i*2.1)),100,36,true);if(mob!=null)r.mobs.add(mob);}}
         r.mobs.removeIf(Entity::isRemoved);for(int i=0;i<r.mobs.size();i++)PropSummons.tick(match,r.mobs.get(i),prop.position(),i);
         if(!match.hunting())return;

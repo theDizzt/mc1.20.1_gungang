@@ -128,6 +128,10 @@ final class BotAgent {
         gadgets.clearCooldowns();remove();
     }
     private Loadouts.Weapon choose(List<Loadouts.Weapon> choices,String fixed,String previous,boolean secondarySlot){
+        choices=choices.stream().filter(w->!LobbyManager.teamWeaponTaken(id,team,!secondarySlot,w.id())).toList();
+        String requested=fixed;
+        if(!fixed.equals("none")&&choices.stream().noneMatch(w->w.id().equals(requested)))fixed="";
+        if(choices.isEmpty()&&!secondarySlot)throw new IllegalStateException("중복 제한으로 봇이 사용할 주무기가 없습니다.");
         var options=choices.stream().map(w->{
             var stack=w.stack();boolean melee=BotManager.melee(stack),held=BotManager.held(stack);
             var data=stack.is(Items.BOW)?BotWeaponData.BOW:BotWeaponData.read(stack);

@@ -55,6 +55,7 @@ public final class PropRenderer extends EntityRenderer<PropEntity> {
             painting.setPos(entity.position());
             mc.getEntityRenderDispatcher().getRenderer(painting).render(painting,entity.rotation()*90,partial,pose,buffers,light);
         }else{
+            if(entity.item().equals("gungang:dried_ghast"))pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(180-net.minecraft.util.Mth.rotLerp(partial,entity.yRotO,entity.getYRot())));
             pose.translate(-.5,0,-.5);
             // Slightly larger than a block around its centre, so where a disguise overlaps world blocks
             // (a sunk health pack in the floor, a prop against a wall) the disguise's faces win the depth test.

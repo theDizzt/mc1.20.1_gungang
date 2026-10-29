@@ -23,11 +23,29 @@ class EscortGameTest {
         for(int i=0;i<199;i++)game.tick(0,false);assertEquals(3,game.distance,1e-8);game.tick(0,false);assertTrue(game.distance<3);
         game.completed=1;game.distance=5.1;for(int i=0;i<200;i++)game.tick(0,false);assertEquals(5,game.distance,1e-8);
     }
-    @Test void defendersAlonePushBackAtBaseSpeedToStart(){
-        var game=new EscortGame(rules(),240,10,List.of(5d));game.completed=1;game.distance=5.02;
-        game.tick(0,true);assertEquals("REVERSE",game.motion);assertEquals(0,game.multiplier,1e-8);assertEquals(4.97,game.distance,1e-8);
-        for(int i=0;i<200;i++)game.tick(0,true);assertEquals(0,game.distance,1e-8);assertEquals(1,game.completed,"Passed checkpoints stay earned");
+    @Test void defendersAlonePushBackAtBaseSpeedToStartBeforeAnyCheckpoint(){
+        var game=new EscortGame(rules(),240,10,List.of(5d));game.distance=1;
+        game.tick(0,true);assertEquals("REVERSE",game.motion);assertEquals(0,game.multiplier,1e-8);assertEquals(.95,game.distance,1e-8);
+        for(int i=0;i<30;i++)game.tick(0,true);assertEquals(0,game.distance,1e-8);assertEquals(0,game.completed);
         game.distance=1;game.tick(1,true);assertEquals(1,game.distance,1e-8);assertEquals("CONTESTED",game.motion);
+    }
+    @Test void defendersCannotReversePastMostRecentlyPassedCheckpoint(){
+        var game=new EscortGame(rules(),240,10,List.of(2d,5d,8d));
+        for(int checkpoint=0;checkpoint<3;checkpoint++){
+            double at=game.checkpoints.get(checkpoint);
+            game.distance=at-.02;game.tick(1,false);
+            assertEquals(checkpoint+1,game.completed);
+            while(game.stopTicks>0)game.tick(0,true);
+            game.tick(1,false);game.tick(1,false);
+            assertEquals(at+.1,game.distance,1e-8);
+            game.tick(0,true);assertEquals(at+.05,game.distance,1e-8);assertEquals("REVERSE",game.motion);
+            game.distance=at+.02;game.tick(0,true);assertEquals(at,game.distance,1e-8,"Clamp even when one reverse step overshoots");
+            int time=game.remainingTicks;
+            for(int i=0;i<40;i++)game.tick(0,true);
+            assertEquals(at,game.distance,1e-8);assertNotEquals("REVERSE",game.motion);
+            game.tick(1,false);assertTrue(game.distance>at);assertEquals(checkpoint+1,game.completed);
+            assertEquals(time-41,game.remainingTicks,"Moving forward again must not award the checkpoint bonus twice");
+        }
     }
     @Test void finalArrivalWinsAndTimeoutDefends(){
         var attack=new EscortGame(rules(),1,10,List.of(5d));attack.completed=1;attack.distance=9.99;attack.remainingTicks=1;attack.tick(1,false);assertEquals("ALPHA",attack.winner);

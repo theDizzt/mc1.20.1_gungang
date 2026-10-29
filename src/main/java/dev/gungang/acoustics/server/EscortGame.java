@@ -21,6 +21,7 @@ public final class EscortGame {
     public void tick(int attackers,boolean defenders){
         if(!winner.isEmpty())return;
         motion="STOP";multiplier=0;
+        double floor=completed==0?0:checkpoints.get(completed-1);
         if(stopTicks>0){
             motion="CHECKPOINT";
             --stopTicks;
@@ -33,13 +34,12 @@ public final class EscortGame {
                 remainingTicks+=rules.checkpointBonusSeconds()*20;
             }
             if(distance>=length){winner="ALPHA";return;}
-        } else if(defenders&&attackers==0&&distance>0){
-            // Defenders alone push the cart back at base speed (never multiplied), past checkpoints down to the start.
+        } else if(defenders&&attackers==0&&distance>floor){
+            // Defenders push at base speed, but cannot undo the most recently earned checkpoint.
             idleTicks++;motion="REVERSE";
-            distance=Math.max(0,distance-rules.speed()/20);
+            distance=Math.max(floor,distance-rules.speed()/20);
         } else {
             if(attackers>0)idleTicks=0;else idleTicks++;
-            double floor=completed==0?0:checkpoints.get(completed-1);
             if(!defenders&&attackers==0&&idleTicks>=rules.rollbackDelaySeconds()*20&&rules.rollbackSections().contains(completed)&&distance>floor&&rules.rollbackSpeed()>0){
                 distance=Math.max(floor,distance-rules.speed()/20);motion="REVERSE"; // reverse is always 1.0x forward speed
             }else if(defenders)motion="CONTESTED";
