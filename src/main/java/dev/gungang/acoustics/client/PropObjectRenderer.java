@@ -22,7 +22,7 @@ final class PropObjectRenderer {
         var info=mc.getConnection()==null?null:mc.getConnection().getPlayerInfo(prop.skin());boolean slim=info!=null&&info.getModelName().equals("slim");
         var model=new net.minecraft.client.model.PlayerModel<PropEntity>(mc.getEntityModels().bakeLayer(slim?net.minecraft.client.model.geom.ModelLayers.PLAYER_SLIM:net.minecraft.client.model.geom.ModelLayers.PLAYER),slim);
         var texture=MatchHud.skin(prop.skin().toString());
-        pose.pushPose();pose.mulPose(Axis.YP.rotationDegrees(180-prop.rotation()*90));pose.scale(-1,-1,1);pose.translate(0,-1.501,0);
+        pose.pushPose();pose.mulPose(Axis.YP.rotationDegrees(180-net.minecraft.util.Mth.rotLerp(partial,prop.yRotO,prop.getYRot())));pose.scale(-1,-1,1);pose.translate(0,-1.501,0);
         int mode=prop.mode();model.leftArm.zRot=mode==1?-1.57f:mode==2?-.8f:0;model.rightArm.zRot=mode==1?1.57f:mode==2?.8f:0;
         if(mode==3){model.leftArm.xRot=-2.6f;model.rightArm.xRot=-2.6f;}
         if(mode==4){model.leftLeg.xRot=-1.5f;model.rightLeg.xRot=-1.5f;model.leftArm.xRot=-.7f;model.rightArm.xRot=-.7f;}

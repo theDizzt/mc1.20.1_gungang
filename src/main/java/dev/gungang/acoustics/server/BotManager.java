@@ -198,6 +198,9 @@ public final class BotManager {
                 .filter(w->{var stack=w.stack();return stack.is(Items.BOW)||BotGun.supports(stack);}).findFirst()
                 .orElseThrow(()->new IllegalArgumentException("봇 주무기는 TaCZ 총기 또는 minecraft:bow여야 합니다. /gungang bot weapon <주무기 ID>"));
     }
+    static boolean weaponTaken(UUID player,String team,boolean primary,String id){
+        return agents.stream().anyMatch(a->!a.id.equals(player)&&a.team.equals(team)&&(primary?a.weapon:a.secondary)!=null&&(primary?a.weapon:a.secondary).id().equals(id));
+    }
     static void prepare(MinecraftServer s,ArenaMap map){
         close();server=s;arena=map;workNanos=workSamples=maxWorkNanos=0;
         if(added())try{activate();}catch(Exception error){fail(error);}

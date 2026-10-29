@@ -30,10 +30,11 @@ public final class LobbyClient {
         Minecraft mc = Minecraft.getInstance();
         if(mc.level!=null&&(previousOptions.color("ALPHA")!=options.color("ALPHA")||previousOptions.color("BRAVO")!=options.color("BRAVO")))mc.levelRenderer.allChanged();
         if (!state.enabled() || !state.phase().equals("LOBBY")) {
-            if (mc.screen instanceof LobbyScreen) mc.setScreen(null);
+            if (mc.screen instanceof LobbyScreen||mc.screen instanceof GameOptionsScreen) mc.setScreen(null);
             return;
         }
-        if (mc.screen instanceof LobbyScreen screen) screen.update(state);
+        if (mc.screen instanceof GameOptionsScreen screen) screen.update(state);
+        else if (mc.screen instanceof LobbyScreen screen) screen.update(state);
         else if (state.show()) mc.setScreen(new LobbyScreen(state));
     }
     public static void equipment(String json) {

@@ -44,7 +44,15 @@ public final class LobbyUiSmokeChecks {
                     for(var child:screen.children())if(child instanceof net.minecraft.client.gui.components.Button b)
                         if(b.getX()<0||b.getY()<0||b.getX()+b.getWidth()>320||b.getY()+b.getHeight()>240)throw new AssertionError("Widget outside compact viewport");
                     stage=4;ticks=0;
-                }else{System.out.println("GUNGANG_LOBBY_UI_PASS missions disabled_modes independent_scroll roster_end compact_layout");mc.stop();}
+                }else if(stage==4){
+                    var state=new LobbySnapshot(true,true,true,"test","01","LOBBY",0,List.of(),List.of(),TeamOptions.defaults(),"PROP_HUNT");
+                    mc.setScreen(new GameOptionsScreen(state));stage=5;ticks=0;
+                }else if(stage==5){
+                    mc.screen.resize(mc,320,240);
+                    for(var child:mc.screen.children())if(child instanceof net.minecraft.client.gui.components.AbstractWidget widget)
+                        if(widget.getX()<0||widget.getY()<0||widget.getX()+widget.getWidth()>320||widget.getY()+widget.getHeight()>240)throw new AssertionError("Options widget outside compact viewport");
+                    stage=6;ticks=0;
+                }else{System.out.println("GUNGANG_LOBBY_UI_PASS missions disabled_modes independent_scroll roster_end compact_layout game_options");mc.stop();}
             }
         }catch(Throwable error){error.printStackTrace();System.out.println("GUNGANG_LOBBY_UI_FAIL");mc.stop();}
     }

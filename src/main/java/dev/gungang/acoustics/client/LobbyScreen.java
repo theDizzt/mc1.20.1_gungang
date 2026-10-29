@@ -87,8 +87,9 @@ final class LobbyScreen extends ArenaScreen {
         button("관전",x+third+4,y,third,h,editable&&!picked.bot(),MUTED,()->LobbyClient.action("team","SPECTATOR",target));
         colorButton("브라보",x+(third+4)*2,y,w-(third+4)*2,h,editable,LobbyClient.options.color("BRAVO"),()->LobbyClient.action("team","BRAVO",target));
         y+=22;
-        button(maps?"미리보기로":"맵 선택",x,y,half,h,true,ACCENT,()->{maps=!maps;draggingPreview=false;rebuildWidgets();});
-        button("랜덤 팀 배치",x+half+4,y,w-half-4,h,admin(),MUTED,()->LobbyClient.action("random","",""));
+        button(maps?"미리보기":"맵 선택",x,y,third,h,true,ACCENT,()->{maps=!maps;draggingPreview=false;rebuildWidgets();});
+        button("팀 섞기",x+third+4,y,third,h,admin(),MUTED,()->LobbyClient.action("random","",""));
+        button("게임 옵션",x+(third+4)*2,y,w-(third+4)*2,h,true,ACCENT,()->minecraft.setScreen(new GameOptionsScreen(state)));
         y+=22;modeButtons(x,y,w);y+=modeHeight()+4;
         boolean bots=admin()&&state.botEnabled()&&"DEATHMATCH".equals(state.selectedMode());
         button("봇 + "+state.botCount()+"/"+state.botMax(),x,y,half,h,bots&&state.botCount()<state.botMax(),MUTED,()->LobbyClient.action("botAdd","",""));
@@ -201,7 +202,8 @@ final class LobbyScreen extends ArenaScreen {
         String weather=switch(m.weather()==null?"clear":m.weather()){case "rain"->"비";case "snow"->"눈";case "fog"->"안개";default->"맑음";};String time=switch(m.timeOfDay()==null?"day":m.timeOfDay()){case "dawn"->"새벽";case "dusk"->"해질녘";case "night"->"밤";default->"낮";};
         int chipX=b.x+6;chipX+=badge(g,weather,chipX,infoY-2,MUTED)+3;chipX+=badge(g,time,chipX,infoY-2,MUTED)+6;
         text(g,"휠 확대 / 드래그 이동",chipX,infoY,b.right()-6-chipX,DIM);
-        String description=selected&&"DEATHMATCH".equals(state.selectedMode())?state.options().deathmatch().timeLimitSeconds()+"초 · 목표 "+state.options().deathmatch().winningKills()+"킬":m.description();
+        var rules=state.options().game().deathmatch(state.options().deathmatch());
+        String description=selected&&"DEATHMATCH".equals(state.selectedMode())?rules.timeLimitSeconds()+"초 · 목표 "+rules.winningKills()+"킬":m.description();
         int y=infoY+13;for(var line:font.split(Component.literal(description==null?"":description),Math.max(1,b.w-12))){if(y+9>b.bottom()-17)break;g.drawString(font,line,b.x+6,y,MUTED,false);y+=11;}
         text(g,m.releaseDate()==null||m.releaseDate().isEmpty()?"맵 선택 → 맵 적용으로 경기 맵 변경":"출시 "+ReleaseDateText.format(m.releaseDate()),b.x+6,b.bottom()-12,b.w-12,DIM);
     }

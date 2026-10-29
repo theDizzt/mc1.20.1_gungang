@@ -3,10 +3,12 @@ package dev.gungang.acoustics.server;
 import net.minecraft.ChatFormatting;
 
 /** RGB colors shared by server configuration and client snapshots. */
-public record TeamOptions(String alphaColor, String bravoColor, Integer respawnSeconds, DeathmatchRules deathmatch,ExperienceRules experience) {
+public record TeamOptions(String alphaColor, String bravoColor, Integer respawnSeconds, DeathmatchRules deathmatch,ExperienceRules experience,GameOptions game) {
+    public TeamOptions(String alphaColor,String bravoColor,Integer respawnSeconds,DeathmatchRules deathmatch,ExperienceRules experience){this(alphaColor,bravoColor,respawnSeconds,deathmatch,experience,GameOptions.defaults());}
     public TeamOptions(String alphaColor,String bravoColor,Integer respawnSeconds) {this(alphaColor,bravoColor,respawnSeconds,DeathmatchRules.defaults(),ExperienceRules.defaults());}
     public static TeamOptions defaults() { return new TeamOptions("#FF5555", "#5555FF", 5); }
     public TeamOptions {
+        if(game==null)game=GameOptions.defaults();
         if(deathmatch==null)deathmatch=DeathmatchRules.defaults();
         if(experience==null)experience=ExperienceRules.defaults();
         alphaColor = checked(alphaColor, "#FF5555");

@@ -91,6 +91,7 @@ public final class SecondaryRuntime {
     public static void requestedCooldown() { var scope=CURRENT.get();if(scope!=null)scope.consumed=true; }
     @SuppressWarnings("unchecked")
     public static void registerTacz() {
+        PropAwn.registerReload();
         for(String name:List.of("GunFireEvent","GunMeleeEvent"))try {
             Class<net.minecraftforge.eventbus.api.Event> type=(Class<net.minecraftforge.eventbus.api.Event>)Class.forName("com.tacz.guns.api.event.common."+name);
             var shooter=type.getMethod("getShooter");var item=type.getMethod("getGunItemStack");
@@ -98,6 +99,12 @@ public final class SecondaryRuntime {
                 try {
                     if(shooter.invoke(event) instanceof Player player&&(FreeForAllMatch.blocked(player)||CombatGadgets.holdingShield(player)||SurvivalGadgets.jetting(player)||GadgetManager.placing(player))) {if(event.isCancelable())event.setCanceled(true);return;}
                     if(shooter.invoke(event) instanceof Player player&&item.invoke(event) instanceof ItemStack stack&&secondary(stack)) {
+                        if(PropAwn.is(stack)){
+                            var match=MatchManager.propHunt();
+                            if(name.equals("GunMeleeEvent")||!ready(player,stack)||player instanceof net.minecraft.server.level.ServerPlayer&&(match==null||!match.hunting()||!match.participant(player.getUUID())||match.hider(player.getUUID())||match.frozen(player.getUUID()))){if(event.isCancelable())event.setCanceled(true);}
+                            else PropAwn.fired(player,stack);
+                            return;
+                        }
                         if(!ready(player,stack)) {if(event.isCancelable())event.setCanceled(true);}
                         else commit(player,stack);
                     }

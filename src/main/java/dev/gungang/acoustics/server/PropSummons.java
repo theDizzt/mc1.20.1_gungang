@@ -37,7 +37,7 @@ public final class PropSummons {
         if(!mob.isAlive()){mob.discard();return;}
         boolean bee=mob instanceof Bee;
         boolean hiding=match.hiding();
-        if((!match.hunting()&&!(bee&&hiding))||GimmickEpoch.get((ServerLevel)mob.level()).generation!=mob.getPersistentData().getLong("PropEpoch")){mob.discard();return;}
+        if((!match.hunting()&&!hiding)||GimmickEpoch.get((ServerLevel)mob.level()).generation!=mob.getPersistentData().getLong("PropEpoch")){mob.discard();return;}
         var target=match.hunting()?match.seekers().stream().filter(p->p.level()==mob.level()&&p.distanceToSqr(mob)<48*48&&(!bee||p.distanceToSqr(orbit)<=16*16)).min(Comparator.comparingDouble(p->p.distanceToSqr(mob))).orElse(null):null;
         if(bee&&target==null&&mob.distanceToSqr(orbit)>12*12)mob.setPos(orbit.add(Math.cos(index*2.1)*1.8,1.2,Math.sin(index*2.1)*1.8));
         Vec3 goal=target==null?orbit:target.position().add(0,bee?1:0,0);

@@ -42,6 +42,20 @@ final class PropExpansionChecks {
                 match.action(a,"charge");match.action(a,"jump");check(Math.abs(a.getDeltaMovement().y-MotionRules.jumpVelocity(((JumpPadBlock)pad).height))<1e-6&&a.getPersistentData().getBoolean("GunGangPadJump"),"Disguised charged jump uses installed pad and fall protection");counter.setInt(server,server.getTickCount()+20);
             }a.serverLevel().setBlock(padPos,Blocks.AIR.defaultBlockState(),3);a.getPersistentData().remove("GunGangPadJump");a.setPos(.5,100,.5);
             prop=as(match,a,"minecraft:minecart");a.setYRot(137);match.abilities.tick(a,prop);check(prop.getYRot()==137,"Minecart follows continuous player yaw");
+            for(String item:List.of("gungang:mannequin","gungang:dried_ghast")){
+                counter.setInt(server,server.getTickCount()+2);
+                prop=as(match,a,item);a.setYRot(73);match.abilities.tick(a,prop);check(prop.getYRot()==73,"Disguise follows view: "+item);
+                match.action(a,"lock");a.setYRot(151);match.abilities.tick(a,prop);check(prop.getYRot()==73,"Locked disguise preserves yaw: "+item);match.unlock(a);
+            }
+            var seekerMode=b.gameMode.getGameModeForPlayer();b.setGameMode(net.minecraft.world.level.GameType.SPECTATOR);
+            try{
+                check(match.seekers().isEmpty(),"No active seeker for summon checks");
+                for(String item:List.of("minecraft:spawner","minecraft:bee_nest","minecraft:infested_stone")){
+                    prop=as(match,a,item);match.abilities.use(a,prop);match.abilities.tick(a,prop);
+                    int count=item.equals("minecraft:spawner")?1:3;check(mobs(a).size()==count,"Summons survive without seekers: "+item);
+                    match.abilities.use(a,prop);match.abilities.tick(a,prop);check(mobs(a).size()==count,"No duplicate idle summons: "+item);
+                }
+            }finally{b.setGameMode(seekerMode);}
             prop=as(match,a,"minecraft:fire");b.setPos(a.position());b.invulnerableTime=0;b.setHealth(100);match.abilities.tick(a,prop);check(b.getHealth()==50&&b.getRemainingFireTicks()>=199,"Fire 50 damage plus ten seconds");b.clearFire();
             prop=as(match,a,"minecraft:oak_sign");match.abilities.use(a,prop);check(!prop.text().isEmpty(),"Sign randomized text");
             prop=as(match,a,"minecraft:end_crystal");b.setPos(a.position().add(5,0,0));b.invulnerableTime=0;b.setHealth(100);match.abilities.use(a,prop);for(int i=0;i<20;i++)match.abilities.tick(a,prop);check(b.getHealth()==50&&match.abilities.remaining(a.getUUID())==600,"Crystal homing impact and cooldown");
