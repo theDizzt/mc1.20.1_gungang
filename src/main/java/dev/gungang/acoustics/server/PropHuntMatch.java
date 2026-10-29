@@ -17,6 +17,21 @@ import net.minecraftforge.eventbus.api.*;
 
 @net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid=dev.gungang.acoustics.GungangAcoustics.ID)
 public final class PropHuntMatch {
+    final PropAbilities abilities=new PropAbilities(this);
+    int now(){return server.getTickCount();}
+    boolean hunting(){return !reviewing&&phase()==PropHuntGame.Phase.HUNTING;}
+    boolean hiding(){return !reviewing&&phase()==PropHuntGame.Phase.HIDING;}
+    List<ServerPlayer> players(){return members.keySet().stream().map(id->server.getPlayerList().getPlayer(id)).filter(Objects::nonNull).toList();}
+    List<ServerPlayer> seekers(){return players().stream().filter(p->!hider(p.getUUID())&&!frozen(p.getUUID())&&p.isAlive()&&!p.isSpectator()).toList();}
+    boolean locked(UUID id){var m=members.get(id);return m!=null&&m.fixed;}
+    void unlock(ServerPlayer p){var m=members.get(p.getUUID());if(m!=null){home(p,m);m.fixed=false;m.charge=-1;}}
+    void relocate(ServerPlayer p,Vec3 to){unlock(p);p.teleportTo(p.serverLevel(),to.x,to.y,to.z,p.getYRot(),p.getXRot());var prop=prop(p.getUUID());if(prop!=null)prop.setPos(to);}
+    Vec3 randomMapPosition(ServerPlayer p){
+        if(map!=null&&map.previewArea()!=null){var a=map.previewArea();return new Vec3(a.minX()+random.nextDouble()*(a.maxX()-a.minX()+1),a.minY()+random.nextDouble()*(a.maxY()-a.minY()+1),a.minZ()+random.nextDouble()*(a.maxZ()-a.minZ()+1));}
+        var a=map==null?null:map.alphaSpawn();var b=map==null?null:map.bravoSpawn();
+        double x=a==null?p.getX():a.x(),z=a==null?p.getZ():a.z(),bx=b==null?x:b.x(),bz=b==null?z:b.z();
+        return new Vec3(Math.min(x,bx)-24+random.nextDouble()*(Math.abs(x-bx)+48),p.getY()-8+random.nextDouble()*24,Math.min(z,bz)-24+random.nextDouble()*(Math.abs(z-bz)+48));
+    }
     private static final class Member {
         final UUID id;final String name,team;final boolean invisible;final double health;
         PropEntity prop;boolean fixed;Vec3 anchor;float yaw,pitch;int waiting,charge=-1,hazard,horn,blast,shot;
@@ -95,6 +110,7 @@ public final class PropHuntMatch {
         p.setCamera(p);p.setGameMode(GameType.ADVENTURE);equip(p);p.refreshDimensions();sync();
     }
     private void stop(ServerPlayer p){
+        abilities.remove(p);
         var m=members.remove(p.getUUID());if(m==null)return;
         home(p,m);if(m.prop!=null){PropInteraction.remove(m.prop);m.prop.discard();}
         game.remove(m.id);items.remove(m.id);var s=saved.remove(m.id);
@@ -109,7 +125,7 @@ public final class PropHuntMatch {
     @SubscribeEvent public static void stopping(net.minecraftforge.event.server.ServerStoppingEvent e){endTest();}
     public boolean participant(UUID id){return members.containsKey(id);}
     public boolean hider(UUID id){var m=members.get(id);return m!=null&&m.team.equals("ALPHA");}
-    public boolean frozen(UUID id){var m=members.get(id);return m!=null&&!reviewing&&(m.fixed||m.waiting>server.getTickCount()||m.team.equals("BRAVO")&&phase()==PropHuntGame.Phase.HIDING);}
+    public boolean frozen(UUID id){var m=members.get(id);return m!=null&&!reviewing&&(m.fixed||abilities.stunned(id)||m.waiting>server.getTickCount()||m.team.equals("BRAVO")&&phase()==PropHuntGame.Phase.HIDING);}
     public void equip(ServerPlayer p){
         var m=members.get(p.getUUID());if(m==null)return;
         LobbyManager.clearPlayerInventory(p);LoadoutAttributes.clear(p);SecondaryRuntime.clear(p);
@@ -127,11 +143,12 @@ public final class PropHuntMatch {
         String item=test?items.get(m.id):PropCatalog.variant(game.draw(),random);
         m.prop=PropEntity.TYPE.get().create(p.serverLevel());m.prop.setup(m.id,item,random.nextInt(26));m.prop.setPos(m.fixed?m.anchor:p.position());
         p.serverLevel().addFreshEntity(m.prop);
+        abilities.initialize(p,m.prop);
         p.refreshDimensions();
         if(m.watching==null)unstick(p);
         if(m.fixed&&m.watching==null)m.anchor=p.position();
         if(sunk)p.sendSystemMessage(Component.literal("블록이 바뀌어 생명력 팩 매설이 풀렸습니다."));
-        p.displayClientMessage(Component.literal("변신: ").append(new ItemStack(net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(PropCatalog.id(item))).getHoverName()).append(" ["+PropCatalog.number(item)+"]"),true);
+        p.displayClientMessage(Component.literal("변신: ").append(PropCatalog.name(item,m.prop.state())).append(" ["+PropCatalog.number(item)+"]"),true);
         m.hazard=server.getTickCount()+80;
     }
     public void tick(){
@@ -140,6 +157,7 @@ public final class PropHuntMatch {
         for(var m:members.values())if(m.prop!=null)((ServerLevel)m.prop.level()).getChunkSource().addRegionTicket(net.minecraft.server.level.TicketType.POST_TELEPORT,new net.minecraft.world.level.ChunkPos(m.prop.blockPosition()),2,m.prop.getId());
         boolean change=!test&&game.tick();
         if(phase()==PropHuntGame.Phase.REVIEW&&!reviewing){
+            abilities.clear();PropSummons.clear(server);
             reviewing=true;
             for(var m:members.values()){if(m.prop!=null)mark(m);var p=server.getPlayerList().getPlayer(m.id);if(p!=null){rush(p,false);p.removeEffect(MobEffects.BLINDNESS);p.setCamera(p);p.setGameMode(GameType.SPECTATOR);p.sendSystemMessage(Component.literal(""+game.winner()+" 승리! 30초 동안 숨었던 위치를 둘러보세요."));}}
         }
@@ -154,7 +172,7 @@ public final class PropHuntMatch {
                 if(change)change(p,m);
                 if(m.watching!=null){var camera=camera(m.watching);if(camera==null)home(p,m);else if(p.getCamera()!=camera)p.setCamera(camera);}
                 if(m.fixed&&m.watching==null){hold(p,m.anchor,m.yaw,m.pitch);}
-                if(m.prop!=null){p.setAirSupply(p.getMaxAirSupply());m.prop.setPos(spot(m,p));if(m.fixed)look(m);submerge(m.prop);hazards(p,m);}
+                if(m.prop!=null){p.setAirSupply(p.getMaxAirSupply());m.prop.setPos(spot(m,p));if(m.fixed)look(m);submerge(m.prop);hazards(p,m);abilities.tick(p,m.prop);}
             }else{
                 rush(p,rush);
                 if(phase()==PropHuntGame.Phase.HIDING||m.waiting>server.getTickCount()){
@@ -172,6 +190,7 @@ public final class PropHuntMatch {
                 p.getInventory().selected=0;
             }
         }
+        abilities.orphanTick();
         if(server.getTickCount()%4==0)sync();
     }
     /** A bigger new disguise must not start inside walls or the floor: step aside, or failing that, up onto free space. */
@@ -189,6 +208,7 @@ public final class PropHuntMatch {
     private void hazards(ServerPlayer owner,Member m){
         if(phase()!=PropHuntGame.Phase.HUNTING)return;
         var prop=m.prop;String id=prop.item();
+        if(Set.of("minecraft:nether_portal","minecraft:fire","minecraft:soul_fire","minecraft:torchflower","minecraft:minecart").contains(id))return;
         if(prop.state().getBlock() instanceof NozzleBlock nozzle){
             // Spray particles keep running; only seekers in the column are affected (acid: 50 per second, water: puts out fire).
             nozzle.particles(owner.serverLevel(),prop.blockPosition());
@@ -229,7 +249,7 @@ public final class PropHuntMatch {
         var direct=source.getDirectEntity();
         if(direct==null||!direct.getClass().getName().equals("com.tacz.guns.entity.EntityKineticBullet")||!shooter.getMainHandItem().getOrCreateTag().getBoolean("GunGangPropShotgun"))return false;
         var p=server.getPlayerList().getPlayer(prop.owner());if(p==null)return false;
-        if(p.getHealth()<=amount)eliminate(p,shooter);else p.setHealth(p.getHealth()-amount);
+        if(p.getHealth()<=amount)eliminate(p,shooter);else {p.setHealth(p.getHealth()-amount);abilities.struck(p,prop);}
         if(prop.item().equals("gungang:gas_barrel")){
             var m=members.get(prop.owner());if(server.getTickCount()>=m.hazard){m.hazard=server.getTickCount()+100;explode(prop,GimmickConfig.gas.radius());}
         }
@@ -263,6 +283,7 @@ public final class PropHuntMatch {
         if(test){p.sendSystemMessage(Component.literal("[테스트] "+(m.team.equals("ALPHA")?"발견됨":"쓰러짐")+" · 체력을 회복하고 계속합니다."));return;}
         p.setCamera(p);
         if(m.team.equals("ALPHA")){
+            abilities.found(p,m.prop);
             if(!game.eliminate(m.id,killer==null?null:killer.getUUID()))return;
             // A found gas barrel or TNT goes off where it stood.
             if(m.prop!=null&&(m.prop.item().equals("gungang:gas_barrel")||m.prop.item().equals("minecraft:tnt"))){
@@ -275,10 +296,10 @@ public final class PropHuntMatch {
         }
         sync();
     }
-    private void mark(Member m){m.prop.setGlowingTag(true);m.prop.setCustomName(Component.literal(m.name));m.prop.setCustomNameVisible(true);}
+    private void mark(Member m){m.prop.markFound();m.prop.setCustomName(Component.literal(m.name));m.prop.setCustomNameVisible(true);}
     public void leave(ServerPlayer p){if(test){test(p,null,"");return;}var m=members.get(p.getUUID());if(m==null)return;if(hider(m.id)){game.eliminate(m.id,null);if(m.prop!=null)mark(m);}restore(p,m);}
-    private void restore(ServerPlayer p,Member m){rush(p,false);p.setInvisible(m.invisible);p.removeEffect(MobEffects.BLINDNESS);p.getAttribute(Attributes.MAX_HEALTH).setBaseValue(m.health);p.setHealth(Math.min(p.getHealth(),p.getMaxHealth()));}
-    public void close(){arrows.forEach(net.minecraft.world.entity.Entity::discard);arrows.clear();if(test){for(var id:List.copyOf(members.keySet())){var p=server.getPlayerList().getPlayer(id);if(p!=null)stop(p);}return;}reviewing=true;PropInteraction.clear();for(var m:members.values()){if(m.prop!=null)m.prop.discard();var p=server.getPlayerList().getPlayer(m.id);if(p!=null){restore(p,m);p.refreshDimensions();}}for(var p:server.getPlayerList().getPlayers())GungangNetwork.send(p,new GungangNetwork.PropHunt(ServerFiles.GSON.toJson(new PropHuntSnapshot(false,"",0,0,List.of()))));}
+    private void restore(ServerPlayer p,Member m){abilities.remove(p);rush(p,false);p.setInvisible(m.invisible);p.removeEffect(MobEffects.BLINDNESS);p.getAttribute(Attributes.MAX_HEALTH).setBaseValue(m.health);p.setHealth(Math.min(p.getHealth(),p.getMaxHealth()));}
+    public void close(){abilities.clear();PropSummons.clear(server);arrows.forEach(net.minecraft.world.entity.Entity::discard);arrows.clear();if(test){for(var id:List.copyOf(members.keySet())){var p=server.getPlayerList().getPlayer(id);if(p!=null)stop(p);}return;}reviewing=true;PropInteraction.clear();for(var m:members.values()){if(m.prop!=null)m.prop.discard();var p=server.getPlayerList().getPlayer(m.id);if(p!=null){restore(p,m);p.refreshDimensions();}}for(var p:server.getPlayerList().getPlayers())GungangNetwork.send(p,new GungangNetwork.PropHunt(ServerFiles.GSON.toJson(new PropHuntSnapshot(false,"",0,0,List.of()))));}
     public List<MatchSnapshot.Row> rows(List<MatchSnapshot.Row> original){return original.stream().map(r->new MatchSnapshot.Row(r.id(),r.name(),r.team(),game.found(UUID.fromString(r.id())),r.deaths(),r.assists(),r.damage(),game.hidden(UUID.fromString(r.id())))).toList();}
     public void action(ServerPlayer p,String action){
         var m=members.get(p.getUUID());if(m==null||!hider(m.id)||!game.alive(m.id)||reviewing)return;
@@ -290,11 +311,11 @@ public final class PropHuntMatch {
             case "home"->home(p,m);
             case "rotate"->{if(!m.fixed&&m.prop!=null){m.prop.rotate();p.refreshDimensions();}}
             case "snap"->{if(!m.fixed)snap(p);}
-            case "interact"->{if(m.prop!=null&&m.watching==null&&m.prop.item().equals("minecraft:dispenser"))fire(p,m);else if(m.prop!=null&&m.watching==null&&explosive(m.prop.item()))blast(p,m);else if(m.prop!=null&&m.watching==null){PropInteraction.use(p,m.prop);if(m.prop.healthPack()){m.prop.setPos(spot(m,p));p.displayClientMessage(Component.literal(m.prop.sunk()?"생명력 팩: 바닥 아래로 들어갔습니다 · E로 나오기":"생명력 팩: 바닥 위로 나왔습니다 · E로 들어가기"),true);}p.refreshDimensions();}}
+            case "interact"->{if(m.prop!=null&&m.watching==null&&abilities.use(p,m.prop)){m.prop.setPos(spot(m,p));p.refreshDimensions();}else if(m.prop!=null&&m.watching==null&&m.prop.item().equals("minecraft:dispenser"))fire(p,m);else if(m.prop!=null&&m.watching==null&&explosive(m.prop.item()))blast(p,m);else if(m.prop!=null&&m.watching==null){PropInteraction.use(p,m.prop);if(m.prop.healthPack()){m.prop.setPos(spot(m,p));p.displayClientMessage(Component.literal(m.prop.sunk()?"생명력 팩: 바닥 아래로 들어갔습니다 · E로 나오기":"생명력 팩: 바닥 위로 나왔습니다 · E로 들어가기"),true);}p.refreshDimensions();}}
             case "charge"->{if(!m.fixed&&p.onGround())m.charge=server.getTickCount();}
             case "cancelCharge"->m.charge=-1;
             case "horn"->horn(m);
-            case "jump"->{if(!m.fixed&&p.onGround()&&m.charge>=0){p.setDeltaMovement(p.getDeltaMovement().x,PropHuntGame.jumpVelocity(server.getTickCount()-m.charge),p.getDeltaMovement().z);p.hurtMarked=true;}m.charge=-1;}
+            case "jump"->{if(!m.fixed&&p.onGround()&&m.charge>=0){p.setDeltaMovement(p.getDeltaMovement().x,PropSurfacePhysics.jump(p,PropHuntGame.jumpVelocity(server.getTickCount()-m.charge)),p.getDeltaMovement().z);p.hurtMarked=true;}m.charge=-1;}
         }
         sync();
     }
@@ -370,7 +391,7 @@ public final class PropHuntMatch {
         p.displayClientMessage(Component.literal("폭발! 30초 후 다시 사용할 수 있습니다."),true);
     }
     /** Where the disguise stands: the owner (or the locked anchor), one block lower for a sunk health pack. */
-    private static Vec3 spot(Member m,ServerPlayer p){var base=m.fixed?m.anchor:p.position();return m.prop!=null&&m.prop.sunk()?base.add(0,-1,0):base;}
+    private static Vec3 spot(Member m,ServerPlayer p){var base=m.fixed?m.anchor:p.position();return m.prop!=null?base.add(0,-m.prop.sinkDepth(),0):base;}
     /** A locked disguise faces the owner's locked view, so a camera on it sees what the owner saw. */
     private static void look(Member m){m.prop.setYRot(m.yaw);m.prop.setYHeadRot(m.yaw);m.prop.setYBodyRot(m.yaw);m.prop.setXRot(m.pitch);}
     private void snap(ServerPlayer p){
@@ -412,10 +433,14 @@ public final class PropHuntMatch {
             boolean see=hider(viewer.getUUID())||reviewing||!participant(viewer.getUUID());var rows=new ArrayList<PropHuntSnapshot.Row>();
             for(var m:members.values()){
                 boolean found=hider(m.id)&&!game.alive(m.id),visible=see||found;
-                rows.add(new PropHuntSnapshot.Row(m.id.toString(),m.name,m.team,visible&&m.prop!=null?m.prop.item():"",visible&&m.prop!=null?Block.getId(m.prop.state()):0,m.prop==null?-1:m.prop.getId(),found,m.fixed,game.hidden(m.id),game.found(m.id)));
+                rows.add(new PropHuntSnapshot.Row(m.id.toString(),m.name,m.team,visible&&m.prop!=null?m.prop.item():"",visible&&m.prop!=null?Block.getId(m.prop.state()):0,m.prop==null?-1:m.prop.getId(),found,m.fixed,game.hidden(m.id),game.found(m.id),visible?abilityRemaining(m):0,m.prop==null?0:PropAbilities.cooldown(m.prop.item()),visible?abilities.active(m.id):0,visible?abilities.mobHealth(m.id):0,visible?abilities.mobMaximum(m.id):0,abilities.stunned(m.id)));
             }
             GungangNetwork.send(viewer,new GungangNetwork.PropHunt(ServerFiles.GSON.toJson(new PropHuntSnapshot(true,phase().name(),test?0:(game.remaining()+19)/20,test?0:(game.nextChange()+19)/20,rows,test?0:(game.huntRemaining()+19)/20,!test&&game.finalMinute()))));
         }
+    }
+    private int abilityRemaining(Member m){
+        if(m.prop==null)return 0;String item=m.prop.item();
+        return Math.max(0,item.equals("minecraft:dispenser")?m.shot-now():explosive(item)?m.blast-now():m.prop.healthPack()?m.hazard-now():abilities.remaining(m.id));
     }
     @SubscribeEvent(priority=EventPriority.HIGHEST) public static void death(net.minecraftforge.event.entity.living.LivingDeathEvent e){var m=MatchManager.propHunt();if(m!=null&&e.getEntity() instanceof ServerPlayer p&&m.participant(p.getUUID())){e.setCanceled(true);m.eliminate(p,null);}}
     @SubscribeEvent(priority=EventPriority.HIGHEST) public static void attack(net.minecraftforge.event.entity.living.LivingAttackEvent e){

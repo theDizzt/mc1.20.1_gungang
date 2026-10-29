@@ -22,27 +22,48 @@ public final class TaczAmmoHud {
     private static final ResourceLocation OVERLAY=new ResourceLocation("tacz","tac_gun_hud_overlay");
     /** Fixed units, like ShooterHud: two framebuffer pixels each, independent of GUI scale. */
     private static final int MARGIN=18,ICON_W=39,ICON_H=13,BAR_GAP=1,BAR_H=2,SHADOW=0x66000000;
-    private static final float ICON_SCALE=2f,AMMO_SCALE=2.5f,ICON_ALPHA=.7f;
+    private static final float ICON_SCALE=2f,ICON_ALPHA=.7f;
+    static final float AMMO_SCALE=2.5f;
+    /** Shared gun/prop/melee coordinates in fixed two-pixel HUD units. */
+    record Layout(int right,int countW,int countTop,int barTop,int rowTop,int iconX,int iconY){}
+    static Layout layout(int places){
+        var mc=Minecraft.getInstance();int right=mc.getWindow().getWidth()/2-MARGIN,bottom=mc.getWindow().getHeight()/2-MARGIN;
+        int w=Math.round(places*digitCell(mc.font)*AMMO_SCALE),countH=Math.round(8*AMMO_SCALE);
+        int iconW=Math.round(ICON_W*ICON_SCALE),iconH=Math.round(ICON_H*ICON_SCALE),rowH=Math.max(countH,iconH);
+        int countTop=(rowH-countH)/2,barTop=countTop+Math.round(7*AMMO_SCALE)+BAR_GAP+1;
+        int rowTop=bottom-Math.max(rowH,barTop+BAR_H);
+        return new Layout(right,w,countTop+rowTop,barTop+rowTop,rowTop,right-w-6-iconW,rowTop+(rowH-iconH)/2);
+    }
+    static void bar(GuiGraphics g,Layout l,float ratio,int color){
+        int left=l.right()-l.countW(),fill=Math.round(l.countW()*Math.max(0,Math.min(1,ratio)));
+        g.fill(left+1,l.barTop()+1,l.right()+1,l.barTop()+BAR_H+1,SHADOW);
+        g.fill(left,l.barTop(),l.right(),l.barTop()+BAR_H,0x803A3B32);
+        g.fill(left,l.barTop(),left+fill,l.barTop()+BAR_H,color);
+    }
     /** Guns without a real magazine (LAS-5's capacity is Integer.MAX_VALUE): the count shows heat in percent instead. */
     private static final java.util.Set<String> HEAT_GAUGE=java.util.Set.of("zeta:las_5");
     private static Api api;
     /** Same fixed-pixel position and number styling as ammo; independent of TaCZ being installed. */
     public static void rapier(net.minecraftforge.client.gui.overlay.ForgeGui gui,GuiGraphics g,float partial,int screenWidth,int screenHeight){
-        var mc=Minecraft.getInstance();if(mc.player==null||mc.options.hideGui||mc.player.isSpectator())return;
+        var mc=Minecraft.getInstance();if(mc.player==null||mc.options.hideGui)return;
+        if(PropAbilityHud.ammo(g,partial))return;
+        if(mc.player.isSpectator())return;
         var stack=mc.player.getMainHandItem();if(!(stack.getItem() instanceof dev.gungang.acoustics.server.RapierItem))return;
-        int amount=dev.gungang.acoustics.server.RapierItem.gauge(stack),color=amount<20?0xFFFF6565:TacticalStyle.GOLD;
-        int right=mc.getWindow().getWidth()/2-MARGIN,bottom=mc.getWindow().getHeight()/2-MARGIN;
-        int w=Math.round(3*digitCell(mc.font)*AMMO_SCALE),top=bottom-26;
+        drawRapier(g,dev.gungang.acoustics.server.RapierItem.gauge(stack));
+    }
+    static void drawRapier(GuiGraphics g,int amount){
+        var mc=Minecraft.getInstance();amount=Math.max(0,Math.min(100,amount));
+        int color=amount<20?0xFFFF6565:TacticalStyle.GOLD;
+        var l=layout(3);int right=l.right(),w=l.countW(),top=l.countTop();
         float scale=(float)(2.0/mc.getWindow().getGuiScale());g.pose().pushPose();g.pose().scale(scale,scale,1);
-        rapierSilhouette(g,right-80,top-34,TacticalStyle.INK);
-        text(g,mc.font,"레이피어 · 대시 20",right-mc.font.width("레이피어 · 대시 20"),top-12,TacticalStyle.INK);
+        rapierSilhouette(g,l.iconX(),l.iconY()+6,0xB3000000);
+        text(g,mc.font,"레이피어 · 대시 20",right-mc.font.width("레이피어 · 대시 20"),l.rowTop()-11,TacticalStyle.INK);
         String value=String.valueOf(amount),padding="0".repeat(3-value.length());
         g.pose().pushPose();g.pose().translate(right-w,top,0);g.pose().scale(AMMO_SCALE,AMMO_SCALE,1);
         digits(g,mc.font,padding,0,TacticalStyle.DIM);digits(g,mc.font,value,padding.length(),color);g.pose().popPose();
-        g.fill(right-w,bottom-4,right,bottom-1,0xAA3A3B32);
-        g.fill(right-w,bottom-4,right-w+Math.round(w*amount/100f),bottom-1,color);
+        bar(g,l,amount/100f,color);
         // Cost marker: immediately see whether the next dash is available.
-        int mark=right-w+Math.round(w*.20f);g.fill(mark,bottom-5,mark+1,bottom,TacticalStyle.INK);
+        int mark=right-w+Math.round(w*.20f);g.fill(mark,l.barTop()-1,mark+1,l.barTop()+BAR_H+1,TacticalStyle.INK);
         g.pose().popPose();
     }
     private static boolean unavailable;
@@ -91,6 +112,7 @@ public final class TaczAmmoHud {
     }
     @SubscribeEvent public static void overlay(RenderGuiOverlayEvent.Pre event) {
         if(!event.getOverlay().id().equals(OVERLAY))return;
+        if(PropHuntClient.hider()){event.setCanceled(true);return;}
         var api=api();if(api==null)return;
         try {
             event.setCanceled(true);
@@ -136,16 +158,13 @@ public final class TaczAmmoHud {
         // Always three digits so the number keeps one width from full to empty.
         int places=Math.max(3,count.length());
         String padding="0".repeat(places-count.length());
-        int countW=Math.round(places*digitCell(font)*AMMO_SCALE),countH=Math.round(8*AMMO_SCALE);
-        int iconW=Math.round(ICON_W*ICON_SCALE),iconH=Math.round(ICON_H*ICON_SCALE),rowH=Math.max(countH,iconH);
-        // The magazine bar sits just under the digits (glyphs are 7 of the 8 font rows), as wide as the count.
-        int countTop=(rowH-countH)/2,barTop=countTop+Math.round(7*AMMO_SCALE)+BAR_GAP+1,rowTop=bottom-Math.max(rowH,barTop+BAR_H);
-        countTop+=rowTop;barTop+=rowTop;
+        var layout=layout(places);int countW=layout.countW(),countTop=layout.countTop(),barTop=layout.barTop(),rowTop=layout.rowTop();
+        int iconW=Math.round(ICON_W*ICON_SCALE),iconH=Math.round(ICON_H*ICON_SCALE);
         g.pose().pushPose();g.pose().scale(scale,scale,1);
         if(texture!=null) {
             RenderSystem.enableBlend();RenderSystem.defaultBlendFunc();
             if(alert)RenderSystem.setShaderColor(1,.3f,.3f,ICON_ALPHA);else RenderSystem.setShaderColor(1,1,1,ICON_ALPHA);
-            int ix=right-countW-6-iconW,iy=rowTop+(rowH-iconH)/2;
+            int ix=layout.iconX(),iy=layout.iconY();
             g.blit(texture,ix,iy,iconW,iconH,0,0,ICON_W,ICON_H,ICON_W,ICON_H);
             RenderSystem.setShaderColor(1,1,1,1);
         }
@@ -182,7 +201,7 @@ public final class TaczAmmoHud {
      * Tabular digits: each character centred in a fixed cell so the count does not shift as it changes.
      * No drop shadow: the number font's counters and gaps are one pixel wide, so a 1px shadow fills them as dark lines.
      */
-    private static void digits(GuiGraphics g,net.minecraft.client.gui.Font font,String text,int firstCell,int color) {
+    static void digits(GuiGraphics g,net.minecraft.client.gui.Font font,String text,int firstCell,int color) {
         int cell=digitCell(font);
         for(int i=0;i<text.length();i++) {
             String c=String.valueOf(text.charAt(i));int x=(firstCell+i)*cell+(cell-HudText.numberWidth(c))/2;
@@ -190,7 +209,7 @@ public final class TaczAmmoHud {
         }
     }
     /** Text with a translucent drop shadow instead of vanilla's opaque one. */
-    private static void text(GuiGraphics g,net.minecraft.client.gui.Font font,String text,int x,int y,int color) {
+    static void text(GuiGraphics g,net.minecraft.client.gui.Font font,String text,int x,int y,int color) {
         g.drawString(font,text,x+1,y+1,SHADOW,false);
         g.drawString(font,text,x,y,color,false);
     }

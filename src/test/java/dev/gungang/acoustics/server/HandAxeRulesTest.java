@@ -4,6 +4,14 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class HandAxeRulesTest {
+    @org.junit.jupiter.api.Test void headAndBodyDamage() {
+        assertEquals(66,HandAxeRules.damage(66,false));
+        assertEquals(99,HandAxeRules.damage(66,true));
+        assertTrue(HandAxeRules.headshot(1.62,0,1.8,1.62));
+        assertFalse(HandAxeRules.headshot(1.0,0,1.8,1.62));
+        assertTrue(HandAxeRules.headshot(11.62,10,1.8,11.62));
+        assertFalse(HandAxeRules.headshot(12,10,1.8,11.62));
+    }
     @Test void chargeScalesDistanceWithinBounds() {
         assertEquals(5,HandAxeRules.distance(0,5,16,1),1e-9);
         assertEquals(10.5,HandAxeRules.distance(10,5,16,1),1e-9);

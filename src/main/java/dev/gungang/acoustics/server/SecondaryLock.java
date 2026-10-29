@@ -27,7 +27,7 @@ public final class SecondaryLock {
         }
         return false;
     }
-    public static String reason(ItemStack stack) {return HandAxeItem.is(stack)?"손도끼를 다시 들 수 있을 때까지 기다려야 합니다.":"부서진 방패는 수리될 때까지 들 수 없습니다.";}
+    public static String reason(ItemStack stack) {return HandAxeItem.is(stack)?"투척용 손도끼를 다시 들 수 있을 때까지 기다려야 합니다.":"부서진 방패는 수리될 때까지 들 수 없습니다.";}
     @SubscribeEvent public static void swap(LivingSwapItemsEvent.Hands event) {
         if(!(event.getEntity() instanceof ServerPlayer p)||!locked(p,event.getItemSwappedToMainHand()))return;
         event.setCanceled(true);

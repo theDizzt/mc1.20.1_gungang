@@ -38,7 +38,8 @@ public final class PropRenderer extends EntityRenderer<PropEntity> {
     public PropRenderer(EntityRendererProvider.Context context){super(context);shadowRadius=0;}
     @Override public void render(PropEntity entity,float yaw,float partial,PoseStack pose,MultiBufferSource buffers,int light){
         var mc=Minecraft.getInstance();var state=entity.state();pose.pushPose();
-        if(entity.item().equals("minecraft:barrier")){
+        if(PropObjectRenderer.render(entity,partial,pose,buffers,light)){
+        }else if(entity.item().equals("minecraft:barrier")){
             // Invisible barrier body; only authorized viewers receive a cube in the outline mask.
             if(mc.shouldEntityAppearGlowing(entity)){
                 pose.translate(-.5,0,-.5);
@@ -61,7 +62,7 @@ public final class PropRenderer extends EntityRenderer<PropEntity> {
             // A sunk health pack fills the floor cell exactly; its top would z-fight (flicker) with the floor's,
             // so it sits a hair higher and narrower: a flush lid in the floor instead.
             if(entity.sunk()){pose.translate(.5,0,.5);pose.scale(.996f,1,.996f);pose.translate(-.5,1/64f,-.5);}
-            for(var part:dev.gungang.acoustics.server.PropGeometry.parts(state)){
+            for(var part:dev.gungang.acoustics.server.PropGeometry.parts(entity)){
                 pose.pushPose();pose.translate(part.offset().getX(),part.offset().getY(),part.offset().getZ());var partState=part.state();
                 // Emissive blocks (campfire, glowstone, lanterns) stay bright in the dark like the real block.
                 int partLight=LightTexture.pack(Math.max(LightTexture.block(light),partState.getLightEmission()),LightTexture.sky(light));
@@ -73,6 +74,7 @@ public final class PropRenderer extends EntityRenderer<PropEntity> {
                 if(partState.getRenderShape()==RenderShape.MODEL){animate(partState);mc.getBlockRenderer().renderSingleBlock(partState,pose,buffers,partLight,OverlayTexture.NO_OVERLAY);}
                 pose.popPose();
             }
+            if(entity.item().equals("minecraft:beacon")&&entity.open())net.minecraft.client.renderer.blockentity.BeaconRenderer.renderBeaconBeam(pose,buffers,new ResourceLocation("minecraft","textures/entity/beacon_beam.png"),partial,1,entity.level().getGameTime(),0,128,new float[]{.45f,1,.85f},.2f,.25f);
         }
         pose.popPose();
         if(entity.marker())renderNameTag(entity,entity.getDisplayName(),pose,buffers,light);

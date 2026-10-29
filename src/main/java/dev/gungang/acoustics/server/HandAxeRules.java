@@ -30,5 +30,10 @@ public final class HandAxeRules {
         }
         return x;
     }
+    /** Head region extends 15% of body height below the eyes. */
+    public static boolean headshot(double hitY,double feetY,double height,double eyeY) {
+        return hitY>=eyeY-height*.15&&hitY<=feetY+height;
+    }
+    public static double damage(double base,boolean headshot) {return base*(headshot?1.5:1);}
     private HandAxeRules() { }
 }

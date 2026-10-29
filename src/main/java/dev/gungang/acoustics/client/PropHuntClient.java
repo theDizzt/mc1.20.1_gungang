@@ -19,6 +19,9 @@ public final class PropHuntClient {
     private static int page;
     private static long noticeUntil;
     private static String lastBlock="";
+    private static long received;
+    static PropHuntSnapshot.Row ability(){return hider()?self():null;}
+    static float elapsed(float partial){var l=Minecraft.getInstance().level;return l==null?0:Math.max(0,l.getGameTime()-received+partial);}
     static{
         // Seekers may fire inside safe zones during the match; nobody in the match can click custom NPCs.
         SafeZones.clientArmed=e->{var s=self();var p=Minecraft.getInstance().player;return s!=null&&e==p&&!review()&&!s.team().equals("ALPHA");};
@@ -48,14 +51,14 @@ public final class PropHuntClient {
     }
     public static void receive(String json){
         state=ServerFiles.GSON.fromJson(json,PropHuntSnapshot.class);
+        received=Minecraft.getInstance().level==null?0:Minecraft.getInstance().level.getGameTime();
         var s=self();if(s!=null&&!s.block().equals(lastBlock)){lastBlock=s.block();noticeUntil=System.currentTimeMillis()+4500;}
         if(!hider())restore();
         var mc=Minecraft.getInstance();if(mc.level!=null)for(var p:mc.level.players())p.refreshDimensions();
     }
     /** "참나무 판자 [01]" for a drawn block or colour variant. */
     static String disguise(String block){
-        var item=net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(PropCatalog.id(block));
-        String name=item==null||item==net.minecraft.world.item.Items.AIR?block:new ItemStack(item).getHoverName().getString();
+        String name=PropCatalog.name(block).getString();
         return name+" ["+PropCatalog.number(block)+"]";
     }
     /** Caption above the health bar: the own disguise, or while watching someone their disguise ("술래" for seekers). */
@@ -66,7 +69,7 @@ public final class PropHuntClient {
         var row=state.players().stream().filter(r->r.id().equals(watched.toString())).findFirst().orElse(null);
         if(row==null)return null;
         if(!row.team().equals("ALPHA"))return watched.equals(mc.player.getUUID())?null:"술래";
-        return row.found()||row.block().isEmpty()?null:disguise(row.block());
+        return row.found()||row.block().isEmpty()?null:PropCatalog.name(row.block(),net.minecraft.world.level.block.Block.stateById(row.state())).getString()+" ["+PropCatalog.number(row.block())+"]";
     }
     /** Player behind the camera: a watched player, or the owner when the camera follows a disguise. */
     public static UUID watched(){
@@ -82,11 +85,12 @@ public final class PropHuntClient {
         if(key==GLFW.GLFW_KEY_E){if(action==GLFW.GLFW_PRESS)action("interact");return true;}
         if(key==GLFW.GLFW_KEY_G){if(action==GLFW.GLFW_PRESS)action("horn");return true;}
         if(mc.options.keyJump.matches(key,scan)){
+            if(self().active()>elapsed(0)&&self().block().equals("minecraft:command_block"))return true;
             if(action==GLFW.GLFW_PRESS&&!fixed()){charging=true;action("charge");}
             if(action==GLFW.GLFW_RELEASE&&charging){charging=false;action("jump");}
             return true;
         }
-        if(mc.options.keyShift.matches(key,scan)&&action==GLFW.GLFW_PRESS&&!fixed())action("snap");
+        if(mc.options.keyShift.matches(key,scan)&&action==GLFW.GLFW_PRESS&&!fixed()&&self().active()<=elapsed(0))action("snap");
         return false;
     }
     private static void restore(){var mc=Minecraft.getInstance();if(previous!=null){mc.options.setCameraType(previous);previous=null;}charging=false;}
@@ -119,7 +123,8 @@ public final class PropHuntClient {
     }
     @SubscribeEvent public static void movement(MovementInputUpdateEvent e){
         if(!hider())return;var input=e.getInput();input.jumping=false;
-        if(fixed()){input.forwardImpulse=0;input.leftImpulse=0;input.shiftKeyDown=false;input.up=false;input.down=false;input.left=false;input.right=false;}
+        if(self().active()>elapsed(0)&&self().block().equals("minecraft:command_block")){input.shiftKeyDown=false;e.getEntity().setDeltaMovement(e.getEntity().getDeltaMovement().multiply(1,0,1));}
+        if(fixed()||self().stunned()){input.forwardImpulse=0;input.leftImpulse=0;input.jumping=false;input.shiftKeyDown=false;input.up=false;input.down=false;input.left=false;input.right=false;}
     }
     @SubscribeEvent public static void hide(RenderPlayerEvent.Pre e){if(hidden(e.getEntity().getUUID()))e.setCanceled(true);}
     @SubscribeEvent public static void opening(ScreenEvent.Opening e){if(active()&&(e.getNewScreen() instanceof LoadoutScreen))e.setCanceled(true);}
