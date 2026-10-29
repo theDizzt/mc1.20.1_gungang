@@ -21,8 +21,10 @@ public final class ClientSetup {
         }
     }
     @SubscribeEvent public static void renderers(net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
+        event.registerBlockEntityRenderer(dev.gungang.acoustics.server.ShutterBlocks.ENTITY.get(),ShutterRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.BotEntity.TYPE.get(),BotRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.PropEntity.TYPE.get(),PropRenderer::new);
+        event.registerEntityRenderer(dev.gungang.acoustics.server.PropSummonEntity.TYPE.get(),PropSummonRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.EscortBlocks.CART.get(),EscortRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.EscortBlocks.RAIL.get(),EscortRenderer.Rail::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GimmickBlocks.PUDDLE_OVERLAY.get(),PuddleRenderer::new);

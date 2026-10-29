@@ -110,6 +110,7 @@ public final class BombMatch {
     }
     private static boolean inside(ServerPlayer p,ArenaMap.Area area){var b=p.getBoundingBox();return area.contains(b.minX,b.minY,b.minZ)&&area.contains(b.maxX,b.maxY,b.maxZ);}
     private void roundEnded(){
+        GimmickEpoch.reset(server);
         BombDrops.clear(server);
         uses.clear();
         if(game.reason().equals("EXPLODED")){

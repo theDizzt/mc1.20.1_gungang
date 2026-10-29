@@ -18,6 +18,9 @@ def releaseName = "u${nextUpdate}_${releaseDate}"
 version = "${nextUpdate}.${releaseDate}"
 base { archivesName = 'gungang-realistic_1.20.1' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+if (project.hasProperty('gungangShutterSmoke')) sourceSets.main.java.srcDir('src/shutterSmoke/java')
+if (project.hasProperty('gungangShutterClientSmoke')) sourceSets.main.java.srcDir('src/shutterClientSmoke/java')
+if (project.hasProperty('gungangLandmineSmoke')) sourceSets.main.java.srcDir('src/landmineSmoke/java')
 if (project.hasProperty('gungangArrowSmoke')) sourceSets.main.java.srcDir('src/arrowSmoke/java')
 if (project.hasProperty('gungangMotionSmoke')) sourceSets.main.java.srcDir('src/motionSmoke/java')
 if (project.hasProperty('gungangPropClientSmoke')) sourceSets.main.java.srcDir('src/propClientSmoke/java')
@@ -45,6 +48,8 @@ minecraft {
             if (project.hasProperty('gungangMotionSmoke')) property 'gungang.motionSmoke', 'true'
             if (project.hasProperty('gungangRapierPreview')) property 'gungang.rapierPreview', 'true'
             workingDirectory project.file(project.hasProperty('gungangTurretClientSmoke') ? 'build/turret-client-smoke' : project.hasProperty('gungangAxeSmoke') ? 'build/axe-client-smoke' : 'run')
+            if (project.hasProperty('gungangLandmineSmoke')) workingDirectory project.file('build/landmine-client-smoke')
+            if (project.hasProperty('gungangShutterClientSmoke')) workingDirectory project.file('build/shutter-client-smoke')
             if (project.hasProperty('gungangLobbyUiSmoke')) workingDirectory project.file('build/lobby-ui-smoke')
             if (project.hasProperty('gungangMotionSmoke')) workingDirectory project.file('build/motion-client-smoke')
             if (project.hasProperty('gungangPropClientSmoke')) workingDirectory project.file('build/prop139-client-smoke')
@@ -61,6 +66,7 @@ minecraft {
             if (project.hasProperty('gungangLasSmoke')) property 'gungang.lasSmoke', 'true'
             workingDirectory project.file(project.hasProperty('gungangTurretSmoke') ? 'build/turret-smoke-run' : project.hasProperty('gungangBowSmoke') ? 'build/bow-smoke-run' : project.hasProperty('gungangAxeSmoke') ? 'build/axe-server-smoke' : project.hasProperty('gungangBotSmoke') ? 'build/bot-smoke-run' : project.hasProperty('gungangPropSmoke') ? 'build/prop-smoke-run' : project.hasProperty('gungangBombSmoke') ? 'build/bomb-smoke-run' : 'run-server')
             args '--nogui'
+            if (project.hasProperty('gungangShutterSmoke')) workingDirectory project.file('build/shutter-smoke-run')
             if (project.hasProperty('gungangMotionSmoke')) workingDirectory project.file('build/motion-smoke-run')
             if (project.hasProperty('gungangArrowSmoke')) workingDirectory project.file('build/arrow-smoke-run')
             if (project.hasProperty('gungangAcidSmoke')) workingDirectory project.file('build/acid-smoke-run')
@@ -97,6 +103,9 @@ mixin {
     config 'gungang_acoustics.mixins.json'
 }
 tasks.named('jar', Jar).configure {
+    exclude 'dev/gungang/acoustics/server/ShutterSmokeChecks*.class'
+    exclude 'dev/gungang/acoustics/client/ShutterModelChecks*.class'
+    exclude 'dev/gungang/acoustics/client/LandmineModelChecks*.class'
     exclude 'dev/gungang/acoustics/server/AcidSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/server/MotionSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/client/MotionModelChecks*.class'

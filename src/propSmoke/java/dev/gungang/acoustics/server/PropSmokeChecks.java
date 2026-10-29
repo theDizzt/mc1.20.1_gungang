@@ -55,7 +55,7 @@ public final class PropSmokeChecks {
             match.tick();check(match.prop(a.getUUID()).position().distanceToSqr(hiddenAt)<.001,"Watching never moves the real disguise");
             match.action(a,"home");check(!a.isSpectator()&&a.getCamera()==a&&a.position().distanceToSqr(hiddenAt)<.001,"R returns to real hiding place without unlocking");
             var nest=match.prop(a.getUUID());nest.setup(a.getUUID(),"minecraft:bee_nest",0);match.abilities.initialize(a,nest);match.abilities.tick(a,nest);
-            var bees=level.getEntitiesOfClass(net.minecraft.world.entity.animal.Bee.class,nest.getBoundingBox().inflate(5));check(bees.size()==3,"Bees exist during hiding without active seekers");
+            var bees=level.getEntitiesOfClass(PropSummonEntity.class,nest.getBoundingBox().inflate(5),e->e.kind()==PropSummonEntity.Kind.BEE);check(bees.size()==3,"Bees exist during hiding without active seekers");
             var beeAt=bees.get(0).position();match.abilities.tick(a,nest);check(!bees.get(0).isRemoved()&&bees.get(0).position().distanceToSqr(beeAt)>0,"Idle bees orbit during hiding");
             for(int i=0;i<PropHuntGame.HIDE;i++)match.game.tick();
             check(!match.frozen(b.getUUID()),"Hunters released after one minute");

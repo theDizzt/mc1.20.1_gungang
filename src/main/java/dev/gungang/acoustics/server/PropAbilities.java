@@ -17,7 +17,7 @@ public final class PropAbilities {
     static final class Runtime {
         int cooldown,active,stun,born,contact;boolean mayfly,flying,flight,bees;
         Vec3 stunPosition,lastPosition;double flightY;
-        final List<Mob> mobs=new ArrayList<>();
+        final List<PropSummonEntity> mobs=new ArrayList<>();
         final List<Bolt> bolts=new ArrayList<>();
     }
     private static final class Bolt {Vec3 pos;final UUID target;int age;Bolt(Vec3 pos,UUID target){this.pos=pos;this.target=target;}}
@@ -29,8 +29,8 @@ public final class PropAbilities {
     public int remaining(UUID id){var r=data(id);return Math.max(0,r.cooldown-match.now());}
     public int active(UUID id){return Math.max(0,data(id).active-match.now());}
     public boolean stunned(UUID id){return data(id).stun>match.now();}
-    public float mobHealth(UUID id){return (float)data(id).mobs.stream().filter(m->m instanceof net.minecraft.world.entity.monster.CaveSpider&&m.isAlive()&&!m.isRemoved()).mapToDouble(Mob::getHealth).sum();}
-    public float mobMaximum(UUID id){return (float)data(id).mobs.stream().filter(m->m instanceof net.minecraft.world.entity.monster.CaveSpider&&m.isAlive()&&!m.isRemoved()).mapToDouble(Mob::getMaxHealth).sum();}
+    public float mobHealth(UUID id){return (float)data(id).mobs.stream().filter(m->m.kind()==PropSummonEntity.Kind.SPIDER&&m.isAlive()&&!m.isRemoved()).mapToDouble(PropSummonEntity::getHealth).sum();}
+    public float mobMaximum(UUID id){return (float)data(id).mobs.stream().filter(m->m.kind()==PropSummonEntity.Kind.SPIDER&&m.isAlive()&&!m.isRemoved()).mapToDouble(PropSummonEntity::getMaxHealth).sum();}
     public void initialize(ServerPlayer p,PropEntity prop){
         remove(p);var r=data(p.getUUID());r.born=match.now();r.lastPosition=p.position();
         String item=prop.item();
@@ -64,7 +64,7 @@ public final class PropAbilities {
                 var target=nearest(p.serverLevel(),prop.position(),Double.MAX_VALUE);
                 Vec3 origin=target==null?prop.position():target.position(),at=origin.add(2,0,0);
                 for(int i=0;i<16;i++){double a=i*Math.PI/8;var candidate=origin.add(Math.cos(a)*2,0,Math.sin(a)*2);if(p.level().noCollision(new AABB(candidate.x-.4,candidate.y,candidate.z-.4,candidate.x+.4,candidate.y+.6,candidate.z+.4))){at=candidate;break;}}
-                var mob=PropSummons.spawn(p.serverLevel(),EntityType.CAVE_SPIDER,p.getUUID(),at,100,16,false);if(mob!=null){r.mobs.add(mob);r.cooldown=now+1680;}
+                var mob=PropSummons.spawn(p.serverLevel(),PropSummonEntity.Kind.SPIDER,p.getUUID(),at,100,16,false);if(mob!=null){r.mobs.add(mob);r.cooldown=now+1680;}
             }
             case "minecraft:nether_portal"->{for(var target:match.players()){
                 var disguise=match.prop(target.getUUID());var box=disguise==null?target.getBoundingBox():disguise.getBoundingBox();
@@ -101,7 +101,7 @@ public final class PropAbilities {
         if(item.equals("minecraft:sugar_cane")){int height=Math.min(3,1+(now-r.born)/1200);if(prop.height()!=height){prop.height(height);p.refreshDimensions();}}
         if(item.equals("minecraft:oak_sign")&&!match.locked(p.getUUID()))prop.state(prop.state().setValue(StandingSignBlock.ROTATION,Math.floorMod(Math.round(p.getYRot()*16/360),16)));
         if(Set.of("minecraft:minecart","gungang:mannequin","gungang:dried_ghast").contains(item)&&!match.locked(p.getUUID())){prop.setYRot(p.getYRot());prop.setYHeadRot(p.getYRot());prop.setYBodyRot(p.getYRot());}
-        if(item.equals("minecraft:bee_nest")&&!r.bees){r.bees=true;for(int i=0;i<3;i++){var mob=PropSummons.spawn(p.serverLevel(),EntityType.BEE,p.getUUID(),prop.position().add(Math.cos(i*2.1),1,Math.sin(i*2.1)),100,36,true);if(mob!=null)r.mobs.add(mob);}}
+        if(item.equals("minecraft:bee_nest")&&!r.bees){r.bees=true;for(int i=0;i<3;i++){var mob=PropSummons.spawn(p.serverLevel(),PropSummonEntity.Kind.BEE,p.getUUID(),prop.position().add(Math.cos(i*2.1),1,Math.sin(i*2.1)),100,36,true);if(mob!=null)r.mobs.add(mob);}}
         r.mobs.removeIf(Entity::isRemoved);for(int i=0;i<r.mobs.size();i++)PropSummons.tick(match,r.mobs.get(i),prop.position(),i);
         if(!match.hunting())return;
         for(var it=r.bolts.iterator();it.hasNext();){var bolt=it.next();var target=match.seekers().stream().filter(q->q.getUUID().equals(bolt.target)&&q.level()==prop.level()).findFirst().orElse(null);
@@ -126,7 +126,7 @@ public final class PropAbilities {
     }
     public void found(ServerPlayer owner,PropEntity prop){
         if(prop==null||!prop.item().equals("minecraft:infested_stone"))return;
-        var r=data(owner.getUUID());for(int i=0;i<3;i++){var mob=PropSummons.spawn(owner.serverLevel(),EntityType.SILVERFISH,owner.getUUID(),prop.position().add((i-1)*.4,0,0),50,25,false);if(mob!=null)r.mobs.add(mob);}
+        var r=data(owner.getUUID());for(int i=0;i<3;i++){var mob=PropSummons.spawn(owner.serverLevel(),PropSummonEntity.Kind.SILVERFISH,owner.getUUID(),prop.position().add((i-1)*.4,0,0),50,25,false);if(mob!=null)r.mobs.add(mob);}
     }
     /** Found infested-block minions keep attacking until review/reset. */
     public void orphanTick(){for(var entry:states.entrySet())if(match.prop(entry.getKey())==null){var r=entry.getValue();r.mobs.removeIf(Entity::isRemoved);for(var mob:r.mobs)PropSummons.tick(match,mob,mob.position(),0);}}
