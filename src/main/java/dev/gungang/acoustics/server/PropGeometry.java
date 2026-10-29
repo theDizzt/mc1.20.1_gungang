@@ -9,6 +9,10 @@ import net.minecraft.world.level.block.state.properties.*;
 /** Shared visible parts and collision bounds for beds, doors, gas tanks and multipart furniture. */
 public final class PropGeometry {
     public record Part(BlockPos offset,BlockState state){}
+    public static List<Part> parts(PropEntity prop){
+        if(prop.item().equals("minecraft:sugar_cane")){var result=new ArrayList<Part>();for(int y=0;y<prop.height();y++)result.add(new Part(BlockPos.ZERO.above(y),prop.state()));return result;}
+        return parts(prop.state());
+    }
     public static List<Part> parts(BlockState state){
         var result=new ArrayList<Part>();
         if(state.getBlock() instanceof FurnitureBlock furniture){

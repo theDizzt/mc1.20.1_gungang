@@ -1,23 +1,19 @@
 package dev.gungang.acoustics.server;
 
 import dev.gungang.acoustics.GungangAcoustics;
-import java.util.*;
 import net.minecraft.sounds.*;
 import net.minecraft.world.*;
-import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.eventbus.api.*;
 import net.minecraftforge.fml.common.Mod;
 
-/** Secondary 80: attack swings it for fixed melee damage; holding use charges a straight throw, which starts the cooldown. No durability. */
+/** Secondary 80: holding use charges a straight throw, which starts the cooldown. No durability. */
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID)
 public final class HandAxeItem extends Item {
-    private static final Map<UUID,Long> LAST_SWING=new HashMap<>();
     public HandAxeItem() { super(new Properties().stacksTo(1)); }
     public static boolean is(ItemStack stack) {return stack.getItem() instanceof HandAxeItem;}
     @Override public InteractionResultHolder<ItemStack> use(Level level,Player player,InteractionHand hand) {
@@ -52,25 +48,9 @@ public final class HandAxeItem extends Item {
         // Inside a secondary use scope this starts the configured secondary cooldown instead of a vanilla one.
         player.getCooldowns().addCooldown(this,ExtraGadgetConfig.ticks(c.cooldownSeconds()));
     }
-    /** The axe is in flight during its cooldown, and swings are paced by the melee cooldown. */
-    @SubscribeEvent(priority=EventPriority.HIGH) public static void swing(AttackEntityEvent event) {
-        var player=event.getEntity();var stack=player.getMainHandItem();
-        if(!is(stack)||player.level().isClientSide)return;
-        if(!beginSwing(player))event.setCanceled(true);
+    /** Prevent vanilla melee attacks on both sides. */
+    @SubscribeEvent(priority=EventPriority.HIGHEST) public static void swing(AttackEntityEvent event) {
+        if(is(event.getEntity().getMainHandItem()))event.setCanceled(true);
     }
-    static boolean beginSwing(Player player){
-        var stack=player.getMainHandItem();
-        long now=player.level().getGameTime();
-        if(SecondaryRuntime.remaining(player,stack)>0
-                ||now-LAST_SWING.getOrDefault(player.getUUID(),Long.MIN_VALUE/2)<ExtraGadgetConfig.ticks(ExtraGadgetConfig.handAxe.meleeCooldownSeconds()))return false;
-        LAST_SWING.put(player.getUUID(),now);
-        return true;
-    }
-    /** Fixed melee damage: no attack-strength scaling or critical bonus. Shields and boosts apply afterwards. */
-    @SubscribeEvent(priority=EventPriority.HIGHEST) public static void melee(LivingHurtEvent event) {
-        var source=event.getSource();
-        if(source.is(DamageTypes.PLAYER_ATTACK)&&source.getDirectEntity() instanceof Player player&&source.getEntity()==player&&is(player.getMainHandItem()))
-            event.setAmount((float)ExtraGadgetConfig.handAxe.meleeDamage());
-    }
-    @SubscribeEvent public static void logout(net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent event) {LAST_SWING.remove(event.getEntity().getUUID());}
+    @Override public boolean onEntitySwing(ItemStack stack,LivingEntity entity) {return true;}
 }

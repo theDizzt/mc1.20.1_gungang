@@ -115,8 +115,8 @@
   "item.gungang.landmine": "지뢰",
   "item.gungang.bear_trap": "베어트랩",
   "entity.gungang_acoustics.bear_trap": "베어트랩",
-  "item.gungang.hand_axe": "손도끼",
-  "entity.gungang_acoustics.hand_axe": "손도끼",
+  "item.gungang.hand_axe": "투척용 손도끼",
+  "entity.gungang_acoustics.hand_axe": "투척용 손도끼",
   "item.gungang.recovery_potion": "회복약",
   "item.gungang.adrenaline": "전투자극제",
   "item.gungang.barrier": "방벽",
@@ -168,5 +168,25 @@
   "gungang.controls.backup.saved": "키 설정을 저장했습니다",
   "gungang.controls.backup.loaded": "키 설정을 불러왔습니다",
   "gungang.controls.backup.count": "조작키 %s개 적용",
-  "gungang.controls.backup.failed": "키 설정 파일을 처리하지 못했습니다"
+  "gungang.controls.backup.failed": "키 설정 파일을 처리하지 못했습니다",
+
+    "block.gungang.conveyor_belt":  "컨베이어 벨트",
+    "block.gungang.blue_jump_pad":  "파란색 점프 발판",
+    "block.gungang.lime_jump_pad":  "연두색 점프 발판",
+    "item.gungang.wrench":  "렌치",
+    "gungang.conveyor.title":  "컨베이어 벨트 설정",
+    "gungang.conveyor.network":  "연결된 전체 경로에 적용됩니다",
+    "gungang.conveyor.speed":  "이동 속도: %s배",
+    "gungang.conveyor.forward":  "방향: 현재 진행 방향 유지",
+    "gungang.conveyor.reverse":  "방향: 현재 진행 방향 반전",
+    "gungang.conveyor.apply":  "전체 적용",
+    "gungang.conveyor.applied":  "컨베이어 %s개에 %s배속과 방향을 적용했습니다",
+    "gungang.conveyor.too_large":  "연결된 경로가 4,096개를 넘습니다",
+    "gungang.conveyor.unloaded":  "연결된 경로의 청크를 모두 불러온 뒤 설정하세요",
+    "gungang.conveyor.protected":  "보호된 영역의 벨트를 변경할 수 없습니다",
+    "gungang.conveyor.invalid":  "경로 연결 방향을 확인하세요",
+
+    "block.gungang.dried_ghast":  "마른 가스트",
+    "block.gungang.wildflowers":  "들꽃",
+    "block.gungang.mannequin":  "마네킹"
 }

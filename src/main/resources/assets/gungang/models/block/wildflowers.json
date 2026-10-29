@@ -1,0 +1,142 @@
+{
+    "render_type":  "minecraft:cutout",
+    "parent":  "minecraft:block/block",
+    "elements":  [
+                     {
+                         "shade":  false,
+                         "from":  [
+                                      0,
+                                      1,
+                                      0
+                                  ],
+                         "to":  [
+                                    8,
+                                    1,
+                                    8
+                                ],
+                         "faces":  {
+                                       "down":  {
+                                                    "uv":  [
+                                                               0,
+                                                               0,
+                                                               16,
+                                                               16
+                                                           ],
+                                                    "texture":  "#flowers"
+                                                },
+                                       "up":  {
+                                                  "uv":  [
+                                                             0,
+                                                             0,
+                                                             16,
+                                                             16
+                                                         ],
+                                                  "texture":  "#flowers"
+                                              }
+                                   }
+                     },
+                     {
+                         "shade":  false,
+                         "from":  [
+                                      0,
+                                      1,
+                                      8
+                                  ],
+                         "to":  [
+                                    8,
+                                    1,
+                                    16
+                                ],
+                         "faces":  {
+                                       "down":  {
+                                                    "uv":  [
+                                                               0,
+                                                               0,
+                                                               16,
+                                                               16
+                                                           ],
+                                                    "texture":  "#flowers"
+                                                },
+                                       "up":  {
+                                                  "uv":  [
+                                                             0,
+                                                             0,
+                                                             16,
+                                                             16
+                                                         ],
+                                                  "texture":  "#flowers"
+                                              }
+                                   }
+                     },
+                     {
+                         "shade":  false,
+                         "from":  [
+                                      8,
+                                      1,
+                                      0
+                                  ],
+                         "to":  [
+                                    16,
+                                    1,
+                                    8
+                                ],
+                         "faces":  {
+                                       "down":  {
+                                                    "uv":  [
+                                                               0,
+                                                               0,
+                                                               16,
+                                                               16
+                                                           ],
+                                                    "texture":  "#flowers"
+                                                },
+                                       "up":  {
+                                                  "uv":  [
+                                                             0,
+                                                             0,
+                                                             16,
+                                                             16
+                                                         ],
+                                                  "texture":  "#flowers"
+                                              }
+                                   }
+                     },
+                     {
+                         "shade":  false,
+                         "from":  [
+                                      8,
+                                      1,
+                                      8
+                                  ],
+                         "to":  [
+                                    16,
+                                    1,
+                                    16
+                                ],
+                         "faces":  {
+                                       "down":  {
+                                                    "uv":  [
+                                                               0,
+                                                               0,
+                                                               16,
+                                                               16
+                                                           ],
+                                                    "texture":  "#flowers"
+                                                },
+                                       "up":  {
+                                                  "uv":  [
+                                                             0,
+                                                             0,
+                                                             16,
+                                                             16
+                                                         ],
+                                                  "texture":  "#flowers"
+                                              }
+                                   }
+                     }
+                 ],
+    "textures":  {
+                     "particle":  "gungang:block/wildflowers",
+                     "flowers":  "gungang:block/wildflowers"
+                 }
+}
