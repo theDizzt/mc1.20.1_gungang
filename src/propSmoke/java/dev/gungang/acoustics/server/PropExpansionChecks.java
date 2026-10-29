@@ -10,7 +10,7 @@ import net.minecraft.world.phys.Vec3;
 
 final class PropExpansionChecks {
     private static void check(boolean value,String label){if(!value)throw new AssertionError(label);}
-    private static List<Mob> mobs(ServerPlayer p){var list=new ArrayList<Mob>();p.serverLevel().getAllEntities().forEach(e->{if(e instanceof Mob m&&e.getTags().contains(PropSummons.TAG)&&!e.isRemoved())list.add(m);});return list;}
+    private static List<PropSummonEntity> mobs(ServerPlayer p){var list=new ArrayList<PropSummonEntity>();p.serverLevel().getAllEntities().forEach(e->{if(e instanceof PropSummonEntity m&&e.getTags().contains(PropSummons.TAG)&&!e.isRemoved())list.add(m);});return list;}
     private static PropEntity as(PropHuntMatch match,ServerPlayer p,String item){var prop=match.prop(p.getUUID());prop.setup(p.getUUID(),item,0);prop.setPos(p.position());match.abilities.initialize(p,prop);return prop;}
     static void run(MinecraftServer server,PropHuntMatch match,ServerPlayer a,ServerPlayer b)throws Exception {
         var counter=MinecraftServer.class.getDeclaredField("tickCount");counter.setAccessible(true);int now=server.getTickCount();
@@ -48,14 +48,25 @@ final class PropExpansionChecks {
                 match.action(a,"lock");a.setYRot(151);match.abilities.tick(a,prop);check(prop.getYRot()==73,"Locked disguise preserves yaw: "+item);match.unlock(a);
             }
             var seekerMode=b.gameMode.getGameModeForPlayer();b.setGameMode(net.minecraft.world.level.GameType.SPECTATOR);
+            var previousDifficulty=server.getWorldData().getDifficulty();
+            boolean previousSpawning=a.serverLevel().getGameRules().getBoolean(net.minecraft.world.level.GameRules.RULE_DOMOBSPAWNING);
+            java.util.function.Consumer<net.minecraftforge.event.entity.EntityJoinLevelEvent> blockMobs=e->{if(e.getEntity() instanceof Mob)e.setCanceled(true);};
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(blockMobs);
+            server.setDifficulty(net.minecraft.world.Difficulty.PEACEFUL,true);
+            a.serverLevel().getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_DOMOBSPAWNING).set(false,server);
             try{
+                check(!a.serverLevel().addFreshEntity(EntityType.CAVE_SPIDER.create(a.serverLevel())),"Test environment rejects actual mobs");
                 check(match.seekers().isEmpty(),"No active seeker for summon checks");
                 for(String item:List.of("minecraft:spawner","minecraft:bee_nest","minecraft:infested_stone")){
                     prop=as(match,a,item);match.abilities.use(a,prop);match.abilities.tick(a,prop);
                     int count=item.equals("minecraft:spawner")?1:3;check(mobs(a).size()==count,"Summons survive without seekers: "+item);
+                    for(var actor:mobs(a)){
+                        check(actor.getType().getCategory()==MobCategory.MISC&&!Mob.class.isInstance(actor),"Ability actor is not a mob");
+                        actor.tick();check(!actor.isRemoved(),"Ability actor survives peaceful tick");
+                    }
                     match.abilities.use(a,prop);match.abilities.tick(a,prop);check(mobs(a).size()==count,"No duplicate idle summons: "+item);
                 }
-            }finally{b.setGameMode(seekerMode);}
+            }finally{net.minecraftforge.common.MinecraftForge.EVENT_BUS.unregister(blockMobs);server.setDifficulty(previousDifficulty,true);a.serverLevel().getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_DOMOBSPAWNING).set(previousSpawning,server);b.setGameMode(seekerMode);}
             prop=as(match,a,"minecraft:fire");b.setPos(a.position());b.invulnerableTime=0;b.setHealth(100);match.abilities.tick(a,prop);check(b.getHealth()==50&&b.getRemainingFireTicks()>=199,"Fire 50 damage plus ten seconds");b.clearFire();
             prop=as(match,a,"minecraft:oak_sign");match.abilities.use(a,prop);check(!prop.text().isEmpty(),"Sign randomized text");
             prop=as(match,a,"minecraft:end_crystal");b.setPos(a.position().add(5,0,0));b.invulnerableTime=0;b.setHealth(100);match.abilities.use(a,prop);for(int i=0;i<20;i++)match.abilities.tick(a,prop);check(b.getHealth()==50&&match.abilities.remaining(a.getUUID())==600,"Crystal homing impact and cooldown");

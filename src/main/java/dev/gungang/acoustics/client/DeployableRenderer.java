@@ -8,6 +8,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Blocks;
 
 public final class DeployableRenderer extends EntityRenderer<DeployableEntity> {
+    private final net.minecraft.world.item.ItemStack mine=new net.minecraft.world.item.ItemStack(dev.gungang.acoustics.server.GadgetItems.LANDMINE.get());
     private final net.minecraft.client.renderer.block.BlockRenderDispatcher blocks;
     public DeployableRenderer(EntityRendererProvider.Context context) {super(context);blocks=context.getBlockRenderDispatcher();}
     @Override public void render(DeployableEntity entity,float yaw,float partial,PoseStack pose,MultiBufferSource buffers,int light) {
@@ -21,8 +22,10 @@ public final class DeployableRenderer extends EntityRenderer<DeployableEntity> {
                 pose.popPose();
             }
         } else {
-            pose.translate(-.35,0,-.35);pose.scale(.7f,1.2f,.7f);
-            blocks.renderSingleBlock(Blocks.HEAVY_WEIGHTED_PRESSURE_PLATE.defaultBlockState(),pose,buffers,light,OverlayTexture.NO_OVERLAY);
+            // OBJ already matches the old installed plate's 0.6125-block footprint, with its bottom at Y=0.
+            pose.translate(-.5,0,-.5);
+            var model=net.minecraft.client.Minecraft.getInstance().getItemRenderer().getModel(mine,entity.level(),null,0);
+            blocks.getModelRenderer().renderModel(pose.last(),buffers.getBuffer(RenderType.entityCutoutNoCull(TextureAtlas.LOCATION_BLOCKS)),null,model,1,1,1,light,OverlayTexture.NO_OVERLAY);
         }
         pose.popPose();
         // Enemy mines must not reveal their team through the ordinary colored frame either.

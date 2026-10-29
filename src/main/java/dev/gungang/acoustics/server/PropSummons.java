@@ -5,25 +5,22 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.*;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.monster.*;
-import net.minecraft.world.entity.animal.Bee;
 import net.minecraft.world.effect.*;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.eventbus.api.*;
 
-/** Tagged, epoch-bound temporary mobs. Their only combat targets are active seekers. */
+/** Tagged, epoch-bound non-mob ability actors. Their only combat targets are active seekers. */
 @net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid=dev.gungang.acoustics.GungangAcoustics.ID)
 public final class PropSummons {
     public static final String TAG="gungang_prop_summon";
     private static final net.minecraft.resources.ResourceKey<net.minecraft.world.damagesource.DamageType> DAMAGE=net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DAMAGE_TYPE,new net.minecraft.resources.ResourceLocation("gungang","prop_ability"));
-    public static Mob spawn(ServerLevel level,EntityType<? extends Mob> type,UUID owner,Vec3 at,float health,float damage,boolean invulnerable){
-        var mob=type.create(level);if(mob==null)return null;
+    public static PropSummonEntity spawn(ServerLevel level,PropSummonEntity.Kind kind,UUID owner,Vec3 at,float health,float damage,boolean invulnerable){
+        var mob=PropSummonEntity.TYPE.get().create(level);if(mob==null)return null;mob.kind(kind);
         mob.addTag(TAG);mob.getPersistentData().putUUID("PropOwner",owner);mob.getPersistentData().putLong("PropEpoch",GimmickEpoch.get(level).generation);
         mob.getPersistentData().putFloat("PropDamage",damage);mob.getPersistentData().putInt("PropAttack",0);
-        mob.setNoAi(true);mob.setPersistenceRequired();mob.setMaxUpStep(1);mob.setInvulnerable(invulnerable);
-        if(mob instanceof Bee)mob.setNoGravity(true);
+        mob.setMaxUpStep(1);mob.setInvulnerable(invulnerable);
+        mob.setNoGravity(true);
         mob.getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);mob.setHealth(health);
-        if(mob.getAttribute(Attributes.ATTACK_DAMAGE)!=null)mob.getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(damage);
         mob.setPos(at);if(!level.addFreshEntity(mob))return null;return mob;
     }
     public static void clear(MinecraftServer server){if(server==null)return;for(var level:server.getAllLevels()){var list=new ArrayList<Entity>();level.getAllEntities().forEach(e->{if(e.getTags().contains(TAG))list.add(e);});list.forEach(Entity::discard);}}
@@ -32,10 +29,10 @@ public final class PropSummons {
     }
     @SubscribeEvent public static void drops(net.minecraftforge.event.entity.living.LivingDropsEvent e){if(e.getEntity().getTags().contains(TAG))e.setCanceled(true);}
     @SubscribeEvent public static void experience(net.minecraftforge.event.entity.living.LivingExperienceDropEvent e){if(e.getEntity().getTags().contains(TAG))e.setDroppedExperience(0);}
-    public static void tick(PropHuntMatch match,Mob mob,Vec3 orbit,int index){
+    public static void tick(PropHuntMatch match,PropSummonEntity mob,Vec3 orbit,int index){
         if(mob==null||mob.isRemoved())return;
         if(!mob.isAlive()){mob.discard();return;}
-        boolean bee=mob instanceof Bee;
+        boolean bee=mob.kind()==PropSummonEntity.Kind.BEE;
         boolean hiding=match.hiding();
         if((!match.hunting()&&!hiding)||GimmickEpoch.get((ServerLevel)mob.level()).generation!=mob.getPersistentData().getLong("PropEpoch")){mob.discard();return;}
         var target=match.hunting()?match.seekers().stream().filter(p->p.level()==mob.level()&&p.distanceToSqr(mob)<48*48&&(!bee||p.distanceToSqr(orbit)<=16*16)).min(Comparator.comparingDouble(p->p.distanceToSqr(mob))).orElse(null):null;
@@ -50,7 +47,7 @@ public final class PropSummons {
         if(target!=null&&mob.distanceToSqr(target)<2.4&&now>=mob.getPersistentData().getInt("PropAttack")){
             mob.getPersistentData().putInt("PropAttack",now+20);
             var source=new net.minecraft.world.damagesource.DamageSource(mob.level().registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.DAMAGE_TYPE).getHolderOrThrow(DAMAGE),mob);
-            if(target.hurt(source,mob.getPersistentData().getFloat("PropDamage"))&&mob instanceof CaveSpider)
+            if(target.hurt(source,mob.getPersistentData().getFloat("PropDamage"))&&mob.kind()==PropSummonEntity.Kind.SPIDER)
                 target.addEffect(new MobEffectInstance(MobEffects.POISON,100,0));
         }
     }

@@ -1,5 +1,7 @@
 # 숨바꼭질 100~139번 (u139)
 
+100·111·113번의 소환체는 `gungang:prop_summon` 전용 엔티티이며 실제 몹(Mob), 동물, 몬스터가 아니다. 외형은 클라이언트에서 동굴거미·벌·좀벌레 모델로 그린다. `server_resource/server.properties`의 `spawn-animals=false`, `spawn-monsters=false`를 유지해도 작동하며 평화로움 난이도에서도 사라지지 않는다. 기존 체력·피해·쿨타임·술래 추적과 초기화 시 제거 동작은 유지한다. 서버와 클라이언트 모두 변경된 모드가 필요하다.
+
 기본 콘텐츠 이름은 Minecraft 1.20.1 한국어 번역을 사용한다. 마네킹·마른 가스트·들꽃은 이 버전에 없는 콘텐츠이므로 `gungang:mannequin`, `gungang:dried_ghast`, `gungang:wildflowers`로 별도 추가했다. 마른 가스트는 부화 직전의 젖은 모습이며 실제로 부화하지 않는다. 들꽃은 네 군집이 놓인 모습이다.
 
 | 번호 | 게임 표시 이름 | 동작 |
