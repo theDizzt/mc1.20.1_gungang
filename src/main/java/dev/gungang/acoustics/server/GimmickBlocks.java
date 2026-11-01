@@ -30,6 +30,8 @@ public final class GimmickBlocks {
     public static final RegistryObject<BlockEntityType<GimmickEntity>> ENTITY=BES.register("gimmick",()->BlockEntityType.Builder.of(GimmickEntity::new,GIMMICKS.values().stream().map(RegistryObject::get).toArray(Block[]::new)).build(null));
     public static final RegistryObject<EntityType<PuddleOverlay>> PUDDLE_OVERLAY=ENTITIES.register("puddle",()->EntityType.Builder.<PuddleOverlay>of(PuddleOverlay::new,MobCategory.MISC).sized(1,.0625f).clientTrackingRange(8).updateInterval(20).build("gungang:puddle")),
             ACID_PUDDLE_OVERLAY=ENTITIES.register("acid_puddle",()->EntityType.Builder.<PuddleOverlay>of(PuddleOverlay::new,MobCategory.MISC).sized(1,.0625f).clientTrackingRange(8).updateInterval(20).build("gungang:acid_puddle"));
+    /** The harp note of the note block disguise; SoundEngineMixin lets its pitch leave vanilla's two-octave range. */
+    public static final RegistryObject<net.minecraft.sounds.SoundEvent> PROP_NOTE=SOUNDS.register("prop_note",()->net.minecraft.sounds.SoundEvent.createVariableRangeEvent(new net.minecraft.resources.ResourceLocation("gungang","prop_note")));
     public static final RegistryObject<net.minecraft.sounds.SoundEvent> PUDDLE_STEP=SOUNDS.register("puddle_step",()->net.minecraft.sounds.SoundEvent.createVariableRangeEvent(new net.minecraft.resources.ResourceLocation("gungang","puddle_step")));
     public static final RegistryObject<FluidType> ACID_TYPE=TYPES.register("acid",()->new FluidType(FluidType.Properties.create().canConvertToSource(true).canSwim(true).canDrown(true).canExtinguish(true).supportsBoating(true).lightLevel(12)
             .sound(net.minecraftforge.common.SoundActions.BUCKET_FILL,net.minecraft.sounds.SoundEvents.BUCKET_FILL)

@@ -1,0 +1,31 @@
+{
+  "variants": {
+    "part=0": {
+      "model": "gungang:block/geyser_0"
+    },
+    "part=1": {
+      "model": "gungang:block/geyser_1"
+    },
+    "part=2": {
+      "model": "gungang:block/geyser_2"
+    },
+    "part=3": {
+      "model": "gungang:block/geyser_3"
+    },
+    "part=4": {
+      "model": "gungang:block/geyser_4"
+    },
+    "part=5": {
+      "model": "gungang:block/geyser_5"
+    },
+    "part=6": {
+      "model": "gungang:block/geyser_6"
+    },
+    "part=7": {
+      "model": "gungang:block/geyser_7"
+    },
+    "part=8": {
+      "model": "gungang:block/geyser_8"
+    }
+  }
+}

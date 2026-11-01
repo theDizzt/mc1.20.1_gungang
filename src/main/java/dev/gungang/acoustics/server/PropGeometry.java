@@ -15,7 +15,10 @@ public final class PropGeometry {
     }
     public static List<Part> parts(BlockState state){
         var result=new ArrayList<Part>();
-        if(state.getBlock() instanceof FurnitureBlock furniture){
+        if(state.getBlock() instanceof ThermalEmitterBlock emitter&&emitter.geyser()){
+            // The 3x3 geyser floor, centred on the hider like the placed block is on its centre part.
+            for(int part=0;part<9;part++)result.add(new Part(new BlockPos(part%3-1,0,part/3-1),state.setValue(ThermalEmitterBlock.PART,part)));
+        }else if(state.getBlock() instanceof FurnitureBlock furniture){
             for(int i=0;i<furniture.partCount();i++)result.add(new Part(furniture.offset(i,state.getValue(FurnitureBlock.FACING)),state.setValue(FurnitureBlock.PART,i)));
         }else{
             result.add(new Part(BlockPos.ZERO,state));

@@ -15,7 +15,32 @@ public final class BotEntity extends PathfinderMob {
         super.travel(steering==null?input:steering);
     }
     private static final net.minecraft.network.syncher.EntityDataAccessor<String> SKIN=net.minecraft.network.syncher.SynchedEntityData.defineId(BotEntity.class,net.minecraft.network.syncher.EntityDataSerializers.STRING);
-    @Override protected void defineSynchedData(){super.defineSynchedData();entityData.define(SKIN,BotDatabase.DEFAULT_SKIN);}
+    /** Absorption is a plain server field on mobs; synced so teammates' health bars show the yellow bonus (mercy bullet, life support). */
+    private static final net.minecraft.network.syncher.EntityDataAccessor<Float> ABSORPTION=net.minecraft.network.syncher.SynchedEntityData.defineId(BotEntity.class,net.minecraft.network.syncher.EntityDataSerializers.FLOAT);
+    /** 숨바꼭질: entity id of the bot's own disguise, or -1. The body then takes the block's size and steps aside for bullets. */
+    private static final net.minecraft.network.syncher.EntityDataAccessor<Integer> DISGUISE=net.minecraft.network.syncher.SynchedEntityData.defineId(BotEntity.class,net.minecraft.network.syncher.EntityDataSerializers.INT);
+    @Override protected void defineSynchedData(){super.defineSynchedData();entityData.define(SKIN,BotDatabase.DEFAULT_SKIN);entityData.define(ABSORPTION,0f);entityData.define(DISGUISE,-1);}
+    public void disguise(PropEntity prop){entityData.set(DISGUISE,prop==null?-1:prop.getId());}
+    /** The live disguise, on either side; null for a plain bot. */
+    public PropEntity disguise(){int id=entityData.get(DISGUISE);return id>=0&&level().getEntity(id) instanceof PropEntity prop&&!prop.isRemoved()?prop:null;}
+    public boolean disguised(){return entityData.get(DISGUISE)>=0;}
+    @Override public void onSyncedDataUpdated(net.minecraft.network.syncher.EntityDataAccessor<?> key){super.onSyncedDataUpdated(key);if(DISGUISE.equals(key))refreshDimensions();}
+    /** A disguised bot has the block's size, as {@link PropDimensions} gives a hiding player. */
+    @Override public EntityDimensions getDimensions(Pose pose){
+        var prop=entityData==null?null:disguise();if(prop==null)return super.getDimensions(pose);
+        var box=prop.getBoundingBox();float width=(float)Math.max(.1,Math.max(box.getXsize(),box.getZsize())),height=(float)Math.max(.1,box.getYsize());
+        if(prop.healthPack())height=1;
+        if(prop.item().equals("minecraft:painting"))width=(float)Math.max(.1,Math.min(box.getXsize(),box.getZsize()));
+        return EntityDimensions.scalable(width,height);
+    }
+    @Override protected float getStandingEyeHeight(Pose pose,EntityDimensions size){return entityData!=null&&disguised()?Math.max(.1f,size.height*.85f):super.getStandingEyeHeight(pose,size);}
+    /** Bullets hit the disguise, never the invisible body behind it; nobody shoves a block around. */
+    @Override public boolean isPickable(){return !disguised()&&super.isPickable();}
+    @Override public boolean isPushable(){return !disguised()&&super.isPushable();}
+    @Override protected void pushEntities(){if(!disguised())super.pushEntities();}
+    @Override public boolean isInvisibleTo(net.minecraft.world.entity.player.Player viewer){return disguised()||super.isInvisibleTo(viewer);}
+    @Override public float getAbsorptionAmount(){return entityData.get(ABSORPTION);}
+    @Override public void setAbsorptionAmount(float amount){super.setAbsorptionAmount(amount);entityData.set(ABSORPTION,Math.max(0,amount));}
     public String skin(){return entityData.get(SKIN);}
     public void skin(String value){entityData.set(SKIN,value);}
     private static final DeferredRegister<EntityType<?>> TYPES=DeferredRegister.create(ForgeRegistries.ENTITY_TYPES,"gungang");
@@ -47,12 +72,16 @@ public final class BotEntity extends PathfinderMob {
                             return below==BlockPathTypes.OPEN||below==BlockPathTypes.WALKABLE||below==BlockPathTypes.WATER||below==BlockPathTypes.LAVA
                                     ?BlockPathTypes.OPEN:BlockPathTypes.WALKABLE;
                         }
+                        // A shutter's panel is thinner than a block, so vanilla calls it open even while it is shut.
+                        if(state.getBlock() instanceof ShutterBlock&&!BotNavGraph.shutterOpen(world,new net.minecraft.core.BlockPos(x,y,z)))return BlockPathTypes.BLOCKED;
                         var type=super.getBlockPathType(world,x,y,z);
                         // Seen enemy mines and traps, fire and strike zones cost extra, so paths bend around them.
                         return type==BlockPathTypes.WALKABLE&&BotManager.avoid(BotEntity.this,x,y,z)?BlockPathTypes.DAMAGE_OTHER:type;
                     }
                 };
                 nodeEvaluator.setCanPassDoors(true);
+                // Swim at the surface (the bot jumps in water) instead of treating water as a wall.
+                nodeEvaluator.setCanFloat(true);
                 return new PathFinder(nodeEvaluator,nodes);
             }
         };

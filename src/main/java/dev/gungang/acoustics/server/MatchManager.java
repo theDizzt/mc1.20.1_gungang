@@ -56,7 +56,9 @@ public final class MatchManager {
         if(died&&freeForAll!=null)freeForAll.death(player,null);
         if(died)ledger.death(player.getUUID(),player.getUUID(),server.getTickCount(),deathmatch!=null);
     }
-    private static boolean contested;
+    private static boolean contested,alphaOnPoint,bravoOnPoint;
+    /** Bots take part: team deathmatch, free-for-all, 이동점령, 호위, 폭탄전, 숨바꼭질, or plain capture (쟁탈전) with no other mode on the map. */
+    private static boolean bots;
     private static ZonedDateTime started;
     private static boolean running;
     private static int ticks;
@@ -84,16 +86,18 @@ public final class MatchManager {
         presence.clear(); contested=false;
         started=ZonedDateTime.now();
         for (var p:s.getPlayerList().getPlayers()) ledger.add(p.getUUID(),p.getGameProfile().getName(),freeForAll!=null&&freeForAll.participant(p.getUUID())?p.getUUID().toString():LobbyManager.team(p.getUUID()));
-        if(deathmatch!=null)BotManager.prepare(s,arena);else BotManager.close();
+        alphaOnPoint=bravoOnPoint=false;
+        bots=deathmatch!=null||freeForAll!=null||normandy!=null||escort!=null||bomb!=null||propHunt!=null||arena.capture()!=null&&normandy==null&&bomb==null&&escort==null&&freeForAll==null;
+        if(bots)BotManager.prepare(s,arena);else BotManager.close();
         floor.prepare(s,arena);
         NormandyBeacon.get(s).activate(s,arena,0);
         send(snapshot(false,"",LobbyManager.preparationSeconds(arena)));
         LogUtils.getLogger().info("[GunGang] MATCH PREPARE date={} map={} ({}) dimension={} timeLimitSeconds={}",started,map.name(),map.id(),map.dimension(),map.timeLimitSeconds());
     }
-    public static void start() { TeamPoints.clear(server);if(freeForAll!=null)freeForAll.start(); BombDrops.clear(server);GimmickEpoch.reset(server);if(!running)started=ZonedDateTime.now();running=true; LogUtils.getLogger().info("[GunGang] MATCH START date={} map={} ({})",started,map.name(),map.id()); }
+    public static void start() { if(bots&&normandy!=null)BotManager.launchAttackers(map.normandy().attackLaunch()); TeamPoints.clear(server);if(freeForAll!=null)freeForAll.start(); BombDrops.clear(server);GimmickEpoch.reset(server);if(!running)started=ZonedDateTime.now();running=true; LogUtils.getLogger().info("[GunGang] MATCH START date={} map={} ({})",started,map.name(),map.id()); }
     public static void tick(int preparationSeconds) {
         if(map==null)return;
-        if(deathmatch!=null){BotManager.tick(running);if(map==null)return;if(running)for(var id:BotManager.activeIds())ledger.played(id);}
+        if(bots){BotManager.tick(running);if(map==null)return;if(running)for(var id:BotManager.activeIds())ledger.played(id);}
         if(propHunt!=null){if(running){if(propHunt.game.phase()==PropHuntGame.Phase.HIDING||propHunt.game.phase()==PropHuntGame.Phase.HUNTING)ticks++;propHunt.tick();}if(map!=null&&server.getTickCount()%4==0)send(snapshot(false,"",preparationSeconds));return;}
         if(escort!=null){
             if(running){ticks++;for(var p:server.getPlayerList().getPlayers())if(!LobbyManager.team(p.getUUID()).equals("SPECTATOR"))ledger.played(p.getUUID());}
@@ -125,6 +129,12 @@ public final class MatchManager {
                     attack |= LobbyManager.team(p.getUUID()).equals("BRAVO");
                     defend |= LobbyManager.team(p.getUUID()).equals("ALPHA");
                 }
+                // Bots count on the point exactly like players.
+                for(var bot:BotManager.entities()) if(bot.distanceToSqr(center.x(),center.y(),center.z())<=point.radius()*point.radius()) {
+                    attack |= BotManager.side(bot).equals("BRAVO");
+                    defend |= BotManager.side(bot).equals("ALPHA");
+                }
+                alphaOnPoint=defend;bravoOnPoint=attack;
                 contested=attack&&defend;
                 if(normandy.tick(attack,defend)) {
                     for(var p:server.getPlayerList().getPlayers()) p.sendSystemMessage(net.minecraft.network.chat.Component.literal(
@@ -146,7 +156,14 @@ public final class MatchManager {
                         alpha |= team.equals("ALPHA"); bravo |= team.equals("BRAVO");
                     }
                 }
-                presence.retain(eligible);
+                // Bots stand on the point exactly like players do.
+                for(var bot:BotManager.entities()) {
+                    String team=BotManager.side(bot);
+                    if(!team.equals("ALPHA")&&!team.equals("BRAVO"))continue;
+                    eligible.add(bot.getUUID());
+                    if(presence.update(bot.getUUID(),bot.getBoundingBox(),box)) {alpha |= team.equals("ALPHA"); bravo |= team.equals("BRAVO");}
+                }
+                presence.retain(eligible);alphaOnPoint=alpha;bravoOnPoint=bravo;
                 capture.tick(alpha,bravo,c.captureStepTicks(),c.scoreIntervalTicks());
                 contested=alpha&&bravo;
                 floor.color(capture.scoringOwner());
@@ -207,7 +224,7 @@ public final class MatchManager {
         } catch(Exception error) { LogUtils.getLogger().error("[GunGang] Could not save match result",error); }
         if(propHunt!=null)propHunt.close();propHunt=null;
         if(freeForAll!=null)freeForAll.close();freeForAll=null;
-        floor.reset();NormandyBeacon.get(server).restore(server);presence.clear(); send(result);if(bomb!=null)bomb.close();bomb=null;if(escort!=null)escort.close();escort=null;EscortTracks.showMarkers(); map=null; running=false;
+        bots=false;floor.reset();NormandyBeacon.get(server).restore(server);presence.clear(); send(result);if(bomb!=null)bomb.close();bomb=null;if(escort!=null)escort.close();escort=null;EscortTracks.showMarkers(); map=null; running=false;
     }
     public static String format(int seconds) { return MatchReport.time(seconds); }
     @SubscribeEvent(priority=EventPriority.LOWEST) public static void damage(LivingDamageEvent event) {
@@ -243,8 +260,10 @@ public final class MatchManager {
             var source=event.getSource().getEntity();
             var killerId=source!=null&&BotManager.identity(source.getUUID())?source.getUUID():killer==null?(freeForAll!=null?victim.getUUID():null):killer.getUUID();
             ledger.death(victim.getUUID(),killerId,server.getTickCount(),deathmatch!=null);
-            if(freeForAll!=null)freeForAll.death(victim,killer);
-            if(LobbyManager.beginRespawn(victim,killer)) event.setCanceled(true);
+            if(freeForAll!=null)freeForAll.death(victim.getUUID(),killerId); // bot kills score like player kills
+            // A bot's kill (gun, or a gadget thrown by its fake player) lets the victim watch that bot's view.
+            net.minecraft.world.entity.LivingEntity watch=killer!=null&&!BotManager.identity(killer.getUUID())?killer:killerId!=null&&BotManager.identity(killerId)?BotManager.body(killerId):killer;
+            if(LobbyManager.beginRespawn(victim,watch)) event.setCanceled(true);
             if(freeForAll!=null){String winner=freeForAll.winner(false);if(!winner.isEmpty())LobbyManager.finish(winner);}
             if(deathmatch!=null) {
                 String winner=deathmatch.winner(alphaScore(),bravoScore(),false);
@@ -255,12 +274,39 @@ public final class MatchManager {
     public static void participant(ServerPlayer player) {
         if (map!=null) ledger.add(player.getUUID(),player.getGameProfile().getName(),freeForAll!=null&&freeForAll.participant(player.getUUID())?player.getUUID().toString():LobbyManager.team(player.getUUID()));
     }
-    static boolean botRunning(){return running&&map!=null&&deathmatch!=null;}
-    static void botParticipant(UUID bot,String name,String team){if(map!=null&&deathmatch!=null)ledger.add(bot,name,team);}
+    static boolean botRunning(){return running&&map!=null&&bots;}
+    /** In free-for-all a bot is its own side, keyed by its UUID like a player. */
+    static void botParticipant(UUID bot,String name,String team){if(map!=null&&bots)ledger.add(bot,name,freeForAll!=null?bot.toString():team);}
     static void botDeath(UUID bot,UUID killer){
         if(!botRunning())return;
-        ledger.death(bot,killer,server.getTickCount(),true);BotManager.died(bot,killer);
+        // Free-for-all opening grace: a fall costs nothing, the bot just goes back to a spawn (as players do).
+        if(freeForAll!=null&&freeForAll.opening()){BotManager.openingDeath(bot);return;}
+        // 폭탄전: nobody dies between rounds (players are healed the same way).
+        if(bomb!=null&&!bomb.activePlay()){BotManager.revive(bot);return;}
+        ledger.death(bot,killer,server.getTickCount(),deathmatch!=null);
+        if(freeForAll!=null)freeForAll.death(bot,killer);
+        BotManager.died(bot,killer);
+        if(bomb!=null){BotManager.bench(bot);return;} // out until the next round, like an eliminated player
+        if(freeForAll!=null){String winner=freeForAll.winner(false);if(!winner.isEmpty())LobbyManager.finish(winner);return;}
+        if(deathmatch==null)return;
         String winner=deathmatch.winner(alphaScore(),bravoScore(),false);if(!winner.isEmpty())LobbyManager.finish(winner);
+    }
+    /** The mission bots of {@code team} work toward in the running mode, or null (team deathmatch). */
+    static BotObjective botObjective(String team,int slot){
+        if(map==null||!bots||deathmatch!=null||freeForAll!=null)return null;
+        if(bomb!=null)return bomb.game.phase()==BombGame.Phase.PREPARING||bomb.activePlay()?bomb.objective(team,slot):null;
+        if(escort!=null) {
+            if(!escort.game.winner.isEmpty())return null;
+            return BotObjective.escort(escort.cart.position(),escort.game.rules.radius(),team,escort.escortsAtCart,escort.defendersAtCart,escort.game.distance>escort.floor()+1e-6);
+        }
+        if(normandy!=null) {
+            if(normandy.complete())return null;
+            var point=normandy.point();var c=point.center();
+            return BotObjective.assault(point.name(),new net.minecraft.world.phys.Vec3(c.x(),c.y(),c.z()),point.radius(),team,bravoOnPoint,alphaOnPoint);
+        }
+        if(!running||map.capture()==null)return null;
+        var a=map.capture().area();
+        return BotObjective.capture(map.capture().name(),new AABB(a.minX(),a.minY(),a.minZ(),a.maxX(),a.maxY(),a.maxZ()),team,capture.progress(),alphaOnPoint,bravoOnPoint);
     }
     private MatchManager() {}
 }

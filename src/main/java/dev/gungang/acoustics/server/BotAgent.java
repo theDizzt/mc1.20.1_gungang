@@ -32,6 +32,8 @@ final class BotAgent {
     final BotTactics tactics=new BotTactics();
     final BotActions actions=new BotActions();
     final BotAim aim=new BotAim();
+    /** 숨바꼭질 mind: hiding as a block, or seeking without ever being told which blocks are players. */
+    final BotPropHunt propHunt=new BotPropHunt();
     private List<Loadouts.Weapon> primaryChoices=List.of(),secondaryChoices=List.of();
     private BotLoadoutChoice.Outcome lastLife;
     private final Map<String,List<BotLoadoutChoice.Outcome>> primaryHistory=new HashMap<>(),secondaryHistory=new HashMap<>();
@@ -71,6 +73,7 @@ final class BotAgent {
         spawn();
     }
     private void spawn()throws Exception{
+        var hunt=MatchManager.realPropHunt();if(hunt!=null){spawnPropHunt(hunt);return;}
         var server=BotManager.server();var arena=BotManager.arena();var settings=BotManager.settings();
         var level=BotManager.level();if(level==null)throw new IllegalStateException("Bot dimension unavailable");
         if(chooseOnSpawn){
@@ -83,11 +86,17 @@ final class BotAgent {
             chooseOnSpawn=false;
             LogUtils.getLogger().info("[GunGang] Bot {} loadout primary={} secondary={} reason={}",slot+1,weapon.id(),secondary==null?"none":secondary.id(),choiceReason);
         }
-        var spawn=team.equals("ALPHA")?arena.alphaSpawn():arena.bravoSpawn();
-        level.getChunk(net.minecraft.core.BlockPos.containing(spawn.x(),spawn.y(),spawn.z()));
         bot=BotEntity.TYPE.get().create(level);if(bot==null)throw new IllegalStateException("Bot creation failed");
-        bot.setUUID(id);bot.moveTo(spawn.x(),spawn.y(),spawn.z(),spawn.yaw(),spawn.pitch());
-        bot.setCustomName(Component.literal(name()).withStyle(LobbyManager.options().formatting(team)));bot.setCustomNameVisible(true);
+        bot.setUUID(id);
+        // Free-for-all: the free-for-all spawn farthest from everyone, like a player's respawn.
+        var ffa=MatchManager.freeForAll();
+        // 이동점령 attackers respawn at the current point's attack spawn once the match runs.
+        boolean assault=MatchManager.botRunning()&&team.equals("BRAVO")&&MatchManager.attackSpawn()!=null;
+        var spawn=ffa!=null?ffa.spawnFor(bot):assault?MatchManager.attackSpawn():BotMovement.homeSpawn(arena,team);
+        level.getChunk(net.minecraft.core.BlockPos.containing(spawn.x(),spawn.y(),spawn.z()));
+        bot.moveTo(spawn.x(),spawn.y(),spawn.z(),spawn.yaw(),spawn.pitch());
+        // Free-for-all hides every name tag; the bot's must not give it away either.
+        bot.setCustomName(Component.literal(name()).withStyle(LobbyManager.options().formatting(team)));bot.setCustomNameVisible(ffa==null);
         bot.skin(BotManager.skin(slot));
         bot.getAttribute(Attributes.MAX_HEALTH).setBaseValue(weapon.maxHealth());
         usingSecondary=false;secondarySupplied=false;nextSwitch=switchedAt=0;health.reset();movement.reset();
@@ -97,18 +106,85 @@ final class BotAgent {
         perception.reset();tactics.reset(server.getTickCount());actions.reset();aim.reset(bot);
         bot.setHealth(bot.getMaxHealth());bot.setItemSlot(EquipmentSlot.MAINHAND,primaryStack);
         bot.setDropChance(EquipmentSlot.MAINHAND,0);
-        var scoreboard=server.getScoreboard();String key=team.equals("ALPHA")?"Red":"Blue";
-        var side=scoreboard.getPlayerTeam(key);if(side==null)side=scoreboard.addPlayerTeam(key);
-        side.setColor(LobbyManager.options().formatting(team));scoreboard.addPlayerToTeam(bot.getScoreboardName(),side);
+        var scoreboard=server.getScoreboard();
+        if(ffa!=null)ffa.add(bot); // own colour team, score row and respawn protection
+        else {
+            String key=team.equals("ALPHA")?"Red":"Blue";
+            var side=scoreboard.getPlayerTeam(key);if(side==null)side=scoreboard.addPlayerTeam(key);
+            side.setColor(LobbyManager.options().formatting(team));scoreboard.addPlayerToTeam(bot.getScoreboardName(),side);
+        }
         if(!level.addFreshEntity(bot))throw new IllegalStateException("Bot entity was rejected");
         keepTicking();
-        // Preparation gates are closed. Search only once running, after the gates have opened.
-        movement.prepareSpawnExit();
+        // Preparation gates are closed. Search only once running, after the gates have opened. Free-for-all and
+        // 이동점령 attack spawns have no spawn room (the attackers' respawn protection is a short resistance instead).
+        if(ffa==null&&!assault)movement.prepareSpawnExit();
+        if(assault)bot.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.DAMAGE_RESISTANCE,60,5,false,false));
         gun=bot.getMainHandItem().is(Items.BOW)?null:new BotGun(bot);
         bornAt=server.getTickCount();lifeDamage=0;encounterDistance=0;
         // Each bot thinks and paths on its own offset, so several bots never pile their work onto the same tick.
         int now=server.getTickCount();target=null;nextShot=now;
         nextThink=now+slot*settings.thinkTicks()/BotManager.MAX;nextPath=now+slot*settings.pathTicks()/BotManager.MAX;
+    }
+    /**
+     * 숨바꼭질: hiders start at the ALPHA spawn as a block with nothing in hand, seekers in their waiting room with the
+     * issued shotgun. A found hider stays out for good.
+     */
+    private void spawnPropHunt(PropHuntMatch hunt)throws Exception{
+        var server=BotManager.server();var arena=BotManager.arena();var settings=BotManager.settings();
+        var level=BotManager.level();if(level==null)throw new IllegalStateException("Bot dimension unavailable");
+        boolean hider=team.equals("ALPHA");
+        if(!hunt.participant(id)||hider&&!hunt.alive(id)){respawnAt=Integer.MAX_VALUE;return;}
+        bot=BotEntity.TYPE.get().create(level);if(bot==null)throw new IllegalStateException("Bot creation failed");
+        bot.setUUID(id);
+        var spawn=hider?arena.alphaSpawn():arena.bravoSpawn();
+        level.getChunk(net.minecraft.core.BlockPos.containing(spawn.x(),spawn.y(),spawn.z()));
+        bot.moveTo(spawn.x(),spawn.y(),spawn.z(),spawn.yaw(),spawn.pitch());
+        bot.setCustomName(Component.literal(name()).withStyle(LobbyManager.options().formatting(team)));bot.setCustomNameVisible(!hider);
+        bot.skin(BotManager.skin(slot));
+        secondary=null;secondaryStack=ItemStack.EMPTY;usingSecondary=false;secondarySupplied=false;nextSwitch=switchedAt=0;
+        primaryStack=hider?ItemStack.EMPTY:hunt.seekerShotgun();
+        bot.setItemSlot(EquipmentSlot.MAINHAND,primaryStack);bot.setDropChance(EquipmentSlot.MAINHAND,0);
+        health.reset();movement.reset();perception.reset();tactics.reset(server.getTickCount());actions.reset();aim.reset(bot);
+        var scoreboard=server.getScoreboard();String key=hider?"Red":"Blue";
+        var side=scoreboard.getPlayerTeam(key);if(side==null)side=scoreboard.addPlayerTeam(key);
+        side.setColor(LobbyManager.options().formatting(team));scoreboard.addPlayerToTeam(bot.getScoreboardName(),side);
+        if(!level.addFreshEntity(bot))throw new IllegalStateException("Bot entity was rejected");
+        keepTicking();
+        hunt.botSpawned(bot);updateSpeed();
+        gun=hider||!BotGun.supports(primaryStack)?null:new BotGun(bot);
+        bornAt=server.getTickCount();lifeDamage=0;encounterDistance=0;target=null;nextShot=server.getTickCount();
+        nextThink=server.getTickCount()+slot*settings.thinkTicks()/BotManager.MAX;
+        propHunt.reset(this,hunt);
+    }
+    /** 숨바꼭질 tick: the match handles the disguise and waiting room; the bot only decides where to go and what to do. */
+    private void propTick(PropHuntMatch hunt,boolean running)throws Exception{
+        var server=BotManager.server();var arena=BotManager.arena();int now=server.getTickCount();
+        if(bot!=null&&!bot.isRemoved())keepTicking();
+        if(bot==null){if(now>=respawnAt)spawn();return;}
+        if(bot.isRemoved()){bot=null;respawnAt=now+20;return;}
+        if(!running){bot.getNavigation().stop();return;}
+        var bounds=bot.getBoundingBox();
+        if(bot.getY()<bot.level().getMinBuildHeight()||arena.deathZones().stream().anyMatch(z->z.intersects(bounds.minX,bounds.minY,bounds.minZ,bounds.maxX,bounds.maxY,bounds.maxZ))){
+            hunt.eliminate(bot,null);return;
+        }
+        if(bot.parkour.active())return;
+        if(bot.isInWater())bot.getJumpControl().jump();
+        propHunt.tick(this,hunt,now);
+    }
+    /** 폭탄전 round start: a fresh body (full health and ammunition) at the side's spawn on the next tick. */
+    void nextRound(){remove();respawnAt=BotManager.server().getTickCount();}
+    /** 이동점령 start: from the attackers' holding room to the launch point. */
+    void launch(ArenaMap.Spawn launch){
+        if(bot==null)return;
+        bot.getNavigation().stop();bot.teleportTo(launch.x(),launch.y(),launch.z());bot.setYRot(launch.yaw());bot.fallDistance=0;
+        movement.reset();
+    }
+    /** Free-for-all opening grace: back to a spawn with full health, nothing recorded. */
+    void openingDeath(){
+        var ffa=MatchManager.freeForAll();if(bot==null||ffa==null)return;
+        var spawn=ffa.spawnFor(bot);
+        bot.setHealth(bot.getMaxHealth());bot.clearFire();bot.getNavigation().stop();bot.fallDistance=0;
+        bot.teleportTo(spawn.x(),spawn.y(),spawn.z());bot.setYRot(spawn.yaw());movement.reset();
     }
     void remove(){
         var server=BotManager.server();
@@ -128,6 +204,10 @@ final class BotAgent {
         gadgets.clearCooldowns();remove();
     }
     private Loadouts.Weapon choose(List<Loadouts.Weapon> choices,String fixed,String previous,boolean secondarySlot){
+        choices=choices.stream().filter(w->!LobbyManager.teamWeaponTaken(id,team,!secondarySlot,w.id())).toList();
+        String requested=fixed;
+        if(!fixed.equals("none")&&choices.stream().noneMatch(w->w.id().equals(requested)))fixed="";
+        if(choices.isEmpty()&&!secondarySlot)throw new IllegalStateException("중복 제한으로 봇이 사용할 주무기가 없습니다.");
         var options=choices.stream().map(w->{
             var stack=w.stack();boolean melee=BotManager.melee(stack),held=BotManager.held(stack);
             var data=stack.is(Items.BOW)?BotWeaponData.BOW:BotWeaponData.read(stack);
@@ -148,7 +228,9 @@ final class BotAgent {
      * target pace: a sprinting player at the weapon's speed, scaled by the bot multiplier (1.0 = exactly that player).
      */
     void updateSpeed(){
-        if(bot!=null&&weapon!=null)bot.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(
+        // 숨바꼭질 has no loadout: hiders and seekers alike move at a sprinting player's pace.
+        if(bot!=null&&MatchManager.realPropHunt()!=null)bot.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(Math.sqrt(PLAYER_SPRINT*BotManager.settings().movementSpeed()));
+        else if(bot!=null&&weapon!=null)bot.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(
                 Math.sqrt(PLAYER_SPRINT*(usingSecondary?secondary:weapon).movementSpeed()/100*BotManager.settings().movementSpeed()));
     }
     private boolean heldSecondary(){return secondaryStack!=null&&!secondaryStack.isEmpty()&&BotManager.held(secondaryStack);}
@@ -176,10 +258,18 @@ final class BotAgent {
     }
 
     void tick(boolean running)throws Exception{
+        var hunt=MatchManager.realPropHunt();if(hunt!=null){propTick(hunt,running);return;}
         var server=BotManager.server();var arena=BotManager.arena();var settings=BotManager.settings();
         // Keep countdown spawns loaded too, and move the ticket immediately at chunk boundaries.
         if(bot!=null&&!bot.isRemoved())keepTicking();
-        if(!running){if(bot!=null)bot.getNavigation().stop();return;}
+        // 폭탄전 between rounds counts as not running (preparation, round end); a fresh round respawns benched bots.
+        var bombMatch=MatchManager.bomb();
+        boolean between=bombMatch!=null&&!bombMatch.activePlay();
+        if(!running||between){
+            if(between&&bot==null&&server.getTickCount()>=respawnAt){spawn();return;}
+            if(bot!=null&&!setUp(server.getTickCount()))bot.getNavigation().stop();
+            return;
+        }
         if(bot==null){if(server.getTickCount()>=respawnAt)spawn();return;}
         if(bot.isRemoved()){remove();respawnAt=server.getTickCount()+20;return;}
         var bounds=bot.getBoundingBox();
@@ -194,7 +284,10 @@ final class BotAgent {
         if(target!=null&&!eligible(target))target=null;
         if(usingSecondary&&(target==null||BotManager.melee(secondaryStack)&&bot.distanceToSqr(target)>25||!BotManager.melee(secondaryStack)&&now-switchedAt>200))equip(false,now);
         else if(!usingSecondary&&target!=null&&BotManager.melee(secondaryStack)&&bot.distanceToSqr(target)<9)equip(true,now);
-        boolean seen=target!=null&&visible(target);
+        // Free-for-all spawn protection also stops the protected one from attacking: use it to move, not to fight.
+        var ffa=MatchManager.freeForAll();
+        boolean shielded=ffa!=null&&FreeForAllMatch.blocked(bot);
+        boolean seen=!shielded&&target!=null&&visible(target);
         var action=tactics.action();
         boolean traveling=Set.of(BotTactics.Action.PATROL,BotTactics.Action.INVESTIGATE,BotTactics.Action.REGROUP,BotTactics.Action.SUPPORT).contains(action);
         gadgets.tick(bot,arena,team,target,seen,movement,thought,traveling);
@@ -211,7 +304,10 @@ final class BotAgent {
         boolean melee=BotManager.melee(bot.getMainHandItem()),reloading=gun!=null&&gun.reloading();
         // Decide: everything the bot knows, scored. A raised shield keeps it fighting while backing off.
         var lead=perception.lead(now);var ally=perception.nearestAlly(bot);
-        var point=TeamPoints.latest(team,bot.level().dimension().location().toString(),completedPoint);
+        // Team pings are for teammates; free-for-all has none.
+        var point=ffa!=null?null:TeamPoints.latest(team,bot.level().dimension().location().toString(),completedPoint);
+        // 폭탄전 attackers: a ping on a bomb site is an order to plant there (the mission), not a spot to look at.
+        if(point!=null&&bombMatch!=null&&team.equals(bombMatch.game.attacker())&&bombMatch.siteOf(point.x(),point.y(),point.z())!=null){completedPoint=point.sequence();point=null;}
         if(point!=null&&point.sequence()!=activePoint) {
             if(tactics.action()==BotTactics.Action.RALLY)actions.reset();
             activePoint=point.sequence();nextPath=now;pathTurn=true;
@@ -224,9 +320,12 @@ final class BotAgent {
                 lead==null?Long.MAX_VALUE:now-lead.updated,ally!=null&&ally.distanceToSqr(bot)>24*24
                         &&BotMovement.forwardAlly(arena,team,bot.position(),ally.position()),perception.danger(bot.position())!=null);
         // Finish the bounded hide/peek/return cycle unless an urgent close threat or low health interrupts it.
+        // The mode's mission (capture point...): every bot pushes it, half the team guards it once it is ours.
+        var mission=MatchManager.botObjective(team,slot);
+        float missionScore=mission==null?0:BotTactics.objective(situation,mission.stance(),mission.contains(bot.getBoundingBox()),mission.guardAll()||slot%2==0);
         action=tactics.choose(situation,now,
                 actions.holdingCover()&&!melee&&bot.getHealth()>bot.getMaxHealth()*.2f&&(!seen||bot.distanceToSqr(target)>16),
-                gadgets.shielding(time)&&seen,point!=null);
+                gadgets.shielding(time)&&seen,point!=null,missionScore);
         // Act: the chosen behaviour's tree.
         var ctx=actions.ctx();
         ctx.bot=bot;ctx.arena=arena;ctx.team=team;ctx.settings=settings;ctx.now=now;ctx.pathTurn=pathTurn;ctx.melee=melee;
@@ -236,6 +335,7 @@ final class BotAgent {
         movement.profile(ctx.profile);
         ctx.perception=perception;ctx.movement=movement;ctx.health=health;ctx.aim=aim;
         ctx.teamPoint=point==null?null:new Vec3(point.x(),point.y(),point.z());
+        ctx.objective=mission;
         var status=actions.run(action);
         if(action==BotTactics.Action.RALLY&&status!=BotTree.Status.RUNNING&&point!=null)completedPoint=point.sequence();
         if(ctx.reloadRequested&&gun!=null&&!gadgets.blocksAttack(time))gun.reload();
@@ -254,6 +354,17 @@ final class BotAgent {
             }
         }
     }
+    /**
+     * Preparation: a team whose gate is open (이동점령 / 호위 / 폭탄전 defenders) uses the time to take up positions at the mission,
+     * as players do; everyone else waits in the spawn room.
+     */
+    private boolean setUp(int now){
+        if(bot==null||bot.isRemoved()||!team.equals(MatchManager.preparationGate()))return false;
+        var mission=MatchManager.botObjective(team,slot);if(mission==null)return false;
+        if(mission.contains(bot.getBoundingBox())){movement.halt(bot);movement.search(bot,now,0);return true;}
+        if(now>=nextPath||bot.getNavigation().isDone()){nextPath=now+BotManager.settings().pathTicks();movement.travel(bot,BotManager.arena(),team,mission.center(),now,false);}
+        aim.idle(bot);return true;
+    }
     /** An enemy of this bot that it may fight: a player or another bot on the other team, within range. */
     boolean eligible(LivingEntity e){
         int range=BotManager.settings().visionRange();
@@ -265,7 +376,9 @@ final class BotAgent {
         if(e instanceof ServerPlayer p&&(p.isCreative()||LobbyManager.respawning(p.getUUID())))return false;
         if(!(e instanceof ServerPlayer)&&!(e instanceof BotEntity))return false;
         String side=BotManager.side(e);
-        return (side.equals("ALPHA")||side.equals("BRAVO"))&&!side.equals(team);
+        var ffa=MatchManager.freeForAll();
+        if(ffa!=null&&ffa.remaining(e.getUUID())>0)return false; // protected: invulnerable and invisible
+        return BotManager.combatant(side)&&!side.equals(BotManager.side(bot));
     }
     private boolean visible(LivingEntity e){return eligible(e)&&bot.hasLineOfSight(e)&&!SpawnGateProtection.separates(bot,e);}
     private void think(int now)throws ReflectiveOperationException{
@@ -304,12 +417,14 @@ final class BotAgent {
     /** Enemy gunfire within earshot sends an idle bot to investigate, the way players react to shots. */
     void heard(LivingEntity shooter){
         if(bot==null||shooter==bot||shooter.level()!=bot.level())return;
+        if(MatchManager.realPropHunt()!=null){propHunt.gunfire(this,shooter);return;}
         String side=BotManager.side(shooter);
-        if(side.equals(team)||!(side.equals("ALPHA")||side.equals("BRAVO")))return;
+        if(!BotManager.combatant(side)||side.equals(BotManager.side(bot)))return;
         perception.gunfire(bot,shooter,BotManager.server().getTickCount());
     }
     void hurt(net.minecraftforge.event.entity.living.LivingHurtEvent event){
         int now=BotManager.server().getTickCount();
+        if(MatchManager.realPropHunt()!=null){if(bot!=null)propHunt.hurt(this,event.getSource());return;}
         gadgets.hurt(bot,event);
         // Shot by someone: remember roughly where from and re-think now; unseen attackers get investigated (turned toward).
         if(event.getAmount()>0&&event.getSource().getEntity() instanceof LivingEntity attacker&&enemy(attacker)){
@@ -325,11 +440,18 @@ final class BotAgent {
     private String score(BotTactics.Action action){float v=tactics.lastScore(action);return Float.isInfinite(v)?"쉼":String.format(Locale.ROOT,"%.0f",v);}
     String status(){
         var server=BotManager.server();
+        if(MatchManager.realPropHunt()!=null)return String.format(Locale.ROOT,"%s: %s팀 · 숨바꼭질 %s",name(),team,bot==null?(team.equals("ALPHA")?"발견됨":"대기"):propHunt.describe());
         if(bot==null)return String.format(Locale.ROOT,"%s: %s팀 · 리스폰 대기",name(),team);
-        return String.format(Locale.ROOT,"%s: %s팀 · 행동=%s %.1f초째 (교전 %s·엄폐 %s·후퇴 %s·합류 %s·지원 %s·추적 %s) · 인지 %d명(보임 %d) · 위험 지점 %d · 주무기=%s 보조=%s · %s",
+        var mission=MatchManager.botObjective(team,slot);var ffa=MatchManager.freeForAll();
+        String rules=ffa==null?"":String.format(Locale.ROOT," · 개인전 %d점 %d위%s",ffa.points(id),ffa.rank(id),FreeForAllMatch.blocked(bot)?" (무적: 공격 불가)":"");
+        return rules.isEmpty()?statusLine(server,mission):statusLine(server,mission)+rules;
+    }
+    private String statusLine(net.minecraft.server.MinecraftServer server,BotObjective mission){
+        return String.format(Locale.ROOT,"%s: %s팀 · 행동=%s %.1f초째 (교전 %s·엄폐 %s·후퇴 %s·합류 %s·지원 %s·추적 %s·임무 %s) · 임무=%s · 인지 %d명(보임 %d) · 위험 지점 %d · 주무기=%s 보조=%s · %s",
                 name(),team,tactics.action().label,(server.getTickCount()-tactics.since())/20.0,
                 score(BotTactics.Action.ENGAGE),score(BotTactics.Action.COVER),score(BotTactics.Action.RETREAT),
-                score(BotTactics.Action.REGROUP),score(BotTactics.Action.SUPPORT),score(BotTactics.Action.INVESTIGATE),
+                score(BotTactics.Action.REGROUP),score(BotTactics.Action.SUPPORT),score(BotTactics.Action.INVESTIGATE),score(BotTactics.Action.OBJECTIVE),
+                mission==null?"없음":mission.label()+" "+mission.doing(),
                 perception.known(),perception.visible(),perception.hazardCount(),weapon==null?"대기":weapon.id(),secondary==null?"없음":secondary.id(),gadgets.describe(bot));
     }
 }

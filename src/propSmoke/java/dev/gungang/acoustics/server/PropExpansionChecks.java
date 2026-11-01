@@ -10,14 +10,14 @@ import net.minecraft.world.phys.Vec3;
 
 final class PropExpansionChecks {
     private static void check(boolean value,String label){if(!value)throw new AssertionError(label);}
-    private static List<Mob> mobs(ServerPlayer p){var list=new ArrayList<Mob>();p.serverLevel().getAllEntities().forEach(e->{if(e instanceof Mob m&&e.getTags().contains(PropSummons.TAG)&&!e.isRemoved())list.add(m);});return list;}
+    private static List<PropSummonEntity> mobs(ServerPlayer p){var list=new ArrayList<PropSummonEntity>();p.serverLevel().getAllEntities().forEach(e->{if(e instanceof PropSummonEntity m&&e.getTags().contains(PropSummons.TAG)&&!e.isRemoved())list.add(m);});return list;}
     private static PropEntity as(PropHuntMatch match,ServerPlayer p,String item){var prop=match.prop(p.getUUID());prop.setup(p.getUUID(),item,0);prop.setPos(p.position());match.abilities.initialize(p,prop);return prop;}
     static void run(MinecraftServer server,PropHuntMatch match,ServerPlayer a,ServerPlayer b)throws Exception {
         var counter=MinecraftServer.class.getDeclaredField("tickCount");counter.setAccessible(true);int now=server.getTickCount();
         try{
             var immunity=ServerPlayer.class.getDeclaredField("spawnInvulnerableTime");immunity.setAccessible(true);immunity.setInt(a,0);immunity.setInt(b,0);
             match.unlock(a);a.setPos(.5,100,.5);b.setPos(5.5,100,.5);b.getAttribute(Attributes.MAX_HEALTH).setBaseValue(100);b.setHealth(100);
-            for(int i=100;i<=139;i++){String type=PropCatalog.type(String.valueOf(i));check(type!=null,"Catalog number "+i);String item=PropCatalog.variant(type,new Random(1));check(PropCatalog.number(item).equals(String.valueOf(i)),"Catalog roundtrip "+i);}
+            for(int i=100;i<=169;i++){String type=PropCatalog.type(String.valueOf(i));check(type!=null,"Catalog number "+i);String item=PropCatalog.variant(type,new Random(1));check(PropCatalog.number(item).equals(String.valueOf(i)),"Catalog roundtrip "+i);}
             var prop=as(match,a,"minecraft:spawner");match.abilities.use(a,prop);
             check(mobs(a).size()==1&&match.abilities.mobHealth(a.getUUID())==100,"Spawner health and registration");check(match.abilities.remaining(a.getUUID())==1680,"84 second cooldown");match.abilities.use(a,prop);check(mobs(a).size()==1,"No duplicate summon during cooldown");
             var spider=mobs(a).get(0);spider.setPos(b.position().add(.2,0,0));PropSummons.tick(match,spider,prop.position(),0);
@@ -34,7 +34,7 @@ final class PropExpansionChecks {
             prop=as(match,a,"minecraft:pink_petals");check(prop.state().getValue(BlockStateProperties.FLOWER_AMOUNT)==4,"Four pink petals");
             prop=as(match,a,"minecraft:sugar_cane");counter.setInt(server,now+1300);match.abilities.tick(a,prop);check(prop.height()==2&&PropGeometry.parts(prop).size()==2,"Cane 60 second growth");counter.setInt(server,now+2500);match.abilities.tick(a,prop);check(prop.height()==3&&prop.getBoundingBox().getYsize()==3,"Cane capped at three blocks");
             prop=as(match,a,"minecraft:beacon");double speed=a.getAttributeValue(Attributes.MOVEMENT_SPEED);match.abilities.use(a,prop);match.abilities.tick(a,prop);check(Math.abs(a.getAttributeValue(Attributes.MOVEMENT_SPEED)-speed*1.2)<1e-6,"Beacon team movement boost");match.abilities.use(a,prop);match.abilities.tick(a,prop);check(Math.abs(a.getAttributeValue(Attributes.MOVEMENT_SPEED)-speed)<1e-6,"Beacon boost removal");
-            prop=as(match,a,"gungang:conveyor_belt");match.abilities.use(a,prop);check(prop.state().getValue(ConveyorBlock.REVERSED),"Conveyor E direction");match.abilities.use(a,prop);check(prop.sinkDepth()==.5,"Conveyor half-block burial");
+            prop=as(match,a,"gungang:conveyor_belt");match.abilities.use(a,prop);check(!prop.state().getValue(ConveyorBlock.REVERSED)&&prop.sinkDepth()==.5,"Conveyor E sinks only");match.abilities.use(a,prop);check(prop.sinkDepth()==0,"Conveyor E raises again");
             prop=as(match,a,"gungang:blue_jump_pad");match.abilities.use(a,prop);check(prop.sinkDepth()==.125,"Pad burial");
             prop=as(match,a,"minecraft:stone");prop.setGlowingTag(true);check(!prop.marker(),"External glow is not discovery");prop.setGlowingTag(false);
             var padPos=new net.minecraft.core.BlockPos(20,100,20);for(var pad:List.of(MotionBlocks.BLUE.get(),MotionBlocks.LIME.get())){
@@ -42,6 +42,31 @@ final class PropExpansionChecks {
                 match.action(a,"charge");match.action(a,"jump");check(Math.abs(a.getDeltaMovement().y-MotionRules.jumpVelocity(((JumpPadBlock)pad).height))<1e-6&&a.getPersistentData().getBoolean("GunGangPadJump"),"Disguised charged jump uses installed pad and fall protection");counter.setInt(server,server.getTickCount()+20);
             }a.serverLevel().setBlock(padPos,Blocks.AIR.defaultBlockState(),3);a.getPersistentData().remove("GunGangPadJump");a.setPos(.5,100,.5);
             prop=as(match,a,"minecraft:minecart");a.setYRot(137);match.abilities.tick(a,prop);check(prop.getYRot()==137,"Minecart follows continuous player yaw");
+            for(String item:List.of("gungang:mannequin","gungang:dried_ghast")){
+                counter.setInt(server,server.getTickCount()+2);
+                prop=as(match,a,item);a.setYRot(73);match.abilities.tick(a,prop);check(prop.getYRot()==73,"Disguise follows view: "+item);
+                match.action(a,"lock");a.setYRot(151);match.abilities.tick(a,prop);check(prop.getYRot()==73,"Locked disguise preserves yaw: "+item);match.unlock(a);
+            }
+            var seekerMode=b.gameMode.getGameModeForPlayer();b.setGameMode(net.minecraft.world.level.GameType.SPECTATOR);
+            var previousDifficulty=server.getWorldData().getDifficulty();
+            boolean previousSpawning=a.serverLevel().getGameRules().getBoolean(net.minecraft.world.level.GameRules.RULE_DOMOBSPAWNING);
+            java.util.function.Consumer<net.minecraftforge.event.entity.EntityJoinLevelEvent> blockMobs=e->{if(e.getEntity() instanceof Mob)e.setCanceled(true);};
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(blockMobs);
+            server.setDifficulty(net.minecraft.world.Difficulty.PEACEFUL,true);
+            a.serverLevel().getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_DOMOBSPAWNING).set(false,server);
+            try{
+                check(!a.serverLevel().addFreshEntity(EntityType.CAVE_SPIDER.create(a.serverLevel())),"Test environment rejects actual mobs");
+                check(match.seekers().isEmpty(),"No active seeker for summon checks");
+                for(String item:List.of("minecraft:spawner","minecraft:bee_nest","minecraft:infested_stone")){
+                    prop=as(match,a,item);match.abilities.use(a,prop);match.abilities.tick(a,prop);
+                    int count=item.equals("minecraft:spawner")?1:3;check(mobs(a).size()==count,"Summons survive without seekers: "+item);
+                    for(var actor:mobs(a)){
+                        check(actor.getType().getCategory()==MobCategory.MISC&&!Mob.class.isInstance(actor),"Ability actor is not a mob");
+                        actor.tick();check(!actor.isRemoved(),"Ability actor survives peaceful tick");
+                    }
+                    match.abilities.use(a,prop);match.abilities.tick(a,prop);check(mobs(a).size()==count,"No duplicate idle summons: "+item);
+                }
+            }finally{net.minecraftforge.common.MinecraftForge.EVENT_BUS.unregister(blockMobs);server.setDifficulty(previousDifficulty,true);a.serverLevel().getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_DOMOBSPAWNING).set(previousSpawning,server);b.setGameMode(seekerMode);}
             prop=as(match,a,"minecraft:fire");b.setPos(a.position());b.invulnerableTime=0;b.setHealth(100);match.abilities.tick(a,prop);check(b.getHealth()==50&&b.getRemainingFireTicks()>=199,"Fire 50 damage plus ten seconds");b.clearFire();
             prop=as(match,a,"minecraft:oak_sign");match.abilities.use(a,prop);check(!prop.text().isEmpty(),"Sign randomized text");
             prop=as(match,a,"minecraft:end_crystal");b.setPos(a.position().add(5,0,0));b.invulnerableTime=0;b.setHealth(100);match.abilities.use(a,prop);for(int i=0;i<20;i++)match.abilities.tick(a,prop);check(b.getHealth()==50&&match.abilities.remaining(a.getUUID())==600,"Crystal homing impact and cooldown");

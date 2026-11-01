@@ -6,6 +6,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.*;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.effect.*;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
@@ -22,22 +24,48 @@ public final class PropHuntMatch {
     boolean hunting(){return !reviewing&&phase()==PropHuntGame.Phase.HUNTING;}
     boolean hiding(){return !reviewing&&phase()==PropHuntGame.Phase.HIDING;}
     List<ServerPlayer> players(){return members.keySet().stream().map(id->server.getPlayerList().getPlayer(id)).filter(Objects::nonNull).toList();}
-    List<ServerPlayer> seekers(){return players().stream().filter(p->!hider(p.getUUID())&&!frozen(p.getUUID())&&p.isAlive()&&!p.isSpectator()).toList();}
+    /** The body of a member: the player, or a bot's live entity (null while it has none). */
+    LivingEntity body(UUID id){
+        var p=server.getPlayerList().getPlayer(id);if(p!=null)return p;
+        var m=members.get(id);if(m==null||!m.bot)return null;
+        var a=BotManager.agent(id);return a==null||a.bot==null||a.bot.isRemoved()?null:a.bot;
+    }
+    /** Every member's body: players and bots alike. */
+    List<LivingEntity> bodies(){return members.keySet().stream().map(this::body).filter(Objects::nonNull).toList();}
+    /** Active seekers, players and bots: every hider gimmick acts on both. */
+    List<LivingEntity> seekers(){return bodies().stream().filter(p->!hider(p.getUUID())&&!frozen(p.getUUID())&&p.isAlive()&&!p.isSpectator()).toList();}
+    boolean bot(UUID id){var m=members.get(id);return m!=null&&m.bot;}
+    String name(UUID id){var m=members.get(id);return m==null?"":m.name;}
     boolean locked(UUID id){var m=members.get(id);return m!=null&&m.fixed;}
-    void unlock(ServerPlayer p){var m=members.get(p.getUUID());if(m!=null){home(p,m);m.fixed=false;m.charge=-1;}}
-    void relocate(ServerPlayer p,Vec3 to){unlock(p);p.teleportTo(p.serverLevel(),to.x,to.y,to.z,p.getYRot(),p.getXRot());var prop=prop(p.getUUID());if(prop!=null)prop.setPos(to);}
-    Vec3 randomMapPosition(ServerPlayer p){
+    void unlock(LivingEntity p){var m=members.get(p.getUUID());if(m!=null){if(p instanceof ServerPlayer sp)home(sp,m);m.fixed=false;m.charge=-1;}}
+    void relocate(LivingEntity p,Vec3 to){unlock(p);teleport(p,to);var prop=prop(p.getUUID());if(prop!=null)prop.setPos(to);}
+    /** Moves a body at once: players through their connection, bots directly. */
+    static void teleport(LivingEntity p,Vec3 to){
+        if(p instanceof ServerPlayer sp){sp.teleportTo(sp.serverLevel(),to.x,to.y,to.z,sp.getYRot(),sp.getXRot());return;}
+        if(p instanceof Mob mob)mob.getNavigation().stop();
+        p.teleportTo(to.x,to.y,to.z);p.setDeltaMovement(Vec3.ZERO);p.fallDistance=0;
+    }
+    /** An action-bar note for a player; bots read nothing. */
+    static void tell(LivingEntity p,String text){say(p,Component.literal(text),true);}
+    static void say(LivingEntity p,Component text,boolean overlay){if(p instanceof ServerPlayer sp)sp.displayClientMessage(text,overlay);}
+    /** A push that reaches a player's client at once; a bot just takes the motion. */
+    static void impulse(LivingEntity p,Vec3 motion){if(p instanceof ServerPlayer sp)PlayerImpulse.apply(sp,motion);else{p.setDeltaMovement(motion);p.hurtMarked=true;p.hasImpulse=true;}}
+    Vec3 randomMapPosition(LivingEntity p){
         if(map!=null&&map.previewArea()!=null){var a=map.previewArea();return new Vec3(a.minX()+random.nextDouble()*(a.maxX()-a.minX()+1),a.minY()+random.nextDouble()*(a.maxY()-a.minY()+1),a.minZ()+random.nextDouble()*(a.maxZ()-a.minZ()+1));}
         var a=map==null?null:map.alphaSpawn();var b=map==null?null:map.bravoSpawn();
         double x=a==null?p.getX():a.x(),z=a==null?p.getZ():a.z(),bx=b==null?x:b.x(),bz=b==null?z:b.z();
         return new Vec3(Math.min(x,bx)-24+random.nextDouble()*(Math.abs(x-bx)+48),p.getY()-8+random.nextDouble()*24,Math.min(z,bz)-24+random.nextDouble()*(Math.abs(z-bz)+48));
     }
     private static final class Member {
-        final UUID id;final String name,team;final boolean invisible;final double health;
+        final UUID id;final String name,team;final boolean invisible,bot;final double health;
         PropEntity prop;boolean fixed;Vec3 anchor;float yaw,pitch;int waiting,charge=-1,hazard,horn,blast,shot;
+        /** Q wall cling: the wall it hangs on, or null. */
+        Direction wall;
         UUID watching;
         final Map<String,Integer> actions=new HashMap<>();
-        Member(ServerPlayer p,String team){id=p.getUUID();name=p.getGameProfile().getName();this.team=team;invisible=p.isInvisible();health=p.getAttribute(Attributes.MAX_HEALTH).getBaseValue();}
+        Member(ServerPlayer p,String team){id=p.getUUID();name=p.getGameProfile().getName();this.team=team;invisible=p.isInvisible();health=p.getAttribute(Attributes.MAX_HEALTH).getBaseValue();bot=false;}
+        /** An AI bot reserved in the lobby; its body comes and goes with {@link BotAgent}. */
+        Member(UUID id,String name,String team){this.id=id;this.name=name;this.team=team;invisible=false;health=100;bot=true;}
     }
     private final MinecraftServer server;
     private final ArenaMap map;
@@ -55,15 +83,19 @@ public final class PropHuntMatch {
     private boolean reviewing,rushing;
     private static final UUID RUSH=UUID.fromString("5a0b8f0e-6c1d-4c5e-9a7b-2f4e1d3c6b70");
     /** Final minute: seekers move 35% faster (transient, re-applied every tick, removed on review and restore). */
-    private static void rush(ServerPlayer p,boolean on){
+    private static void rush(LivingEntity p,boolean on){
         var speed=p.getAttribute(Attributes.MOVEMENT_SPEED);if(speed==null)return;boolean has=speed.getModifier(RUSH)!=null;
-        if(on&&!has)speed.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(RUSH,"gungang_prop_rush",.35,net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.MULTIPLY_TOTAL));
+        // A path-walking bot moves attribute² (see BotAgent.updateSpeed), so its share is √1.35 for the same +35% pace.
+        if(on&&!has)speed.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(RUSH,"gungang_prop_rush",p instanceof Mob?Math.sqrt(1.35)-1:.35,net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.MULTIPLY_TOTAL));
         else if(!on&&has)speed.removeModifier(RUSH);
     }
     public static Loadouts.Weapon validate(MinecraftServer server,ArenaMap map,Loadouts loadouts){
         var gun=shotgun(loadouts,map.propHunt().shotgun());
-        var hiders=server.getPlayerList().getPlayers().stream().filter(p->LobbyManager.team(p.getUUID()).equals("ALPHA")).map(ServerPlayer::getUUID).toList();
-        if(server.getPlayerList().getPlayers().stream().noneMatch(p->LobbyManager.team(p.getUUID()).equals("BRAVO")))throw new IllegalArgumentException("술래가 필요합니다.");
+        var hiders=new ArrayList<>(server.getPlayerList().getPlayers().stream().filter(p->LobbyManager.team(p.getUUID()).equals("ALPHA")).map(ServerPlayer::getUUID).toList());
+        // Lobby bots take a side like players: hiders draw from the same deck, seekers count as seekers.
+        hiders.addAll(BotManager.lobbyIds().stream().filter(id->BotManager.team(id).equals("ALPHA")).toList());
+        if(server.getPlayerList().getPlayers().stream().noneMatch(p->LobbyManager.team(p.getUUID()).equals("BRAVO"))
+                &&BotManager.lobbyIds().stream().noneMatch(id->BotManager.team(id).equals("BRAVO")))throw new IllegalArgumentException("술래가 필요합니다.");
         new PropHuntGame(PropCatalog.available(),hiders,new Random(),PropHuntGame.huntTicks(map));return gun;
     }
     /** Weapon ID, or the M1014 when empty; must be a real TaCZ shotgun. */
@@ -82,6 +114,7 @@ public final class PropHuntMatch {
     public PropHuntMatch(MinecraftServer server,ArenaMap map,Loadouts.Weapon shotgun){
         this.server=server;this.map=map;this.shotgun=shotgun;test=false;
         for(var p:server.getPlayerList().getPlayers())if(Set.of("ALPHA","BRAVO").contains(LobbyManager.team(p.getUUID())))members.put(p.getUUID(),new Member(p,LobbyManager.team(p.getUUID())));
+        for(var id:BotManager.lobbyIds()){String team=BotManager.team(id);if(Set.of("ALPHA","BRAVO").contains(team))members.put(id,new Member(id,BotManager.name(id),team));}
         game=new PropHuntGame(PropCatalog.available(),members.values().stream().filter(m->m.team.equals("ALPHA")).map(m->m.id).toList(),random,PropHuntGame.huntTicks(map));
     }
     private PropHuntMatch(MinecraftServer server){this.server=server;map=null;test=true;game=new PropHuntGame();}
@@ -110,9 +143,10 @@ public final class PropHuntMatch {
         p.setCamera(p);p.setGameMode(GameType.ADVENTURE);equip(p);p.refreshDimensions();sync();
     }
     private void stop(ServerPlayer p){
+        PropAwn.clear(p.getUUID());
         abilities.remove(p);
         var m=members.remove(p.getUUID());if(m==null)return;
-        home(p,m);if(m.prop!=null){PropInteraction.remove(m.prop);m.prop.discard();}
+        release(p,m);home(p,m);if(m.prop!=null){PropInteraction.remove(m.prop);m.prop.discard();}
         game.remove(m.id);items.remove(m.id);var s=saved.remove(m.id);
         p.setCamera(p);LobbyManager.clearPlayerInventory(p);LoadoutAttributes.clear(p);SecondaryRuntime.clear(p);
         p.getInventory().load(s.inventory());p.inventoryMenu.broadcastChanges();
@@ -131,24 +165,46 @@ public final class PropHuntMatch {
         LobbyManager.clearPlayerInventory(p);LoadoutAttributes.clear(p);SecondaryRuntime.clear(p);
         p.getAttribute(Attributes.MAX_HEALTH).setBaseValue(m.team.equals("ALPHA")?50:100);p.setHealth(p.getMaxHealth());
         if(m.team.equals("BRAVO")){
-            var stack=shotgun.stack();stack.getOrCreateTag().putBoolean("GunGangPropShotgun",true);stack.getOrCreateTag().putInt("DummyAmmo",9999);stack.getOrCreateTag().putInt("MaxDummyAmmo",9999);
-            LoadoutSlots.mark(stack,"GunGangIssued",0);p.getInventory().setItem(0,stack);p.getInventory().selected=0;
+            p.getInventory().setItem(0,seekerShotgun());p.getInventory().selected=0;
+            p.getInventory().setItem(40,PropAwn.createJetpack(p));
         }else{p.setInvisible(true);if(m.prop==null)change(p,m);}
         p.inventoryMenu.broadcastChanges();
     }
-    private void change(ServerPlayer p,Member m){
+    /** A bot body entering the match: a hider becomes its block (50 health, invisible), a seeker keeps 100 health. */
+    void botSpawned(BotEntity bot){
+        var m=members.get(bot.getUUID());if(m==null)return;
+        bot.setItemSlot(net.minecraft.world.entity.EquipmentSlot.OFFHAND,ItemStack.EMPTY);
+        if(m.team.equals("ALPHA")){
+            bot.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND,ItemStack.EMPTY);
+            bot.getAttribute(Attributes.MAX_HEALTH).setBaseValue(50);bot.setHealth(50);
+            bot.setInvisible(true);bot.setCustomNameVisible(false);
+            if(m.prop==null||m.prop.isRemoved())change(bot,m);else{bot.disguise(m.prop);bot.refreshDimensions();}
+        }else{bot.getAttribute(Attributes.MAX_HEALTH).setBaseValue(100);bot.setHealth(100);}
+    }
+    /** The seekers' issued shotgun: infinite dummy ammunition, marked so its pellets count against disguises. */
+    ItemStack seekerShotgun(){
+        var stack=shotgun.stack();stack.getOrCreateTag().putBoolean("GunGangPropShotgun",true);stack.getOrCreateTag().putInt("DummyAmmo",9999);stack.getOrCreateTag().putInt("MaxDummyAmmo",9999);
+        LoadoutSlots.mark(stack,"GunGangIssued",0);return stack;
+    }
+    /** Loud disguise abilities (music, bells, shrieks, launches): seekers in earshot hear where they came from. */
+    private static final Set<String> NOISY=Set.of("minecraft:note_block","minecraft:bell","minecraft:jukebox","minecraft:sculk_sensor","minecraft:sculk_shrieker","minecraft:dispenser",
+            "minecraft:end_crystal","minecraft:spawner","minecraft:bubble_column","gungang:shutter","minecraft:brewing_stand");
+    private void noise(Member m){if(m.prop!=null&&NOISY.contains(m.prop.item())&&hunting())BotManager.propNoise(m.prop.position(),m.id);}
+    private void change(LivingEntity p,Member m){
         // A health pack sunk into the floor comes back up first, so the new block never starts inside the ground.
         boolean sunk=m.prop!=null&&m.prop.sunk();
-        if(m.prop!=null){PropInteraction.remove(m.prop);m.prop.discard();}p.closeContainer();
+        if(m.prop!=null){PropInteraction.remove(m.prop);m.prop.discard();}if(p instanceof ServerPlayer sp)sp.closeContainer();
         String item=test?items.get(m.id):PropCatalog.variant(game.draw(),random);
-        m.prop=PropEntity.TYPE.get().create(p.serverLevel());m.prop.setup(m.id,item,random.nextInt(26));m.prop.setPos(m.fixed?m.anchor:p.position());
-        p.serverLevel().addFreshEntity(m.prop);
+        var level=(ServerLevel)p.level();
+        m.prop=PropEntity.TYPE.get().create(level);m.prop.setup(m.id,item,random.nextInt(26));m.prop.setPos(m.fixed?m.anchor:p.position());
+        level.addFreshEntity(m.prop);
+        if(p instanceof BotEntity bot)bot.disguise(m.prop);
         abilities.initialize(p,m.prop);
         p.refreshDimensions();
         if(m.watching==null)unstick(p);
         if(m.fixed&&m.watching==null)m.anchor=p.position();
-        if(sunk)p.sendSystemMessage(Component.literal("블록이 바뀌어 생명력 팩 매설이 풀렸습니다."));
-        p.displayClientMessage(Component.literal("변신: ").append(PropCatalog.name(item,m.prop.state())).append(" ["+PropCatalog.number(item)+"]"),true);
+        if(sunk&&p instanceof ServerPlayer sp)sp.sendSystemMessage(Component.literal("블록이 바뀌어 생명력 팩 매설이 풀렸습니다."));
+        // The new disguise is announced in the client's control guide (right side), not the action bar.
         m.hazard=server.getTickCount()+80;
     }
     public void tick(){
@@ -159,12 +215,13 @@ public final class PropHuntMatch {
         if(phase()==PropHuntGame.Phase.REVIEW&&!reviewing){
             abilities.clear();PropSummons.clear(server);
             reviewing=true;
-            for(var m:members.values()){if(m.prop!=null)mark(m);var p=server.getPlayerList().getPlayer(m.id);if(p!=null){rush(p,false);p.removeEffect(MobEffects.BLINDNESS);p.setCamera(p);p.setGameMode(GameType.SPECTATOR);p.sendSystemMessage(Component.literal(""+game.winner()+" 승리! 30초 동안 숨었던 위치를 둘러보세요."));}}
+            for(var m:members.values()){if(m.prop!=null)mark(m);var body=body(m.id);if(body!=null)rush(body,false);if(body instanceof BotEntity bot)BotManager.propReview(bot);var p=server.getPlayerList().getPlayer(m.id);if(p!=null){p.removeEffect(MobEffects.BLINDNESS);p.setCamera(p);p.setGameMode(GameType.SPECTATOR);p.sendSystemMessage(Component.literal(""+game.winner()+" 승리! 30초 동안 숨었던 위치를 둘러보세요."));}}
         }
         boolean rush=!test&&game.finalMinute();
         if(rush&&!rushing)for(var m:members.values()){var p=server.getPlayerList().getPlayer(m.id);if(p!=null)p.sendSystemMessage(Component.literal("마지막 1분 · 블록 교체 없음 · 술래 이동속도 +35%"));}
         rushing=rush;
         if(!reviewing)for(var m:members.values()){
+            if(m.bot){botTick(m,change,rush);continue;}
             var p=server.getPlayerList().getPlayer(m.id);if(p==null)continue;
             if(m.team.equals("ALPHA")){
                 if(!game.alive(m.id))continue;
@@ -172,6 +229,8 @@ public final class PropHuntMatch {
                 if(change)change(p,m);
                 if(m.watching!=null){var camera=camera(m.watching);if(camera==null)home(p,m);else if(p.getCamera()!=camera)p.setCamera(camera);}
                 if(m.fixed&&m.watching==null){hold(p,m.anchor,m.yaw,m.pitch);}
+                // Off the wall (moved past its edge, or a new disguise that no longer fits there): fall as usual.
+                if(m.wall!=null&&m.watching==null){if(PropCling.attached(p.level(),p.getBoundingBox(),m.wall,PropCling.SERVER_REACH)){p.setNoGravity(true);p.fallDistance=0;}else release(p,m);}
                 if(m.prop!=null){p.setAirSupply(p.getMaxAirSupply());m.prop.setPos(spot(m,p));if(m.fixed)look(m);submerge(m.prop);hazards(p,m);abilities.tick(p,m.prop);}
             }else{
                 rush(p,rush);
@@ -180,50 +239,91 @@ public final class PropHuntMatch {
                     if(phase()==PropHuntGame.Phase.HIDING)p.addEffect(new MobEffectInstance(MobEffects.BLINDNESS,30,0,false,false,false));
                     p.stopUsingItem();
                 }else p.removeEffect(MobEffects.BLINDNESS);
-                // The mode permits only its issued primary; no pickups or secondary gadgets.
-                if(!p.getInventory().getItem(0).getOrCreateTag().getBoolean("GunGangPropShotgun")){
-                    ItemStack gun=ItemStack.EMPTY;
-                    for(int i=1;i<p.getInventory().getContainerSize();i++)if(p.getInventory().getItem(i).getOrCreateTag().getBoolean("GunGangPropShotgun")){gun=p.getInventory().getItem(i);p.getInventory().setItem(i,ItemStack.EMPTY);break;}
-                    if(!gun.isEmpty())p.getInventory().setItem(0,gun);
+                // Preserve either hand order, including the offhand macro's temporary swap.
+                for(int i=1;i<p.getInventory().getContainerSize();i++){
+                    var stack=p.getInventory().getItem(i);
+                    if(PropAwn.issued(stack)){
+                        if(i!=40){int home=PropAwn.is(stack)||PropAwn.jetpack(stack)?40:0;if(p.getInventory().getItem(home).isEmpty()){p.getInventory().setItem(home,stack);p.getInventory().setItem(i,ItemStack.EMPTY);}}
+                    }else p.getInventory().setItem(i,ItemStack.EMPTY);
                 }
-                for(int i=1;i<p.getInventory().getContainerSize();i++)p.getInventory().setItem(i,ItemStack.EMPTY);
+                PropAwn.tick(p,p.getInventory().getItem(0));PropAwn.tick(p,p.getOffhandItem());
                 p.getInventory().selected=0;
             }
         }
         abilities.orphanTick();
         if(server.getTickCount()%4==0)sync();
     }
+    /**
+     * A bot member's share of the match tick, the server-side half of what a player's client does: the disguise follows
+     * the body, seekers wait in their room while hiding or after a death. The bot's own choices live in {@link BotPropHunt}.
+     */
+    private void botTick(Member m,boolean change,boolean rush){
+        // Bots switched off mid-match: a hider that can no longer be found counts as found, so the hunt can end.
+        if(BotManager.agent(m.id)==null){if(hider(m.id)&&game.alive(m.id)){game.eliminate(m.id,null);if(m.prop!=null)mark(m);}return;}
+        var body=body(m.id);if(!(body instanceof BotEntity bot))return;
+        if(m.team.equals("ALPHA")){
+            if(!game.alive(m.id))return;
+            bot.setInvisible(true);
+            if(change)change(bot,m);
+            if(m.prop!=null){
+                bot.setAirSupply(bot.getMaxAirSupply());
+                // A prop whose shape changed (rotation, sugar cane growth, sunk pack) resizes the body with it.
+                var size=bot.getDimensions(bot.getPose());if(Math.abs(size.width-bot.getBbWidth())>.01||Math.abs(size.height-bot.getBbHeight())>.01)bot.refreshDimensions();
+                m.prop.setPos(spot(m,bot));submerge(m.prop);hazards(bot,m);abilities.tick(bot,m.prop);
+            }
+            return;
+        }
+        rush(bot,rush);
+        if(phase()==PropHuntGame.Phase.HIDING||m.waiting>server.getTickCount()){
+            var s=map.bravoSpawn();
+            if(bot.distanceToSqr(s.x(),s.y(),s.z())>.25){teleport(bot,new Vec3(s.x(),s.y(),s.z()));bot.setYRot(s.yaw());}
+            bot.getNavigation().stop();bot.setDeltaMovement(Vec3.ZERO);
+        }
+    }
+    /** Whether this member's seeker is still held in the waiting room (hiding, or the 5 s after a death). */
+    boolean waiting(UUID id){var m=members.get(id);return m!=null&&!hider(id)&&(phase()==PropHuntGame.Phase.HIDING||m.waiting>server.getTickCount());}
+    /** Phase helpers for the bots. */
+    boolean finalMinute(){return !test&&game.finalMinute();}
+    int huntRemaining(){return test?Integer.MAX_VALUE:game.huntRemaining();}
+    int nextChange(){return test?0:game.nextChange();}
+    boolean alive(UUID id){return game.alive(id);}
+    /** Live hiders' disguises: what seekers can see standing in the map (bots must still tell them from real blocks). */
+    List<PropEntity> disguises(){return members.values().stream().filter(m->hider(m.id)&&game.alive(m.id)&&m.prop!=null&&!m.prop.isRemoved()).map(m->m.prop).toList();}
     /** A bigger new disguise must not start inside walls or the floor: step aside, or failing that, up onto free space. */
-    private static void unstick(ServerPlayer p){
+    private static void unstick(LivingEntity p){
         if(p.level().noCollision(p))return;
         for(double up=0;up<=2;up+=.25)for(double x=-1;x<=1;x+=.5)for(double z=-1;z<=1;z+=.5){
             var to=p.position().add(x,up,z);
-            if(p.level().noCollision(p,p.getBoundingBox().move(to.subtract(p.position())))){p.connection.teleport(to.x,to.y,to.z,p.getYRot(),p.getXRot());return;}
+            if(p.level().noCollision(p,p.getBoundingBox().move(to.subtract(p.position())))){
+                if(p instanceof ServerPlayer sp)sp.connection.teleport(to.x,to.y,to.z,p.getYRot(),p.getXRot());else p.teleportTo(to.x,to.y,to.z);
+                return;
+            }
         }
     }
     private void hold(ServerPlayer p,Vec3 pos,float yaw,float pitch){
         p.setDeltaMovement(Vec3.ZERO);p.fallDistance=0;
         if(p.position().distanceToSqr(pos)>.0001||p.getYRot()!=yaw||p.getXRot()!=pitch)p.connection.teleport(pos.x,pos.y,pos.z,yaw,pitch);
     }
-    private void hazards(ServerPlayer owner,Member m){
+    private void hazards(LivingEntity owner,Member m){
         if(phase()!=PropHuntGame.Phase.HUNTING)return;
         var prop=m.prop;String id=prop.item();
-        if(Set.of("minecraft:nether_portal","minecraft:fire","minecraft:soul_fire","minecraft:torchflower","minecraft:minecart").contains(id))return;
+        // Turtle eggs would crack (and place or break) real blocks at the disguise's cell when stepped on.
+        if(Set.of("minecraft:nether_portal","minecraft:fire","minecraft:soul_fire","minecraft:torchflower","minecraft:minecart","minecraft:turtle_egg","minecraft:water","minecraft:bubble_column","gungang:hot_spring_water").contains(id))return;
         if(prop.state().getBlock() instanceof NozzleBlock nozzle){
             // Spray particles keep running; only seekers in the column are affected (acid: 50 per second, water: puts out fire).
-            nozzle.particles(owner.serverLevel(),prop.blockPosition());
+            nozzle.particles((ServerLevel)owner.level(),prop.blockPosition());
             var column=nozzle.column(prop.blockPosition());boolean hit=false;
             if(nozzle.acid()&&server.getTickCount()<m.hazard)return;
-            for(var target:server.getPlayerList().getPlayers()){
-                var other=members.get(target.getUUID());if(other==null||!other.team.equals("BRAVO")||frozen(other.id)||target.level()!=owner.level()||!target.getBoundingBox().intersects(column))continue;
+            for(var target:seekers()){
+                if(target.level()!=owner.level()||!target.getBoundingBox().intersects(column))continue;
                 if(nozzle.acid()){target.hurt(owner.damageSources().magic(),CONTACT_DAMAGE);AcidBlock.poison(owner.level(),target);hit=true;}else target.clearFire();
             }
             if(hit)m.hazard=server.getTickCount()+20;
             return;
         }
         if(server.getTickCount()<m.hazard)return;
-        for(var target:server.getPlayerList().getPlayers()){
-            var other=members.get(target.getUUID());if(other==null||!other.team.equals("BRAVO")||frozen(other.id)||target.level()!=owner.level())continue;
+        for(var target:seekers()){
+            if(target.level()!=owner.level())continue;
             if(!target.getBoundingBox().inflate(.15).intersects(prop.getBoundingBox()))continue;
             if(id.equals("gungang:uxo")){
                 m.hazard=server.getTickCount()+100;
@@ -236,6 +336,7 @@ public final class PropHuntMatch {
                 target.hurt(contactSource(owner,prop.state()),CONTACT_DAMAGE);m.hazard=server.getTickCount()+20;
                 // Status effects still apply on top (acid puddle poison).
                 if(prop.state().getBlock() instanceof PuddleBlock)prop.state().entityInside(owner.level(),prop.blockPosition(),target);
+                if(prop.state().getBlock() instanceof LiquidBlock)target.setSecondsOnFire(15);
             }else{
                 // Other blocks keep their real contact behavior (webs, acid, water, etc.).
                 prop.state().entityInside(owner.level(),prop.blockPosition(),target);
@@ -245,11 +346,17 @@ public final class PropHuntMatch {
     }
     public boolean hit(PropEntity prop,DamageSource source,float amount){
         if(reviewing||phase()!=PropHuntGame.Phase.HUNTING||!game.alive(prop.owner())||!Float.isFinite(amount)||amount<=0||SpawnGateProtection.blocked(prop,source)||SafeZones.blocked(prop,source))return false;
-        if(!(source.getEntity() instanceof ServerPlayer shooter)||hider(shooter.getUUID())||!participant(shooter.getUUID())||frozen(shooter.getUUID()))return false;
+        if(!(source.getEntity() instanceof LivingEntity shooter)||hider(shooter.getUUID())||!participant(shooter.getUUID())||frozen(shooter.getUUID()))return false;
         var direct=source.getDirectEntity();
-        if(direct==null||!direct.getClass().getName().equals("com.tacz.guns.entity.EntityKineticBullet")||!shooter.getMainHandItem().getOrCreateTag().getBoolean("GunGangPropShotgun"))return false;
-        var p=server.getPlayerList().getPlayer(prop.owner());if(p==null)return false;
-        if(p.getHealth()<=amount)eliminate(p,shooter);else {p.setHealth(p.getHealth()-amount);abilities.struck(p,prop);}
+        if(direct==null||!direct.getClass().getName().equals("com.tacz.guns.entity.EntityKineticBullet")||!(PropAwn.issued(shooter.getMainHandItem())||PropAwn.issued(shooter.getOffhandItem())))return false;
+        var p=body(prop.owner());if(p==null)return false;
+        // A cloaked doll (191) cannot be hurt.
+        if(abilities.cloaked(prop.owner()))return false;
+        // A full volley deals SEEKER_DAMAGE, whatever the gun's own damage: each pellet its share (M1014: 10 pellets, 10 each).
+        amount=pelletDamage();
+        if(p.getHealth()<=amount+1e-3f)eliminate(p,shooter);else {p.setHealth(p.getHealth()-amount);abilities.struck(p,prop);}
+        // A bot hider feels the hit (it is found out and runs); a bot seeker learns that this block is a hider.
+        BotManager.propShot(p,shooter,prop,!game.alive(prop.owner()));
         if(prop.item().equals("gungang:gas_barrel")){
             var m=members.get(prop.owner());if(server.getTickCount()>=m.hazard){m.hazard=server.getTickCount()+100;explode(prop,GimmickConfig.gas.radius());}
         }
@@ -257,30 +364,48 @@ public final class PropHuntMatch {
     }
     /** Contact damage of cactus, lit campfires, magma, pointed dripstone and the stonecutter blade; explosions of landmines and gas barrels.
      *  Blocks that only apply a status effect (cobweb slowness, acid poison, ...) keep their real behavior. */
-    static final float CONTACT_DAMAGE=50,EXPLOSION_DAMAGE=120;
+    static final float CONTACT_DAMAGE=50,EXPLOSION_DAMAGE=120,SEEKER_DAMAGE=100;
+    private int pellets;
+    /** One pellet's share of SEEKER_DAMAGE for the issued shotgun. */
+    float pelletDamage(){if(pellets<=0)pellets=pellets(shotgun==null?ItemStack.EMPTY:shotgun.stack());return SEEKER_DAMAGE/pellets;}
+    /** Pellets per shot from the gun pack's data ({@code bullet_amount}); 1 when TaCZ cannot say. */
+    static int pellets(ItemStack stack){
+        try{
+            var api=Class.forName("com.tacz.guns.api.TimelessAPI");
+            var index=(Optional<?>)api.getMethod("getCommonGunIndex",net.minecraft.resources.ResourceLocation.class).invoke(null,PropCatalog.id(stack.getOrCreateTag().getString("GunId")));
+            if(index.isEmpty())return 1;
+            var data=index.get().getClass().getMethod("getGunData").invoke(index.get());
+            var bullet=data.getClass().getMethod("getBulletData").invoke(data);
+            return Math.max(1,(Integer)bullet.getClass().getMethod("getBulletAmount").invoke(bullet));
+        }catch(ReflectiveOperationException|RuntimeException e){return 1;}
+    }
     static final double TNT_RADIUS=4;
     static boolean contactDamage(net.minecraft.world.level.block.state.BlockState state){
         var block=state.getBlock();
         return block instanceof CactusBlock||block instanceof MagmaBlock||block instanceof StonecutterBlock||block instanceof PointedDripstoneBlock
                 ||block instanceof PuddleBlock puddle&&puddle.acid
-                ||block instanceof CampfireBlock&&state.getValue(CampfireBlock.LIT);
+                ||block instanceof CampfireBlock&&state.getValue(CampfireBlock.LIT)
+                ||block instanceof LiquidBlock&&state.getFluidState().is(net.minecraft.tags.FluidTags.LAVA);
     }
-    private static DamageSource contactSource(ServerPlayer owner,net.minecraft.world.level.block.state.BlockState state){
+    private static DamageSource contactSource(LivingEntity owner,net.minecraft.world.level.block.state.BlockState state){
         var sources=owner.damageSources();var block=state.getBlock();
-        return block instanceof CactusBlock?sources.cactus():block instanceof MagmaBlock?sources.hotFloor():block instanceof CampfireBlock?sources.inFire():block instanceof PointedDripstoneBlock?sources.stalagmite():block instanceof PuddleBlock?sources.magic():sources.generic();
+        return block instanceof CactusBlock?sources.cactus():block instanceof MagmaBlock?sources.hotFloor():block instanceof CampfireBlock?sources.inFire():block instanceof PointedDripstoneBlock?sources.stalagmite():block instanceof PuddleBlock?sources.magic():block instanceof LiquidBlock?sources.lava():sources.generic();
     }
     /** Explosion effect at the disguise; hurts seekers in range only, never hiders. */
-    private void explode(PropEntity prop,double radius){
-        var level=(ServerLevel)prop.level();
-        for(var target:server.getPlayerList().getPlayers())if(target.level()==level&&participant(target.getUUID())&&!hider(target.getUUID())&&target.distanceTo(prop)<=radius)
-            target.hurt(level.damageSources().explosion(null,null),EXPLOSION_DAMAGE);
-        level.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION_EMITTER,prop.getX(),prop.getY()+.5,prop.getZ(),1,0,0,0,0);
-        level.playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,net.minecraft.sounds.SoundSource.BLOCKS,1,1);
+    private void explode(PropEntity prop,double radius){blast((ServerLevel)prop.level(),prop.position(),radius,EXPLOSION_DAMAGE,prop.owner());}
+    /** A blast that breaks nothing: seekers within {@code radius} of {@code at} take {@code damage}, hiders none. */
+    void blast(ServerLevel level,Vec3 at,double radius,float damage,UUID source){
+        for(var target:bodies())if(target.level()==level&&!hider(target.getUUID())&&target.position().distanceTo(at)<=radius)
+            target.hurt(level.damageSources().explosion(null,null),damage);
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION_EMITTER,at.x,at.y+.5,at.z,1,0,0,0,0);
+        BotManager.propNoise(at,source);
+        level.playSound(null,BlockPos.containing(at),net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,net.minecraft.sounds.SoundSource.BLOCKS,1,1);
     }
-    public void eliminate(ServerPlayer p,ServerPlayer killer){
-        var m=members.get(p.getUUID());if(m==null||reviewing)return;
-        p.setHealth(p.getMaxHealth());p.clearFire();p.fallDistance=0;
-        if(test){p.sendSystemMessage(Component.literal("[테스트] "+(m.team.equals("ALPHA")?"발견됨":"쓰러짐")+" · 체력을 회복하고 계속합니다."));return;}
+    public void eliminate(LivingEntity body,LivingEntity killer){
+        var m=members.get(body.getUUID());if(m==null||reviewing)return;
+        body.setHealth(body.getMaxHealth());body.clearFire();body.fallDistance=0;
+        if(test){body.sendSystemMessage(Component.literal("[테스트] "+(m.team.equals("ALPHA")?"발견됨":"쓰러짐")+" · 체력을 회복하고 계속합니다."));return;}
+        if(!(body instanceof ServerPlayer p)){eliminateBot(body,m,killer);sync();return;}
         p.setCamera(p);
         if(m.team.equals("ALPHA")){
             abilities.found(p,m.prop);
@@ -289,18 +414,37 @@ public final class PropHuntMatch {
             if(m.prop!=null&&(m.prop.item().equals("gungang:gas_barrel")||m.prop.item().equals("minecraft:tnt"))){
                 m.prop.setPos(spot(m,p));explode(m.prop,radius(m.prop));
             }
-            if(m.prop!=null){m.prop.setPos(spot(m,p));mark(m);}home(p,m);m.fixed=false;p.setInvisible(false);p.setGameMode(GameType.SPECTATOR);p.refreshDimensions();
+            if(m.prop!=null){m.prop.setPos(spot(m,p));mark(m);}release(p,m);home(p,m);m.fixed=false;p.setInvisible(false);p.setGameMode(GameType.SPECTATOR);p.refreshDimensions();
         }else{
             if(m.waiting>server.getTickCount())return;
             var s=map.bravoSpawn();p.teleportTo(p.serverLevel(),s.x(),s.y(),s.z(),s.yaw(),s.pitch());p.setGameMode(GameType.ADVENTURE);m.waiting=server.getTickCount()+100;equip(p);
         }
         sync();
     }
+    /** A bot found or killed: hiders leave their marker block behind and the body goes; seekers go back to wait 5 s. */
+    private void eliminateBot(LivingEntity body,Member m,LivingEntity killer){
+        if(m.team.equals("ALPHA")){
+            abilities.found(body,m.prop);
+            if(!game.eliminate(m.id,killer==null?null:killer.getUUID()))return;
+            if(m.prop!=null&&explosive(m.prop.item())){m.prop.setPos(spot(m,body));explode(m.prop,radius(m.prop));}
+            if(m.prop!=null){m.prop.setPos(spot(m,body));mark(m);}
+            m.fixed=false;abilities.remove(body);
+            BotManager.propFound(m.id);
+            return;
+        }
+        if(m.waiting>server.getTickCount())return;
+        var s=map.bravoSpawn();teleport(body,new Vec3(s.x(),s.y(),s.z()));body.setYRot(s.yaw());m.waiting=server.getTickCount()+100;
+        BotManager.propRespawn(m.id);
+    }
     private void mark(Member m){m.prop.markFound();m.prop.setCustomName(Component.literal(m.name));m.prop.setCustomNameVisible(true);}
     public void leave(ServerPlayer p){if(test){test(p,null,"");return;}var m=members.get(p.getUUID());if(m==null)return;if(hider(m.id)){game.eliminate(m.id,null);if(m.prop!=null)mark(m);}restore(p,m);}
-    private void restore(ServerPlayer p,Member m){abilities.remove(p);rush(p,false);p.setInvisible(m.invisible);p.removeEffect(MobEffects.BLINDNESS);p.getAttribute(Attributes.MAX_HEALTH).setBaseValue(m.health);p.setHealth(Math.min(p.getHealth(),p.getMaxHealth()));}
+    private void restore(ServerPlayer p,Member m){release(p,m);PropAwn.clear(p.getUUID());abilities.remove(p);rush(p,false);p.setInvisible(m.invisible);p.removeEffect(MobEffects.BLINDNESS);p.getAttribute(Attributes.MAX_HEALTH).setBaseValue(m.health);p.setHealth(Math.min(p.getHealth(),p.getMaxHealth()));}
     public void close(){abilities.clear();PropSummons.clear(server);arrows.forEach(net.minecraft.world.entity.Entity::discard);arrows.clear();if(test){for(var id:List.copyOf(members.keySet())){var p=server.getPlayerList().getPlayer(id);if(p!=null)stop(p);}return;}reviewing=true;PropInteraction.clear();for(var m:members.values()){if(m.prop!=null)m.prop.discard();var p=server.getPlayerList().getPlayer(m.id);if(p!=null){restore(p,m);p.refreshDimensions();}}for(var p:server.getPlayerList().getPlayers())GungangNetwork.send(p,new GungangNetwork.PropHunt(ServerFiles.GSON.toJson(new PropHuntSnapshot(false,"",0,0,List.of()))));}
-    public List<MatchSnapshot.Row> rows(List<MatchSnapshot.Row> original){return original.stream().map(r->new MatchSnapshot.Row(r.id(),r.name(),r.team(),game.found(UUID.fromString(r.id())),r.deaths(),r.assists(),r.damage(),game.hidden(UUID.fromString(r.id())))).toList();}
+    public List<MatchSnapshot.Row> rows(List<MatchSnapshot.Row> original){return original.stream().map(r->{
+        int finds=game.found(UUID.fromString(r.id()));
+        return new MatchSnapshot.Row(r.id(),r.name(),r.team(),finds,r.deaths(),r.assists(),r.damage(),game.hidden(UUID.fromString(r.id())),
+                finds,r.color(),r.protectionTicks(),r.protectionTotal(),r.skin());
+    }).toList();}
     public void action(ServerPlayer p,String action){
         var m=members.get(p.getUUID());if(m==null||!hider(m.id)||!game.alive(m.id)||reviewing)return;
         int now=server.getTickCount();if(now-m.actions.getOrDefault(action,-100)<2)return;m.actions.put(action,now);
@@ -309,28 +453,42 @@ public final class PropHuntMatch {
             case "next"->cycle(p,m,1);
             case "previous"->cycle(p,m,-1);
             case "home"->home(p,m);
-            case "rotate"->{if(!m.fixed&&m.prop!=null){m.prop.rotate();p.refreshDimensions();}}
-            case "snap"->{if(!m.fixed)snap(p);}
-            case "interact"->{if(m.prop!=null&&m.watching==null&&abilities.use(p,m.prop)){m.prop.setPos(spot(m,p));p.refreshDimensions();}else if(m.prop!=null&&m.watching==null&&m.prop.item().equals("minecraft:dispenser"))fire(p,m);else if(m.prop!=null&&m.watching==null&&explosive(m.prop.item()))blast(p,m);else if(m.prop!=null&&m.watching==null){PropInteraction.use(p,m.prop);if(m.prop.healthPack()){m.prop.setPos(spot(m,p));p.displayClientMessage(Component.literal(m.prop.sunk()?"생명력 팩: 바닥 아래로 들어갔습니다 · E로 나오기":"생명력 팩: 바닥 위로 나왔습니다 · E로 들어가기"),true);}p.refreshDimensions();}}
-            case "charge"->{if(!m.fixed&&p.onGround())m.charge=server.getTickCount();}
+            case "rotate"->{if(m.prop!=null&&m.watching==null&&abilities.rotate(p,m.prop)){}else if(!m.fixed&&m.prop!=null){m.prop.rotate();p.refreshDimensions();}}
+            case "snap"->{if(!m.fixed&&m.wall==null)snap(p);}
+            case "cling"->cling(p,m);
+            case "interact"->{noise(m);if(m.prop!=null&&m.watching==null&&abilities.use(p,m.prop)){m.prop.setPos(spot(m,p));p.refreshDimensions();}else if(m.prop!=null&&m.watching==null&&m.prop.item().equals("minecraft:dispenser"))fire(p,m);else if(m.prop!=null&&m.watching==null&&explosive(m.prop.item()))blast(p,m);else if(m.prop!=null&&m.watching==null){PropInteraction.use(p,m.prop);if(m.prop.sinkable()){m.prop.setPos(spot(m,p));p.displayClientMessage(Component.literal(m.prop.sunk()?"생명력 팩: 바닥 아래로 들어갔습니다 · E로 나오기":"생명력 팩: 바닥 위로 나왔습니다 · E로 들어가기"),true);}p.refreshDimensions();}}
+            // On a jump pad the jump key launches at once, as for everyone else; elsewhere it starts the charge.
+            case "charge"->{if(!m.fixed&&m.wall==null&&p.onGround()){if(PropSurfacePhysics.pad(p)!=null){p.setDeltaMovement(p.getDeltaMovement().x,PropSurfacePhysics.jump(p,0),p.getDeltaMovement().z);p.hurtMarked=true;m.charge=-1;}else m.charge=server.getTickCount();}}
             case "cancelCharge"->m.charge=-1;
             case "horn"->horn(m);
-            case "jump"->{if(!m.fixed&&p.onGround()&&m.charge>=0){p.setDeltaMovement(p.getDeltaMovement().x,PropSurfacePhysics.jump(p,PropHuntGame.jumpVelocity(server.getTickCount()-m.charge)),p.getDeltaMovement().z);p.hurtMarked=true;}m.charge=-1;}
+            // Dolls (184, 191): the attack key held down and let go.
+            case "primaryDown","primaryUp"->{if(m.prop!=null&&m.watching==null)abilities.primary(p,m.prop,action.equals("primaryDown"));}
+            case "jump"->{if(!m.fixed&&m.wall==null&&p.onGround()&&m.charge>=0){p.setDeltaMovement(p.getDeltaMovement().x,PropSurfacePhysics.jump(p,PropHuntGame.jumpVelocity(server.getTickCount()-m.charge)),p.getDeltaMovement().z);p.hurtMarked=true;}m.charge=-1;}
         }
         sync();
     }
+    /** Q: hang on the wall beside the disguise, or let go of it. Not while locked or watching someone else. */
+    private void cling(ServerPlayer p,Member m){
+        if(m.wall!=null){release(p,m);return;}
+        if(m.fixed||m.watching!=null)return;
+        var wall=PropCling.find(p.level(),p.getBoundingBox(),p.getYRot());
+        if(wall==null){p.displayClientMessage(Component.literal("붙을 벽이 없습니다 · 몸보다 0.6블록 이상 높은 벽 옆에서 사용하세요"),true);return;}
+        m.wall=wall;m.charge=-1;p.setNoGravity(true);p.setDeltaMovement(Vec3.ZERO);p.hurtMarked=true;p.fallDistance=0;
+    }
+    private static void release(ServerPlayer p,Member m){if(m.wall!=null){m.wall=null;p.setNoGravity(false);}}
     /** G: a goat horn blast from the disguise itself, never the watched player's spot; at most once every 3 seconds. */
     private void horn(Member m){
         int now=server.getTickCount();if(m.prop==null||now<m.horn)return;m.horn=now+60;
+        BotManager.propNoise(m.prop.position(),m.id);
         var variants=net.minecraft.sounds.SoundEvents.GOAT_HORN_SOUND_VARIANTS;
         m.prop.level().playSound(null,m.prop.getX(),m.prop.getY()+.5,m.prop.getZ(),variants.get(random.nextInt(variants.size())).value(),net.minecraft.sounds.SoundSource.PLAYERS,4,1);
     }
     static final String ARROW_TAG="gungang_prop_arrow";
     static final float ARROW_DAMAGE=25;
     /** E on a dispenser disguise: an arrow out of its facing side against seekers, once a second while hunting. */
-    private void fire(ServerPlayer p,Member m){
+    private void fire(LivingEntity p,Member m){
         int now=server.getTickCount();
-        if(phase()!=PropHuntGame.Phase.HUNTING){p.displayClientMessage(Component.literal("화살은 찾는 시간에만 쏠 수 있습니다."),true);return;}
+        if(phase()!=PropHuntGame.Phase.HUNTING){tell(p,"화살은 찾는 시간에만 쏠 수 있습니다.");return;}
         if(now<m.shot)return;m.shot=now+20;
         var prop=m.prop;var level=prop.level();var facing=prop.state().getValue(DispenserBlock.FACING);
         var dir=Vec3.atLowerCornerOf(facing.getNormal());var from=new Vec3(prop.getX(),prop.getY()+.5,prop.getZ()).add(dir.scale(.8));
@@ -365,7 +523,10 @@ public final class PropHuntMatch {
      * (a spectator then) their disguise, looking where they locked it. Null when they cannot be watched.
      */
     private net.minecraft.world.entity.Entity camera(UUID id){
-        var t=members.get(id);var player=server.getPlayerList().getPlayer(id);if(t==null||player==null)return null;
+        var t=members.get(id);if(t==null)return null;
+        // A bot is watched through its own body: a seeker's eyes, or a hider's view from inside its block.
+        if(t.bot){var body=body(id);return body==null||!body.isAlive()||hider(id)&&!game.alive(id)?null:body;}
+        var player=server.getPlayerList().getPlayer(id);if(player==null)return null;
         if(hider(id))return !game.alive(id)?null:t.watching!=null&&t.prop!=null?t.prop:player;
         return player.isSpectator()||!player.isAlive()?null:player;
     }
@@ -383,15 +544,44 @@ public final class PropHuntMatch {
     static boolean explosive(String item){return item.equals("minecraft:tnt")||item.equals("gungang:gas_barrel");}
     private double radius(PropEntity prop){return prop.item().equals("minecraft:tnt")?TNT_RADIUS:GimmickConfig.gas.radius();}
     /** E on a TNT or gas barrel disguise: a 120-damage blast against seekers, then 30 s cooldown. The hider stays hidden. */
-    private void blast(ServerPlayer p,Member m){
+    private void blast(LivingEntity p,Member m){
         int now=server.getTickCount();
-        if(phase()!=PropHuntGame.Phase.HUNTING){p.displayClientMessage(Component.literal("폭발은 찾는 시간에만 쓸 수 있습니다."),true);return;}
-        if(now<m.blast){p.displayClientMessage(Component.literal("폭발 재사용 대기 "+((m.blast-now+19)/20)+"초"),true);return;}
+        if(phase()!=PropHuntGame.Phase.HUNTING){tell(p,"폭발은 찾는 시간에만 쓸 수 있습니다.");return;}
+        if(now<m.blast){tell(p,"폭발 재사용 대기 "+((m.blast-now+19)/20)+"초");return;}
         m.blast=now+BLAST_COOLDOWN;explode(m.prop,radius(m.prop));
-        p.displayClientMessage(Component.literal("폭발! 30초 후 다시 사용할 수 있습니다."),true);
+        tell(p,"폭발! 30초 후 다시 사용할 수 있습니다.");
     }
+    // ---- bot hiders: the same controls a player's keys reach (E, R, G), without menus or camera tricks ----
+    /** E for a bot hider: the block's ability, arrow, blast or plain toggle. False when nothing could be done now. */
+    boolean botUse(BotEntity bot){
+        var m=members.get(bot.getUUID());if(m==null||!hider(m.id)||!game.alive(m.id)||reviewing||m.prop==null)return false;
+        int now=server.getTickCount();if(now-m.actions.getOrDefault("interact",-100)<2)return false;m.actions.put("interact",now);
+        String item=m.prop.item();noise(m);
+        if(abilities.use(bot,m.prop)){m.prop.setPos(spot(m,bot));bot.refreshDimensions();}
+        else if(item.equals("minecraft:dispenser")){if(now<m.shot||!hunting())return false;fire(bot,m);}
+        else if(explosive(item)){if(now<m.blast||!hunting())return false;blast(bot,m);}
+        else{PropInteraction.use(bot,m.prop);if(m.prop.sinkable())m.prop.setPos(spot(m,bot));bot.refreshDimensions();}
+        sync();return true;
+    }
+    /** 178: the owner's text for their lectern's book (from the client's editor). */
+    public void lecternText(ServerPlayer p,String text){
+        var m=members.get(p.getUUID());if(m==null||!hider(m.id)||!game.alive(m.id)||reviewing||m.prop==null||!m.prop.item().equals("minecraft:lectern"))return;
+        var clean=new StringBuilder();for(char c:text.toCharArray())if(c=='\n'||c>=' '&&c!='\u00a7')clean.append(c);
+        String value=clean.length()>LECTERN_LIMIT?clean.substring(0,LECTERN_LIMIT):clean.toString();
+        m.prop.text(value);p.level().playSound(null,m.prop.blockPosition(),net.minecraft.sounds.SoundEvents.BOOK_PAGE_TURN,net.minecraft.sounds.SoundSource.BLOCKS,1,1);
+    }
+    public static final int LECTERN_LIMIT=1024;
+    /** R for a bot hider: a 90° turn (a dispenser steps through its six facings). */
+    void botRotate(BotEntity bot){
+        var m=members.get(bot.getUUID());if(m==null||!hider(m.id)||!game.alive(m.id)||reviewing||m.prop==null)return;
+        if(!abilities.rotate(bot,m.prop)){m.prop.rotate();bot.refreshDimensions();}
+    }
+    /** G for a bot hider: the goat horn taunt, at most every 3 s. */
+    void botHorn(BotEntity bot){var m=members.get(bot.getUUID());if(m!=null&&hider(m.id)&&game.alive(m.id)&&!reviewing)horn(m);}
+    /** Ticks until this hider's E is ready again (arrows, blasts, abilities, health packs). */
+    int botCooldown(UUID id){var m=members.get(id);return m==null?0:abilityRemaining(m);}
     /** Where the disguise stands: the owner (or the locked anchor), one block lower for a sunk health pack. */
-    private static Vec3 spot(Member m,ServerPlayer p){var base=m.fixed?m.anchor:p.position();return m.prop!=null?base.add(0,-m.prop.sinkDepth(),0):base;}
+    private static Vec3 spot(Member m,LivingEntity p){var base=m.fixed?m.anchor:p.position();return m.prop!=null?base.add(0,-m.prop.sinkDepth(),0):base;}
     /** A locked disguise faces the owner's locked view, so a camera on it sees what the owner saw. */
     private static void look(Member m){m.prop.setYRot(m.yaw);m.prop.setYHeadRot(m.yaw);m.prop.setYBodyRot(m.yaw);m.prop.setXRot(m.pitch);}
     private void snap(ServerPlayer p){
@@ -433,7 +623,7 @@ public final class PropHuntMatch {
             boolean see=hider(viewer.getUUID())||reviewing||!participant(viewer.getUUID());var rows=new ArrayList<PropHuntSnapshot.Row>();
             for(var m:members.values()){
                 boolean found=hider(m.id)&&!game.alive(m.id),visible=see||found;
-                rows.add(new PropHuntSnapshot.Row(m.id.toString(),m.name,m.team,visible&&m.prop!=null?m.prop.item():"",visible&&m.prop!=null?Block.getId(m.prop.state()):0,m.prop==null?-1:m.prop.getId(),found,m.fixed,game.hidden(m.id),game.found(m.id),visible?abilityRemaining(m):0,m.prop==null?0:PropAbilities.cooldown(m.prop.item()),visible?abilities.active(m.id):0,visible?abilities.mobHealth(m.id):0,visible?abilities.mobMaximum(m.id):0,abilities.stunned(m.id)));
+                rows.add(new PropHuntSnapshot.Row(m.id.toString(),m.name,m.team,visible&&m.prop!=null?m.prop.item():"",visible&&m.prop!=null?Block.getId(m.prop.state()):0,m.prop==null?-1:m.prop.getId(),found,m.fixed,game.hidden(m.id),game.found(m.id),visible?abilityRemaining(m):0,m.prop==null?0:PropAbilities.cooldown(m.prop.item()),visible?abilities.active(m.id):0,visible?abilities.auxiliary(m.id):0,visible?abilities.auxiliaryMax(m.id):0,abilities.stunned(m.id),m.wall==null?-1:m.wall.get2DDataValue()));
             }
             GungangNetwork.send(viewer,new GungangNetwork.PropHunt(ServerFiles.GSON.toJson(new PropHuntSnapshot(true,phase().name(),test?0:(game.remaining()+19)/20,test?0:(game.nextChange()+19)/20,rows,test?0:(game.huntRemaining()+19)/20,!test&&game.finalMinute()))));
         }
@@ -442,17 +632,20 @@ public final class PropHuntMatch {
         if(m.prop==null)return 0;String item=m.prop.item();
         return Math.max(0,item.equals("minecraft:dispenser")?m.shot-now():explosive(item)?m.blast-now():m.prop.healthPack()?m.hazard-now():abilities.remaining(m.id));
     }
-    @SubscribeEvent(priority=EventPriority.HIGHEST) public static void death(net.minecraftforge.event.entity.living.LivingDeathEvent e){var m=MatchManager.propHunt();if(m!=null&&e.getEntity() instanceof ServerPlayer p&&m.participant(p.getUUID())){e.setCanceled(true);m.eliminate(p,null);}}
+    /** Players and bots of the match. */
+    private static boolean member(PropHuntMatch m,net.minecraft.world.entity.Entity entity){return (entity instanceof ServerPlayer||entity instanceof BotEntity)&&m.participant(entity.getUUID());}
+    @SubscribeEvent(priority=EventPriority.HIGHEST) public static void death(net.minecraftforge.event.entity.living.LivingDeathEvent e){var m=MatchManager.propHunt();if(m!=null&&member(m,e.getEntity())){e.setCanceled(true);m.eliminate(e.getEntity(),null);}}
     @SubscribeEvent(priority=EventPriority.HIGHEST) public static void attack(net.minecraftforge.event.entity.living.LivingAttackEvent e){
         var m=MatchManager.propHunt();if(m==null)return;
-        if(e.getEntity() instanceof ServerPlayer p&&m.participant(p.getUUID())){
+        if(member(m,e.getEntity())){var p=e.getEntity();
             // A disguise never drowns or takes acid/poison damage, in water, acid or a nozzle spray,
             // nor suffocates: low props keep a raised eye (camera) that may poke into a block above.
             var source=e.getSource();boolean liquid=source.is(net.minecraft.world.damagesource.DamageTypes.IN_WALL)||source.is(net.minecraft.world.damagesource.DamageTypes.DROWN)||source.is(net.minecraft.world.damagesource.DamageTypes.MAGIC)||source.is(net.minecraft.world.damagesource.DamageTypes.INDIRECT_MAGIC);
             if(liquid&&m.prop(p.getUUID())!=null){e.setCanceled(true);p.removeEffect(MobEffects.POISON);return;}
+            if(m.abilities.cloaked(p.getUUID())){e.setCanceled(true);return;}
             if(m.reviewing||m.frozen(p.getUUID())&&!m.hider(p.getUUID())||m.hider(p.getUUID())&&(propArrow(e.getSource())||e.getSource().getEntity()!=null&&e.getSource().getEntity()!=p))e.setCanceled(true);
         }
-        if(e.getSource().getEntity() instanceof ServerPlayer p&&m.participant(p.getUUID())&&(m.frozen(p.getUUID())||m.hider(p.getUUID())))e.setCanceled(true);
+        if(member(m,e.getSource().getEntity())&&(m.frozen(e.getSource().getEntity().getUUID())||m.hider(e.getSource().getEntity().getUUID())))e.setCanceled(true);
     }
     @SubscribeEvent public static void arrow(net.minecraftforge.event.entity.living.LivingHurtEvent e){if(MatchManager.propHunt()!=null&&propArrow(e.getSource()))e.setAmount(ARROW_DAMAGE);}
     @SubscribeEvent public static void pickup(net.minecraftforge.event.entity.player.EntityItemPickupEvent e){var m=MatchManager.propHunt();if(m!=null&&m.participant(e.getEntity().getUUID()))e.setCanceled(true);}

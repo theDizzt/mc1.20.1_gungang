@@ -46,16 +46,29 @@ public final class TeamPoints {
                 .max(Comparator.comparingLong(TeamPointState.Point::sequence)).orElse(null);
     }
     private static void sync(MinecraftServer server) {
-        var payloads=new HashMap<String,String>();var online=new HashSet<UUID>();
+        var payloads=new HashMap<String,String>();var online=new HashSet<UUID>();var vitals=vitals(server);
         for(var player:server.getPlayerList().getPlayers()) {
             online.add(player.getUUID());String team=available()?LobbyManager.team(player.getUUID()):"";
-            String json=payloads.computeIfAbsent(team,t->ServerFiles.GSON.toJson(STATE.view(t,LobbyManager.options().color(t))));
+            String json=payloads.computeIfAbsent(team,t->ServerFiles.GSON.toJson(STATE.view(t,LobbyManager.options().color(t)).withVitals(vitals.getOrDefault(t,List.of()))));
             if(GungangNetwork.installed(player)&&!json.equals(sent.get(player.getUUID()))) {
                 GungangNetwork.send(player,new GungangNetwork.TeamPointView(json));sent.put(player.getUUID(),json);
             }
         }
         sent.keySet().retainAll(online);nextRequest.keySet().retainAll(online);
     }
+    /** Each team's living players and bots with their health, rounded to half points so idle teams send nothing new. */
+    private static Map<String,List<TeamPointState.Vital>> vitals(MinecraftServer server){
+        var result=new HashMap<String,List<TeamPointState.Vital>>();if(!available())return result;
+        var bodies=new ArrayList<net.minecraft.world.entity.LivingEntity>(server.getPlayerList().getPlayers());bodies.addAll(BotManager.entities());
+        for(var body:bodies){
+            if(!body.isAlive()||body.isSpectator())continue;
+            String team=body instanceof ServerPlayer p?LobbyManager.team(p.getUUID()):BotManager.side(body);
+            if(!TeamPointState.validTeam(team))continue;
+            result.computeIfAbsent(team,t->new ArrayList<>()).add(new TeamPointState.Vital(body.getUUID(),half(body.getHealth()),half(body.getMaxHealth()),half(body.getAbsorptionAmount())));
+        }
+        return result;
+    }
+    private static float half(float value){return Math.round(value*2)/2f;}
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent event) {
         if(event.phase!=TickEvent.Phase.END)return;
         var server=event.getServer();refresh(server);sync(server);

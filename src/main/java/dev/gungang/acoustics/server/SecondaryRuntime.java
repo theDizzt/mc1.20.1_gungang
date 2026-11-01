@@ -44,6 +44,7 @@ public final class SecondaryRuntime {
                     .computeIfAbsent(weapon.id(),id->player.level().getGameTime()+ExtraGadgetConfig.ticks(ExtraGadgetConfig.orbital.cooldownSeconds()));
         }
         tag.putLong("GunGangCooldownEnd",DEADLINES.getOrDefault(player.getUUID(),Map.of()).getOrDefault(weapon.id(),0L));
+        if(MercyBullet.ID.equals(weapon.id()))MercyBullet.configure(player,stack);
         CombatGadgets.configure(player,stack);
     }
     public static long remaining(Player player,ItemStack stack) {
@@ -91,6 +92,7 @@ public final class SecondaryRuntime {
     public static void requestedCooldown() { var scope=CURRENT.get();if(scope!=null)scope.consumed=true; }
     @SuppressWarnings("unchecked")
     public static void registerTacz() {
+        PropAwn.registerReload();MercyBullet.registerTacz();
         for(String name:List.of("GunFireEvent","GunMeleeEvent"))try {
             Class<net.minecraftforge.eventbus.api.Event> type=(Class<net.minecraftforge.eventbus.api.Event>)Class.forName("com.tacz.guns.api.event.common."+name);
             var shooter=type.getMethod("getShooter");var item=type.getMethod("getGunItemStack");
@@ -98,6 +100,18 @@ public final class SecondaryRuntime {
                 try {
                     if(shooter.invoke(event) instanceof Player player&&(FreeForAllMatch.blocked(player)||CombatGadgets.holdingShield(player)||SurvivalGadgets.jetting(player)||GadgetManager.placing(player))) {if(event.isCancelable())event.setCanceled(true);return;}
                     if(shooter.invoke(event) instanceof Player player&&item.invoke(event) instanceof ItemStack stack&&secondary(stack)) {
+                        if(PropAwn.is(stack)){
+                            var match=MatchManager.propHunt();
+                            if(name.equals("GunMeleeEvent")||!ready(player,stack)||player instanceof net.minecraft.server.level.ServerPlayer&&(match==null||!match.hunting()||!match.participant(player.getUUID())||match.hider(player.getUUID())||match.frozen(player.getUUID()))){if(event.isCancelable())event.setCanceled(true);}
+                            else PropAwn.fired(player,stack);
+                            return;
+                        }
+                        // Mercy bullet: no melee, and no shot unless a teammate is in the crosshair (the round and cooldown are kept).
+                        if(MercyBullet.is(stack)&&(name.equals("GunMeleeEvent")||MercyBullet.target(player)==null)) {
+                            if(event.isCancelable())event.setCanceled(true);
+                            if(name.equals("GunFireEvent")&&player instanceof net.minecraft.server.level.ServerPlayer sp)sp.displayClientMessage(net.minecraft.network.chat.Component.literal("자비의 총알은 아군을 조준해야 발사됩니다."),true);
+                            return;
+                        }
                         if(!ready(player,stack)) {if(event.isCancelable())event.setCanceled(true);}
                         else commit(player,stack);
                     }

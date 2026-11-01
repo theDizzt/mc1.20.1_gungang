@@ -44,7 +44,9 @@ public final class PropEntity extends LivingEntity {
     /** Health packs toggle with E between standing and sunk one block into the floor; their bottle hologram stays above. */
     public boolean healthPack(){return state().getBlock() instanceof StationBlock station&&station.healthPack();}
     public boolean sunk(){return sinkDepth()>0;}
-    public double sinkDepth(){return healthPack()&&open()?1:state().getBlock() instanceof JumpPadBlock&&open()?.125:state().getBlock() instanceof ConveyorBlock&&mode()>=2?.5:0;}
+    public double sinkDepth(){return healthPack()&&open()?1:state().getBlock() instanceof JumpPadBlock&&open()?.125:state().getBlock() instanceof ConveyorBlock&&open()?.5:0;}
+    /** Blocks that E sinks into the floor and back: health packs and the conveyor belt. */
+    public boolean sinkable(){return healthPack()||state().getBlock() instanceof ConveyorBlock;}
     /** R: 90° turn; a dispenser instead steps through all six facings (N, E, S, W, up, down). */
     public void rotate(){
         if(state().getBlock() instanceof net.minecraft.world.level.block.DispenserBlock){
@@ -57,11 +59,12 @@ public final class PropEntity extends LivingEntity {
     public UUID owner(){return entityData.get(OWNER).orElse(null);}
     public void setup(UUID owner,String item,int painting){entityData.set(OWNER,Optional.of(owner));entityData.set(ITEM,item);entityData.set(PAINTING,painting);entityData.set(MODE,0);entityData.set(HEIGHT,1);entityData.set(TEXT,"");entityData.set(OPEN,false);entityData.set(FOUND,false);setGlowingTag(false);state(PropCatalog.state(item));}
     public boolean marker(){return entityData.get(FOUND);}
-    public void markFound(){entityData.set(FOUND,true);setGlowingTag(true);}
+    public void markFound(){entityData.set(FOUND,true);setGlowingTag(true);setInvisible(false);}
     @Override public void tick(){super.tick();setDeltaMovement(0,0,0);setBoundingBox(makeBoundingBox());if(!level().isClientSide&&MatchManager.propHunt()==null)discard();}
     @Override protected AABB makeBoundingBox(){
         if(entityData==null)return super.makeBoundingBox();
-        if(item().equals("minecraft:minecart"))return new AABB(getX()-.49,getY(),getZ()-.49,getX()+.49,getY()+.7,getZ()+.49);
+        if(item().equals("minecraft:minecart")||item().equals("minecraft:tnt_minecart"))return new AABB(getX()-.49,getY(),getZ()-.49,getX()+.49,getY()+.7,getZ()+.49);
+        if(item().equals("minecraft:armor_stand"))return new AABB(getX()-.25,getY(),getZ()-.25,getX()+.25,getY()+1.975,getZ()+.25);
         if(item().equals("minecraft:end_crystal"))return new AABB(getX()-.875,getY(),getZ()-.875,getX()+.875,getY()+3.3,getZ()+.875);
         if(item().equals("minecraft:painting")){
             var list=level().registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.PAINTING_VARIANT).holders().toList();
@@ -75,6 +78,10 @@ public final class PropEntity extends LivingEntity {
             var bounds=shape.bounds().move(part.offset());box=box==null?bounds:box.minmax(bounds);
         }
         if(box==null)box=new AABB(0,0,0,1,1,1);
+        // A potted plant's shape is only the pot; the flower, mushroom or sapling growing out of it (vanilla cross
+        // models reach 2.6/16..13.4/16 across, up to the top of the cell) is part of the target too.
+        if(state().getBlock() instanceof net.minecraft.world.level.block.FlowerPotBlock pot&&pot.getContent()!=net.minecraft.world.level.block.Blocks.AIR)
+            box=box.minmax(new AABB(2.6/16,0,2.6/16,13.4/16,1,13.4/16));
         // The bottle hologram above a health pack is part of the target, as is the sunk block below it,
         // so a shot at the hologram or at the floor cell it sank into still lands.
         if(healthPack())box=box.minmax(new AABB(.3,1.35,.3,.7,1.95,.7));
@@ -86,15 +93,20 @@ public final class PropEntity extends LivingEntity {
         var result=new ArrayList<net.minecraft.world.phys.shapes.VoxelShape>();
         for(var prop:level.getEntitiesOfClass(PropEntity.class,box.inflate(1),p->!p.isRemoved()&&!entity.getUUID().equals(p.owner()))){
             for(var part:PropGeometry.parts(prop)){
-                var shape=part.state().getCollisionShape(level,prop.blockPosition().offset(part.offset()),net.minecraft.world.phys.shapes.CollisionContext.of(entity));
+                var state=part.state();
+                // An open shutter disguise keeps only its side rails and header; the world has no shutter tile to ask.
+                var shape=state.getBlock() instanceof ShutterBlock&&prop.open()?ShutterBlock.frame(state):state.getCollisionShape(level,prop.blockPosition().offset(part.offset()),net.minecraft.world.phys.shapes.CollisionContext.of(entity));
                 if(!shape.isEmpty())result.add(shape.move(prop.getX()-.5+part.offset().getX(),prop.getY()+part.offset().getY(),prop.getZ()-.5+part.offset().getZ()));
             }
         }
         return result;
     }
     /** Anyone in the match can use a disguise like the real block: doors open, chests and tables open their menus. */
+    /** Opens a lectern disguise's book on the client (set by ClientSetup). */
+    public static java.util.function.Consumer<PropEntity> clientBook=prop->{};
     @Override public net.minecraft.world.InteractionResult interact(net.minecraft.world.entity.player.Player player,net.minecraft.world.InteractionHand hand){
         if(hand!=net.minecraft.world.InteractionHand.MAIN_HAND||player.isSpectator()||marker())return net.minecraft.world.InteractionResult.PASS;
+        if(item().equals("minecraft:lectern")){if(level().isClientSide)clientBook.accept(this);return net.minecraft.world.InteractionResult.sidedSuccess(level().isClientSide);}
         if(!level().isClientSide){
             var match=MatchManager.propHunt();
             if(match==null||!match.useProp((net.minecraft.server.level.ServerPlayer)player,this))return net.minecraft.world.InteractionResult.PASS;

@@ -22,7 +22,7 @@ public record EscortRules(ArenaMap.Area scanArea, Double linkDistance, Double sp
     }
     public EscortRules {
         linkDistance=linkDistance==null?16:linkDistance;
-        speed=speed==null?1.0:speed;
+        speed=speed==null?1.5:speed;
         extraPlayerMultiplier=extraPlayerMultiplier==null?.25:extraPlayerMultiplier;
         maxMultiplier=maxMultiplier==null?2.0:maxMultiplier;
         radius=radius==null?5.0:radius;

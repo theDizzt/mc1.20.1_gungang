@@ -5,7 +5,8 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class EscortGameTest {
-    private EscortRules rules(){return new EscortRules(new ArenaMap.Area(0,0,0,100,20,100),null,null,null,null,null,null,null,null,null,List.of(0,1),null,null,null);}
+    /** Mechanics are checked at one block per second; the map default is covered by defaultSpeed(). */
+    private EscortRules rules(){return new EscortRules(new ArenaMap.Area(0,0,0,100,20,100),null,1.0,null,null,null,null,null,null,null,List.of(0,1),null,null,null);}
     @Test void playersAccelerateButDefendersAlwaysStop(){
         var game=new EscortGame(rules(),240,100,List.of(50d));game.tick(1,false);assertEquals(.05,game.distance,1e-8);
         game.tick(5,false);assertEquals(.15,game.distance,1e-8);game.tick(5,true);assertEquals(.15,game.distance,1e-8);assertEquals("CONTESTED",game.motion);
@@ -23,11 +24,29 @@ class EscortGameTest {
         for(int i=0;i<199;i++)game.tick(0,false);assertEquals(3,game.distance,1e-8);game.tick(0,false);assertTrue(game.distance<3);
         game.completed=1;game.distance=5.1;for(int i=0;i<200;i++)game.tick(0,false);assertEquals(5,game.distance,1e-8);
     }
-    @Test void defendersAlonePushBackAtBaseSpeedToStart(){
-        var game=new EscortGame(rules(),240,10,List.of(5d));game.completed=1;game.distance=5.02;
-        game.tick(0,true);assertEquals("REVERSE",game.motion);assertEquals(0,game.multiplier,1e-8);assertEquals(4.97,game.distance,1e-8);
-        for(int i=0;i<200;i++)game.tick(0,true);assertEquals(0,game.distance,1e-8);assertEquals(1,game.completed,"Passed checkpoints stay earned");
+    @Test void defendersAlonePushBackAtAThirdOfBaseSpeedToStartBeforeAnyCheckpoint(){
+        var game=new EscortGame(rules(),240,10,List.of(5d));game.distance=1;
+        game.tick(0,true);assertEquals("REVERSE",game.motion);assertEquals(0,game.multiplier,1e-8);assertEquals(1-.05/3,game.distance,1e-8);
+        for(int i=0;i<60;i++)game.tick(0,true);assertEquals(0,game.distance,1e-8);assertEquals(0,game.completed);
         game.distance=1;game.tick(1,true);assertEquals(1,game.distance,1e-8);assertEquals("CONTESTED",game.motion);
+    }
+    @Test void defendersCannotReversePastMostRecentlyPassedCheckpoint(){
+        var game=new EscortGame(rules(),240,10,List.of(2d,5d,8d));
+        for(int checkpoint=0;checkpoint<3;checkpoint++){
+            double at=game.checkpoints.get(checkpoint);
+            game.distance=at-.02;game.tick(1,false);
+            assertEquals(checkpoint+1,game.completed);
+            while(game.stopTicks>0)game.tick(0,true);
+            game.tick(1,false);game.tick(1,false);
+            assertEquals(at+.1,game.distance,1e-8);
+            game.tick(0,true);assertEquals(at+.1-.05/3,game.distance,1e-8);assertEquals("REVERSE",game.motion);
+            game.distance=at+.01;game.tick(0,true);assertEquals(at,game.distance,1e-8,"Clamp even when one reverse step overshoots");
+            int time=game.remainingTicks;
+            for(int i=0;i<40;i++)game.tick(0,true);
+            assertEquals(at,game.distance,1e-8);assertNotEquals("REVERSE",game.motion);
+            game.tick(1,false);assertTrue(game.distance>at);assertEquals(checkpoint+1,game.completed);
+            assertEquals(time-41,game.remainingTicks,"Moving forward again must not award the checkpoint bonus twice");
+        }
     }
     @Test void finalArrivalWinsAndTimeoutDefends(){
         var attack=new EscortGame(rules(),1,10,List.of(5d));attack.completed=1;attack.distance=9.99;attack.remainingTicks=1;attack.tick(1,false);assertEquals("ALPHA",attack.winner);
@@ -40,6 +59,7 @@ class EscortGameTest {
         var game=new EscortGame(rules(),1,10,List.of(1d));game.distance=.99;game.remainingTicks=1;game.tick(1,false);
         assertEquals(3600,game.remainingTicks);for(int i=0;i<100;i++)game.tick(0,true);assertEquals("",game.winner);assertEquals(3500,game.remainingTicks);
     }
+    @Test void defaultSpeed(){assertEquals(1.5,new EscortRules(null,null,null,null,null,null,null,null,null,null,null,null,null,null).speed(),1e-8);}
     @Test void invalidSettingsRejected(){var r=new EscortRules(null,null,null,null,null,null,null,null,null,null,null,null,null,null);assertThrows(IllegalArgumentException.class,r::validate);rules().validate();}
     @Test void publishedExampleLoadsAndDefaultsToFourMinutes()throws Exception {
         var json=com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(java.nio.file.Path.of("docs/server-examples/escort.json"))).getAsJsonObject();

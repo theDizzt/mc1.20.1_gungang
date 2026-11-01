@@ -19,7 +19,7 @@
   "escort": {
     "scanArea": {"minX": -5, "minY": 64, "minZ": 5, "maxX": 85, "maxY": 75, "maxZ": 35},
     "linkDistance": 16,
-    "speed": 1.0,
+    "speed": 1.5,
     "extraPlayerMultiplier": 0.25,
     "maxMultiplier": 2.0,
     "radius": 5.0,

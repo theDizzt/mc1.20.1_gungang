@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "MMM",
+    "MWM",
+    "MMM"
+  ],
+  "key": {
+    "M": {
+      "item": "minecraft:mossy_cobblestone"
+    },
+    "W": {
+      "item": "gungang:hot_spring_bucket"
+    }
+  },
+  "result": {
+    "item": "gungang:bath_toad"
+  }
+}

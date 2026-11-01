@@ -20,6 +20,9 @@ public final class LobbyRules {
         if (!capture && !bomb) return List.of("DEATHMATCH");
         return List.of(bomb ? "BOMB" : "CONTROL", "DEATHMATCH");
     }
+    /** Modes AI bots may join; each gives them its mission through {@link BotObjective} (none in team deathmatch or free-for-all; 숨바꼭질 has its own {@code BotPropHunt}). */
+    public static final java.util.Set<String> BOT_MODES = java.util.Set.of("DEATHMATCH", "CONTROL", "FREE_FOR_ALL", "NORMANDY", "ESCORT", "BOMB", "PROP_HUNT");
+    public static boolean bots(String mode) { return BOT_MODES.contains(mode); }
     /** Random element, avoiding {@code current} when anything else is available; null for an empty list. */
     public static <T> T pick(List<T> options, T current, RandomGenerator random) {
         if (options.isEmpty()) return null;
@@ -27,6 +30,12 @@ public final class LobbyRules {
         for (T option : options) if (!Objects.equals(option, current)) others.add(option);
         var pool = others.isEmpty() ? options : others;
         return pool.get(random.nextInt(pool.size()));
+    }
+    /** Keep a valid requested choice; otherwise draw only from eligible weapons. */
+    public static <T> T preferredOrRandom(List<T> available,T wanted,RandomGenerator random){
+        if(available.contains(wanted))return wanted;
+        if(available.isEmpty())throw new IllegalStateException("사용 가능한 무기가 없습니다. 중복 허용 옵션을 확인하세요.");
+        return available.get(random.nextInt(available.size()));
     }
     private LobbyRules() { }
 }

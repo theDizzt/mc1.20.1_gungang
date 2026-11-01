@@ -12,7 +12,7 @@ final class PropHuntHud {
     static final int HIDER=0xFF75D9AD,SEEKER=0xFFFFB86C,FOUND=0xFFFF6B6B,DIM=TacticalStyle.DIM;
     private static final int TILE=18,GAP=3,HEAD=28,COLS=13,ROW=18,FOOT=13,SPLIT=8;
     /** A TAB row from either snapshot; found is null when the source does not know it (match results). */
-    private record Entry(String id,String name,boolean hider,Boolean found,int seconds,int finds) { }
+    private record Entry(String id,String name,boolean hider,Boolean found,int seconds,int finds,String skin) { }
 
     static void draw(GuiGraphics g,PropHuntSnapshot s) {
         var mc=Minecraft.getInstance();int top=Math.max(2,BossBarHud.bottom+1);
@@ -31,11 +31,29 @@ final class PropHuntHud {
         MatchTimerHud.drawAt(g,MatchReport.time(s.seconds()),0,11);
         g.pose().popPose();
         tiles(g,hiders,top+Math.round(34*scale)+3);
+        guide(g,PropHuntClient.guide());
         if(mc.screen==null&&mc.options.keyPlayerList.isDown()) {
             int rows=(hiders.size()+columns(g)-1)/columns(g),y=top+Math.round(34*scale)+6+rows*(TILE+GAP)+4;
             int w=Math.min(480,g.guiWidth()-8);
-            PropHuntClient.clampPage(board(g,s.players().stream().map(r->new Entry(r.id(),r.name(),r.team().equals("ALPHA"),r.found(),r.hiddenSeconds(),r.finds())).toList(),
+            PropHuntClient.clampPage(board(g,s.players().stream().map(r->new Entry(r.id(),r.name(),r.team().equals("ALPHA"),r.found(),r.hiddenSeconds(),r.finds(),null)).toList(),
                     review,Math.max(4,(g.guiWidth()-w)/2),y,w,g.guiHeight()-y-8,PropHuntClient.page(),true));
+        }
+    }
+    /**
+     * The hider's controls, drawn where the vanilla sidebar scoreboard sits (right edge, vertically centred) instead
+     * of the action bar. The first line is the title; a fresh disguise is highlighted above the keys.
+     */
+    private static void guide(GuiGraphics g,List<String> lines){
+        if(lines.isEmpty()||Minecraft.getInstance().options.keyPlayerList.isDown())return;
+        var font=Minecraft.getInstance().font;int width=0;
+        for(var line:lines)width=Math.max(width,font.width(line));
+        int right=g.guiWidth()-3,left=right-width-4,height=lines.size()*9,top=g.guiHeight()/2-height/3;
+        for(int i=0;i<lines.size();i++){
+            int y=top+i*9;
+            g.fill(left-2,y,right,y+9,i==0?0x66000000:0x4C000000);
+            String line=lines.get(i);boolean highlight=line.startsWith("변신:");
+            if(i==0)g.drawString(font,line,left+(width-font.width(line))/2,y+1,HIDER,false);
+            else g.drawString(font,line,left,y+1,highlight?0xFFFFE27A:0xFFFFFFFF,false);
         }
     }
     /** Deathmatch plate; the big number is a head count instead of a score, the tag names the role. */
@@ -67,10 +85,11 @@ final class PropHuntHud {
             g.fill(x-1,ty-1,x+TILE+1,ty+TILE+1,mine?HIDER:row.found()?0xB45A2A2A:DeathmatchHud.EDGE);
             g.fill(x,ty,x+TILE,ty+TILE,DeathmatchHud.SURFACE);
             g.fill(x,ty+TILE-2,x+TILE,ty+TILE,row.found()?FOUND:HIDER);
-            var item=row.block().isEmpty()?null:net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(PropCatalog.id(row.block()));
-            if(item==null)g.drawCenteredString(mc.font,"?",x+TILE/2,ty+5,DeathmatchHud.MUTED);
+            if(row.block().isEmpty())g.drawCenteredString(mc.font,"?",x+TILE/2,ty+5,DeathmatchHud.MUTED);
             else {
-                g.renderItem(new ItemStack(item),x+1,ty+1);
+                // Same icon as the ability HUD: the item, or the block / liquid itself when it has none.
+                var state=row.state()!=0?net.minecraft.world.level.block.Block.stateById(row.state()):PropCatalog.state(row.block());
+                PropAbilityHud.icon(g,row.block(),state,x+1,ty+1,16);
                 // Catalog number at the bottom right, above the item (z 150) and below the found overlay (z 200).
                 g.pose().pushPose();g.pose().translate(0,0,180);
                 DeathmatchHud.small(g,PropCatalog.number(row.block()),x+TILE-1,ty+TILE-7,.5f,0xFFFFFFFF,false,false);
@@ -91,7 +110,7 @@ final class PropHuntHud {
     static int pages(MatchSnapshot s,int height){long h=s.players().stream().filter(r->r.team().equals("ALPHA")).count();return pages(h,s.players().size()-h,height);}
     /** Result screen: MatchSnapshot rows carry finds in kills and hidden time in playSeconds. */
     static int table(GuiGraphics g,MatchSnapshot s,int x,int y,int width,int height,int page) {
-        return board(g,s.players().stream().map(r->new Entry(r.id(),r.name(),r.team().equals("ALPHA"),null,r.playSeconds(),r.kills())).toList(),true,x,y,width,height,page,false);
+        return board(g,s.players().stream().map(r->new Entry(r.id(),r.name(),r.team().equals("ALPHA"),null,r.playSeconds(),r.kills(),r.skin())).toList(),true,x,y,width,height,page,false);
     }
     /** Hider and seeker cards side by side, sharing one page index like the team TAB board. */
     private static int board(GuiGraphics g,List<Entry> entries,boolean finished,int x,int y,int width,int height,int requested,boolean live) {
@@ -133,7 +152,7 @@ final class PropHuntHud {
             String number=String.valueOf(rank);
             g.drawString(font,HudText.number(number),left+8+(10-HudText.numberWidth(number))/2,ry+5,rank==1&&(hider?row.seconds()>0:row.finds()>0)?0xFFFFD166:DIM,false);
             g.fill(face-1,ry+2,face+13,ry+16,mine?color:found?0xFF5A2A2A:TacticalStyle.EDGE);
-            PlayerFaceRenderer.draw(g,MatchHud.skin(row.id()),face,ry+3,12);
+            PlayerFaceRenderer.draw(g,row.skin()!=null&&!row.skin().isEmpty()?BotRenderer.texture(row.skin()):MatchHud.skin(row.id()),face,ry+3,12);
             if(found)g.fill(face,ry+3,face+12,ry+15,0x90141511);
             PlayerLevels.draw(g,row.id(),face+15,ry+3,12);
             g.drawString(font,font.plainSubstrByWidth(row.name(),Math.max(1,nameEnd-nameX)),nameX,ry+5,mine?0xFFFFFFFF:found?0xFF8A96A6:TacticalStyle.INK,false);

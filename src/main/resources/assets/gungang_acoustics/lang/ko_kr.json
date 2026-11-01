@@ -14,6 +14,7 @@
   "itemGroup.gungang.items": "GunGang 아이템",
   "key.gungang.lobby": "대기실 다시 열기",
   "key.gungang.loadout": "스폰 구역 무기 선택",
+  "key.gungang.bomb": "폭탄 설치 / 해체",
   "key.categories.gungang": "GunGang",
   "gungang.options.fontOversample": "TTF 해상도 배율",
   "gungang.options.fontOversample.tip": "정수 1~8, 기본 6. 선택한 TTF 폰트의 생성 해상도입니다. 글자 크기는 유지됩니다. 높을수록 메모리와 최초 생성 비용이 늘어납니다. 저장 시 리소스를 다시 불러옵니다.",
@@ -187,6 +188,10 @@
     "gungang.conveyor.invalid":  "경로 연결 방향을 확인하세요",
 
     "block.gungang.dried_ghast":  "마른 가스트",
+    "block.gungang.big_grass_block":  "덩치가 큰 잔디 블록",
     "block.gungang.wildflowers":  "들꽃",
-    "block.gungang.mannequin":  "마네킹"
+    "block.gungang.mannequin":  "마네킹",
+    "block.gungang.eunbi_doll":  "은비의 영혼이 깃든 인형",
+    "block.gungang.hanbi_doll":  "한비의 영혼이 깃든 인형",
+    "block.gungang.prettiest_block":  "세상에서 가장 예쁜 블록"
 }
