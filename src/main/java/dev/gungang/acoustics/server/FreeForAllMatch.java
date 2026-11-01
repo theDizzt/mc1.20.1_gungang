@@ -31,7 +31,7 @@ public final class FreeForAllMatch {
     private final Map<ArenaMap.Spawn,Integer> used=new HashMap<>();
     private int started=-1;
     public FreeForAllMatch(MinecraftServer server,ArenaMap map){this.server=server;this.map=map;for(int c:COLORS)palette.add(c);Collections.shuffle(palette);}
-    public void add(ServerPlayer p){
+    public void add(net.minecraft.world.entity.LivingEntity p){
         scores.add(p.getUUID());colors.computeIfAbsent(p.getUUID(),id->palette.get(colors.size()%palette.size()));
         String id="ffa_"+p.getUUID().toString().replace("-","").substring(0,12);
         var board=server.getScoreboard();var team=board.getPlayerTeam(id);if(team==null)team=board.addPlayerTeam(id);
@@ -48,29 +48,42 @@ public final class FreeForAllMatch {
     public boolean opening(){return started<0||server.getTickCount()-started<600;}
     public boolean participant(UUID id){return colors.containsKey(id);}
     public int remaining(UUID id){if(!participant(id))return 0;return opening()?started<0?600:Math.max(0,600-(server.getTickCount()-started)):Math.max(0,hiddenUntil.getOrDefault(id,0)-server.getTickCount());}
-    public void protect(ServerPlayer p){hiddenUntil.put(p.getUUID(),server.getTickCount()+RESPAWN_PROTECTION_TICKS);update(p);}
-    private void update(ServerPlayer p){
+    /** Players and bots alike: a bot respawning gets the same protection, invisibility and silence. */
+    public void protect(net.minecraft.world.entity.LivingEntity p){hiddenUntil.put(p.getUUID(),server.getTickCount()+RESPAWN_PROTECTION_TICKS);update(p);}
+    private void update(net.minecraft.world.entity.LivingEntity p){
         int left=remaining(p.getUUID());boolean hidden=left>0&&!p.isSpectator();
         if(hidden){silence.putIfAbsent(p.getUUID(),p.isSilent());invisibility.putIfAbsent(p.getUUID(),p.isInvisible());p.setSilent(true);p.setInvisible(true);p.stopUsingItem();
-            p.displayClientMessage(Component.literal((opening()?"시작 무적":"리스폰 무적")+" "+(left+19)/20+"초 남음"),true);
-        }else if(restore(p))p.displayClientMessage(Component.empty(),true);
+            if(p instanceof ServerPlayer player)player.displayClientMessage(Component.literal((opening()?"시작 무적":"리스폰 무적")+" "+(left+19)/20+"초 남음"),true);
+        }else if(restore(p)&&p instanceof ServerPlayer player)player.displayClientMessage(Component.empty(),true);
     }
     /** Returns whether the player was still hidden. */
-    private boolean restore(ServerPlayer p){boolean was=silence.containsKey(p.getUUID())||invisibility.containsKey(p.getUUID());if(silence.containsKey(p.getUUID()))p.setSilent(silence.remove(p.getUUID()));if(invisibility.containsKey(p.getUUID()))p.setInvisible(invisibility.remove(p.getUUID()));return was;}
-    public void tick(){for(var p:server.getPlayerList().getPlayers())if(participant(p.getUUID()))update(p);}
+    private boolean restore(net.minecraft.world.entity.LivingEntity p){boolean was=silence.containsKey(p.getUUID())||invisibility.containsKey(p.getUUID());if(silence.containsKey(p.getUUID()))p.setSilent(silence.remove(p.getUUID()));if(invisibility.containsKey(p.getUUID()))p.setInvisible(invisibility.remove(p.getUUID()));return was;}
+    public void tick(){for(var p:server.getPlayerList().getPlayers())if(participant(p.getUUID()))update(p);for(var bot:BotManager.entities())if(participant(bot.getUUID()))update(bot);}
     public void close(){for(var p:server.getPlayerList().getPlayers())restore(p);var board=server.getScoreboard();for(var t:List.copyOf(board.getPlayerTeams()))if(t.getName().startsWith("ffa_"))board.removePlayerTeam(t);}
-    public void spawn(ServerPlayer p){
-        var level=server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,new net.minecraft.resources.ResourceLocation(map.dimension())));
+    private net.minecraft.server.level.ServerLevel level(){return server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,new net.minecraft.resources.ResourceLocation(map.dimension())));}
+    /** The spawn farthest from every other living participant, player or bot. */
+    public ArenaMap.Spawn spawnFor(net.minecraft.world.entity.LivingEntity p){
+        var level=level();
+        var others=new ArrayList<net.minecraft.world.entity.LivingEntity>(server.getPlayerList().getPlayers());others.addAll(BotManager.entities());
         var candidates=new ArrayList<>(map.freeForAll().spawns());Collections.shuffle(candidates);
         var spawn=candidates.stream().max(Comparator.<ArenaMap.Spawn>comparingDouble(s->{
-            double distance=server.getPlayerList().getPlayers().stream().filter(q->q!=p&&participant(q.getUUID())&&!q.isSpectator()&&q.isAlive()&&q.level()==level)
+            double distance=others.stream().filter(q->q!=p&&!q.getUUID().equals(p.getUUID())&&participant(q.getUUID())&&!q.isSpectator()&&q.isAlive()&&q.level()==level)
                 .mapToDouble(q->q.distanceToSqr(s.x(),s.y(),s.z())).min().orElse(1e9);
             return used.getOrDefault(s,-1000)==server.getTickCount()?-1:distance;
         })).orElseThrow();used.put(spawn,server.getTickCount());
+        return spawn;
+    }
+    public void spawn(ServerPlayer p){
+        var level=level();var spawn=spawnFor(p);
         p.setCamera(p);p.stopRiding();p.teleportTo(level,spawn.x(),spawn.y(),spawn.z(),spawn.yaw(),spawn.pitch());p.fallDistance=0;
     }
     public void openingDeath(ServerPlayer p){p.setHealth(p.getMaxHealth());p.clearFire();spawn(p);}
-    public void death(ServerPlayer p,ServerPlayer killer){scores.death(p.getUUID(),killer==null?null:killer.getUUID());}
+    public void death(ServerPlayer p,ServerPlayer killer){death(p.getUUID(),killer==null?null:killer.getUUID());}
+    /** Kill +1 for the killer; a death with no other killer (fall, death zone, own blast) costs the victim a point. */
+    public void death(UUID victim,UUID killer){scores.death(victim,killer);}
+    public int points(UUID id){return scores.points(id);}
+    /** 1-based place in the current ranking, 0 when not playing. */
+    public int rank(UUID id){return scores.ranking().indexOf(id)+1;}
     public String winner(boolean expired){UUID id=scores.winner(map.freeForAll().winningScore(),expired);return id==null?"":id.toString();}
     public List<MatchSnapshot.Row> rows(List<MatchSnapshot.Row> stats){
         var result=new ArrayList<MatchSnapshot.Row>();

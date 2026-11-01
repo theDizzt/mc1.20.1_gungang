@@ -37,6 +37,8 @@ public class SpawnGateBlock extends Block {
         return net.minecraftforge.fml.util.thread.EffectiveSide.get().isClient()?"PROP_HUNT".equals(clientRule.get()):MatchManager.realPropHunt()!=null;
     }
     public boolean allows(Entity entity){
+        // 숨바꼭질: everyone walks through both teams' gates, bots included.
+        if(entity instanceof BotEntity bot&&(bot.level().isClientSide?"PROP_HUNT".equals(clientRule.get()):MatchManager.realPropHunt()!=null))return bot.isAlive();
         if(entity instanceof BotEntity bot)return bot.isAlive()&&bot.getTeam()!=null&&bot.getTeam().getName().equals(team.equals("ALPHA")?"Red":"Blue")
                 &&open(MatchManager.preparationGate(),team);
         if(!(entity instanceof Player player)||player.isSpectator()||!player.isAlive())return false;
@@ -66,7 +68,8 @@ public class SpawnGateBlock extends Block {
         return team.equals("ALPHA")?rule:rule.equals("ALPHA")?"BRAVO":"ALPHA";
     }
     @Override public VoxelShape getCollisionShape(BlockState state,BlockGetter level,BlockPos pos,CollisionContext context){
-        return !barrier(state)||context instanceof EntityCollisionContext entity&&allows(entity.getEntity())?Shapes.empty():Shapes.block();
+        // A mercy bullet only heals teammates, so no gate hologram stops it (its cooldown was already spent on firing).
+        return !barrier(state)||context instanceof EntityCollisionContext entity&&(allows(entity.getEntity())||MercyBullet.bullet(entity.getEntity()))?Shapes.empty():Shapes.block();
     }
     /** The outline is what melee and block picking ray-trace against, so a hologram gate has none. */
     @Override public VoxelShape getShape(BlockState state,BlockGetter level,BlockPos pos,CollisionContext context){return barrier(state)?Shapes.block():Shapes.empty();}

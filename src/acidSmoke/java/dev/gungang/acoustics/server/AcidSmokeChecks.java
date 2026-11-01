@@ -15,6 +15,8 @@ public final class AcidSmokeChecks {
     @SubscribeEvent public static void started(ServerStartedEvent event){
         var server=event.getServer();var level=server.overworld();
         try {
+            HotSpringChecks.run(level);
+            HologramChecks.run(level);
             var pos=new BlockPos(0,250,0);
             for(int x=-5;x<=5;x++)for(int z=-5;z<=5;z++)for(int y=249;y<=252;y++)
                 level.setBlockAndUpdate(new BlockPos(x,y,z),y==249?Blocks.STONE.defaultBlockState():Blocks.AIR.defaultBlockState());

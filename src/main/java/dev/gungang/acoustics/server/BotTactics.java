@@ -12,7 +12,7 @@ import java.util.Map;
 final class BotTactics {
     enum Action {
         EVADE("위험 지역 이탈"),ENGAGE("교전"),PUSH("돌격"),COVER("엄폐 후 재정비"),RETREAT("후퇴"),REGROUP("아군 합류"),SUPPORT("아군 지원"),
-        HEAL("회복"),INVESTIGATE("추적·확인"),RALLY("팀 포인트 확인"),PATROL("순찰");
+        HEAL("회복"),INVESTIGATE("추적·확인"),RALLY("팀 포인트 확인"),OBJECTIVE("임무 수행"),PATROL("순찰");
         final String label;
         Action(String label){this.label=label;}
     }
@@ -83,13 +83,28 @@ final class BotTactics {
                 yield s.visible()==0?40+missing*60:s.health()<.3f?50:0;
             }
             case INVESTIGATE->s.visible()==0&&s.contactAge()<400?Math.max(0,55-s.contactAge()/10f):0;
-            case RALLY->0;
+            case RALLY,OBJECTIVE->0;
             case PATROL->20;
             // Nothing outranks walking out of a strike zone or fire.
             case EVADE->s.hazard()?100:0;
         };
     }
 
+    /**
+     * The mission's pull (0 without one). Taking or contesting the point outranks wandering and stale clues; on the
+     * point a fight is fought from there, off it a visible enemy comes first. Guards hold a quiet point, the rest
+     * patrol around it. Badly hurt bots leave it to cover, retreat and healing.
+     */
+    static float objective(Situation s,BotObjective.Stance stance,boolean inside,boolean guard) {
+        if(stance==null)return 0;
+        // Above fresh sound clues (at most 55): in an objective mode the point, not every gunshot, is where to go.
+        float v=switch(stance){case TAKE->58;case CONTEST->66;case HOLD->guard?(inside?40:34):18;};
+        if(s.visible()>0)v+=inside?20:-25;
+        if(s.health()<.35f)v-=30;
+        // Reloading or nearly dry: cover first, even on the point.
+        if(s.reloading()||s.ammo()<.15f)v-=30;
+        return Math.max(0,v);
+    }
     /** Re-scores everything and returns the action to run this tick. */
     Action choose(Situation s,int now) {
         return choose(s,now,false,false);
@@ -99,6 +114,9 @@ final class BotTactics {
         return choose(s,now,holdCover,shield,false);
     }
     Action choose(Situation s,int now,boolean holdCover,boolean shield,boolean rally) {
+        return choose(s,now,holdCover,shield,rally,0);
+    }
+    Action choose(Situation s,int now,boolean holdCover,boolean shield,boolean rally,float objective) {
         if(s.hazard()) {
             for(var candidate:Action.values())last.put(candidate,score(candidate,s));
             failedUntil.remove(Action.EVADE);
@@ -115,6 +133,7 @@ final class BotTactics {
         for(var candidate:Action.values()) {
             float score=score(candidate,s);
             if(candidate==Action.RALLY&&rally&&s.visible()==0&&!s.underFire()&&s.health()>=.5f&&!s.reloading()&&s.ammo()>=.15f)score=58;
+            if(candidate==Action.OBJECTIVE)score=objective;
             // Losing sight of the enemy on the way into cover must not cancel a needed reload.
             if(candidate==Action.COVER&&action==Action.COVER&&s.visible()==0&&(s.reloading()||s.ammo()<.5f))
                 score=Math.max(score,80);

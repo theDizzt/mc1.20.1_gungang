@@ -10,6 +10,8 @@ public final class BotRenderer extends HumanoidMobRenderer<BotEntity,HumanoidMod
     private static final ResourceLocation SKIN=new ResourceLocation("minecraft","textures/entity/player/wide/steve.png");
     public BotRenderer(EntityRendererProvider.Context context){super(context,new net.minecraft.client.model.PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER),false),.5f);}
     @Override public ResourceLocation getTextureLocation(BotEntity entity){return texture(entity.skin());}
+    /** A hiding bot is only its block (PropRenderer): no body, shadow, name tag or teammate silhouette. */
+    @Override public boolean shouldRender(BotEntity entity,net.minecraft.client.renderer.culling.Frustum frustum,double x,double y,double z){return !entity.disguised()&&super.shouldRender(entity,frustum,x,y,z);}
     static ResourceLocation texture(String value){
         if(value!=null&&value.startsWith(dev.gungang.acoustics.server.BotSkinFiles.PREFIX)){var file=BotSkinCache.texture(value);return file!=null?file:SKIN;}
         var id=value==null?null:ResourceLocation.tryParse(value);

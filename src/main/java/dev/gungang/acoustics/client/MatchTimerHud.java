@@ -29,7 +29,6 @@ final class MatchTimerHud {
         if(second!=lastSecond){lastSecond=second;changedAt=now;}
         float elapsed=(now-changedAt)/1e9f;
         boolean countdown=finalCountdown(state);
-        capsule(g,centerX,y,countdown);
         if(!countdown) {
             // Colon stays lit for the first half of each second, so the blink follows the clock.
             glyphs(g,MatchReport.time(second),Math.round(centerX-MatchReport.time(second).length()*5),y,false,elapsed<.5f?1:.3f);
@@ -46,14 +45,6 @@ final class MatchTimerHud {
     }
     static void drawAt(GuiGraphics g,String text,float centerX,int y) {
         glyphs(g,text,Math.round(centerX-text.length()*5),y,false,1);
-    }
-    /** Fixed "00:00"-wide plate behind the digits so the frame never jumps when the countdown starts. */
-    private static void capsule(GuiGraphics g,float centerX,int y,boolean warm) {
-        int cx=Math.round(centerX),x1=cx-30,x2=cx+30,y1=y-3,y2=y+19;
-        g.fill(x1-1,y1-1,x2+1,y2+1,DeathmatchHud.EDGE);g.fill(x1,y1,x2,y2,DeathmatchHud.SURFACE);
-        g.fill(x1,y1,x2,y1+1,0x14FFFFFF);
-        g.fill(x1,y2-1,x2,y2,warm?0xFFFF9A3C:TacticalStyle.GOLD);
-        TacticalStyle.corner(g,x2,y1,3,warm?0xFFFF9A3C:TacticalStyle.GOLD);
     }
     private static void glyphs(GuiGraphics g,String text,float x,float y,boolean warm,float colon) {
         g.pose().pushPose();

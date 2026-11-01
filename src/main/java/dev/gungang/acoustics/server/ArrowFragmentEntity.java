@@ -47,9 +47,12 @@ public final class ArrowFragmentEntity extends AbstractArrow {
     @Override protected void onHitEntity(EntityHitResult hit){
         if(level().isClientSide)return;
         var source=new DamageSource(level().registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.DAMAGE_TYPE).getHolderOrThrow(DAMAGE),this,getOwner());
-        if(hit.getEntity()==getOwner()&&hit.getEntity() instanceof LivingEntity living)
-            OrdnanceDamage.hurt(living,source,(float)damage);
-        else hit.getEntity().hurt(source,(float)damage);
+        // Every fragment lands its full damage: no hurt cooldown is checked, and none is left behind for other attacks.
+        var target=hit.getEntity();int immunity=target.invulnerableTime;target.invulnerableTime=0;
+        try {
+            if(target==getOwner()&&target instanceof LivingEntity living)OrdnanceDamage.hurt(living,source,(float)damage);
+            else target.hurt(source,(float)damage);
+        } finally {target.invulnerableTime=immunity;}
         discard();
     }
     @Override protected void onHitBlock(BlockHitResult hit){

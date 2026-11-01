@@ -58,7 +58,9 @@ final class BotPerception {
         for(var player:everyone) {
             if(player==bot||!player.isAlive()||player.isSpectator()||player.level()!=level||player instanceof ServerPlayer p&&(LobbyManager.respawning(p.getUUID())||p.isCreative()&&!BotManager.side(p).equals(team)))continue;
             String side=BotManager.side(player);
-            if(!side.equals("ALPHA")&&!side.equals("BRAVO"))continue;
+            if(!BotManager.combatant(side))continue;
+            // Free-for-all spawn protection: invisible and invulnerable, so neither seen nor worth chasing.
+            if(MatchManager.freeForAll()!=null&&MatchManager.freeForAll().remaining(player.getUUID())>0)continue;
             if(side.equals(team)) {if(player.distanceToSqr(bot)<64*64)allies.add(player);continue;}
             double distanceSqr=player.distanceToSqr(bot);
             Vec3 previous=lastSample.put(player.getUUID(),player.position());
@@ -107,7 +109,8 @@ final class BotPerception {
         allyThreat=contacts.get(attacker.getUUID()).position;
     }
     private void hazards(BotEntity bot,String team,int now) {
-        var level=bot.level();String own=team.equals("ALPHA")?"Red":"Blue";
+        // The bot's scoreboard team: Red/Blue, or its own team in free-for-all, where every other device is hostile.
+        var level=bot.level();String own=bot.getTeam()==null?"":bot.getTeam().getName();
         // Forget devices that are gone; a sprung trap is no longer a threat.
         hazards.values().removeIf(h->{
             var entity=((net.minecraft.server.level.ServerLevel)level).getEntity(h.id());

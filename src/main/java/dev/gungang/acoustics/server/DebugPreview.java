@@ -100,6 +100,11 @@ public final class DebugPreview {
         p.sendSystemMessage(Component.literal("[디버그] 미리보기를 종료했습니다."));
         return 1;
     }
+    /** /gungang reset: every HUD preview, the prop debug session and bot diagnostics end for everyone. */
+    static void endAll(net.minecraft.server.MinecraftServer server) {
+        ACTIVE.clear();PropHuntMatch.endTest();BotDiagnostics.clear();
+        if(!MatchManager.active())for(var p:server.getPlayerList().getPlayers())clear(p);
+    }
     private static void clear(ServerPlayer p) {
         GungangNetwork.send(p,new GungangNetwork.Match(ServerFiles.GSON.toJson(new MatchSnapshot(false,false,"","LOBBY",0,false,"",0,0,List.of()))));
         GungangNetwork.send(p,new GungangNetwork.PropHunt(ServerFiles.GSON.toJson(new PropHuntSnapshot(false,"",0,0,List.of()))));

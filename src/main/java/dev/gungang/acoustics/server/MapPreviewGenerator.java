@@ -95,29 +95,41 @@ public final class MapPreviewGenerator {
             if(diamond)g.fillPolygon(new int[]{x,x+8,x,x-8},new int[]{z-8,z,z+8,z},4);else g.fillOval(x-8,z-8,16,16);
             g.setColor(Color.WHITE);g.drawString(label,x-g.getFontMetrics().stringWidth(label)/2,z+4);
         }
+        /** A white label with a black outline at a world position (bomb site letters). */
+        void outlined(Graphics2D g,double wx,double wz,String label){
+            if(map.previewArea().u(wx)<0||map.previewArea().u(wx)>=1||map.previewArea().v(wz)<0||map.previewArea().v(wz)>=1)return;
+            var metrics=g.getFontMetrics();int x=x(wx)-metrics.stringWidth(label)/2,z=z(wz)+metrics.getAscent()/2-1;
+            g.setColor(Color.BLACK);
+            for(int dx=-1;dx<=1;dx++)for(int dz=-1;dz<=1;dz++)if(dx!=0||dz!=0)g.drawString(label,x+dx,z+dz);
+            g.setColor(Color.WHITE);g.drawString(label,x,z);
+        }
         byte[] finish() throws Exception {
             var g=image.createGraphics();g.setFont(new Font(Font.SANS_SERIF,Font.BOLD,11));g.setClip(0,0,width*unit,height*unit);
             var options=LobbyManager.options();var red=new Color(options.color("ALPHA")&0xFFFFFF);var blue=new Color(options.color("BRAVO")&0xFFFFFF);var gold=new Color(210,155,20);var orange=new Color(240,120,20);
             area(g,map.alphaArea(),red);area(g,map.bravoArea(),blue);
-            marker(g,map.alphaSpawn().x(),map.alphaSpawn().z(),"A",red,false);
-            marker(g,map.bravoSpawn().x(),map.bravoSpawn().z(),"B",blue,false);
+            // Bomb maps: spawn circles stay unlabelled, so A/B always means a bomb site.
+            boolean bomb=map.bomb()!=null;
+            marker(g,map.alphaSpawn().x(),map.alphaSpawn().z(),bomb?"":"A",red,false);
+            marker(g,map.bravoSpawn().x(),map.bravoSpawn().z(),bomb?"":"B",blue,false);
             if(map.capture()!=null){var a=map.capture().area();area(g,a,orange);marker(g,(a.minX()+a.maxX())/2,(a.minZ()+a.maxZ())/2,"C",orange,true);}
             if(map.bomb()!=null){
                 var sites=new BombRules.Site[]{map.bomb().areaA(),map.bomb().areaB()};var points=new BombRules.Point[]{map.bomb().pointA(),map.bomb().pointB()};
                 for(int i=0;i<2;i++){var site=sites[i];var p=points[i];
-                    if(site!=null)area(g,new ArenaMap.Area(site.minX(),site.minY(),site.minZ(),site.maxX()+1,site.maxY()+1,site.maxZ()+1),gold);
-                    marker(g,site==null?p.x()+.5:site.centerX(),site==null?p.z()+.5:site.centerZ(),i==0?"A":"B",gold,true);
+                    // Orange site area (a single legacy point as a 3x3 patch) with a white, black-outlined letter.
+                    area(g,site!=null?new ArenaMap.Area(site.minX(),site.minY(),site.minZ(),site.maxX()+1,site.maxY()+1,site.maxZ()+1)
+                            :new ArenaMap.Area(p.x()-1,p.y(),p.z()-1,p.x()+2,p.y()+1,p.z()+2),orange);
+                    outlined(g,site==null?p.x()+.5:site.centerX(),site==null?p.z()+.5:site.centerZ(),i==0?"A":"B");
                 }
             }
             if(map.normandy()!=null){int i=1;for(var p:map.normandy().points())marker(g,p.center().x(),p.center().z(),""+i++,orange,true);}
             g.setClip(null);g.setColor(new Color(20,26,35));g.fillRect(0,height*unit,image.getWidth(),42);g.setColor(Color.WHITE);
-            g.drawString(map.bomb()==null?"N ^  |  A: ALPHA / B: BRAVO":"N ^  |  A: Attack / B: Defend",5,height*unit+14);
-            g.drawString((map.bomb()!=null?"Gold diamond: bomb site":"Orange diamond: capture point")+(missing?"  |  ! Unexplored":""),5,height*unit+30);g.dispose();
+            g.drawString(map.bomb()==null?"N ^  |  A: ALPHA / B: BRAVO":"N ^  |  Circles: Attack / Defend spawn",5,height*unit+14);
+            g.drawString((map.bomb()!=null?"Orange area A/B: bomb site":"Orange diamond: capture point")+(missing?"  |  ! Unexplored":""),5,height*unit+30);g.dispose();
             var bytes=new ByteArrayOutputStream();ImageIO.write(image,"png",bytes);var png=bytes.toByteArray();MapPreviewFiles.dimensions(png);return png;
         }
     }
     // Bump when the rendering changes so old files are regenerated.
-    private static final String FORMAT="2";
+    private static final String FORMAT="3";
     private static final String KEYWORD="gungang-map",SEPARATOR=String.valueOf((char)0);
     public static Path directory(){return ServerFiles.root().resolve("server/maps/data");}
     private static Path file(String id){return directory().resolve(id+".png");}

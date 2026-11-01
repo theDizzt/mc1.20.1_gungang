@@ -28,6 +28,20 @@ public final class UtilityHud {
         var mc=Minecraft.getInstance();if(mc.player==null||!mc.player.isAlive()||mc.player.isSpectator())return;
         int y=healthBarY-36-height;
         y=PropAbilityHud.gauges(g,center,y,width,height,partial);
+        var blade=mc.player.getMainHandItem();
+        if(blade.getItem() instanceof RapierItem&&blade.hasTag()){
+            var tag=blade.getTag();int stacks=tag.getInt(RapierItem.COMBO);
+            float left=tag.getLong(RapierItem.COMBO_END)-mc.level.getGameTime()-partial;
+            if(stacks>0&&left>0&&left<=RapierCombo.DURATION){
+                String label=String.format(java.util.Locale.ROOT,"콤보 %d/5 · ×%.2f · %.1fs",stacks,RapierCombo.damage(stacks)/21f,left/20f);
+                gauge(g,center,y,width,height,left,RapierCombo.DURATION,label,partial);y-=height+4;
+            }
+        }
+        var awn=PropAwn.is(mc.player.getMainHandItem())?mc.player.getMainHandItem():mc.player.getOffhandItem();
+        if(PropAwn.is(awn)){
+            long remaining=SecondaryRuntime.remaining(mc.player,awn);
+            if(remaining>0){gauge(g,center,y,width,height,remaining,600,"AWN 재장전 "+(remaining+19)/20+"초",partial);y-=height+4;}
+        }
         var protection=FreeForAllHud.row(mc.player.getUUID());
         if(protection!=null&&protection.protectionTicks()>0){
             gauge(g,center,y,width,height,protection.protectionTicks(),protection.protectionTotal(),"무적 "+(protection.protectionTicks()+19)/20+"초",partial);

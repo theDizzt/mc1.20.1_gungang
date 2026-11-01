@@ -1,0 +1,4 @@
+Landmine by FeelsBadMan (https://sketchfab.com/FeelsBadMan)
+Source: https://sketchfab.com/3d-models/landmine-d0d63bfd117c40e4938473caf5333847
+License: CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+Modifications: converted GLB triangles to Forge OBJ; uniformly scaled to the existing installed mine footprint; grounded at Y=0; UVs converted; original base-color PNG preserved. PBR normal/metallic/emissive maps are not used.

@@ -242,9 +242,9 @@ final class BotGadgets {
         var config=ExtraGadgetConfig.orbital;double radius=config.radius();
         // Never call the strike onto itself or onto teammates standing in the blast.
         if(bot.distanceTo(target)<=radius+2)return false;
-        String side=team.equals("ALPHA")?"Red":"Blue";
+        String side=bot.getTeam()==null?"":bot.getTeam().getName();
         for(var p:level.getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class,target.getBoundingBox().inflate(radius),BotEntity::participant))
-            if(p.getTeam()!=null&&p.getTeam().getName().equals(side)&&p.distanceTo(target)<=radius)return false;
+            if(p!=bot&&p.getTeam()!=null&&p.getTeam().getName().equals(side)&&p.distanceTo(target)<=radius)return false;
         var strike=GadgetItems.ORDNANCE.get().create(level);if(strike==null)return false;
         strike.setPos(target.getX(),target.getY(),target.getZ());strike.setup(bot,true);
         if(!level.addFreshEntity(strike))return false;
@@ -290,7 +290,8 @@ final class BotGadgets {
     /** Uses the item as a player would, through a fake player that shares the bot's UUID and team. */
     private boolean use(BotEntity bot,ServerLevel level,String team,net.minecraft.world.entity.LivingEntity target) {
         var fake=net.minecraftforge.common.util.FakePlayerFactory.get(level,new GameProfile(bot.getUUID(),FAKE_NAME+(BotDatabase.slot(bot.getUUID())+1)));
-        var scoreboard=level.getScoreboard();var side=scoreboard.getPlayerTeam(team.equals("ALPHA")?"Red":"Blue");
+        // The bot's own scoreboard team (Red/Blue, or its free-for-all team), so devices and kills are credited to its side.
+        var scoreboard=level.getScoreboard();var side=bot.getTeam()==null?null:scoreboard.getPlayerTeam(bot.getTeam().getName());
         if(side!=null&&fake.getTeam()!=side)scoreboard.addPlayerToTeam(fake.getScoreboardName(),side);
         Vec3 eye=bot.getEyePosition(),d=target.getEyePosition().subtract(eye);double flat=d.horizontalDistance();
         float yaw=(float)(Mth.atan2(d.z,d.x)*180/Math.PI)-90,pitch=(float)(-Mth.atan2(d.y+flat*.15,flat)*180/Math.PI);

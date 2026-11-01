@@ -145,6 +145,7 @@ public final class TaczAmmoHud {
             boolean openBolt=data!=null&&"OPEN_BOLT".equals(String.valueOf(api.bolt().invoke(data)));
             ammo=(Integer)api.current().invoke(gun,stack)+((Boolean)api.barrel().invoke(gun,stack)&&!openBolt?1:0);
             capacity=data==null?0:(Integer)api.capacity().invoke(null,stack,data);
+            if(dev.gungang.acoustics.server.PropAwn.is(stack))capacity=1;
             alert=ammo<=0;
             color=alert?0xFFFF5555:capacity>0&&ammo<=capacity*.25?0xFFFFFF55:0xFFFFFFFF;
         }
