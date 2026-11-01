@@ -21,9 +21,14 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /** Fluid behaviour for acidlogged blocks; replaces the water-only SimpleWaterloggedBlock defaults. */
-@Mixin({CrossCollisionBlock.class, StairBlock.class})
+@Mixin({CrossCollisionBlock.class, StairBlock.class, net.minecraft.world.level.block.SlabBlock.class})
 public abstract class AcidLoggedFluidMixin extends Block implements net.minecraft.world.level.block.SimpleWaterloggedBlock {
     private AcidLoggedFluidMixin(Properties properties) { super(properties); }
+    @Override public void animateTick(BlockState state, Level level, BlockPos pos, net.minecraft.util.RandomSource random) {
+        super.animateTick(state,level,pos,random);
+        if(AcidLogging.hot(state)&&level.getFluidState(pos.above()).isEmpty()&&random.nextInt(3)==0)
+            level.addParticle(net.minecraft.core.particles.ParticleTypes.CLOUD,pos.getX()+random.nextDouble(),pos.getY()+1.05,pos.getZ()+random.nextDouble(),0,.025,0);
+    }
 
     @Inject(method = "getFluidState", at = @At("HEAD"), cancellable = true)
     private void gungang$acidFluid(BlockState state, CallbackInfoReturnable<FluidState> cir) {

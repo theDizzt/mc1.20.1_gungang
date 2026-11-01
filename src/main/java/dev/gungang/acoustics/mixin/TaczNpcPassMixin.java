@@ -9,12 +9,12 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** Both TaCZ path searches skip a null hit result, so returning null lets bullets fly through custom NPCs. */
+/** Both TaCZ path searches skip a null hit result, so returning null lets bullets fly through custom NPCs (and mercy bullets through non-teammates). */
 @Pseudo
 @Mixin(targets="com.tacz.guns.util.EntityUtil",remap=false)
 public abstract class TaczNpcPassMixin {
     @Inject(method="getHitResult",at=@At("HEAD"),cancellable=true,require=0)
     private static void gungang$npc(Projectile bullet,Entity target,Vec3 start,Vec3 end,CallbackInfoReturnable<Object> cir) {
-        if(dev.gungang.acoustics.server.PropHuntMatch.bulletPasses(bullet,target))cir.setReturnValue(null);
+        if(dev.gungang.acoustics.server.PropHuntMatch.bulletPasses(bullet,target)||dev.gungang.acoustics.server.MercyBullet.passes(bullet,target))cir.setReturnValue(null);
     }
 }

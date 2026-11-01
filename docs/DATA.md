@@ -31,7 +31,7 @@
 | 좌표 지도 | 맵 JSON의 `previewArea` | 범위 등록 시 자동 생성. 캐시는 `server/maps/data/<id>.png` |
 | 외부 TTF | 클라이언트 `config/gungang/fonts/*.ttf` | Config의 `fontFile` 선택, F3+T로 반영. 서버에서 자동 배포하지 않음 |
 | 팀·부활·XP 보상 | `config/gungang/server/option.json` | 옵션 값 편집 후 reload |
-| 팀데스매치 AI 봇 | `config/gungang/server/bot.json` | `/gungang bot` 명령으로 저장·반영. 직접 편집은 서버 재시작 필요. [봇 설정](BOTS.md) |
+| AI 봇 | `config/gungang/server/bot.json` | `/gungang bot` 명령으로 저장·반영. 직접 편집은 서버 재시작 필요. [봇 설정](BOTS.md) |
 | 비무장 지대 | `config/gungang/server/safe_zones.json` | `zones` 배열에 영역 추가 후 reload |
 | 레벨별 누적 XP 표 | `config/gungang/xp.json` | `cumulativeXp` 91개, 첫 값 0·엄격한 증가 |
 | 서버 음향 | `config/gungang/acoustics.json` | 서버가 접속·reload 때 클라이언트에 전송 |
@@ -46,7 +46,7 @@
 ## 등록 순서
 
 1. [예제 폴더](server-examples/config/gungang)에서 필요한 JSON만 서버에 복사하거나 `/gungang area wand`로 맵을 만듭니다.
-2. 맵 ID·차원·팀 스폰과 영역을 실제 월드에 맞춥니다. 호위/폭탄전/노르망디는 [해당 모드 규칙](GAMEPLAY.md)을 확인합니다.
+2. 맵 ID·차원·팀 스폰과 영역을 실제 월드에 맞춥니다. 호위/폭탄전/이동점령은 [해당 모드 규칙](GAMEPLAY.md)을 확인합니다.
 3. 주 손 아이템의 전체 SNBT를 백틱 키로 복사하거나 `/gungang exportitem <id>`로 내보낸 뒤 주무기/보조무기에 등록합니다.
 4. PNG·TTF는 위 표의 폴더에 넣고 연결 필드를 지정합니다. 자동 좌표 지도는 PNG 업로드가 필요 없습니다.
 5. `/gungang reload` 후 `/gungang area list`와 장비 선택 화면에서 확인합니다. 오류가 나면 서버 로그의 실제 경로와 검증 메시지를 확인합니다.
@@ -124,7 +124,7 @@
 
 게임에서 주 손 아이템을 들고 **백틱(`)** 키를 누르면 클라이언트의 전체 아이템 NBT를 클립보드에 복사합니다. 키 설정에서 변경할 수 있습니다. 서버 원본을 JSON 파일로 내보내는 방법은 `/gungang exportitem <id>`이며, [복사와 내보내기 안내](COMMANDS.md)를 참고하세요.
 
-주무기는 `config/gungang/server/weapons/<파일명>.json`, 보조무기는 `config/gungang/server/sub_weapons/<파일명>.json`에 **무기 객체 하나씩** 저장합니다. 배열이나 `primary` / `secondary` 감싸기는 사용하지 않습니다. 각 분류는 1~64개이며 같은 분류의 `id`는 중복될 수 없습니다. 파일명 오름차순으로 UI에 표시하고 첫 무기를 준비 시작 시 기본 지급합니다. `01_`, `02_` 같은 접두사로 순서를 지정할 수 있습니다.
+주무기는 `config/gungang/server/weapons/<파일명>.json`, 보조무기는 `config/gungang/server/sub_weapons/<파일명>.json`에 **무기 객체 하나씩** 저장합니다. 배열이나 `primary` / `secondary` 감싸기는 사용하지 않습니다. 각 분류는 1~64개이며 같은 분류의 `id`는 중복될 수 없습니다. 파일명 오름차순으로 UI에 표시하며, 준비 시작 시 선택한 무기가 없거나 사용할 수 없으면 사용 가능한 무기 중 랜덤 지급합니다. `01_`, `02_` 같은 접두사로 순서를 지정할 수 있습니다.
 
 주무기 파일 예시 (`server/weapons/01_mk14_hamr.json`):
 
@@ -244,7 +244,7 @@
 - 원 A / 원 B: ALPHA / BRAVO 스폰. 반투명 사각형은 각 스폰 영역입니다. 색상은 `server/option.json`의 `alphaColor`·`bravoColor`를 따릅니다.
 - 폭탄전 맵은 ALPHA 색 A가 공격 스폰, BRAVO 색 B가 방어 스폰입니다. 실제 팀 배정은 라운드마다 달라집니다.
 - 주황색 마름모 C: 쟁탈 거점. 주황색 사각형은 거점 범위입니다.
-- 금색 마름모 A/B: 폭탄 설치 지점. 주황색 마름모 1~4: 노르망디 순차 거점.
+- 금색 마름모 A/B: 폭탄 설치 지점. 주황색 마름모 1~4: 이동점령 순차 거점.
 - 북쪽(-Z)이 위, 동쪽(+X)이 오른쪽입니다.
 
 지도는 로비에서 해당 맵 미리보기를 처음 열 때 생성합니다. 서버 틱당 기존 청크 하나를 읽으며, 생성되지 않은 청크를 새로 만들지 않습니다. 없는 청크는 사선 패턴과 `Unexplored` 표시로 구분됩니다. 넓은 범위는 생성에 수십 초 걸릴 수 있습니다. 최대 8개 지도를 메모리에 캐시합니다.

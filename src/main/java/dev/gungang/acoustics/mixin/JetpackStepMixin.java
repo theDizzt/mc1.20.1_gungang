@@ -17,6 +17,7 @@ public abstract class JetpackStepMixin {
 
     @Redirect(method="collide",at=@At(value="INVOKE",target="Lnet/minecraft/world/entity/Entity;getStepHeight()F",remap=false))
     private float gungang$jetpackStepHeight(Entity entity) {
+        if(entity instanceof net.minecraft.world.entity.player.Player p&&dev.gungang.acoustics.server.RapierDash.active(p))return 0;
         return gungang$jetting(entity)?.5f:entity.getStepHeight();
     }
 

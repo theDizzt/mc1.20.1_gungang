@@ -140,7 +140,7 @@ public final class AreaEditor {
             case "normandy","normandy_spawn" -> {
                 var points=required(json,"normandy").getAsJsonArray("points");if(index<1||index>points.size())throw new IllegalArgumentException("거점 번호 1~4를 지정하세요.");var point=points.get(index-1).getAsJsonObject();
                 if(type.equals("normandy_spawn"))point.add("attackSpawn",safeSpawn(p,b));else{
-                    double radius=Math.min(b.maxX()-b.minX()+1.0,b.maxZ()-b.minZ()+1.0)/2;if(radius<1||radius>32)throw new IllegalArgumentException("노르망디 거점 반경은 1~32블록입니다.");
+                    double radius=Math.min(b.maxX()-b.minX()+1.0,b.maxZ()-b.minZ()+1.0)/2;if(radius<1||radius>32)throw new IllegalArgumentException("이동점령 거점 반경은 1~32블록입니다.");
                     point.add("center",spawn((b.minX()+b.maxX()+1.0)/2,(b.minY()+b.maxY()+1.0)/2,(b.minZ()+b.maxZ()+1.0)/2,0,0));point.addProperty("radius",radius);
                 }
             }

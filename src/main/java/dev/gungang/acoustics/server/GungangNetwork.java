@@ -30,6 +30,8 @@ public final class GungangNetwork {
         public Gadget(String preview) {this(preview,preview.equals("turret")?Turrets.config.placementRange():preview.equals("orbital_strike")?ExtraGadgetConfig.orbital.range():preview.equals("barrier")?GadgetConfig.barrier.range():GadgetConfig.mine.range());}
     }
     public record Action(String action, String value, String target) { }
+    /** 178: a hider's lectern book text (up to PropHuntMatch.LECTERN_LIMIT characters). */
+    public record PropText(String text) { }
     public record Hud(boolean enabled) { }
     public record PropHunt(String json) {}
     public record Emblems() { }
@@ -38,9 +40,24 @@ public final class GungangNetwork {
     public record TeamPointRequest() { }
     public record TeamPointView(String json) { }
     public record NozzleBurst(net.minecraft.core.BlockPos pos,boolean acid,double height,int count) { }
+    public record ThermalBurst(net.minecraft.world.phys.Vec3 start,net.minecraft.world.phys.Vec3 end,boolean scald) { }
     public record ConveyorView(net.minecraft.core.BlockPos pos,int speed) { }
     public record ConveyorSet(net.minecraft.core.BlockPos pos,int speed,boolean reverse) { }
+    public record SecretBlockSync(boolean full,long[] positions,byte[] modes) { }
+    public record RapierStep(int entity,float yaw) { }
     public static void register() {
+        CHANNEL.registerMessage(25,RapierStep.class,(p,b)->{b.writeVarInt(p.entity);b.writeFloat(p.yaw);},b->new RapierStep(b.readVarInt(),b.readFloat()),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.RapierTrail.receive(p)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(24,SecretBlockSync.class,(p,b)->{b.writeBoolean(p.full);b.writeVarInt(p.positions.length);for(int i=0;i<p.positions.length;i++){b.writeLong(p.positions[i]);b.writeByte(p.modes[i]);}},b->{
+            boolean full=b.readBoolean();int n=b.readVarInt();long[] pos=new long[n];byte[] modes=new byte[n];for(int i=0;i<n;i++){pos[i]=b.readLong();modes[i]=b.readByte();}return new SecretBlockSync(full,pos,modes);
+        },(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.SecretBlocksClient.receive(p)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(23,ThermalBurst.class,(p,b)->{b.writeDouble(p.start.x);b.writeDouble(p.start.y);b.writeDouble(p.start.z);b.writeDouble(p.end.x);b.writeDouble(p.end.y);b.writeDouble(p.end.z);b.writeBoolean(p.scald);},
+                b->new ThermalBurst(new net.minecraft.world.phys.Vec3(b.readDouble(),b.readDouble(),b.readDouble()),new net.minecraft.world.phys.Vec3(b.readDouble(),b.readDouble(),b.readDouble()),b.readBoolean()),(p,context)->{
+                    var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.ThermalParticles.receive(p)));ctx.setPacketHandled(true);
+                },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(21,ConveyorView.class,(p,b)->{b.writeBlockPos(p.pos);b.writeVarInt(p.speed);},b->new ConveyorView(b.readBlockPos(),b.readVarInt()),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.ConveyorScreen.open(p)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
@@ -51,6 +68,9 @@ public final class GungangNetwork {
                 b->new NozzleBurst(b.readBlockPos(),b.readBoolean(),b.readDouble(),b.readVarInt()),(p,context)->{
                     var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.NozzleParticles.receive(p)));ctx.setPacketHandled(true);
                 },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(26,PropText.class,(p,b)->b.writeUtf(p.text,4096),b->new PropText(b.readUtf(4096)),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->{var match=MatchManager.propHunt();if(ctx.getSender()!=null&&match!=null)match.lecternText(ctx.getSender(),p.text);});ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(18,TeamPointRequest.class,(p,b)->{},b->new TeamPointRequest(),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->TeamPoints.request(ctx.getSender()));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_SERVER));

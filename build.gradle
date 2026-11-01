@@ -20,6 +20,8 @@ base { archivesName = 'gungang-realistic_1.20.1' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 if (project.hasProperty('gungangShutterSmoke')) sourceSets.main.java.srcDir('src/shutterSmoke/java')
 if (project.hasProperty('gungangShutterClientSmoke')) sourceSets.main.java.srcDir('src/shutterClientSmoke/java')
+if (project.hasProperty('gungangHotSpringClientSmoke')) sourceSets.main.java.srcDir('src/hotSpringClientSmoke/java')
+if (project.hasProperty('gungangHologramClientSmoke')) sourceSets.main.java.srcDir('src/hologramClientSmoke/java')
 if (project.hasProperty('gungangLandmineSmoke')) sourceSets.main.java.srcDir('src/landmineSmoke/java')
 if (project.hasProperty('gungangArrowSmoke')) sourceSets.main.java.srcDir('src/arrowSmoke/java')
 if (project.hasProperty('gungangMotionSmoke')) sourceSets.main.java.srcDir('src/motionSmoke/java')
@@ -50,6 +52,8 @@ minecraft {
             workingDirectory project.file(project.hasProperty('gungangTurretClientSmoke') ? 'build/turret-client-smoke' : project.hasProperty('gungangAxeSmoke') ? 'build/axe-client-smoke' : 'run')
             if (project.hasProperty('gungangLandmineSmoke')) workingDirectory project.file('build/landmine-client-smoke')
             if (project.hasProperty('gungangShutterClientSmoke')) workingDirectory project.file('build/shutter-client-smoke')
+            if (project.hasProperty('gungangHotSpringClientSmoke')) workingDirectory project.file('build/hot-spring-client-smoke')
+            if (project.hasProperty('gungangHologramClientSmoke')) workingDirectory project.file('build/hologram-client-smoke')
             if (project.hasProperty('gungangLobbyUiSmoke')) workingDirectory project.file('build/lobby-ui-smoke')
             if (project.hasProperty('gungangMotionSmoke')) workingDirectory project.file('build/motion-client-smoke')
             if (project.hasProperty('gungangPropClientSmoke')) workingDirectory project.file('build/prop139-client-smoke')
@@ -105,8 +109,12 @@ mixin {
 tasks.named('jar', Jar).configure {
     exclude 'dev/gungang/acoustics/server/ShutterSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/client/ShutterModelChecks*.class'
+    exclude 'dev/gungang/acoustics/client/HotSpringModelChecks*.class'
+    exclude 'dev/gungang/acoustics/client/HologramModelChecks*.class'
     exclude 'dev/gungang/acoustics/client/LandmineModelChecks*.class'
     exclude 'dev/gungang/acoustics/server/AcidSmokeChecks*.class'
+    exclude 'dev/gungang/acoustics/server/HotSpringChecks*.class'
+    exclude 'dev/gungang/acoustics/server/HologramChecks*.class'
     exclude 'dev/gungang/acoustics/server/MotionSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/client/MotionModelChecks*.class'
     exclude 'dev/gungang/acoustics/client/PropCatalogModelChecks*.class'
@@ -118,6 +126,7 @@ tasks.named('jar', Jar).configure {
     exclude 'dev/gungang/acoustics/server/PropSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/server/RecoveryImpulseChecks*.class'
     exclude 'dev/gungang/acoustics/server/PropExpansionChecks*.class'
+    exclude 'dev/gungang/acoustics/server/PayloadDamageChecks*.class'
     exclude 'dev/gungang/acoustics/server/BotSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/server/CompoundBowSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/server/TurretSmokeChecks*.class'

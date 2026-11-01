@@ -10,7 +10,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.*;
 
-/** Server-authoritative objective and world interactions. Any living attacker plants with E inside A/B, any living defender defuses with E on the bomb. */
+/** Server-authoritative objective and world interactions. Any living attacker plants with the bomb key inside A/B, any living defender defuses with it on the bomb. */
 @net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid=dev.gungang.acoustics.GungangAcoustics.ID)
 public final class BombMatch {
     public record View(int round,int totalRounds,String attacker,String phase,BombRules.Point pointA,BombRules.Point pointB,
@@ -46,12 +46,17 @@ public final class BombMatch {
     public ArenaMap.Spawn spawn(String team){return team.equals(game.attacker())?arena.bomb().attackSpawn():arena.bomb().defenseSpawn();}
     public ArenaMap.Area area(String team){return team.equals(game.attacker())?arena.bomb().attackArea():arena.bomb().defenseArea();}
     private List<ServerPlayer> alive(String team){return server.getPlayerList().getPlayers().stream().filter(p->LobbyManager.team(p.getUUID()).equals(team)&&p.isAlive()&&!p.isSpectator()&&!dead(p.getUUID())&&p.level()==level).toList();}
+    /** Living bots of a side; a bot killed this round has no body until the next one. */
+    private List<BotEntity> bots(String team){return BotManager.entities().stream().filter(b->b.level()==level&&BotManager.side(b).equals(team)).toList();}
+    private int aliveCount(String team){return alive(team).size()+bots(team).size();}
     public void announceRound(){
         for(var p:server.getPlayerList().getPlayers()){
             String team=LobbyManager.team(p.getUUID());if(!team.equals("ALPHA")&&!team.equals("BRAVO"))continue;
             boolean attack=team.equals(game.attacker());
+            // The keybind component resolves to the player's own bomb key on their client.
             p.sendSystemMessage(Component.literal("ROUND "+game.round()+" · "+(attack?"공격팀":"방어팀")+" · "+arena.bomb().winsRequired()+"선승"+(arena.bomb().rounds()%2==0?" · 동점 시 무승부":"")
-                    +(attack?" · A/B 영역에서 E를 "+timing.plantSeconds()+"초 눌러 폭탄 설치":" · 설치된 폭탄을 조준하고 E를 "+timing.defuseSeconds()+"초 눌러 해체")));
+                    +(attack?" · A/B 영역에서 ":" · 설치된 폭탄을 조준하고 ")).append(Component.keybind("key.gungang.bomb"))
+                    .append(attack?" 키를 "+timing.plantSeconds()+"초 눌러 폭탄 설치":" 키를 "+timing.defuseSeconds()+"초 눌러 해체"));
         }
     }
     public void eliminate(ServerPlayer p){
@@ -63,13 +68,17 @@ public final class BombMatch {
     }
     public boolean allowsCamera(ServerPlayer viewer,net.minecraft.world.entity.Entity target){
         if(!dead(viewer.getUUID())||target==null||target==viewer)return true;
+        // Living teammate bots are watched like teammates.
+        if(target instanceof BotEntity bot)return BotManager.live(bot)&&bot.level()==level&&BotManager.side(bot).equals(LobbyManager.team(viewer.getUUID()));
         return target instanceof ServerPlayer player&&player.level()==level&&player.isAlive()&&!player.isSpectator()
                 &&!dead(player.getUUID())&&LobbyManager.team(viewer.getUUID()).equals(LobbyManager.team(player.getUUID()));
     }
     public void cycleSpectator(ServerPlayer viewer,int direction){if(dead(viewer.getUUID())&&(direction==1||direction==-1))updateSpectator(viewer,direction);}
     private void updateSpectator(ServerPlayer viewer,int direction){
         String team=LobbyManager.team(viewer.getUUID());if(!team.equals("ALPHA")&&!team.equals("BRAVO"))return;
-        var candidates=alive(team).stream().sorted(Comparator.comparing(p->p.getUUID().toString())).toList();
+        var candidates=new ArrayList<net.minecraft.world.entity.LivingEntity>(alive(team));
+        for(var bot:BotManager.entities())if(bot.level()==level&&BotManager.side(bot).equals(team))candidates.add(bot);
+        candidates.sort(Comparator.comparing(p->p.getUUID().toString()));
         if(!viewer.isSpectator())viewer.setGameMode(GameType.SPECTATOR);
         if(candidates.isEmpty()){
             watching.remove(viewer.getUUID());if(viewer.getCamera()!=viewer)viewer.setCamera(viewer);
@@ -93,18 +102,25 @@ public final class BombMatch {
         // E is held on the client; each server tick advances (or cancels) the plant/defuse.
         for(var id:List.copyOf(uses.keySet())){
             var use=uses.get(id);if(use==null)continue;
+            // A bot holds the key by calling botUse every tick; a tick without it is a release.
+            if(BotManager.identity(id)){if(botUseTick.getOrDefault(id,0L)<level.getGameTime()-1)uses.remove(id);continue;}
             var p=server.getPlayerList().getPlayer(id);if(p==null){uses.remove(id);continue;}
             continueUse(p,use.defuser);
         }
         var before=game.phase();
         if(before==BombGame.Phase.PREPARING){
             for(var p:alive(game.attacker()))if(!inside(p,arena.bomb().attackArea()))LobbyManager.bombTeleport(p);
+            readPings();
         }
-        game.tick(alive(game.attacker()).size(),alive(game.defender()).size());
+        if(game.phase()==BombGame.Phase.RUNNING)readPings();
+        game.tick(aliveCount(game.attacker()),aliveCount(game.defender()));
         if(game.phase()!=before){
             if(game.phase()==BombGame.Phase.RUNNING)LobbyManager.startBombRound();
             else if(game.phase()==BombGame.Phase.ROUND_END)roundEnded();
-            else if(game.phase()==BombGame.Phase.PREPARING){cleanupBomb();dead.clear();watching.clear();uses.clear();LobbyManager.prepareBombRound();announceRound();}
+            else if(game.phase()==BombGame.Phase.PREPARING){
+                cleanupBomb();dead.clear();watching.clear();uses.clear();pingSite=null;botSite=level.random.nextBoolean()?"A":"B";
+                LobbyManager.prepareBombRound();BotManager.bombRound();announceRound();
+            }
             else if(game.phase()==BombGame.Phase.FINISHED)LobbyManager.finish(game.winner());
         }
     }
@@ -130,7 +146,7 @@ public final class BombMatch {
         return activePlay()&&p.level()==level&&p.isAlive()&&!p.isSpectator()&&!dead(p.getUUID())
                 &&LobbyManager.team(p.getUUID()).equals(tool?game.defender():game.attacker())&&(tool?game.planted():!game.planted());
     }
-    /** E pressed (down) or released by a client; the role follows the player's side this round. */
+    /** Bomb key pressed (down) or released by a client; the role follows the player's side this round. */
     public void key(ServerPlayer p,boolean down){
         if(!down){cancelUse(p);return;}
         if(uses.containsKey(p.getUUID()))return;
@@ -142,7 +158,7 @@ public final class BombMatch {
         return plantedPosition!=null&&block.getBlockPos().equals(plantedPosition)&&level.getBlockState(plantedPosition).is(GimmickBlocks.BOMB.get())?new Aim(plantedSite,plantedPosition):null;
     }
     /** Planting uses the floor under the player's feet, not the crosshair. */
-    private Aim plantAt(ServerPlayer p){
+    private Aim plantAt(net.minecraft.world.entity.LivingEntity p){
         if(!p.onGround())return null;
         var place=BombRules.standing(level,p.getOnPos());var placement=place.cell();if(!place.ok()||placement.getY()>=level.getMaxBuildHeight())return null;
         var b=arena.bomb();String site=BombRules.siteAt(b.areaA(),b.areaB(),b.pointA(),b.pointB(),placement.getX(),placement.getY()-1,placement.getZ());
@@ -164,23 +180,99 @@ public final class BombMatch {
         int total=tool?timing.defuseTicks():timing.plantTicks();
         if(level.getGameTime()-use.start<total)return true;
         uses.remove(p.getUUID());
-        if(tool){if(game.defuse())roundEnded();}
-        else {
-            if(game.planted())return false; // a teammate finished first on the same tick
-            var pos=use.position;replaced=level.getBlockState(pos);
-            if(!BombRules.open(replaced)||!level.setBlock(pos,GimmickBlocks.BOMB.get().defaultBlockState(),3))return false;
-            if(game.plant(timing.fuseTicks())){
-                plantedSite=use.site;plantedPosition=pos;removeObjectives(p);
-                // One bomb per round: stop every other plant in progress and take the remaining bombs away.
-                uses.values().removeIf(other->!other.defuser);BombDrops.clear(server);
-                for(var mate:alive(game.attacker())){
-                    removeObjectives(mate);
-                    if(mate!=p)mate.displayClientMessage(Component.literal(p.getGameProfile().getName()+" 님이 "+use.site+" 지점에 폭탄을 설치했습니다 · 더 이상 설치할 수 없습니다"),true);
-                }
-                for(var player:server.getPlayerList().getPlayers())player.sendSystemMessage(Component.literal(use.site+" 지점 폭탄 설치 · "+timing.fuseSeconds()+"초"));
-            }
-        }
+        finish(p,use);
         return false;
+    }
+    /** A completed plant or defuse, by a player or a bot; true when it took effect. */
+    private boolean finish(net.minecraft.world.entity.LivingEntity who,Use use){
+        if(use.defuser){if(!game.defuse())return false;roundEnded();return true;}
+        if(game.planted())return false; // a teammate finished first on the same tick
+        var pos=use.position;replaced=level.getBlockState(pos);
+        if(!BombRules.open(replaced)||!level.setBlock(pos,GimmickBlocks.BOMB.get().defaultBlockState(),3))return false;
+        if(!game.plant(timing.fuseTicks()))return false;
+        plantedSite=use.site;plantedPosition=pos;if(who instanceof ServerPlayer p)removeObjectives(p);
+        // One bomb per round: stop every other plant in progress and take the remaining bombs away.
+        uses.values().removeIf(other->!other.defuser);BombDrops.clear(server);
+        for(var mate:alive(game.attacker())){
+            removeObjectives(mate);
+            if(mate!=who)mate.displayClientMessage(Component.literal(who.getName().getString()+" 님이 "+use.site+" 지점에 폭탄을 설치했습니다 · 더 이상 설치할 수 없습니다"),true);
+        }
+        for(var player:server.getPlayerList().getPlayers())player.sendSystemMessage(Component.literal(use.site+" 지점 폭탄 설치 · "+timing.fuseSeconds()+"초"));
+        return true;
+    }
+
+    // ---- bots ----
+    public enum BotUse {WORKING,DONE,FAILED}
+    private final Map<UUID,Long> botUseTick=new HashMap<>();
+    /** The site the attackers' newest teammate ping marks this round, and the site bot-only attackers pick themselves. */
+    private String pingSite,botSite=Math.random()<.5?"A":"B";
+    private long pingSequence;
+    /**
+     * Site ("A"/"B") a point lies on: over an area's plantable floor (with headroom for a ping on a crate or wall),
+     * or within two blocks of a legacy single point.
+     */
+    public String siteOf(double x,double y,double z){
+        var b=arena.bomb();
+        for(String site:List.of("A","B")){
+            var area=site.equals("A")?b.areaA():b.areaB();var point=site.equals("A")?b.pointA():b.pointB();
+            if(area!=null){if(x>=area.minX()&&x<area.maxX()+1&&z>=area.minZ()&&z<area.maxZ()+1&&y>=area.minY()-BombRules.PLANT_BELOW&&y<=area.maxY()+BombRules.PLANT_ABOVE+2)return site;}
+            else if(point!=null&&Math.abs(x-(point.x()+.5))<=2.5&&Math.abs(z-(point.z()+.5))<=2.5&&Math.abs(y-point.y())<=3)return site;
+        }
+        return null;
+    }
+    private void readPings(){
+        for(var p:TeamPoints.STATE.view(game.attacker(),0).points()){
+            if(p.sequence()<=pingSequence||!p.dimension().equals(arena.dimension()))continue;
+            String site=siteOf(p.x(),p.y(),p.z());
+            if(site!=null){pingSite=site;pingSequence=p.sequence();}
+        }
+    }
+    /** Where attacking bots go to plant: a pinged site, or (no living human attacker to ping) their own pick; else null. */
+    String attackSite(){return pingSite!=null?pingSite:alive(game.attacker()).isEmpty()?botSite:null;}
+    /**
+     * Bomb mode as a bot reads it: attackers go plant at the pinged site and then guard the bomb; defenders guard a
+     * site each (by slot), and once a bomb is down retake it and defuse.
+     */
+    BotObjective objective(String team,int slot){
+        boolean attack=team.equals(game.attacker());
+        if(game.planted()&&plantedPosition!=null){
+            Vec3 bomb=Vec3.atBottomCenterOf(plantedPosition);
+            return attack?new BotObjective(plantedSite+" 폭탄",new AABB(bomb,bomb).inflate(6),bomb,6,BotObjective.Stance.HOLD,true,"설치 후 방어",BotObjective.Act.NONE,null)
+                    :new BotObjective(plantedSite+" 폭탄",new AABB(bomb,bomb).inflate(3),bomb,3,BotObjective.Stance.CONTEST,true,"탈환·해체",BotObjective.Act.DEFUSE,plantedPosition);
+        }
+        if(attack){String site=attackSite();return site==null?null:site(site,BotObjective.Stance.TAKE,"설치",BotObjective.Act.PLANT);}
+        return site(slot%2==0?"A":"B",BotObjective.Stance.HOLD,"방어",BotObjective.Act.NONE);
+    }
+    private BotObjective site(String site,BotObjective.Stance stance,String doing,BotObjective.Act act){
+        var b=arena.bomb();var area=site.equals("A")?b.areaA():b.areaB();var point=site.equals("A")?b.pointA():b.pointB();
+        AABB box;Vec3 centre;
+        if(area!=null){box=new AABB(area.minX(),area.minY()+1,area.minZ(),area.maxX()+1,area.maxY()+3,area.maxZ()+1);centre=new Vec3(area.centerX(),area.minY()+1,area.centerZ());}
+        else {centre=new Vec3(point.x()+.5,point.y(),point.z()+.5);box=new AABB(centre,centre).inflate(1.5,1.5,1.5);}
+        return new BotObjective(site+" 지점",box,centre,0,stance,true,doing,act,null);
+    }
+    /**
+     * A bot holding the bomb key this tick, standing still: planting on the site floor under its feet, or defusing a
+     * bomb within reach and line of sight. Same timing, movement limit and completion as a player's key hold.
+     */
+    public BotUse botUse(BotEntity bot,boolean defuse){
+        var id=bot.getUUID();long now=level.getGameTime();
+        if(!activePlay()||bot.level()!=level||!bot.isAlive()||!BotManager.side(bot).equals(defuse?game.defender():game.attacker())||defuse!=game.planted()){uses.remove(id);return BotUse.FAILED;}
+        var aim=defuse?reach(bot):plantAt(bot);var use=uses.get(id);
+        if(aim==null||use!=null&&(use.defuser!=defuse||bot.position().distanceToSqr(use.origin)>.1225||!aim.site.equals(use.site)||!aim.position.equals(use.position))){uses.remove(id);return BotUse.FAILED;}
+        botUseTick.put(id,now);
+        if(use==null)uses.put(id,use=new Use(defuse,aim.site,aim.position,bot.position(),now));
+        if(now-use.start<(defuse?timing.defuseTicks():timing.plantTicks()))return BotUse.WORKING;
+        uses.remove(id);
+        return finish(bot,use)?BotUse.DONE:BotUse.FAILED;
+    }
+    /** Ticks of this bot's plant/defuse so far, or -1 when it is not holding the key. */
+    public int botProgress(UUID id){var use=uses.get(id);return use==null?-1:(int)(level.getGameTime()-use.start);}
+    private Aim reach(BotEntity bot){
+        if(plantedPosition==null||!level.getBlockState(plantedPosition).is(GimmickBlocks.BOMB.get()))return null;
+        Vec3 eye=bot.getEyePosition(),centre=Vec3.atCenterOf(plantedPosition);
+        if(eye.distanceTo(centre)>4.5)return null;
+        var hit=level.clip(new net.minecraft.world.level.ClipContext(eye,centre,net.minecraft.world.level.ClipContext.Block.OUTLINE,net.minecraft.world.level.ClipContext.Fluid.NONE,bot));
+        return hit.getType()==HitResult.Type.MISS||hit.getBlockPos().equals(plantedPosition)?new Aim(plantedSite,plantedPosition):null;
     }
     public void cancelUse(ServerPlayer p){uses.remove(p.getUUID());}
     public CombatGadgets.Gauge gauge(ServerPlayer p){
@@ -191,7 +283,10 @@ public final class BombMatch {
     public View view(){return new View(game.round(),arena.bomb().rounds(),game.attacker(),game.phase().name(),arena.bomb().pointA(),arena.bomb().pointB(),plantedSite,game.fuseTicks(),arena.dimension(),dead.stream().map(UUID::toString).sorted().toList(),arena.bomb().areaA(),arena.bomb().areaB(),plantedPosition==null?null:new BombRules.Point(plantedPosition.getX(),plantedPosition.getY(),plantedPosition.getZ()),mates(),arena.id(),arena.previewArea());}
     private List<Mate> mates(){
         var mates=new ArrayList<Mate>();
-        for(String team:List.of("ALPHA","BRAVO"))for(var p:alive(team))mates.add(new Mate(team,p.getUUID().toString(),p.getX(),p.getZ(),p.getYRot()));
+        for(String team:List.of("ALPHA","BRAVO")){
+            for(var p:alive(team))mates.add(new Mate(team,p.getUUID().toString(),p.getX(),p.getZ(),p.getYRot()));
+            for(var b:bots(team))mates.add(new Mate(team,b.getUUID().toString(),b.getX(),b.getZ(),b.getYRot()));
+        }
         return mates;
     }
     private static void removeObjectives(ServerPlayer p){

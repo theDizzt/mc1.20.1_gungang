@@ -18,7 +18,7 @@
 
 현재 코드에 등록된 서버·클라이언트 명령어 목록입니다. 설정 파일의 전체 형식은 [데이터 등록 설명서](DATA.md)를 참고하세요.
 
-팀데스매치 봇은 `/gungang bot on`, `/gungang bot off`, `/gungang bot status`, `/gungang bot preset low`로 관리합니다(OP 2, 콘솔 가능). 기본 OFF이며 최대 4명입니다. `on`은 사용을 허용하며 실제 참가는 로비의 `봇 추가` 버튼으로 한 명씩 지정합니다. 봇별 이름·스킨은 `/gungang bot name <번호> <이름>`, `/gungang bot skin <번호> <텍스처>`로 바꾸고, 실력은 `/gungang bot difficulty easy|normal|hard|expert`로 조절합니다. `off`는 봇과 참가 예약을 제거하고 로비 추가 버튼을 잠급니다. [처음 실행 순서](BOTS.md#quick-start), [전체 명령어](BOTS.md#commands), [봇 닉네임·스킨·전적](BOTS.md#profile), [문제 해결](BOTS.md#troubleshooting)을 참고하세요.
+AI 봇(숨바꼭질 포함 전 모드)은 `/gungang bot on`, `/gungang bot off`, `/gungang bot status`, `/gungang bot preset low`로 관리합니다(OP 2, 콘솔 가능). 기본 OFF이며 최대 4명입니다. `on`은 사용을 허용하며 실제 참가는 로비의 `봇 추가` 버튼으로 한 명씩 지정합니다. 봇별 이름·스킨은 `/gungang bot name <번호> <이름>`, `/gungang bot skin <번호> <텍스처>`로 바꾸고, 실력은 `/gungang bot difficulty easy|normal|hard|expert`로 조절합니다. `off`는 봇과 참가 예약을 제거하고 로비 추가 버튼을 잠급니다. [처음 실행 순서](BOTS.md#quick-start), [전체 명령어](BOTS.md#commands), [봇 닉네임·스킨·전적](BOTS.md#profile), [문제 해결](BOTS.md#troubleshooting)을 참고하세요.
 
 ### 사용 조건
 
@@ -91,7 +91,7 @@ HUD off는 체력·탄약·팀·나침반·거점·호위·경기 시간·점수
 | `/gungang loadout` | 일반 | 무기 선택 UI를 엽니다. 경기 중에는 자기 팀 스폰 또는 리스폰 대기 중 사용할 수 있습니다. 경기 밖에서는 로비 개방·팀·위치 제한 없이 사용 가능합니다. 기본 E키와 같습니다. [프리셋](SERVER.md#presets) 탭에서 무기 조합 저장·장착·기본값 지정을 할 수 있습니다. |
 | `/gungang join [ALPHA\|BRAVO]` | 일반 | 준비·진행 중 경기에 참가합니다. 팀 생략 시 적은 인원 쪽에 배정합니다. 이미 참가한 플레이어의 재참가·팀 변경은 거부합니다. |
 | `/gungang join <ALPHA\|BRAVO> <플레이어 또는 선택자>` | OP 2 | 지정한 플레이어를 진행 중인 경기에 참가시킵니다. 예: `/gungang join ALPHA @a`. |
-| `/gungang reset` 또는 `/reset` | OP 2 | 경기를 종료하고 접속 중인 전원을 오버월드 `(39, 5, -179)`로 이동합니다. 리스폰 위치, 최대·현재 체력 100, 모험 모드, 빈 인벤토리로 초기화합니다. |
+| `/gungang reset` 또는 `/reset` | OP 2 | 경기를 종료하고 접속 중인 전원을 오버월드 `(39, 5, -179)`로 이동합니다. 리스폰 위치, 최대·현재 체력 100, 모험 모드, 빈 인벤토리로 초기화합니다. 켜져 있던 `/gungang debug` 미리보기(숨바꼭질 변신 테스트·봇 진단 포함)도 모두 해제합니다. |
 
 이 명령어들은 플레이어 전용입니다. 팀 인자는 소문자로 입력해도 됩니다. 팀 변경은 전원의 준비 상태를 해제합니다. 다른 플레이어를 지정하는 팀 명령 인자는 없으며, 관리자는 로비 UI에서 대상 행을 선택해 팀을 변경할 수 있습니다.
 
@@ -233,9 +233,9 @@ OP 2 이상의 플레이어가 아이템을 **주 손**에 들고 실행합니�
 | `bomb_a`, `bomb_b` | 폭탄전 A/B 설치 가능 **바닥 블록** 범위 | 없음 |
 | `escort` | 호위 지정 블록 검색 범위 `escort.scanArea` | 없음 |
 | `escort_alpha`, `escort_bravo` | 호위 체크포인트 통과 후 팀 부활 위치 | **1~3 필수** |
-| `normandy` | 노르망디 거점 중심과 반경 | **1~4 필수** |
-| `normandy_spawn` | 노르망디 거점 확보 후 공격팀 스폰 | **1~4 필수** |
-| `attack_launch` | 노르망디 공격팀 출발 위치 | 없음 |
+| `normandy` | 이동점령 거점 중심과 반경 | **1~4 필수** |
+| `normandy_spawn` | 이동점령 거점 확보 후 공격팀 스폰 | **1~4 필수** |
+| `attack_launch` | 이동점령 공격팀 출발 위치 | 없음 |
 
 스폰 영역은 **바닥 위 발 위치부터 최소 2블록 높이의 빈 공간**을 포함해 선택하세요. 중앙에 가까운 자리 중 단단한 바닥, 빈 몸 공간, 물·용암이 없는 위치를 찾습니다. 찾지 못하면 저장하지 않습니다. 방향은 저장할 때 바라보는 수평 방향입니다. 스폰 검색은 각 변 512블록 이하·총 200만 블록 이하입니다.
 
@@ -312,7 +312,7 @@ OP 2 이상의 플레이어가 아이템을 **주 손**에 들고 실행합니�
 /gungang modify weapon amk movementSpeed 105
 /gungang modify secondary grenade cooldownSeconds 30
 /gungang modify secondary 98 plantSeconds 4
-/gungang modify secondary 98 fuseSeconds 45
+/gungang modify secondary 98 fuseSeconds 40
 /gungang modify secondary 99 defuseSeconds 7
 /gungang modify item landmine damage 120
 /gungang modify item molotov cooldownSeconds 40

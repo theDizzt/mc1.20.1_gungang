@@ -197,11 +197,14 @@ public final class MatchHud {
         var font=Minecraft.getInstance().font;var value=HudText.numbers(text);g.drawString(font,value,right-font.width(value),y,color,false);
     }
     static ResourceLocation skin(String id) {
-        var connection=Minecraft.getInstance().getConnection();
+        var mc=Minecraft.getInstance();var connection=mc.getConnection();
         try {
-            var info=connection==null?null:connection.getPlayerInfo(UUID.fromString(id));
+            var uuid=UUID.fromString(id);
+            var info=connection==null?null:connection.getPlayerInfo(uuid);
             if(info!=null)return info.getSkinLocation();
-            return DefaultPlayerSkin.getDefaultSkin(UUID.fromString(id));
+            var botSkin=TeamHud.botSkin(mc,uuid);
+            if(botSkin!=null)return BotRenderer.texture(botSkin);
+            return DefaultPlayerSkin.getDefaultSkin(uuid);
         } catch(IllegalArgumentException ignored) { return DefaultPlayerSkin.getDefaultSkin(); }
     }
     private static int capacity(int height) { return Math.max(1,(height-HEAD-COLS-FOOT)/ROW); }

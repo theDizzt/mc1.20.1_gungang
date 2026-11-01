@@ -33,8 +33,10 @@ public final class JumpPadBlock extends Block {
         var entity=event.getEntity();var pos=BlockPos.containing(entity.getX(),entity.getY()-.04,entity.getZ());
         if(!(entity.level().getBlockState(pos).getBlock() instanceof JumpPadBlock pad)||Math.abs(entity.getY()-(pos.getY()+.125))>.08)return;
         var motion=entity.getDeltaMovement();entity.setDeltaMovement(motion.x,MotionRules.jumpVelocity(pad.height),motion.z);
-        entity.fallDistance=0;entity.getPersistentData().putBoolean("GunGangPadJump",true);
+        launched(entity);
     }
+    /** The landing after a pad launch takes no fall damage; bots launch themselves through {@link BotParkour}. */
+    static void launched(net.minecraft.world.entity.LivingEntity entity){entity.fallDistance=0;entity.getPersistentData().putBoolean("GunGangPadJump",true);}
     @SubscribeEvent public static void fall(LivingFallEvent event){
         if(event.getEntity().getPersistentData().getBoolean("GunGangPadJump")){event.setCanceled(true);event.getEntity().getPersistentData().remove("GunGangPadJump");}
     }

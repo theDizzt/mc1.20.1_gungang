@@ -26,6 +26,7 @@ public final class PropSmokeChecks {
         };
         var b=new net.minecraftforge.common.util.FakePlayer(level,new com.mojang.authlib.GameProfile(UUID.randomUUID(),"PropBravo")){
             @Override public boolean isInvulnerableTo(net.minecraft.world.damagesource.DamageSource source){return false;}
+            @Override public boolean canHarmPlayer(net.minecraft.world.entity.player.Player other){return true;}
         };
         var entryClass=Class.forName(LobbyManager.class.getName()+"$Entry");var ctor=entryClass.getDeclaredConstructor(ServerPlayer.class);ctor.setAccessible(true);
         var lobby=(Map<UUID,Object>)field(LobbyManager.class,"PLAYERS").get(null);
@@ -40,6 +41,11 @@ public final class PropSmokeChecks {
         check(!level.getBlockState(gatePos).getCollisionShape(level,gatePos).isEmpty()&&SpawnGateProtection.crosses(level,through,beyond),"Outside prop hunt the gate stops bullets");
         RecoveryImpulseChecks.run(server,a);
         var match=new PropHuntMatch(server,map,gun);field(MatchManager.class,"propHunt").set(null,match);
+        var skinRow=new MatchSnapshot.Row(BotDatabase.id(0).toString(),"Skin bot","ALPHA",9,2,3,40,50,9,0x123456,4,5,"file:smoke.png");
+        var mappedSkin=match.rows(List.of(skinRow)).get(0);
+        check(mappedSkin.skin().equals(skinRow.skin())&&mappedSkin.color()==skinRow.color(),"Prop hunt rows preserve bot skin and display metadata");
+        check(ServerFiles.GSON.fromJson(ServerFiles.GSON.toJson(mappedSkin),MatchSnapshot.Row.class).skin().equals(skinRow.skin()),"Bot skin survives prop hunt snapshot serialization");
+        System.out.println("PROP_BOT_SKIN_SNAPSHOT_PASS");
         check(level.getBlockState(gatePos).getCollisionShape(level,gatePos).isEmpty()&&level.getBlockState(gatePos).getShape(level,gatePos).isEmpty()&&!SpawnGateProtection.crosses(level,through,beyond),"Prop hunt gate lets bullets and swings through");
         check(level.clip(new net.minecraft.world.level.ClipContext(through,beyond,net.minecraft.world.level.ClipContext.Block.COLLIDER,net.minecraft.world.level.ClipContext.Fluid.NONE,a)).getType()==net.minecraft.world.phys.HitResult.Type.MISS,"Bullet ray passes the prop hunt gate");
         level.setBlock(gatePos,net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(),3);
@@ -64,28 +70,33 @@ public final class PropSmokeChecks {
             PropExpansionChecks.run(server,match,a,b);
             var prop=match.prop(a.getUUID());check(!match.hit(prop,level.damageSources().playerAttack(b),50),"Melee cannot find props");
             if(net.minecraftforge.fml.ModList.get().isLoaded("tacz")){
-                var awn=b.getOffhandItem();check(PropAwn.is(awn)&&awn.getTag().getInt("GunCurrentAmmoCount")==0&&awn.getTag().getBoolean("HasBulletInBarrel"),"AWN has exactly one chambered round in offhand");
-                var reloadType=Class.forName("com.tacz.guns.api.event.common.GunReloadEvent");
-                var reload=(net.minecraftforge.eventbus.api.Event)reloadType.getConstructor(net.minecraft.world.entity.LivingEntity.class,net.minecraft.world.item.ItemStack.class,net.minecraftforge.fml.LogicalSide.class).newInstance(b,awn,net.minecraftforge.fml.LogicalSide.SERVER);
-                check(net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(reload),"Ordinary TaCZ reload cannot bypass AWN timer");
-                var fireType=Class.forName("com.tacz.guns.api.event.common.GunFireEvent");
-                var fire=(net.minecraftforge.eventbus.api.Event)fireType.getConstructor(net.minecraft.world.entity.LivingEntity.class,net.minecraft.world.item.ItemStack.class,net.minecraftforge.fml.LogicalSide.class).newInstance(b,awn,net.minecraftforge.fml.LogicalSide.SERVER);
-                check(!net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(fire),"First AWN shot is allowed");PropAwn.tick(b,awn);
-                check(!awn.getTag().getBoolean("HasBulletInBarrel")&&SecondaryRuntime.remaining(b,awn)==600,"AWN empty for 30 seconds after firing");
-                var again=(net.minecraftforge.eventbus.api.Event)fireType.getConstructor(net.minecraft.world.entity.LivingEntity.class,net.minecraft.world.item.ItemStack.class,net.minecraftforge.fml.LogicalSide.class).newInstance(b,awn,net.minecraftforge.fml.LogicalSide.SERVER);
-                check(net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(again),"AWN cannot fire twice during reload");
-                long gameTime=level.getGameTime();
-                try{
-                    server.getWorldData().overworldData().setGameTime(gameTime+599);PropAwn.tick(b,awn);check(!awn.getTag().getBoolean("HasBulletInBarrel"),"No early AWN refill");
-                    server.getWorldData().overworldData().setGameTime(gameTime+600);PropAwn.tick(b,awn);check(awn.getTag().getBoolean("HasBulletInBarrel")&&awn.getTag().getInt("GunCurrentAmmoCount")==0,"One round restored at exactly 600 ticks");
-                    var shotgun=b.getMainHandItem();b.getInventory().setItem(0,awn);b.getInventory().setItem(40,shotgun);match.tick();
-                    check(b.getMainHandItem()==awn&&b.getOffhandItem()==shotgun,"Hand swap preserved for AWN and shotgun");
-                }finally{server.getWorldData().overworldData().setGameTime(gameTime);}
+                PropBulletChecks.run(match,a,b);
+                var jet=b.getOffhandItem();check(PropAwn.jetpack(jet)&&jet.getTag().getBoolean("GunGangJetpackVerticalFlight")&&!PropAwn.is(jet),"Seeker gets the vertical prop jetpack instead of the AWN");
+                check(java.util.stream.IntStream.range(0,b.getInventory().getContainerSize()).noneMatch(i->PropAwn.is(b.getInventory().getItem(i))),"No AWN anywhere in the seeker inventory");
+                var shotgun=b.getMainHandItem();b.getInventory().setItem(0,jet);b.getInventory().setItem(40,shotgun);match.tick();
+                check(b.getMainHandItem()==jet&&b.getOffhandItem()==shotgun,"Hand swap preserved for jetpack and shotgun");
+                b.getInventory().setItem(0,shotgun);b.getInventory().setItem(40,jet);
+                b.setXRot(-90);GadgetManager.use(b,jet,"jetpack");check(SurvivalGadgets.jetting(b),"Prop jetpack starts while hunting");
+                var tick=new net.minecraftforge.event.TickEvent.PlayerTickEvent(net.minecraftforge.event.TickEvent.Phase.END,b);
+                net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(tick);check(b.getDeltaMovement().y>.5,"Prop jetpack flies straight up when looking up, y="+b.getDeltaMovement().y);
+                SurvivalGadgets.clear(b);b.setXRot(0);
+                a.getFoodData().setFoodLevel(20);a.getFoodData().setSaturation(5);
+                net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new net.minecraftforge.event.TickEvent.PlayerTickEvent(net.minecraftforge.event.TickEvent.Phase.END,a));
+                check(a.getFoodData().getFoodLevel()==SprintStamina.FOOD&&a.getFoodData().getSaturationLevel()==0,"Food pinned at 17 with no saturation: sprint yes, hunger healing no");
+                float before=a.getHealth();a.setHealth(before-10);
+                var ticks=field(net.minecraft.server.MinecraftServer.class,"tickCount");int savedTicks=ticks.getInt(server);
+                for(int i=0;i<400;i++){net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new net.minecraftforge.event.TickEvent.PlayerTickEvent(net.minecraftforge.event.TickEvent.Phase.END,a));ticks.setInt(server,savedTicks+i+1);}
+                ticks.setInt(server,savedTicks);
+                check(a.getHealth()==before-10,"Hider never regenerates out of combat, health="+a.getHealth());a.setHealth(before);
                 var type=Class.forName("com.tacz.guns.entity.EntityKineticBullet");var bullet=(net.minecraft.world.entity.projectile.Projectile)type.getConstructor(net.minecraft.world.entity.EntityType.class,net.minecraft.world.level.Level.class).newInstance(type.getField("TYPE").get(null),level);bullet.setOwner(b);
-                check(match.hit(prop,level.damageSources().thrown(bullet,b),20),"Real TaCZ bullet damages prop");check(a.getHealth()==30,"Hider receives prop damage");
+                a.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(255);a.setHealth(255);
+                check(match.hit(prop,level.damageSources().thrown(bullet,b),20),"Real TaCZ bullet damages prop");check(Math.abs(a.getHealth()-(255-match.pelletDamage()))<1e-3,"Each seeker pellet deals 100 / pellets, health="+a.getHealth());check(match.pelletDamage()*PropHuntMatch.pellets(PropHuntMatch.shotgun(Loadouts.load(),"").stack())==100,"A full volley deals 100");
+                a.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(50);a.setHealth(50);
             }
             match.eliminate(a,null);match.tick();check(prop.marker()&&prop.hasCustomName(),"Death leaves glowing named prop");check(a.isSpectator()&&b.isSpectator(),"Review grants free spectator to both teams");
             check(match.game.phase()==PropHuntGame.Phase.REVIEW,"No immediate results");
+            field(MatchManager.class,"propHunt").set(null,null);
+            PayloadDamageChecks.run(b);
         }finally{match.close();field(MatchManager.class,"propHunt").set(null,null);for(var p:List.of(a,b)){online.remove(p);byId.remove(p.getUUID());lobby.remove(p.getUUID());level.removePlayerImmediately(p,net.minecraft.world.entity.Entity.RemovalReason.DISCARDED);}}
         check(!a.isInvisible()&&a.getMaxHealth()==20,"Restore original attributes");
     }

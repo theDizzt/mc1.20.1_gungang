@@ -57,6 +57,18 @@ public final class BotSmokeChecks {
         check(BotParkour.plan(b,ServerFiles.GSON.fromJson(mapJson,ArenaMap.class),landing)==null,"Reject death zone along jump arc");
         var floor=BlockPos.containing(landing).below();level.setBlock(floor,Blocks.MAGMA_BLOCK.defaultBlockState(),3);
         check(BotParkour.plan(b,arena,landing)==null,"Reject harmful landing block");level.setBlock(floor,Blocks.STONE.defaultBlockState(),3);
+        // A solid floor does not make lava/acid above it a safe destination.
+        var feet=BlockPos.containing(landing);
+        level.setBlock(feet,Blocks.LAVA.defaultBlockState(),3);
+        check(BotMovement.danger(arena,b,landing),"Lava at feet is hazardous despite solid floor");
+        check(!BotRoute.safeDrop(b,arena,landing.add(0,6,0),landing),"Reject lava drop");
+        level.setBlock(feet,GimmickBlocks.ACID_PUDDLE.get().defaultBlockState(),3);
+        check(!BotRoute.safeDrop(b,arena,landing.add(0,6,0),landing),"Reject acid puddle drop");
+        level.removeBlock(feet,false);
+        level.setBlock(feet.above(3),Blocks.LAVA.defaultBlockState(),3);
+        check(!BotRoute.safeDrop(b,arena,landing.add(0,6,0),landing),"Reject lava crossed above safe landing");
+        level.removeBlock(feet.above(3),false);
+        check(BotRoute.safeDrop(b,arena,landing.add(0,6,0),landing),"Allow clear landing column");
         parkourLanded=false;
         // Exercise the normal travel fallback, not just the jump helper.
         BotMovement.newTick();BotManager.agent(0).movement.reset();
@@ -133,7 +145,10 @@ public final class BotSmokeChecks {
         action("botAdd","","");check(!BotManager.added(),"Non-admin lobby request rejected");
         server.getPlayerList().op(profile);
         field(LobbyManager.class,"selectedMode").set(null,"CONTROL");
-        action("botAdd","","");check(!BotManager.added(),"Other modes cannot add bots");
+        action("botAdd","","");check(BotManager.added(),"Objective modes can add bots");
+        action("botRemove","","");
+        field(LobbyManager.class,"selectedMode").set(null,"DOWNRUN");
+        action("botAdd","","");check(!BotManager.added(),"Unsupported modes cannot add bots");
         field(LobbyManager.class,"selectedMode").set(null,"DEATHMATCH");
         command("off");action("botAdd","","");check(!BotManager.added(),"Stale add packet cannot bypass master OFF");
         command("on");field(type,"ready").setBoolean(entry,true);
@@ -304,6 +319,7 @@ public final class BotSmokeChecks {
         BotWaypoints.save(arena.id(),coverMap);
         for(int y=101;y<=103;y++)level.setBlock(new BlockPos(23,y,0),Blocks.AIR.defaultBlockState(),3);
         regressions(b,from);
+        objectiveMovementRegressions(b,from);
         b.setPos(original);
         System.out.println("BOT_MOVEMENT_GEOMETRY_PASS");
     }
@@ -391,6 +407,28 @@ public final class BotSmokeChecks {
                     ((Map<?,?>)field(LobbyManager.class,"PLAYERS").get(null)).get(player.getUUID()),"ALPHA");
             player.setPos(playerPos);b.setHealth(hp);b.setOnGround(onGround);b.getNavigation().stop();BotMovement.newTick();
         }
+    }
+    private static void objectiveMovementRegressions(BotEntity b,net.minecraft.world.phys.Vec3 from)throws Exception {
+        var original=player.position();var movement=new BotMovement();
+        try {
+            b.setPos(from);b.setOnGround(true);BotMovement.newTick();
+            var first=from.add(5,0,0);var shifted=first.add(0,0,1);
+            movement.travel(b,arena,"BRAVO",first,100,false);
+            movement.travel(b,arena,"BRAVO",shifted,101,false);
+            check(shifted.equals(movement.goal()),"Mission follows a replacement spot only one block away");
+            movement.halt(b);
+            player.setPos(from.add(-10,0,0));
+            movement.combat(b,arena,player,102,false,false);
+            b.setXxa(.5f);b.setZza(.5f);
+            movement.halt(b);
+            check(b.xxa==0&&b.zza==0&&b.getNavigation().isDone(),"Holding a mission clears combat movement inputs");
+            var mission=BotObjective.assault("narrow",from,.5,"ALPHA",true,true);
+            BotMovement.newTick();
+            movement.combat(b,arena,player,103,false,false,mission);
+            check(b.xxa==0&&b.zza==0&&b.getNavigation().isDone(),"Mission combat cannot strafe or reposition out of a narrow zone");
+            check(BotMovement.remainingPaths()==BotMovement.PATHS_PER_TICK,"Holding the mission boundary does not path outside it");
+            System.out.println("BOT_OBJECTIVE_MOVEMENT_PASS");
+        } finally {player.setPos(original);movement.halt(b);BotMovement.newTick();}
     }
     private static void meleeMovementRegressions(BotEntity b,net.minecraft.world.phys.Vec3 from)throws Exception {
         var original=player.position();var actions=new BotActions();var ctx=actions.ctx();

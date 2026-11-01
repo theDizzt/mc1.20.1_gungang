@@ -42,14 +42,18 @@ public final class EscortMatch {
         var stages=Map.of("ALPHA",stage("ALPHA"),"BRAVO",stage("BRAVO"));
         if(stages.equals(gateStages))return;gateStages=stages;EscortSpawnGateBlock.apply(level,stages);
     }
+    /** Who stood at the cart on the last tick, as the HUD's motion shows it; bots read their mission from it. */
+    public boolean escortsAtCart,defendersAtCart;
     public void tick(boolean running){
         if(!running)return;
         int attackers=0;boolean defenders=false;var center=cart.position();
-        for(var p:level.players())if(p.isAlive()&&!p.isSpectator()&&!LobbyManager.respawning(p.getUUID())&&p.distanceToSqr(center)<=game.rules.radius()*game.rules.radius()){
-            String team=LobbyManager.team(p.getUUID());
+        var bodies=new ArrayList<net.minecraft.world.entity.LivingEntity>(level.players());bodies.addAll(BotManager.entities());
+        for(var p:bodies)if(p.isAlive()&&!p.isSpectator()&&!LobbyManager.respawning(p.getUUID())&&p.distanceToSqr(center)<=game.rules.radius()*game.rules.radius()){
+            String team=BotManager.side(p); // a player's lobby team, or a bot's
             if(team.equals("ALPHA")){attackers++;if(level.getGameTime()%game.rules.healIntervalTicks()==0)p.heal(game.rules.healAmount());}
             if(team.equals("BRAVO"))defenders=true;
         }
+        escortsAtCart=attackers>0;defendersAtCart=defenders;
         int previousCheckpoint=game.completed;
         game.tick(attackers,defenders);double before=cart.position().distanceToSqr(route.at(game.distance));
         cart.advance(route.at(game.distance),route.direction(game.distance));
@@ -76,6 +80,8 @@ public final class EscortMatch {
         for(var r:game.rules.respawns())if(r.checkpoint()<=game.completed&&r.checkpoint()>stage&&(team.equals("ALPHA")?r.alpha():r.bravo())!=null)stage=r.checkpoint();
         return stage;
     }
+    /** The last checkpoint reached: defenders cannot push the cart back past it. */
+    public double floor(){return game.completed==0?0:game.checkpoints.get(game.completed-1);}
     public View view(){var p=route.at(game.completed<route.checkpoints.size()?route.checkpoints.get(game.completed):route.length);return new View(game.distance,route.length,route.checkpoints,game.completed,game.motion,game.multiplier,game.stopTicks,p.x,p.y,p.z,game.overtime()?game.overtimeTicks:0);}
     public void close(){cart.discard();EscortSpawnGateBlock.apply(level,null);for(var e:hidden.entrySet()){var s=level.getBlockState(e.getKey());if(s.getBlock() instanceof EscortBlocks.Marker)level.setBlock(e.getKey(),s.setValue(EscortBlocks.Marker.HIDDEN,e.getValue()),3);}for(var cp:tickets)level.getChunkSource().removeRegionTicket(TICKET,cp,2,route.markers.get(0));}
 }

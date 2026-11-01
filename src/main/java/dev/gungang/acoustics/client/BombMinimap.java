@@ -9,7 +9,7 @@ import net.minecraft.client.gui.GuiGraphics;
  * the planted bomb and living teammates. The server sends only the viewer's own team, so enemies never show.
  */
 final class BombMinimap {
-    private static final int GOLD=0xFFD29B14,SITE_FILL=0x40D29B14,BOMB=0xFFFF4B3E;
+    private static final int SITE=0xFFF07814,SITE_FILL=0x50F07814,BOMB=0xFFFF4B3E;
     /** World bounds shown, as [minX,minZ,maxX,maxZ] (max exclusive). */
     private static double[] bounds(BombMatch.View v){
         var a=v.previewArea();
@@ -31,9 +31,9 @@ final class BombMinimap {
         int w=(int)Math.round(spanX*scale),h=(int)Math.round(spanZ*scale),left=x+(size-w)/2,top=y+(size-h)/2;
         g.fill(left-2,top-13,left+w+2,top+h+2,0xC00B121C);g.fill(left-2,top+h+1,left+w+2,top+h+2,0xFF70CDBF);
         g.drawString(font,"미니맵",left,top-11,0xFF9AAABD,false);
-        background(g,v,left,top,w,h);
-        // Sites: tinted area with a gold outline (legacy single points as one block), labelled at the centre.
-        for(int i=0;i<2;i++){
+        boolean image=background(g,v,left,top,w,h);
+        // Sites: orange area, white A/B with a black outline. The generated map image already carries them.
+        for(int i=0;i<2&&!image;i++){
             var site=i==0?v.areaA():v.areaB();var point=i==0?v.pointA():v.pointB();String name=i==0?"A":"B";
             double x0,z0,x1,z1;
             if(site!=null){x0=site.minX();z0=site.minZ();x1=site.maxX()+1;z1=site.maxZ()+1;}
@@ -41,8 +41,8 @@ final class BombMinimap {
             else continue;
             int sx0=sx(x0,b,left,scale),sz0=sz(z0,b,top,scale),sx1=Math.max(sx0+2,sx(x1,b,left,scale)),sz1=Math.max(sz0+2,sz(z1,b,top,scale));
             g.fill(sx0,sz0,sx1,sz1,SITE_FILL);
-            g.fill(sx0,sz0,sx1,sz0+1,GOLD);g.fill(sx0,sz1-1,sx1,sz1,GOLD);g.fill(sx0,sz0,sx0+1,sz1,GOLD);g.fill(sx1-1,sz0,sx1,sz1,GOLD);
-            g.drawCenteredString(font,name,(sx0+sx1)/2,(sz0+sz1)/2-4,GOLD);
+            g.fill(sx0,sz0,sx1,sz0+1,SITE);g.fill(sx0,sz1-1,sx1,sz1,SITE);g.fill(sx0,sz0,sx0+1,sz1,SITE);g.fill(sx1-1,sz0,sx1,sz1,SITE);
+            outlined(g,name,(sx0+sx1)/2,(sz0+sz1)/2-4);
         }
         if(v.plantedPosition()!=null){
             var p=v.plantedPosition();int px=sx(p.x()+.5,b,left,scale),pz=sz(p.z()+.5,b,top,scale);
@@ -58,17 +58,27 @@ final class BombMinimap {
             // Facing tick: Minecraft yaw 0 looks toward +Z (down on the map).
             double yaw=Math.toRadians(m.yaw());int dx=(int)Math.round(-Math.sin(yaw)*(r+3)),dz=(int)Math.round(Math.cos(yaw)*(r+3));
             g.fill(px+dx-1,pz+dz-1,px+dx+1,pz+dz+1,color);
+            // The teammate's roster number, plain text (boxed numbers are team points).
+            int number=TeamPointHud.number(java.util.UUID.fromString(m.id()));
+            if(number>0)outlined(g,Integer.toString(number),px,pz-r-10);
         }
         TeamPointHud.minimap(g,b,left,top,w,h,scale);
     }
-    /** The generated preview image's map region (it has a legend strip below), or a plain surface. */
-    private static void background(GuiGraphics g,BombMatch.View v,int left,int top,int w,int h){
+    /** White text with a one-pixel black outline, centred on x. */
+    private static void outlined(GuiGraphics g,String text,int x,int y){
+        var font=Minecraft.getInstance().font;int left=x-font.width(text)/2;
+        for(int dx=-1;dx<=1;dx++)for(int dy=-1;dy<=1;dy++)if(dx!=0||dy!=0)g.drawString(font,text,left+dx,y+dy,0xFF000000,false);
+        g.drawString(font,text,left,y,0xFFFFFFFF,false);
+    }
+    /** The generated preview image's map region (it has a legend strip below), or a plain surface; true for the image. */
+    private static boolean background(GuiGraphics g,BombMatch.View v,int left,int top,int w,int h){
         var a=v.previewArea();var image=a==null||v.mapId()==null||v.mapId().isEmpty()?null:PreviewCache.image(v.mapId());
-        if(image==null||image.texture()==null){g.fill(left,top,left+w,top+h,0xFF1A222C);return;}
+        if(image==null||image.texture()==null){g.fill(left,top,left+w,top+h,0xFF1A222C);return false;}
         // Same layout as MapPreviewGenerator.Job: map pixels are width*unit by height*unit at the top-left.
         int dx=a.maxX()-a.minX()+1,dz=a.maxZ()-a.minZ()+1;double scale=Math.min(1,256.0/Math.max(dx,dz));
         int width=Math.max(1,(int)Math.ceil(dx*scale)),height=Math.max(1,(int)Math.ceil(dz*scale)),unit=Math.max(2,(int)Math.ceil(256.0/Math.max(width,height)));
         g.blit(image.texture(),left,top,w,h,0,0,width*unit,height*unit,image.width(),image.height());
+        return true;
     }
     private static int sx(double world,double[] b,int left,double scale){return left+(int)Math.round((world-b[0])*scale);}
     private static int sz(double world,double[] b,int top,double scale){return top+(int)Math.round((world-b[1])*scale);}

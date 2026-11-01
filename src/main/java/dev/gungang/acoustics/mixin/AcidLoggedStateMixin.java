@@ -17,13 +17,13 @@ public abstract class AcidLoggedStateMixin {
             target = "Lnet/minecraft/world/level/block/state/StateDefinition$Builder;create(Ljava/util/function/Function;Lnet/minecraft/world/level/block/state/StateDefinition$Factory;)Lnet/minecraft/world/level/block/state/StateDefinition;"))
     private StateDefinition<Block, BlockState> gungang$addAcidLogged(StateDefinition.Builder<Block, BlockState> builder,
             Function<Block, BlockState> defaultState, StateDefinition.Factory<Block, BlockState> factory) {
-        if (AcidLogging.supports((Block) (Object) this)) builder.add(AcidLogging.ACIDLOGGED);
+        if (AcidLogging.supports((Block) (Object) this)) builder.add(AcidLogging.ACIDLOGGED,AcidLogging.HOTLOGGED);
         return builder.create(defaultState, factory);
     }
 
     // BooleanProperty lists true first, so states built from stateDefinition.any() would start acidlogged.
     @ModifyVariable(method = "registerDefaultState", at = @At("HEAD"), argsOnly = true)
     private BlockState gungang$dryDefault(BlockState state) {
-        return state.hasProperty(AcidLogging.ACIDLOGGED) ? state.setValue(AcidLogging.ACIDLOGGED, false) : state;
+        return state.hasProperty(AcidLogging.ACIDLOGGED) ? state.setValue(AcidLogging.ACIDLOGGED, false).setValue(AcidLogging.HOTLOGGED,false) : state;
     }
 }

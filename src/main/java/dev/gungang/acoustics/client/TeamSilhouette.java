@@ -37,7 +37,8 @@ public final class TeamSilhouette extends RenderType {
     public static void capture(LivingEntity entity, EntityModel<?> model, PoseStack pose) {
         var mc = Minecraft.getInstance();
         if (!AcousticConfig.TEAM_SILHOUETTES.get() || mc.options.hideGui
-                || !(entity instanceof Player player) || !TeamHud.teammate(player) || !player.isAlive()) return;
+                || !(entity instanceof Player || entity instanceof dev.gungang.acoustics.server.BotEntity)
+                || !TeamHud.teammate(entity) || !entity.isAlive()) return;
         model.renderToBuffer(pose, BUFFER.getBuffer(BLACK), 15728880, OverlayTexture.NO_OVERLAY, 0, 0, 0, 1);
         BUFFER.endBatch();
     }

@@ -85,7 +85,7 @@ public final class OrdnanceEntity extends Entity {
     private void explode(ServerLevel level) {
         var source=level.damageSources().explosion(this,owner==null?null:level.getEntity(owner));
         double radius=ExtraGadgetConfig.orbital.radius();
-        for(var victim:level.getEntitiesOfClass(LivingEntity.class,getBoundingBox().inflate(radius),e->e.isAlive()&&!e.isSpectator()))
+        for(var victim:level.getPlayers(e->e.isAlive()&&!e.isSpectator()))
             if(OrdnanceRules.inBlast(victim.getX()-getX(),victim.getY()-getY(),victim.getZ()-getZ()))
                 OrdnanceDamage.hurt(victim,source,OrdnanceRules.orbitalDamage(victim.position().distanceTo(position())));
         entityData.set(DETONATED,true);

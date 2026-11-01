@@ -28,6 +28,8 @@ public final class SurvivalGadgets {
     public static long jetRemaining(ServerPlayer p){var jet=JETS.get(p.getUUID());return jet==null?0:Math.max(0,jet.end()-p.level().getGameTime());}
     public static void receive(View state) {if(state.lifeEnd()==0&&state.jetEnd()==0)CLIENT.remove(state.player());else CLIENT.put(state.player(),state);}
     public static View clientState(Player p) {return CLIENT.get(p.getUUID());}
+    /** A life support is running on this entity (its absorption is the support's reserve). */
+    static boolean lifeSupport(LivingEntity e) {return LIFE.containsKey(e.getUUID());}
     public static boolean needsRecovery(ServerPlayer p) {return LIFE.containsKey(p.getUUID())&&!SurvivalRules.recovered(p.getHealth());}
     public static void clearClient() {CLIENT.clear();}
     public static boolean jetting(LivingEntity entity) {
@@ -114,7 +116,7 @@ public final class SurvivalGadgets {
         p.setNoGravity(true);p.fallDistance=0;
         Vec3 direction=jetDirection(p,jet.verticalFlight()),motion=direction.scale(ExtraGadgetConfig.jet.speed());
         var swept=p.getBoundingBox().expandTowards(jet.previous().subtract(p.position())).expandTowards(motion).inflate(.1);
-        var hit=p.serverLevel().getEntitiesOfClass(LivingEntity.class,swept,q->q!=p&&BotEntity.participant(q)&&!SafeZones.contains(q)).stream()
+        var hit=p.serverLevel().getEntitiesOfClass(LivingEntity.class,swept,q->q!=p&&target(q)).stream()
                 .min(Comparator.comparingDouble(q->q.position().distanceToSqr(jet.previous()))).orElse(null);
         if(hit!=null) {
             OrdnanceDamage.hurt(hit,p.damageSources().playerAttack(p),(float)ExtraGadgetConfig.jet.collisionDamage());
@@ -136,10 +138,18 @@ public final class SurvivalGadgets {
             var pos=trail.position();var level=trail.level();
             if(level.getGameTime()%4==0)level.sendParticles(ParticleTypes.FLAME,pos.x,pos.y+.3,pos.z,2,.2,.15,.2,.015);
             for(var victim:level.getEntitiesOfClass(LivingEntity.class,new AABB(pos.x-.65,pos.y,pos.z-.65,pos.x+.65,pos.y+1,pos.z+.65),
-                    p->!p.getUUID().equals(trail.owner())&&BotEntity.participant(p)&&!SafeZones.contains(p))) {
+                    p->!p.getUUID().equals(trail.owner())&&target(p))) {
                 victim.setSecondsOnFire(ExtraGadgetConfig.jet.burnSeconds());AdrenalineDamage.burning(victim,trail.owner(),ExtraGadgetConfig.jet.burnSeconds(),ExtraGadgetConfig.jet.burnDamage());
             }
         }
+    }
+    /**
+     * Who a jet ram or flame trail can touch. Prop hunt players never: there the jetpack only moves the seeker, and a
+     * bump or flames on an invisible hider would give it away.
+     */
+    private static boolean target(LivingEntity q){
+        var hunt=MatchManager.propHunt();
+        return BotEntity.participant(q)&&!SafeZones.contains(q)&&(hunt==null||!hunt.participant(q.getUUID()));
     }
     /** Jet flame trail of a non-player owner (the bot); same damage and lifetime as a player's trail. */
     static void trail(ServerLevel level,UUID owner,Vec3 position,long end){TRAILS.add(new Trail(level,owner,position,end));}

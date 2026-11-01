@@ -91,7 +91,7 @@ final class LobbyScreen extends ArenaScreen {
         button("팀 섞기",x+third+4,y,third,h,admin(),MUTED,()->LobbyClient.action("random","",""));
         button("게임 옵션",x+(third+4)*2,y,w-(third+4)*2,h,true,ACCENT,()->minecraft.setScreen(new GameOptionsScreen(state)));
         y+=22;modeButtons(x,y,w);y+=modeHeight()+4;
-        boolean bots=admin()&&state.botEnabled()&&"DEATHMATCH".equals(state.selectedMode());
+        boolean bots=admin()&&state.botEnabled()&&dev.gungang.acoustics.server.LobbyRules.bots(state.selectedMode());
         button("봇 + "+state.botCount()+"/"+state.botMax(),x,y,half,h,bots&&state.botCount()<state.botMax(),MUTED,()->LobbyClient.action("botAdd","",""));
         button("선택한 봇 제거",x+half+4,y,w-half-4,h,bots&&picked!=null&&picked.bot(),MUTED,()->LobbyClient.action("botRemove","",picked.id()));
         y+=22;
@@ -102,13 +102,13 @@ final class LobbyScreen extends ArenaScreen {
     }
     private static String status(LobbySnapshot.Member m){return m.ready()?"준비":m.team().equals("UNASSIGNED")?"미배정":m.team().equals("SPECTATOR")?"관전":"대기";}
     private static int statusColor(LobbySnapshot.Member m){return m.ready()?READY:m.team().equals("ALPHA")||m.team().equals("BRAVO")?WAITING:MUTED;}
-    private static String modeName(String mode){return switch(mode){case "PROP_HUNT"->"숨바꼭질";case "FREE_FOR_ALL"->"개인전";case "ESCORT"->"호위";case "BOMB"->"폭탄전";case "DEATHMATCH"->"팀 데스매치";case "NORMANDY"->"노르망디";default->"쟁탈전";};}
+    private static String modeName(String mode){return switch(mode){case "PROP_HUNT"->"숨바꼭질";case "FREE_FOR_ALL"->"개인전";case "ESCORT"->"호위";case "BOMB"->"폭탄전";case "DEATHMATCH"->"팀 데스매치";case "NORMANDY"->"이동점령";default->"쟁탈전";};}
     private void modeButtons(int x,int y,int w){
         var selected=map(state.selectedMap());var modes=new ArrayList<String>();
         if(selected!=null){
             if(selected.supportedModes()!=null)modes.addAll(selected.supportedModes());
             else { // Compatibility with snapshots from older servers.
-                String objective=switch(selected.gameMode()){case "숨바꼭질"->"PROP_HUNT";case "개인전"->"FREE_FOR_ALL";case "호위"->"ESCORT";case "노르망디"->"NORMANDY";default->selected.bomb()?"BOMB":"CONTROL";};
+                String objective=switch(selected.gameMode()){case "숨바꼭질"->"PROP_HUNT";case "개인전"->"FREE_FOR_ALL";case "호위"->"ESCORT";case "이동점령"->"NORMANDY";default->selected.bomb()?"BOMB":"CONTROL";};
                 if(!selected.deathmatchOnly())modes.add(objective);if(selected.deathmatch())modes.add("DEATHMATCH");modes.add("PROP_HUNT");
             }
         }

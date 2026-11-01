@@ -24,7 +24,16 @@ public final class LobbyClient {
     private static boolean hintVisible;
     public static void acoustics(String json) { AcousticPolicy.receive(JsonParser.parseString(json).getAsJsonObject()); }
     public static void receive(String json) {
-        var state = ServerFiles.GSON.fromJson(json, LobbySnapshot.class);
+        final LobbySnapshot state;
+        try {
+            state=ServerFiles.GSON.fromJson(json,LobbySnapshot.class);
+            if(state==null)throw new IllegalArgumentException("Empty lobby snapshot");
+        }catch(RuntimeException failure){
+            com.mojang.logging.LogUtils.getLogger().warn("Rejected invalid lobby snapshot; keeping the previous screen",failure);
+            var mc=Minecraft.getInstance();
+            if(mc.screen instanceof GameOptionsScreen screen)screen.receiveError("서버의 게임 옵션을 읽지 못했습니다. 로그를 확인해 주세요.");
+            return;
+        }
         var previousOptions=options;
         options=state.options()==null?TeamOptions.defaults():state.options();
         Minecraft mc = Minecraft.getInstance();
@@ -47,6 +56,11 @@ public final class LobbyClient {
         else if (next.show() && next.catalog() != null) { requestedUntil = 0; mc.setScreen(new LoadoutScreen(next)); }
     }
     public static void action(String action, String value, String target) { GungangNetwork.CHANNEL.sendToServer(new GungangNetwork.Action(action, value, target)); }
+    static boolean connected(){
+        var connection=Minecraft.getInstance().getConnection();
+        return connection!=null&&connection.getConnection().isConnected()
+                &&GungangNetwork.CHANNEL.isRemotePresent(connection.getConnection());
+    }
     /** Reserve the configured key before vanilla opens advancements; let the server decide lobby availability. */
     public static boolean lobbyKey(int key,int scan,int action){return lobbyInput(LOBBY.isActiveAndMatches(com.mojang.blaze3d.platform.InputConstants.getKey(key,scan)),action);}
     public static boolean lobbyMouse(int button,int action){return lobbyInput(LOBBY.isActiveAndMatches(com.mojang.blaze3d.platform.InputConstants.Type.MOUSE.getOrCreate(button)),action);}

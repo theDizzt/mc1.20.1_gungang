@@ -17,7 +17,7 @@ final class PropExpansionChecks {
         try{
             var immunity=ServerPlayer.class.getDeclaredField("spawnInvulnerableTime");immunity.setAccessible(true);immunity.setInt(a,0);immunity.setInt(b,0);
             match.unlock(a);a.setPos(.5,100,.5);b.setPos(5.5,100,.5);b.getAttribute(Attributes.MAX_HEALTH).setBaseValue(100);b.setHealth(100);
-            for(int i=100;i<=139;i++){String type=PropCatalog.type(String.valueOf(i));check(type!=null,"Catalog number "+i);String item=PropCatalog.variant(type,new Random(1));check(PropCatalog.number(item).equals(String.valueOf(i)),"Catalog roundtrip "+i);}
+            for(int i=100;i<=169;i++){String type=PropCatalog.type(String.valueOf(i));check(type!=null,"Catalog number "+i);String item=PropCatalog.variant(type,new Random(1));check(PropCatalog.number(item).equals(String.valueOf(i)),"Catalog roundtrip "+i);}
             var prop=as(match,a,"minecraft:spawner");match.abilities.use(a,prop);
             check(mobs(a).size()==1&&match.abilities.mobHealth(a.getUUID())==100,"Spawner health and registration");check(match.abilities.remaining(a.getUUID())==1680,"84 second cooldown");match.abilities.use(a,prop);check(mobs(a).size()==1,"No duplicate summon during cooldown");
             var spider=mobs(a).get(0);spider.setPos(b.position().add(.2,0,0));PropSummons.tick(match,spider,prop.position(),0);
@@ -34,7 +34,7 @@ final class PropExpansionChecks {
             prop=as(match,a,"minecraft:pink_petals");check(prop.state().getValue(BlockStateProperties.FLOWER_AMOUNT)==4,"Four pink petals");
             prop=as(match,a,"minecraft:sugar_cane");counter.setInt(server,now+1300);match.abilities.tick(a,prop);check(prop.height()==2&&PropGeometry.parts(prop).size()==2,"Cane 60 second growth");counter.setInt(server,now+2500);match.abilities.tick(a,prop);check(prop.height()==3&&prop.getBoundingBox().getYsize()==3,"Cane capped at three blocks");
             prop=as(match,a,"minecraft:beacon");double speed=a.getAttributeValue(Attributes.MOVEMENT_SPEED);match.abilities.use(a,prop);match.abilities.tick(a,prop);check(Math.abs(a.getAttributeValue(Attributes.MOVEMENT_SPEED)-speed*1.2)<1e-6,"Beacon team movement boost");match.abilities.use(a,prop);match.abilities.tick(a,prop);check(Math.abs(a.getAttributeValue(Attributes.MOVEMENT_SPEED)-speed)<1e-6,"Beacon boost removal");
-            prop=as(match,a,"gungang:conveyor_belt");match.abilities.use(a,prop);check(prop.state().getValue(ConveyorBlock.REVERSED),"Conveyor E direction");match.abilities.use(a,prop);check(prop.sinkDepth()==.5,"Conveyor half-block burial");
+            prop=as(match,a,"gungang:conveyor_belt");match.abilities.use(a,prop);check(!prop.state().getValue(ConveyorBlock.REVERSED)&&prop.sinkDepth()==.5,"Conveyor E sinks only");match.abilities.use(a,prop);check(prop.sinkDepth()==0,"Conveyor E raises again");
             prop=as(match,a,"gungang:blue_jump_pad");match.abilities.use(a,prop);check(prop.sinkDepth()==.125,"Pad burial");
             prop=as(match,a,"minecraft:stone");prop.setGlowingTag(true);check(!prop.marker(),"External glow is not discovery");prop.setGlowingTag(false);
             var padPos=new net.minecraft.core.BlockPos(20,100,20);for(var pad:List.of(MotionBlocks.BLUE.get(),MotionBlocks.LIME.get())){

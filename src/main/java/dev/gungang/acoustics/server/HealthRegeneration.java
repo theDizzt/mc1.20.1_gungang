@@ -23,9 +23,11 @@ public final class HealthRegeneration {
         if(event.phase!=TickEvent.Phase.END||!(event.player instanceof ServerPlayer p))return;
         long now=p.server.getTickCount();
         var clock=CLOCKS.computeIfAbsent(p.getUUID(),id->new RegenerationClock(now));
-        if(!p.isAlive()||p.isSpectator()||p.isCreative()||LobbyManager.respawning(p.getUUID())) {clock.damage(now);return;}
+        if(!p.isAlive()||p.isSpectator()||p.isCreative()||LobbyManager.respawning(p.getUUID())||hider(p)) {clock.damage(now);return;}
         if(clock.tick(now,p.getHealth(),p.getMaxHealth()))p.heal(1);
     }
+    /** Prop hunt hiders never recover on their own; only disguise healing (hot spring water, nozzle streams) heals them. */
+    private static boolean hider(ServerPlayer p) {var hunt=MatchManager.propHunt();return hunt!=null&&hunt.hider(p.getUUID());}
     /** The bot recovers out of combat on the same clock as players. */
     @SubscribeEvent public static void bot(net.minecraftforge.event.entity.living.LivingEvent.LivingTickEvent event) {
         if(!(event.getEntity() instanceof BotEntity bot)||bot.level().isClientSide||bot.getServer()==null||!BotManager.live(bot))return;

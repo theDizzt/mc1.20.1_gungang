@@ -46,7 +46,7 @@ public final class TeamHud {
                 && self.getTeam().isAlliedTo(other.getTeam()) && !other.isSpectator();
     }
 
-    public static int teamColor(Player player) {
+    public static int teamColor(net.minecraft.world.entity.LivingEntity player) {
         var ffa=FreeForAllHud.row(player.getUUID());if(ffa!=null)return 0xFF000000|ffa.color();
         if(player.getTeam()!=null) {
             if(player.getTeam().getName().equals("Red")) return LobbyClient.options.color("ALPHA");
@@ -106,6 +106,19 @@ public final class TeamHud {
                     HudText.healthNumber(g, HudHealth.label(p.getHealth(), p.getMaxHealth(),p.getAbsorptionAmount()), x + 36, y + 16, 76, 14, 0xFF111820, 0.78f);
                     g.disableScissor();
                     g.renderItem(p.getMainHandItem(), x + 121, y + 11);
+                } else if (TeamPointHud.vital(member.id()) != null) {
+                    // Out of tracking range: the health the server reports for the team.
+                    var vital = TeamPointHud.vital(member.id());
+                    float maximum = Math.max(1, vital.maximum()), fraction = Math.min(1, (vital.health() + vital.absorption()) / maximum);
+                    HudHealthBars.fill(g, x + 35, y + 17, 78, 12, Math.min(1, vital.health() / maximum), 0xFFF5F5F0);
+                    ShooterHud.finish(g, x + 35, y + 17, 78, 12, fraction);
+                    String label = HudHealth.label(vital.health(), maximum, vital.absorption());
+                    HudText.healthNumber(g, label, x + 36, y + 16, 76, 14, 0xFFFFFFFF, 0.78f);
+                    float scale = (float) (2.0 / mc.getWindow().getGuiScale());
+                    g.enableScissor(Math.round((x + 35) * scale), Math.round((y + 17) * scale),
+                            Math.round((x + 35 + 78 * Math.min(1, vital.health() / maximum)) * scale), Math.round((y + 29) * scale));
+                    HudText.healthNumber(g, label, x + 36, y + 16, 76, 14, 0xFF111820, 0.78f);
+                    g.disableScissor();
                 } else {
                     HudText.draw(g, "--", x + 36, y + 18, 76, 0xFFAAAAAA);
                 }
@@ -213,11 +226,11 @@ public final class TeamHud {
         return left;
     }
 
-    private static String botSkin(Minecraft mc, UUID id) {
+    static String botSkin(Minecraft mc, UUID id) {
         var state = MatchHud.state();
         if (state != null) for (var row : state.players())
             if (row.id().equals(id.toString()) && row.skin() != null && !row.skin().isEmpty()) return row.skin();
-        for (var entity : mc.level.entitiesForRendering())
+        if(mc.level!=null)for (var entity : mc.level.entitiesForRendering())
             if (entity instanceof BotEntity bot && bot.getUUID().equals(id)) return bot.skin();
         return null;
     }

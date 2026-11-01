@@ -5,6 +5,16 @@ import java.util.List;
 public record LobbySnapshot(boolean enabled, boolean show, boolean administrator, String you,
                             String selectedMap, String phase, int seconds, List<MapView> maps, List<Member> members, TeamOptions options, String selectedMode,
                             boolean botEnabled, boolean botAdded, int botCount, int botMax) {
+    public LobbySnapshot {
+        // Older snapshots omit optional options/mode fields. Normalize the actual snapshot,
+        // not just LobbyClient's separate color cache, before any screen reads it.
+        options=options==null?TeamOptions.defaults():options;
+        selectedMode=selectedMode==null?"DEATHMATCH":selectedMode;
+        phase=phase==null?"":phase;
+        you=you==null?"":you;selectedMap=selectedMap==null?"":selectedMap;
+        maps=maps==null?List.of():List.copyOf(maps);
+        members=members==null?List.of():List.copyOf(members);
+    }
     public LobbySnapshot(boolean enabled,boolean show,boolean administrator,String you,String selectedMap,String phase,int seconds,
                          List<MapView> maps,List<Member> members,TeamOptions options,String selectedMode,boolean botEnabled,boolean botAdded){
         this(enabled,show,administrator,you,selectedMap,phase,seconds,maps,members,options,selectedMode,botEnabled,botAdded,botAdded?1:0,4);

@@ -14,6 +14,7 @@
   "itemGroup.gungang.items": "GunGang Items",
   "key.gungang.lobby": "Reopen match lobby",
   "key.gungang.loadout": "Spawn-area loadout selection",
+  "key.gungang.bomb": "Plant / defuse bomb",
   "key.categories.gungang": "GunGang",
   "gungang.options.fontOversample": "TTF resolution scale",
   "gungang.options.fontOversample.tip": "Integer 1–8; default 6. Raster resolution of the selected TTF, without changing text size. Higher values use more memory and initial rasterization time. Saving reloads resources.",
@@ -187,6 +188,10 @@
     "gungang.conveyor.invalid":  "Check the route connections",
 
     "block.gungang.dried_ghast":  "Dried Ghast",
+    "block.gungang.big_grass_block":  "Big Grass Block",
     "block.gungang.wildflowers":  "Wildflowers",
-    "block.gungang.mannequin":  "Mannequin"
+    "block.gungang.mannequin":  "Mannequin",
+    "block.gungang.eunbi_doll":  "Doll Holding Eunbi's Soul",
+    "block.gungang.hanbi_doll":  "Doll Holding Hanbi's Soul",
+    "block.gungang.prettiest_block":  "The Prettiest Block in the World"
 }
