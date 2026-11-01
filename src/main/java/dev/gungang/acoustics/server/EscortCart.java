@@ -26,6 +26,17 @@ public final class EscortCart extends Entity {
     private double solidX=Double.NaN,solidY,solidZ;
     private float solidYaw;
     public EscortCart(EntityType<? extends EscortCart> type,Level level){super(type,level);noPhysics=true;setInvulnerable(true);}
+    // The payload is map geometry, not a damageable vehicle. Elemental projectiles may
+    // set fire/freeze state directly before (or without) calling hurt.
+    @Override public boolean hurt(net.minecraft.world.damagesource.DamageSource source,float amount){return false;}
+    @Override public boolean isInvulnerableTo(net.minecraft.world.damagesource.DamageSource source){return true;}
+    @Override public boolean fireImmune(){return true;}
+    @Override public boolean isOnFire(){return false;}
+    @Override public void setSecondsOnFire(int seconds){}
+    @Override public void setRemainingFireTicks(int ticks){super.setRemainingFireTicks(0);}
+    @Override public void setTicksFrozen(int ticks){super.setTicksFrozen(0);}
+    @Override public void thunderHit(net.minecraft.server.level.ServerLevel level,LightningBolt bolt){}
+    @Override public boolean ignoreExplosion(){return true;}
     @Override protected void defineSynchedData(){entityData.define(TRAVEL,0f);}
     public float travel(){return entityData.get(TRAVEL);}
     @Override protected void readAdditionalSaveData(CompoundTag tag){}

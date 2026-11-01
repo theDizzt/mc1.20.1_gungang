@@ -2,6 +2,8 @@
 
 u139: `gungang:mannequin`(마네킹), `gungang:dried_ghast`(마른 가스트), `gungang:wildflowers`(들꽃)을 추가했습니다. [숨바꼭질 신규 능력](PROP-HUNT-139.md).
 
+u191: `gungang:eunbi_doll`(은비의 영혼이 깃든 인형), `gungang:hanbi_doll`(한비의 영혼이 깃든 인형), `gungang:prettiest_block`(세상에서 가장 예쁜 블록, 파스텔 무지개 애니메이션)을 추가했습니다. 숨바꼭질 184·191·187번입니다.
+
 [문서 안내](../README.md) · [데이터 등록](DATA.md) · [아이템](ITEMS.md) · [블록](#) · [명령어](COMMANDS.md)
 
 기능 블록·팀 출입구·전장 기믹·호위 경로 블록을 모았습니다. 모든 ID 앞에는 `gungang:`을 붙입니다.
@@ -11,6 +13,8 @@ u138: [컨베이어 벨트·렌치·점프 발판](MOVEMENT-BLOCKS.md)을 추가
 - [로비·장비·팀 선택·회복 블록](#stations)
 - [팀 스폰 홀로그램 출입구](#spawn-gates)
 - [레드스톤 연결형 셔터](#shutter)
+- [온천수·온천수 노즐·간헐천·목욕탕 두꺼비](HOT-SPRING.md)
+- [홀로그램 영사기](HOLOGRAM.md)
 - [폭발물·파괴 벽·웅덩이·유체·노즐](#gimmicks)
 - [호위 경로 지정 블록](#escort-blocks)
 
@@ -26,6 +30,7 @@ u138: [컨베이어 벨트·렌치·점프 발판](MOVEMENT-BLOCKS.md)을 추가
 - 금속 판이 상단으로 올라가며 사라지는 애니메이션과 작동·정지 소리가 나옵니다. 소리는 연결 그룹당 한 곳에서 재생하며 게임의 **블록 소리** 볼륨을 따릅니다.
 - 실제 통과 공간도 애니메이션 높이에 맞춰 아래부터 열립니다. 완전히 열리면 외곽 가이드와 상단 덮개만 남습니다. 열린 패널도 조준해 부술 수 있으며, 연결 부분을 제거하면 나뉜 그룹은 각각 신호를 확인합니다.
 - 진행 중 위치와 신호 상태는 저장되며, 서버와 클라이언트에 같은 버전이 필요합니다.
+- AI 봇은 닫힌 셔터를 막힌 길로 인식하며, 경로가 셔터를 지나야 하면 근처(가로 8·세로 4블록 이내)의 레버·버튼을 직접 조작해 엽니다. 자세한 동작은 [봇 맵 경로망](BOTS.md#navigation)을 참고하세요.
 - `/gungang reset`, 게임·라운드 시작/종료 시 기존 맵 기믹 초기화와 함께 레버는 OFF, 셔터는 즉시 완전히 닫힌 상태가 됩니다. 당시 로드되지 않은 청크도 다음 로드 시 적용됩니다. 이후 새로운 레드스톤 신호에는 정상 반응합니다.
 
 검증: `gradlew test runServer -PgungangShutterSmoke`, `gradlew runClient -PgungangShutterClientSmoke`. 화면 비교는 `build/ui-smoke/shutter-states.png`에 생성됩니다.

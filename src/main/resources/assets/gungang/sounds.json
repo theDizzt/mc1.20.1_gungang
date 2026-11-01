@@ -1,5 +1,14 @@
 {
   "turret_shot": {"sounds": ["gungang:turret_shot"]},
+  "prop_note": {
+    "subtitle": "subtitles.block.note_block.note",
+    "sounds": [
+      {
+        "name": "minecraft:block.note_block.harp",
+        "type": "event"
+      }
+    ]
+  },
   "puddle_step": {
     "sounds": [
       {

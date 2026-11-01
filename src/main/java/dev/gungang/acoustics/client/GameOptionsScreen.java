@@ -15,7 +15,11 @@ final class GameOptionsScreen extends ArenaScreen {
         minuteText=game.minutes()==0?"":Integer.toString(game.minutes());scoreText=game.targetScore()==0?"":Integer.toString(game.targetScore());
         primary=game.duplicatePrimary();secondary=game.duplicateSecondary();
     }
-    void update(LobbySnapshot next){state=next;}
+    void update(LobbySnapshot next){
+        boolean oldEditable=editable(),oldScored=scored();state=next;
+        if(oldEditable!=editable()||oldScored!=scored())rebuildWidgets();
+    }
+    void receiveError(String message){error=message==null||message.isBlank()?"게임 옵션을 적용하지 못했습니다.":message;}
     private boolean editable(){return state.administrator()&&state.phase().equals("LOBBY");}
     private boolean scored(){return java.util.Set.of("CONTROL","DEATHMATCH","FREE_FOR_ALL","BOMB").contains(state.selectedMode());}
     @Override protected void init(){
@@ -32,14 +36,27 @@ final class GameOptionsScreen extends ArenaScreen {
         button("돌아가기",x+(third+4)*2,bottom,w-(third+4)*2,20,true,MUTED,this::onClose);
     }
     private void save(){
+        if(!editable()){receiveError("관리자만 로비 대기 중 게임 옵션을 변경할 수 있습니다.");return;}
         try{
             var game=new GameOptions(minuteText.isEmpty()?0:Integer.parseInt(minuteText),scored()?(scoreText.isEmpty()?0:Integer.parseInt(scoreText)):0,primary,secondary);
             if(state.selectedMode().equals("PROP_HUNT")&&game.minutes()!=0&&(game.minutes()<2||game.minutes()>60))throw new IllegalArgumentException("숨바꼭질 찾는 시간: 2~60분");
             if(state.selectedMode().equals("BOMB")&&game.targetScore()>50)throw new IllegalArgumentException("폭탄전 목표 승수: 1~50");
+            if(!LobbyClient.connected()){receiveError("서버 연결이 끊겨 게임 옵션을 적용할 수 없습니다.");return;}
             LobbyClient.action("gameOptions",ServerFiles.GSON.toJson(game),"");onClose();
-        }catch(IllegalArgumentException e){error=e.getMessage();}
+        }catch(IllegalArgumentException e){receiveError(e.getMessage());}
+        catch(RuntimeException failure){
+            com.mojang.logging.LogUtils.getLogger().error("Could not submit lobby game options",failure);
+            receiveError("게임 옵션을 적용하지 못했습니다. 입력값은 유지됩니다. 로그를 확인해 주세요.");
+        }
     }
-    @Override public void onClose(){minecraft.setScreen(new LobbyScreen(state));LobbyClient.action("lobby","","");}
+    @Override public void onClose(){
+        if(!LobbyClient.connected()){minecraft.setScreen(null);return;}
+        try{LobbyClient.action("lobby","","");minecraft.setScreen(new LobbyScreen(state));}
+        catch(RuntimeException failure){
+            com.mojang.logging.LogUtils.getLogger().warn("Could not return to lobby",failure);
+            receiveError("로비로 돌아가지 못했습니다. 서버 연결을 확인해 주세요.");
+        }
+    }
     @Override public void render(GuiGraphics g,int mx,int my,float partial){
         shell(g,"빈칸 / 0 = 기존 설정 · 변경하면 참가자의 준비가 해제됩니다.");
         int x=left()+12;

@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /** Placing into acid source acidlogs the block, and acidlogged blocks keep their acid ticking like water. */
-@Mixin({FenceBlock.class, IronBarsBlock.class, StairBlock.class})
+@Mixin({FenceBlock.class, IronBarsBlock.class, StairBlock.class, net.minecraft.world.level.block.SlabBlock.class})
 public abstract class AcidLoggedShapeMixin {
     @Inject(method = "getStateForPlacement", at = @At("RETURN"), cancellable = true)
     private void gungang$placeInAcid(BlockPlaceContext context, CallbackInfoReturnable<BlockState> cir) {

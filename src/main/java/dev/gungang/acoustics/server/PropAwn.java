@@ -10,7 +10,19 @@ public final class PropAwn {
     public static final String TAG="GunGangPropAwn";
     private static final Map<UUID,Long> DEADLINES=new HashMap<>();
     public static boolean is(ItemStack stack){return stack.hasTag()&&stack.getTag().getBoolean(TAG);}
-    public static boolean issued(ItemStack stack){return is(stack)||stack.hasTag()&&stack.getTag().getBoolean("GunGangPropShotgun");}
+    public static final String JETPACK_TAG="GunGangPropJetpack";
+    public static boolean jetpack(ItemStack stack){return stack.hasTag()&&stack.getTag().getBoolean(JETPACK_TAG);}
+    public static boolean issued(ItemStack stack){return is(stack)||jetpack(stack)||stack.hasTag()&&stack.getTag().getBoolean("GunGangPropShotgun");}
+    /**
+     * The seeker's off-hand mobility tool: the regular jetpack (93, same duration and cooldown) except that it flies
+     * where the seeker looks, up and down too, instead of only level.
+     */
+    static ItemStack createJetpack(ServerPlayer p){
+        var weapon=OrdnanceLoadouts.defaults().stream().filter(w->w.id().equals("93")).findFirst().orElseThrow();
+        var stack=weapon.stack();LoadoutSlots.mark(stack,"GunGangIssued",40);SecondaryRuntime.configure(p,stack,weapon);
+        var tag=stack.getOrCreateTag();tag.putBoolean(JETPACK_TAG,true);tag.putBoolean("GunGangJetpackVerticalFlight",true);
+        stack.setHoverName(net.minecraft.network.chat.Component.literal("제트팩 · 숨바꼭질 (수직 비행)"));return stack;
+    }
     static ItemStack create(ServerPlayer p){
         if(!net.minecraftforge.fml.ModList.get().isLoaded("tacz"))return ItemStack.EMPTY;
         try{

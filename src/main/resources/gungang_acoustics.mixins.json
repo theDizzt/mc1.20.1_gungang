@@ -5,7 +5,7 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "gungang_acoustics.refmap.json",
   "plugin": "dev.gungang.acoustics.mixin.CompoundBowMixinPlugin",
-  "mixins": ["PropTargetMixin", "PropCollisionMixin", "SpawnGateEffectMixin", "MapSnowAccumulationMixin", "AcidLoggedStateMixin", "AcidLoggedFluidMixin", "AcidLoggedShapeMixin", "TaczDamageMixin", "TaczHeatScriptMixin", "TaczNpcPassMixin", "SecondaryItemUseMixin", "SecondaryCooldownMixin", "TacticalCooldownMixin", "FoodRegenerationMixin", "PeacefulRegenerationMixin", "PlayerKnockbackMixin", "RegenerationEffectMixin", "OrdnanceFriendlyFireMixin", "JetpackStepMixin", "BombSpectatorCameraMixin", "BombSpectatorTeleportMixin", "HolidayGiftMixin", "EscortLadderMixin", "EscortProjectileHitMixin", "TaczCartHitMixin"],
+  "mixins": ["PropBulletClipMixin", "RapierDashMixin", "PropTargetMixin", "PropCollisionMixin", "SpawnGateEffectMixin", "MapSnowAccumulationMixin", "AcidLoggedStateMixin", "AcidLoggedFluidMixin", "AcidLoggedShapeMixin", "TaczDamageMixin", "TaczHeatScriptMixin", "TaczNpcPassMixin", "SecondaryItemUseMixin", "SecondaryCooldownMixin", "TacticalCooldownMixin", "FoodRegenerationMixin", "PeacefulRegenerationMixin", "PlayerKnockbackMixin", "RegenerationEffectMixin", "OrdnanceFriendlyFireMixin", "JetpackStepMixin", "BombSpectatorCameraMixin", "BombSpectatorTeleportMixin", "HolidayGiftMixin", "EscortLadderMixin", "EscortProjectileHitMixin", "TaczCartHitMixin", "SecretCollisionMixin"],
   "client": [
     "RapierIndicatorMixin",
     "EntityOutlineColorMixin", "ScannerOutlinePassMixin",
@@ -33,7 +33,10 @@
     "KeyEntryMixin",
     "KeyBindsListMixin",
     "KeyBindsScreenMixin",
-    "HandAxeWristMixin"
+    "HandAxeWristMixin",
+    "SecretRenderMixin",
+    "SecretFaceMixin",
+    "SecretBlockEntityMixin"
   ],
   "injectors": {
     "defaultRequire": 1

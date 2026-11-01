@@ -31,11 +31,12 @@ final class BotMovement {
     Vec3 failurePoint(){return failurePoint;}
     int failureAt(){return failureAt;}
     Vec3 diagnosticGoal(BotEntity bot){var path=bot.getNavigation().getPath();return path!=null&&!path.isDone()?Vec3.atBottomCenterOf(path.getTarget()):pendingMove||exit!=null?goal:null;}
-    String navigationState(BotEntity bot){return pendingMove?"경로 예산 대기":leavingSpawn()?"스폰 출구 이동":bot.getNavigation().isDone()?"경로 종료/대기":"이동 중";}
+    String navigationState(BotEntity bot){return pendingMove?"경로 예산 대기":leavingSpawn()?"스폰 출구 이동":route.active()?route.state():bot.getNavigation().isDone()?"경로 종료/대기":"이동 중";}
     private void diagnose(Vec3 point,int now,String reason){failurePoint=point;failureAt=now;failureReason=reason;}
     private record FailedRoute(Vec3 from,Vec3 to,int until) { }
     private final java.util.ArrayDeque<FailedRoute> failedRoutes=new java.util.ArrayDeque<>();
     final BotRouteMemory routeMemory=new BotRouteMemory();
+    final BotRoute route=new BotRoute();
     void hit(BotEntity bot,float damage,int now) {
         routeMemory.hit(bot.getX(),bot.getY(),bot.getZ(),damage/Math.max(1,bot.getMaxHealth()),now);
         pendingMove=true; // Reconsider the current route on the next travel decision.
@@ -103,7 +104,8 @@ final class BotMovement {
         // Defer that case instead of permanently concluding that every exit is unreachable.
         if(!bot.onGround()&&!bot.isInWater()){findExit=true;return;}
         exit=null;findExit=false;
-        String key=arena.id()+"/"+arena.dimension()+"/"+team;
+        var home=homeSpawn(arena,team);
+        String key=arena.id()+"/"+arena.dimension()+"/"+team+"/"+home.x()+","+home.y()+","+home.z();
         var exits=EXITS.get(key);
         if(exits==null) {
             var scan=scanExits(bot,arena,team);exits=scan.points();
@@ -118,8 +120,8 @@ final class BotMovement {
         }
     }
     private static ExitScan scanExits(BotEntity bot,ArenaMap arena,String team) {
-        var level=bot.level();var room=team.equals("ALPHA")?arena.alphaArea():arena.bravoArea();
-        var spawn=team.equals("ALPHA")?arena.alphaSpawn():arena.bravoSpawn();
+        var level=bot.level();var room=homeRoom(arena,team);
+        var spawn=homeSpawn(arena,team);
         Vec3 origin=new Vec3(spawn.x(),spawn.y(),spawn.z());
         // Old/programmatically relocated maps may retain an area around the previous spawn.
         // Such an area must not exclude the actual doorway from the search.
@@ -177,11 +179,11 @@ final class BotMovement {
         Vec3 eye=bot.getEyePosition();
         bot.getLookControl().setLookAt(eye.x-Math.sin(angle)*8,eye.y,eye.z+Math.cos(angle)*8);
     }
-    void reset() {failureReason="없음";failurePoint=null;failureAt=0;failedRoutes.clear();recent.clear();nextExitScan=0;searching=false;exit=null;pendingMove=false;findExit=false;departingSpawn=false;goal=null;progressPos=null;chasing=false;strafing=false;nextFlip=0;reposition=null;nextReposition=0;}
+    void reset() {route.reset();failureReason="없음";failurePoint=null;failureAt=0;failedRoutes.clear();recent.clear();nextExitScan=0;searching=false;exit=null;pendingMove=false;findExit=false;departingSpawn=false;goal=null;progressPos=null;chasing=false;strafing=false;nextFlip=0;reposition=null;nextReposition=0;}
     /** Another system (health packs) is steering; do not count that time as being stuck. */
     void interrupt() {progressPos=null;strafing=false;}
     /** Any other behaviour taking over the legs ends a strafe cleanly. */
-    void halt(BotEntity bot) {stopStrafe(bot);reposition=null;bot.getNavigation().stop();}
+    void halt(BotEntity bot) {stopStrafe(bot);reposition=null;bot.getNavigation().stop();route.clear();progressPos=null;}
 
     /** Returns true when the chase point (last seen enemy) was reached or abandoned, so the caller can forget it. */
     boolean travel(BotEntity bot,ArenaMap arena,String team,Vec3 chase,int now) {
@@ -195,43 +197,62 @@ final class BotMovement {
         }
         travel(bot,arena,team,target.position(),now,false);
     }
-    private boolean travel(BotEntity bot,ArenaMap arena,String team,Vec3 chase,int now,boolean patrolAfter) {
+    boolean travel(BotEntity bot,ArenaMap arena,String team,Vec3 chase,int now,boolean patrolAfter) {
         stopStrafe(bot);searching=false;reposition=null;
         if(findExit)leaveSpawn(bot,arena,team);
         var nav=bot.getNavigation();boolean changed=false,doneChasing=false;
         if(chase!=null&&rejected(bot.position(),chase,now)) {
             nav.stop();goal=null;chasing=false;pendingMove=false;progressPos=null;return true;
         }
-        if(goal!=null&&nav.isDone()&&bot.parkour.start(bot,arena,goal,now))return false;
+        if(goal!=null&&nav.isDone()&&!route.active()&&bot.parkour.start(bot,arena,goal,now))return false;
         // Leaving the spawn room comes first; only a sighting outranks it.
         if(exit!=null&&chase==null) {
             if(flat(bot.position(),exit)<.36&&Math.abs(bot.getY()-exit.y)<1.5) {exit=null;goal=null;}
             else if(goal!=exit) {goal=exit;chasing=false;changed=true;}
         } else if(chase!=null)exit=null;
-        if(chase!=null&&(!chasing||goal==null||goal.distanceToSqr(chase)>4)) {goal=chase;chasing=true;changed=true;}
+        // Mission spots and melee approaches need precision; a nearby replacement must not keep the old goal.
+        if(chase!=null&&(!chasing||goal==null||goal.distanceToSqr(chase)>(patrolAfter?4:.01))) {goal=chase;chasing=true;changed=true;}
         else if(chase==null&&chasing) {goal=null;chasing=false;}
-        if(goal!=null&&goal!=exit&&flat(bot.position(),goal)<4&&Math.abs(bot.getY()-goal.y)<1.5) {doneChasing=chasing;goal=null;chasing=false;}
+        if(goal!=null&&goal!=exit&&flat(bot.position(),goal)<(patrolAfter?4:.16)&&Math.abs(bot.getY()-goal.y)<1.5) {doneChasing=chasing;goal=null;chasing=false;}
         if(progressPos==null||bot.position().distanceToSqr(progressPos)>1) {progressPos=bot.position();progressAt=now;}
-        else if(now-progressAt>=STUCK_GIVE_UP&&!pendingMove) {failed(bot.position(),goal,now,"3초간 위치 변화 부족: 경로 포기");nav.stop();doneChasing|=chasing;goal=null;exit=null;chasing=false;progressAt=now;}
+        else if(now-progressAt>=STUCK_GIVE_UP&&!pendingMove) {failed(bot.position(),goal,now,"3초간 위치 변화 부족: 경로 포기");nav.stop();route.clear();doneChasing|=chasing;goal=null;exit=null;chasing=false;progressAt=now;}
         else if(now-progressAt>=STUCK_JUMP&&bot.onGround())bot.getJumpControl().jump();
         // Arrival picks the next waypoint in the same call, so there is no idle gap.
         if(goal==null&&patrolAfter) {goal=pick(bot,arena,team,now);changed=true;}
-        if(goal==null) {if(patrolAfter&&!spent())diagnose(bot.position(),now,"도달 가능한 순찰 후보 없음");nav.stop();pendingMove=false;progressPos=null;return doneChasing;}
-        if(changed||nav.isDone()||pendingMove) {
+        if(goal==null) {route.clear();if(patrolAfter&&!spent())diagnose(bot.position(),now,"도달 가능한 순찰 후보 없음");nav.stop();pendingMove=false;progressPos=null;return doneChasing;}
+        if(changed||nav.isDone()||pendingMove||route.active()) {
             if(spent())pendingMove=true;
             else {
+                // Far goals follow the map grid; the vanilla search only covers the next few blocks of it.
+                var routed=route.towards(bot,arena,goal,now);
+                if(routed==BotRoute.Result.WAIT){pendingMove=true;return doneChasing;}
+                if(routed==BotRoute.Result.HOLD){progressPos=null;pendingMove=false;return doneChasing;}
+                if(routed==BotRoute.Result.NONE) {
+                    failed(bot.position(),goal,now,"맵 경로망에서 목적지까지 이어지는 길 없음");nav.stop();doneChasing|=chasing;goal=null;exit=null;chasing=false;progressPos=null;pendingMove=false;
+                    return doneChasing;
+                }
+                boolean walking=routed==BotRoute.Result.WALK;
+                // Mid-route, only a finished leg or a new goal needs a new vanilla path.
+                if(walking&&!changed&&!pendingMove&&!nav.isDone()&&BlockPos.containing(route.point()).equals(nav.getTargetPos()))return doneChasing;
                 if(pendingMove)nav.stop(); // Drop the cached path so newly learned danger changes the route.
                 pathBudget--;pendingMove=false;
-                var step=nearby(bot,goal);
-                var ground=ground(bot,arena,step);
+                var step=walking?route.point():nearby(bot,goal);
+                var ground=walking?BlockPos.containing(step):ground(bot,arena,step);
                 boolean moved=false;
                 if(ground!=null) {
-                    if(exit!=null||chase==null) {var route=nav.createPath(ground,0);moved=route!=null&&route.canReach()&&nav.moveTo(route,1);}
+                    if(walking) {
+                        // A partial leg still counts when it ends at the waypoint or brings the bot clearly closer.
+                        var leg=nav.createPath(ground,0);
+                        moved=leg!=null&&(leg.canReach()||leg.getEndNode()!=null&&(leg.getEndNode().asBlockPos().distSqr(ground)<=4
+                                ||leg.getEndNode().asBlockPos().distToCenterSqr(step)+4<bot.position().distanceToSqr(step)))&&nav.moveTo(leg,1);
+                        if(!moved)route.clear();
+                    }
+                    else if(exit!=null||chase==null) {var leg=nav.createPath(ground,0);moved=leg!=null&&leg.canReach()&&nav.moveTo(leg,1);}
                     else moved=nav.moveTo(ground.getX()+.5,ground.getY(),ground.getZ()+.5,1);
                 }
                 if(!moved) {
                     if(bot.parkour.start(bot,arena,goal,now))return false;
-                    failed(bot.position(),goal,now,ground==null?"목적지 주변에 안전한 지면 없음":"경로가 막혔거나 목적지까지 이어지지 않음");nav.stop();doneChasing|=chasing;goal=null;exit=null;chasing=false;progressPos=null;
+                    failed(bot.position(),goal,now,ground==null?"목적지 주변에 안전한 지면 없음":"경로가 막혔거나 목적지까지 이어지지 않음");nav.stop();route.clear();doneChasing|=chasing;goal=null;exit=null;chasing=false;progressPos=null;
                 }
             }
         }
@@ -245,11 +266,15 @@ final class BotMovement {
     private void stopStrafe(BotEntity bot) {if(strafing) {bot.getMoveControl().strafe(0,0);bot.setXxa(0);bot.setZza(0);}strafing=false;}
     /** Strafe while the target is in gun range. Called every tick; returns false when path travel should drive instead. */
     boolean combat(BotEntity bot,ArenaMap arena,LivingEntity target,int now,boolean melee,boolean retreat) {
+        return combat(bot,arena,target,now,melee,retreat,null);
+    }
+    /** Mission combat must not strafe or reposition outside the scoring zone. */
+    boolean combat(BotEntity bot,ArenaMap arena,LivingEntity target,int now,boolean melee,boolean retreat,BotObjective mission) {
         double distance=bot.distanceTo(target);
         searching=false;
         if(melee||distance>profile.engage()) {stopStrafe(bot);reposition=null;return false;}
         if(reposition!=null) {
-            if(now<repositionUntil&&bot.position().distanceToSqr(reposition)>.64&&!bot.getNavigation().isDone())return true;
+            if(mission==null&&now<repositionUntil&&bot.position().distanceToSqr(reposition)>.64&&!bot.getNavigation().isDone())return true;
             reposition=null;bot.getNavigation().stop();
         }
         progressPos=null;
@@ -263,15 +288,15 @@ final class BotMovement {
         if(now>=nextFlip||bot.horizontalCollision) {
             strafeDir=-strafeDir;nextFlip=now+12+random.nextInt(20);
         }
-        boolean blocked=unsafe(bot,arena,yaw,forward,strafeDir*sideways);
+        boolean blocked=unsafe(bot,arena,yaw,forward,strafeDir*sideways,mission);
         if(blocked) {
             strafeDir=-strafeDir;nextFlip=now+12+random.nextInt(20);
-            blocked=unsafe(bot,arena,yaw,forward,strafeDir*sideways);
+            blocked=unsafe(bot,arena,yaw,forward,strafeDir*sideways,mission);
         }
         if(blocked) {
             stopStrafe(bot);
             bot.getNavigation().stop();
-            if(now>=nextReposition) {
+            if(mission==null&&now>=nextReposition) {
                 nextReposition=now+20;
                 reposition=repositionSpot(bot,arena,target.position());
                 if(reposition!=null&&!spent()&&pathBudget-->0&&bot.getNavigation().moveTo(reposition.x,reposition.y,reposition.z,1))repositionUntil=now+50;
@@ -301,9 +326,9 @@ final class BotMovement {
     record Cover(Vec3 spot,net.minecraft.world.level.pathfinder.Path path) { }
     /** Anticipate the opposing approach using map geometry, never hidden enemy positions. */
     Cover scoutCover(BotEntity bot,ArenaMap arena,String team) {
-        var own=team.equals("ALPHA")?arena.alphaSpawn():arena.bravoSpawn();
-        var enemy=team.equals("ALPHA")?arena.bravoSpawn():arena.alphaSpawn();
-        var room=team.equals("ALPHA")?arena.alphaArea():arena.bravoArea();
+        var own=homeSpawn(arena,team);
+        var enemy=homeSpawn(arena,team.equals("ALPHA")?"BRAVO":"ALPHA");
+        var room=homeRoom(arena,team);
         Vec3 origin=new Vec3(own.x(),own.y(),own.z());
         if(!clearOfSpawn(arena,team,bot.position())||spent())return null;
         Vec3 direction=new Vec3(enemy.x()-bot.getX(),0,enemy.z()-bot.getZ()).normalize();
@@ -386,7 +411,7 @@ final class BotMovement {
         away=new Vec3(away.x,0,away.z);
         var ally=allies.stream().min(java.util.Comparator.comparingDouble(a->a.distanceToSqr(bot.position()))).orElse(null);
         if(ally!=null)away=away.normalize().add(new Vec3(ally.x-bot.getX(),0,ally.z-bot.getZ()).normalize().scale(.6));
-        if(away.lengthSqr()<1e-4) {var spawn=team.equals("ALPHA")?arena.alphaSpawn():arena.bravoSpawn();away=new Vec3(spawn.x()-bot.getX(),0,spawn.z()-bot.getZ());}
+        if(away.lengthSqr()<1e-4) {var spawn=homeSpawn(arena,team);away=new Vec3(spawn.x()-bot.getX(),0,spawn.z()-bot.getZ());}
         double base=Math.atan2(away.z,away.x);var random=bot.getRandom();
         for(int i=0;i<4;i++) {
             double angle=base+(random.nextDouble()*2-1)*.7,radius=8+random.nextDouble()*6;
@@ -394,7 +419,7 @@ final class BotMovement {
             var path=path(bot,ground,1);
             if(path!=null&&path.canReach())return Vec3.atBottomCenterOf(ground);
         }
-        var spawn=team.equals("ALPHA")?arena.alphaSpawn():arena.bravoSpawn();
+        var spawn=homeSpawn(arena,team);
         return new Vec3(spawn.x(),spawn.y(),spawn.z());
     }
     /** A spot beside an ally (not on top of it), on the side away from the danger, so the two cover different angles. */
@@ -452,11 +477,11 @@ final class BotMovement {
         return new Vec3(x/points.size(),y/points.size(),z/points.size());
     }
     /** Same displacement MoveControl uses for strafing; refuse steps toward a drop or a death zone. */
-    private static boolean unsafe(BotEntity bot,ArenaMap arena,float yaw,float forward,float right) {
+    private static boolean unsafe(BotEntity bot,ArenaMap arena,float yaw,float forward,float right,BotObjective mission) {
         double sin=Math.sin(yaw*Math.PI/180),cos=Math.cos(yaw*Math.PI/180);
         double dx=right*cos-forward*sin,dz=forward*cos+right*sin,length=Math.max(1e-4,Math.sqrt(dx*dx+dz*dz));
         Vec3 ahead=bot.position().add(dx/length*1.5,0,dz/length*1.5);
-        return !safeSegment(bot,arena,bot.position(),ahead);
+        return mission!=null&&!mission.contains(ahead)||!safeSegment(bot,arena,bot.position(),ahead);
     }
 
     /** Short, level moves: check the whole body and support along the route, not only its endpoint. */
@@ -495,19 +520,27 @@ final class BotMovement {
 
     private Vec3 pick(BotEntity bot,ArenaMap arena,String team,int now) {
         var mapped=pickWaypoint(bot,arena,team,now);if(mapped!=null)return mapped;
-        var own=team.equals("ALPHA")?arena.alphaSpawn():arena.bravoSpawn();
-        var enemy=team.equals("ALPHA")?arena.bravoSpawn():arena.alphaSpawn();
+        if(MatchManager.freeForAll()!=null&&arena.freeForAll()!=null)return roam(bot,arena,team,now);
+        var own=homeSpawn(arena,team);
+        var enemy=homeSpawn(arena,team.equals("ALPHA")?"BRAVO":"ALPHA");
         Vec3 a=new Vec3(own.x(),own.y(),own.z()),b=new Vec3(enemy.x(),enemy.y(),enemy.z()),d=b.subtract(a);
         double length=Math.max(1,d.horizontalDistance());Vec3 side=new Vec3(-d.z/length,0,d.x/length);
-        var random=bot.getRandom();
+        var random=bot.getRandom();var graph=BotNavGraph.of(arena,bot.level());
+        if(graph!=null&&!graph.contains(bot.position()))graph=null;
         for(int i=0;i<ATTEMPTS;i++) {
             // Anywhere from just past our spawn to the enemy's, spread across the map's width.
             double along=.2+random.nextDouble()*.8,across=(random.nextDouble()*2-1)*Math.max(6,length*.35);
-            var ground=ground(bot,arena,nearby(bot,a.add(d.scale(along)).add(side.scale(across))));
+            Vec3 sample=a.add(d.scale(along)).add(side.scale(across));
+            // With the map grid the whole span is open; without it only what a vanilla search can see from here.
+            var ground=graph!=null&&graph.contains(sample)?graph.ground(arena,bot,sample):ground(bot,arena,nearby(bot,sample));
             if(ground==null||flat(bot.position(),Vec3.atBottomCenterOf(ground))<36||crowded(Vec3.atBottomCenterOf(ground)))continue;
             var point=Vec3.atBottomCenterOf(ground);
             if(nearSpawn(arena,team,point))continue;
             if(rejected(bot.position(),point,now)||routeRisk(point,now)>.5||recent.stream().anyMatch(r->r.distanceToSqr(point)<64))continue;
+            if(graph!=null&&graph.contains(point)&&flat(bot.position(),point)>=BotRoute.FAR*BotRoute.FAR) {
+                if(graph.reachable(bot.position(),point)) {remember(point);return point;}
+                failed(bot.position(),point,now);continue;
+            }
             if(spent())return null;
             var path=path(bot,ground,1);
             if(path!=null&&path.canReach()) {remember(point);return point;}
@@ -516,22 +549,66 @@ final class BotMovement {
         // A wall toward the enemy must lead to a local side route, not repeated partial paths into that wall.
         return localPatrol(bot,arena,team,now,a,b);
     }
+    /**
+     * Free-for-all has no front line: wander between the free-for-all spawns (they mark where fights happen), never
+     * the one underfoot, and fall back to a local side route.
+     */
+    private Vec3 roam(BotEntity bot,ArenaMap arena,String team,int now) {
+        var random=bot.getRandom();var graph=BotNavGraph.of(arena,bot.level());
+        if(graph!=null&&!graph.contains(bot.position()))graph=null;
+        var spawns=new java.util.ArrayList<>(arena.freeForAll().spawns());
+        java.util.Collections.shuffle(spawns,new java.util.Random(random.nextLong()));
+        int tries=0;Vec3 heading=null;
+        for(var spawn:spawns) {
+            Vec3 sample=new Vec3(spawn.x()+(random.nextDouble()-.5)*8,spawn.y(),spawn.z()+(random.nextDouble()-.5)*8);
+            if(flat(bot.position(),sample)<144)continue;
+            if(heading==null)heading=sample;
+            var ground=graph!=null&&graph.contains(sample)?graph.ground(arena,bot,sample):ground(bot,arena,nearby(bot,sample));
+            if(ground==null)continue;
+            var point=Vec3.atBottomCenterOf(ground);
+            if(crowded(point)||rejected(bot.position(),point,now)||routeRisk(point,now)>.5||recent.stream().anyMatch(r->r.distanceToSqr(point)<64))continue;
+            if(++tries>ATTEMPTS)break;
+            if(graph!=null&&graph.contains(point)&&flat(bot.position(),point)>=BotRoute.FAR*BotRoute.FAR) {
+                if(graph.reachable(bot.position(),point)) {remember(point);return point;}
+                failed(bot.position(),point,now);continue;
+            }
+            if(spent())return null;
+            var path=path(bot,ground,1);
+            if(path!=null&&path.canReach()) {remember(point);return point;}
+            failed(bot.position(),point,now);
+        }
+        return localPatrol(bot,arena,team,now,bot.position(),heading==null?bot.position().add(bot.getLookAngle().scale(16)):heading);
+    }
+    /** Where the team spawns now: 호위 moves both teams' spawns forward with the checkpoints. */
+    static ArenaMap.Spawn homeSpawn(ArenaMap arena,String team){
+        var bomb=MatchManager.bomb();if(bomb!=null)return bomb.spawn(team); // 폭탄전 sides swap between rounds
+        var escort=MatchManager.escort();
+        return escort!=null?escort.spawn(team):team.equals("ALPHA")?arena.alphaSpawn():arena.bravoSpawn();
+    }
+    /** The room around that spawn, or null (a later 호위 stage may set none). */
+    static ArenaMap.Area homeRoom(ArenaMap arena,String team){
+        var bomb=MatchManager.bomb();if(bomb!=null)return bomb.area(team);
+        var escort=MatchManager.escort();
+        return escort!=null?escort.area(team):team.equals("ALPHA")?arena.alphaArea():arena.bravoArea();
+    }
     static boolean nearSpawn(ArenaMap arena,String team,Vec3 point) {
-        var spawn=team.equals("ALPHA")?arena.alphaSpawn():arena.bravoSpawn();
-        var room=team.equals("ALPHA")?arena.alphaArea():arena.bravoArea();
+        if(MatchManager.freeForAll()!=null)return false; // no home spawn in free-for-all
+        var spawn=homeSpawn(arena,team);
+        var room=homeRoom(arena,team);
         return flat(point,new Vec3(spawn.x(),spawn.y(),spawn.z()))<64
                 ||room!=null&&room.contains(spawn.x(),spawn.y(),spawn.z())&&room.contains(point.x,point.y,point.z);
     }
     static boolean clearOfSpawn(ArenaMap arena,String team,Vec3 point){
-        var spawn=team.equals("ALPHA")?arena.alphaSpawn():arena.bravoSpawn();
-        var enemy=team.equals("ALPHA")?arena.bravoSpawn():arena.alphaSpawn();
+        if(MatchManager.freeForAll()!=null)return true;
+        var spawn=homeSpawn(arena,team);
+        var enemy=homeSpawn(arena,team.equals("ALPHA")?"BRAVO":"ALPHA");
         Vec3 origin=new Vec3(spawn.x(),spawn.y(),spawn.z());
         double radius=Math.min(24,Math.max(8,Math.sqrt(flat(origin,new Vec3(enemy.x(),enemy.y(),enemy.z())))*.4));
         return !nearSpawn(arena,team,point)&&flat(point,origin)>=radius*radius;
     }
     /** Idle teammates must not pull each other back toward spawn or chase one another in circles. */
     static boolean forwardAlly(ArenaMap arena,String team,Vec3 bot,Vec3 ally){
-        var enemy=team.equals("ALPHA")?arena.bravoSpawn():arena.alphaSpawn();
+        var enemy=homeSpawn(arena,team.equals("ALPHA")?"BRAVO":"ALPHA");
         Vec3 front=new Vec3(enemy.x(),enemy.y(),enemy.z());
         return !nearSpawn(arena,team,ally)&&Math.sqrt(flat(ally,front))+8<Math.sqrt(flat(bot,front));
     }
@@ -559,6 +636,22 @@ final class BotMovement {
         }
         return null;
     }
+    /** A standing spot inside a mission zone, away from allies and known danger; the zone's middle when nothing better. */
+    Vec3 objectiveSpot(BotEntity bot,ArenaMap arena,BotObjective mission) {
+        var area=mission.area();var random=bot.getRandom();var graph=BotNavGraph.of(arena,bot.level());
+        Vec3 fallback=null;
+        for(int i=0;i<8;i++) {
+            Vec3 sample=i==0?mission.center():new Vec3(area.minX+.5+random.nextDouble()*Math.max(0,area.getXsize()-1),mission.center().y,area.minZ+.5+random.nextDouble()*Math.max(0,area.getZsize()-1));
+            var ground=graph!=null&&graph.contains(sample)?graph.ground(arena,bot,sample):ground(bot,arena,sample);
+            if(ground==null)continue;
+            Vec3 spot=Vec3.atBottomCenterOf(ground);
+            if(!mission.contains(spot)||danger(arena,bot,spot)||knownDanger(bot,spot))continue;
+            if(fallback==null)fallback=spot;
+            if(i>0&&!crowded(spot)&&spot.distanceToSqr(bot.position())>2)return spot;
+        }
+        // Nothing sampled (a far point in unloaded chunks, no map grid yet): head for the middle; travel finds a floor.
+        return fallback!=null?fallback:mission.center();
+    }
     /** Teammates spread out: no patrol goal within 6 blocks of an ally, so the bot takes its own lane. */
     private boolean crowded(Vec3 spot) {return allies.stream().anyMatch(a->a.distanceToSqr(spot)<36);}
     private void remember(Vec3 point) {recent.addLast(point);while(recent.size()>8)recent.removeFirst();}
@@ -582,6 +675,11 @@ final class BotMovement {
             if(flat(bot.position(),point)<36||crowded(point)||recent.stream().anyMatch(r->r.distanceToSqr(point)<4))continue;
             if(rejected(bot.position(),point,now))continue;
             if(++tries>ATTEMPTS)break;
+            var graph=BotNavGraph.of(arena,bot.level());
+            if(graph!=null&&graph.contains(bot.position())&&graph.contains(point)&&flat(bot.position(),point)>=BotRoute.FAR*BotRoute.FAR) {
+                if(graph.reachable(bot.position(),point)) {remember(point);return point;}
+                failed(bot.position(),point,now);continue;
+            }
             if(spent())break;
             var path=path(bot,BlockPos.containing(point),1);
             if(path!=null&&path.canReach()) {remember(point);return point;}
@@ -604,7 +702,20 @@ final class BotMovement {
     }
     static boolean danger(ArenaMap arena,BotEntity bot,Vec3 feet) {
         var box=bot.getDimensions(Pose.STANDING).makeBoundingBox(feet);
-        return arena.deathZones()!=null&&arena.deathZones().stream().anyMatch(z->z.intersects(box.minX,box.minY,box.minZ,box.maxX,box.maxY,box.maxZ));
+        if(arena.deathZones()!=null&&arena.deathZones().stream().anyMatch(z->z.intersects(box.minX,box.minY,box.minZ,box.maxX,box.maxY,box.maxZ)))return true;
+        // Include the contact surface and the whole body, not only the centre of the feet.
+        for(var pos:BlockPos.betweenClosed(Mth.floor(box.minX),Mth.floor(box.minY-.05),Mth.floor(box.minZ),
+                Mth.floor(box.maxX-1e-6),Mth.floor(box.maxY-1e-6),Mth.floor(box.maxZ-1e-6))) {
+            if(!bot.level().hasChunkAt(pos))return true;
+            var state=bot.level().getBlockState(pos);var block=state.getBlock();
+            if(state.getFluidState().is(net.minecraft.tags.FluidTags.LAVA)||block instanceof AcidBlock||AcidLogging.acid(state)
+                    ||block instanceof PuddleBlock puddle&&puddle.acid
+                    ||state.is(net.minecraft.tags.BlockTags.FIRE)||block==net.minecraft.world.level.block.Blocks.MAGMA_BLOCK
+                    ||block==net.minecraft.world.level.block.Blocks.CACTUS||block==net.minecraft.world.level.block.Blocks.SWEET_BERRY_BUSH
+                    ||block==net.minecraft.world.level.block.Blocks.WITHER_ROSE||block==net.minecraft.world.level.block.Blocks.POWDER_SNOW
+                    ||block instanceof net.minecraft.world.level.block.CampfireBlock&&state.getValue(net.minecraft.world.level.block.CampfireBlock.LIT))return true;
+        }
+        return false;
     }
     private static double flat(Vec3 a,Vec3 b) {double x=a.x-b.x,z=a.z-b.z;return x*x+z*z;}
 }

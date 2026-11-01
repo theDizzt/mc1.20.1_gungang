@@ -6,7 +6,12 @@ import java.util.*;
 public final class TeamPointState {
     public record Member(UUID id,int number) { }
     public record Point(UUID owner,int number,String dimension,double x,double y,double z,long sequence) { }
-    public record View(String team,int color,List<Member> members,List<Point> points) { }
+    /** A living teammate's health, so the team HUD can show it beyond the client's entity tracking range. */
+    public record Vital(UUID id,float health,float maximum,float absorption) { }
+    public record View(String team,int color,List<Member> members,List<Point> points,List<Vital> vitals) {
+        public View(String team,int color,List<Member> members,List<Point> points){this(team,color,members,points,List.of());}
+        public View withVitals(List<Vital> list){return new View(team,color,members,points,List.copyOf(list));}
+    }
     private record Mark(String team,String dimension,double x,double y,double z,long sequence) { }
     private final LinkedHashMap<UUID,String> roster=new LinkedHashMap<>();
     private final Map<UUID,Mark> points=new HashMap<>();

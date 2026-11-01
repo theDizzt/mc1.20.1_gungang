@@ -21,6 +21,7 @@ public final class ClientSetup {
         }
     }
     @SubscribeEvent public static void renderers(net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
+        event.registerBlockEntityRenderer(dev.gungang.acoustics.server.HologramBlocks.ENTITY.get(),HologramRenderer::new);
         event.registerBlockEntityRenderer(dev.gungang.acoustics.server.ShutterBlocks.ENTITY.get(),ShutterRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.BotEntity.TYPE.get(),BotRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.PropEntity.TYPE.get(),PropRenderer::new);
@@ -48,6 +49,7 @@ public final class ClientSetup {
         event.register((state,level,pos,tint)->level!=null&&pos!=null?net.minecraft.client.renderer.BiomeColors.getAverageWaterColor(level,pos):0x3F76E4,dev.gungang.acoustics.server.GimmickBlocks.PUDDLE.get());
         event.register((state,level,pos,tint)->LobbyClient.options.color("ALPHA"),dev.gungang.acoustics.server.StationBlocks.ALPHA.get());
         event.register((state,level,pos,tint)->LobbyClient.options.color("BRAVO"),dev.gungang.acoustics.server.StationBlocks.BRAVO.get());
+        event.register((state,level,pos,tint)->level!=null&&pos!=null?net.minecraft.client.renderer.BiomeColors.getAverageGrassColor(level,pos):net.minecraft.world.level.GrassColor.getDefaultColor(),dev.gungang.acoustics.server.PropExtraBlocks.BIG_GRASS_BLOCK.get());
     }
     private static int gateColor(dev.gungang.acoustics.server.SpawnGateBlock gate){
         String rule=MatchHud.gateRule();
@@ -59,11 +61,13 @@ public final class ClientSetup {
         event.register((stack,tint)->LobbyClient.options.color("ALPHA"),dev.gungang.acoustics.server.StationBlocks.ESCORT_ALPHA_GATE.get());
         event.register((stack,tint)->LobbyClient.options.color("BRAVO"),dev.gungang.acoustics.server.StationBlocks.ESCORT_BRAVO_GATE.get());
         event.register(new net.minecraftforge.client.model.DynamicFluidContainerModel.Colors(),dev.gungang.acoustics.server.GimmickBlocks.ACID_BUCKET.get());
+        event.register(new net.minecraftforge.client.model.DynamicFluidContainerModel.Colors(),dev.gungang.acoustics.server.HotSpringContent.BUCKET.get());
         event.register((stack,tint)->0x3F76E4,dev.gungang.acoustics.server.GimmickBlocks.PUDDLE.get());
         event.register((stack,tint)->tint==0?0xCC2020:0xFFFFFF,dev.gungang.acoustics.server.GadgetItems.MOLOTOV.get());
         event.register((stack,tint)->tint==0?0xFFE033:0xFFFFFF,dev.gungang.acoustics.server.GadgetItems.ADRENALINE.get());
         event.register((stack,tint)->LobbyClient.options.color("ALPHA"),dev.gungang.acoustics.server.StationBlocks.ALPHA.get());
         event.register((stack,tint)->LobbyClient.options.color("BRAVO"),dev.gungang.acoustics.server.StationBlocks.BRAVO.get());
+        event.register((stack,tint)->net.minecraft.world.level.GrassColor.getDefaultColor(),dev.gungang.acoustics.server.PropExtraBlocks.BIG_GRASS_BLOCK.get());
     }
     @SubscribeEvent
     public static void keys(RegisterKeyMappingsEvent event) {
@@ -72,6 +76,7 @@ public final class ClientSetup {
         event.register(OffhandMacro.USE);
         event.register(LobbyClient.LOADOUT);
         event.register(LobbyClient.LOBBY);
+        event.register(BombWorldHud.KEY);
         event.register(ItemNbtCopy.COPY);
     }
     @SubscribeEvent
@@ -83,10 +88,14 @@ public final class ClientSetup {
     @SubscribeEvent
     public static void setup(FMLClientSetupEvent event) {
         dev.gungang.acoustics.server.PropDimensions.clientProp=PropHuntClient::prop;
+        dev.gungang.acoustics.server.PropEntity.clientBook=PropBook::read;
         dev.gungang.acoustics.server.SpawnGateBlock.clientRule=MatchHud::gateRule;
         dev.gungang.acoustics.server.SpawnGateBlock.clientPreparation=MatchHud::gatePreparation;
         dev.gungang.acoustics.server.EscortSpawnGateBlock.clientEditing=()->dev.gungang.acoustics.server.EscortSpawnGateBlock.editing(net.minecraft.client.Minecraft.getInstance().player);
         event.enqueueWork(()->{
+            net.minecraft.client.gui.screens.MenuScreens.register(dev.gungang.acoustics.server.HologramBlocks.MENU.get(),HologramScreen::new);
+            net.minecraft.client.renderer.ItemBlockRenderTypes.setRenderLayer(dev.gungang.acoustics.server.HotSpringContent.SOURCE.get(),net.minecraft.client.renderer.RenderType.translucent());
+            net.minecraft.client.renderer.ItemBlockRenderTypes.setRenderLayer(dev.gungang.acoustics.server.HotSpringContent.FLOWING.get(),net.minecraft.client.renderer.RenderType.translucent());
             net.minecraft.client.renderer.ItemBlockRenderTypes.setRenderLayer(dev.gungang.acoustics.server.StationBlocks.ALPHA_GATE.get(),net.minecraft.client.renderer.RenderType.translucent());
             net.minecraft.client.renderer.ItemBlockRenderTypes.setRenderLayer(dev.gungang.acoustics.server.StationBlocks.BRAVO_GATE.get(),net.minecraft.client.renderer.RenderType.translucent());
             net.minecraft.client.renderer.ItemBlockRenderTypes.setRenderLayer(dev.gungang.acoustics.server.StationBlocks.ESCORT_ALPHA_GATE.get(),net.minecraft.client.renderer.RenderType.translucent());

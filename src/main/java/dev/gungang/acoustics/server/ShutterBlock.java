@@ -44,6 +44,8 @@ public final class ShutterBlock extends BaseEntityBlock {
         if(!joined(l,p,s,Direction.UP))shape=Shapes.or(shape,panel(s,0,1-HEADER,1,1));
         return shape;
     }
+    /** Side rails and header of a lone, fully open tile. */
+    public static VoxelShape frame(BlockState s){return Shapes.or(panel(s,0,0,RAIL,1),panel(s,1-RAIL,0,1,1),panel(s,0,1-HEADER,1,1));}
     @Override public VoxelShape getOcclusionShape(BlockState s,BlockGetter l,BlockPos p){return Shapes.empty();}
     @Override public RenderShape getRenderShape(BlockState s){return RenderShape.ENTITYBLOCK_ANIMATED;}
     @Override public void onPlace(BlockState s,Level l,BlockPos p,BlockState old,boolean moved){super.onPlace(s,l,p,old,moved);if(!l.isClientSide)l.scheduleTick(p,this,1);}

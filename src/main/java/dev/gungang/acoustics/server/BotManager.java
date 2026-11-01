@@ -65,8 +65,16 @@ public final class BotManager {
     /** Team of the first bot in the match (or its lobby team). */
     static String team(){return agents.isEmpty()?lobbyTeam():agents.get(0).team;}
     static String team(UUID id){var a=agent(id);if(a!=null)return a.team;int slot=BotDatabase.slot(id);return slot>=0&&lobby.containsKey(slot)?lobbyTeam(slot):"";}
-    /** Team of a match participant: a player's lobby team or a bot's side. */
+    /** Sides that fight: the two teams, or in free-for-all each participant on its own ("FFA:" + UUID). */
+    static boolean combatant(String side){return side.equals("ALPHA")||side.equals("BRAVO")||side.startsWith("FFA:");}
+    /**
+     * Team of a match participant: a player's lobby team or a bot's side. In free-for-all everyone is their own side,
+     * so every team check in the bot code (allies, callouts, friendly fire, shot lines) treats all others as enemies.
+     * A bot's gadget fake player shares the bot's UUID, and so its side.
+     */
     static String side(LivingEntity entity){
+        var ffa=MatchManager.freeForAll();
+        if(ffa!=null)return ffa.participant(entity.getUUID())?"FFA:"+entity.getUUID():"";
         var a=agent(entity);if(a!=null)return a.team;
         return entity instanceof ServerPlayer p?LobbyManager.team(p.getUUID()):"";
     }
@@ -76,6 +84,8 @@ public final class BotManager {
         var list=new ArrayList<BotEntity>();for(var a:agents)if(a.bot!=null&&a.bot.isAlive()&&!a.bot.isRemoved())list.add(a.bot);return list;
     }
     static boolean live(BotEntity bot){return entities().contains(bot);}
+    /** A bot's live body by its id (also the id of its gadget fake player), or null: what a spectator camera follows. */
+    static BotEntity body(UUID id){var a=agent(id);return a==null||a.bot==null||a.bot.isRemoved()||!a.bot.isAlive()?null:a.bot;}
     static Set<UUID> activeIds(){var ids=new HashSet<UUID>();for(var a:agents)ids.add(a.id);return ids;}
     static boolean boosted(Entity attacker){var a=agent(attacker);return a!=null&&a.gadgets.boosted(attacker.level().getGameTime());}
     /** Pathfinding cost hook: ground this bot knows is mined, trapped or burning. */
@@ -184,6 +194,8 @@ public final class BotManager {
     static boolean supportedSecondary(Loadouts.Weapon w){
         // Command-only entries run a player command; the bot has no player to run it as.
         if(w.commandOnly())return false;
+        // The mercy bullet only fires at a teammate under a player's crosshair; a bot would aim it at enemies.
+        if(w.id().equals(MercyBullet.ID))return false;
         var stack=w.stack();return held(stack)||BotGadgets.supported(stack);
     }
     static Loadouts.Weapon selectSecondary(Loadouts loadouts){
@@ -219,10 +231,32 @@ public final class BotManager {
     static void close(){
         BotDiagnostics.clear();
         for(var a:agents)a.close();agents.clear();
-        BotMovement.forgetExits();BotWaypoints.forget();arena=null;
+        BotMovement.forgetExits();BotWaypoints.forget();BotNavGraph.forget();arena=null;
     }
     private static void removeAll(){for(var a:agents)a.remove();agents.clear();}
     static void died(UUID bot,UUID killer){var a=agent(bot);if(a!=null)a.died(killer);}
+    static void openingDeath(UUID bot){var a=agent(bot);if(a!=null)a.openingDeath();}
+    /** 폭탄전: a killed bot stays out until {@link #bombRound}. */
+    static void bench(UUID bot){var a=agent(bot);if(a!=null)a.respawnAt=Integer.MAX_VALUE;}
+    static void revive(UUID bot){var a=agent(bot);if(a!=null&&a.bot!=null){a.bot.setHealth(a.bot.getMaxHealth());a.bot.clearFire();}}
+    /** 폭탄전 round start: every bot, alive or not, starts fresh at its side's spawn (sides swap between rounds). */
+    static void bombRound(){for(var a:agents)a.nextRound();}
+    // ---- 숨바꼭질 ----
+    /** A disguise took a pellet: the bot hider behind it knows it is found out, a bot seeker that this block is a hider. */
+    static void propShot(LivingEntity hider,LivingEntity seeker,PropEntity prop,boolean found){
+        var victim=agent(hider);if(victim!=null&&!found)victim.propHunt.struck(seeker);
+        var shooter=agent(seeker);if(shooter!=null)shooter.propHunt.confirmed(prop,found);
+    }
+    /** A hider bot was found: its body leaves the match (the marker block stays) and never respawns. */
+    static void propFound(UUID bot){var a=agent(bot);if(a!=null){a.remove();a.respawnAt=Integer.MAX_VALUE;}}
+    /** A seeker bot died and is back in the waiting room. */
+    static void propRespawn(UUID bot){var a=agent(bot);if(a!=null)a.propHunt.respawned(a);}
+    /** A loud disguise (horn, music, explosion...) at a spot: seeker bots in earshot hear roughly where. */
+    static void propNoise(net.minecraft.world.phys.Vec3 at,UUID source){for(var a:agents)if(a.bot!=null&&!a.id.equals(source))a.propHunt.noise(a,at);}
+    /** The hunt is decided: everyone stands still for the review. */
+    static void propReview(BotEntity bot){bot.getNavigation().stop();bot.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);}
+    /** 이동점령 start: attacking bots leave their holding room for the launch point, as attacking players do. */
+    static void launchAttackers(ArenaMap.Spawn launch){for(var a:agents)if(a.team.equals("BRAVO"))a.launch(launch);}
     private static void fail(Exception error){
         fault=error.getClass().getSimpleName()+": "+error.getMessage();removeAll();
         LogUtils.getLogger().error("[GunGang] Bots suspended; use /gungang bot status and /gungang bot on after fixing the cause",error);
@@ -233,6 +267,7 @@ public final class BotManager {
         long start=System.nanoTime();
         BotMovement.newTick();
         try{
+            BotNavGraph.tick(level(),arena);
             for(var a:List.copyOf(agents)){
                 long begin=System.nanoTime();a.tick(running);
                 long ms=(System.nanoTime()-begin)/1_000_000;
@@ -283,6 +318,13 @@ public final class BotManager {
         if(!botVictim&&!botAttack)return;
         if(arena==null||!settings.enabled()||!MatchManager.botRunning()){event.setCanceled(true);return;}
         if(botAttack&&botVictim&&attacker.getUUID().equals(victim.getUUID()))return;
+        var ffa=MatchManager.freeForAll();
+        if(ffa!=null) {
+            // Everyone fights everyone; FreeForAllMatch itself blocks attacks to and from protected participants.
+            if(victim instanceof ServerPlayer p&&!botVictim&&(!ffa.participant(p.getUUID())||LobbyManager.respawning(p.getUUID())))event.setCanceled(true);
+            if(botVictim&&!botAttack&&attacker instanceof ServerPlayer p&&(!ffa.participant(p.getUUID())||p.isSpectator()))event.setCanceled(true);
+            return;
+        }
         // A bot's fake player (thrown items) carries the bot's UUID: its side is the bot's, not a lobby entry.
         String attackerSide=botAttack?team(attacker.getUUID()):attacker instanceof ServerPlayer p?LobbyManager.team(p.getUUID()):"";
         String victimSide=botVictim?side(victim):victim instanceof ServerPlayer p?LobbyManager.team(p.getUUID()):"";

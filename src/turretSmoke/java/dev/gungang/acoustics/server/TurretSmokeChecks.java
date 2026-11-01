@@ -113,7 +113,7 @@ public final class TurretSmokeChecks {
             p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,new net.minecraft.world.item.ItemStack(GadgetItems.RAPIER.get()));
             var thrustTarget=target(level,.5,1);
             p.getPersistentData().remove("RapierAttackTick");
-            for(int damage:new int[]{21,24,27,30,33,36,36}){
+            for(int damage:new int[]{21,26,32,39,47,47,47}){
                 float hp=thrustTarget.getHealth();
                 RapierItem.thrust(p);
                 check(thrustTarget.getHealth()==hp-damage,"Instant rapier combo damage incorrect: "+damage);
@@ -123,8 +123,8 @@ public final class TurretSmokeChecks {
             p.setYRot(0);RapierItem.thrust(p);p.setYRot(180);
             server.getWorldData().overworldData().setGameTime(level.getGameTime()+6);
             float comboHp=thrustTarget.getHealth();RapierItem.thrust(p);
-            check(thrustTarget.getHealth()==comboHp-21,"Miss did not reset combo");
-            server.getWorldData().overworldData().setGameTime(level.getGameTime()+21);
+            check(thrustTarget.getHealth()==comboHp-47,"Miss must preserve combo until timeout");
+            server.getWorldData().overworldData().setGameTime(level.getGameTime()+60);
             comboHp=thrustTarget.getHealth();RapierItem.thrust(p);
             check(thrustTarget.getHealth()==comboHp-21,"Expired combo did not reset");
             var blockPos=new BlockPos(0,241,2);level.setBlockAndUpdate(blockPos,Blocks.STONE.defaultBlockState());
@@ -144,7 +144,7 @@ public final class TurretSmokeChecks {
             level.setBlockAndUpdate(wallPos,GimmickBlocks.GAS.get().defaultBlockState());
             p.getPersistentData().remove("RapierAttackTick");GimmickEvents.request(p);
             check(!level.getBlockState(wallPos).getValue(GimmickBlock.ACTIVE),"Rapier did not explode gas barrel");
-            p.setOnGround(true);p.getPersistentData().putInt("RapierEnergy",100);
+            p.setOnGround(false);p.getPersistentData().putInt("RapierEnergy",100);
             GadgetItems.RAPIER.get().use(level,p,net.minecraft.world.InteractionHand.MAIN_HAND);
             check(RapierItem.gauge(p.getMainHandItem())==80,"Dash must cost 20");
             var damage=new net.minecraftforge.event.entity.living.LivingAttackEvent(p,level.damageSources().generic(),10);
@@ -156,6 +156,31 @@ public final class TurretSmokeChecks {
             p.getPersistentData().remove("RapierAttackTick");
             p.setXRot((float)Math.toDegrees(Math.atan2(p.getEyeY()-241.06,1.5)));GimmickEvents.request(p);
             check(!level.getBlockState(wallPos).getValue(GimmickBlock.ACTIVE),"Rapier did not trigger UXO");
+            p.setPos(8.5,241,4);p.setYRot(180);p.setXRot(0);p.setOnGround(false);
+            p.getPersistentData().remove(RapierItem.COMBO);p.getPersistentData().remove(RapierItem.COMBO_END);
+            p.getCooldowns().removeCooldown(GadgetItems.RAPIER.get());
+            p.getPersistentData().putInt("RapierEnergy",100);
+            var contact=target(level,8.5,2);float contactHp=contact.getHealth();
+            GadgetItems.RAPIER.get().use(level,p,net.minecraft.world.InteractionHand.MAIN_HAND);
+            double dashY=p.getY();
+            for(int i=0;i<6;i++){
+                // Repeated jump impulses and turns must not bend or extend the dash.
+                p.setYRot(90);p.setDeltaMovement(2,.42,2);p.jumpFromGround();
+                check(RapierDash.step(p),"Air dash ended early");
+                RapierItem.tick(new net.minecraftforge.event.TickEvent.PlayerTickEvent(net.minecraftforge.event.TickEvent.Phase.END,p));
+                check(Math.abs(p.getY()-dashY)<1e-6,"Dash jump changed altitude");
+                server.getWorldData().overworldData().setGameTime(level.getGameTime()+1);
+            }
+            check(Math.abs(p.getZ()-(4-6*RapierDash.SPEED))<1e-6&&Math.abs(p.getX()-8.5)<1e-6,"Dash is not fixed-distance straight motion");
+            check(p.getDeltaMovement().lengthSqr()==0&&!RapierDash.step(p),"Dash retained extra momentum");
+            check(contact.getHealth()==contactHp-21,"Dash must hit each enemy once as a normal attack");
+            check(p.getPersistentData().getInt(RapierItem.COMBO)==1,"Dash did not build combo");
+            check(RapierItem.hit(p,contact)&&contact.getHealth()==contactHp-21-26,"Click after dash did not share combo");
+            contact.discard();
+            p.setPos(12.5,240,4.5);p.setYRot(180);RapierDash.start(p,180);
+            level.setBlockAndUpdate(new BlockPos(12,240,3),Blocks.STONE.defaultBlockState());
+            check(RapierDash.step(p)&&p.getZ()>=4.29,"Dash crossed a solid wall");
+            check(!RapierDash.step(p),"Dash must stop at collision instead of sliding");
             System.out.println("GUNGANG_TURRET_SERVER_PASS turret_lifecycle rapier_adventure_gimmicks dash_cost20 immunity_expiry");
         }catch(Throwable error){error.printStackTrace();System.out.println("GUNGANG_TURRET_SERVER_FAIL");}
         finally{server.getWorldData().overworldData().setGameTime(start);server.halt(false);}

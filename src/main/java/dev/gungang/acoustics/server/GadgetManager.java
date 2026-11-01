@@ -49,7 +49,12 @@ public final class GadgetManager {
         if(SurvivalGadgets.jetting(p))return;
         if((kind.equals("landmine")||kind.equals("molotov")||kind.equals("arrow_grenade")||kind.equals("orbital_strike")||kind.equals("bear_trap")||kind.equals("turret"))&&SafeZones.contains(p))return;
         if(!p.isAlive()||p.isSpectator()||LobbyManager.respawning(p.getUUID())||!SecondaryRuntime.ready(p,stack))return;
-        if(kind.equals("jetpack")) {SurvivalGadgets.startJet(p,stack);return;}
+        if(kind.equals("jetpack")) {
+            // Prop hunt seekers fly only while hunting, never from the waiting room.
+            var hunt=MatchManager.propHunt();
+            if(hunt!=null&&hunt.participant(p.getUUID())&&(!hunt.hunting()||hunt.frozen(p.getUUID())||hunt.hider(p.getUUID())))return;
+            SurvivalGadgets.startJet(p,stack);return;
+        }
         if(CombatGadgets.use(p,stack,kind))return;
         if(GadgetItem.placement(kind)) {
             PREVIEW.put(p.getUUID(),new Preview(kind,p.getInventory().selected));GungangNetwork.send(p,new GungangNetwork.Gadget(kind));return;

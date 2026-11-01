@@ -41,13 +41,14 @@ class DownrunMapTest {
     }
     @Test void kingsRowEscortUsesItsOwnBasesPerCheckpoint() throws Exception {
         var map=new Gson().fromJson(Files.readString(Path.of("server_resource/config/gungang/server/maps/kings-row.json")),ArenaMap.class).validate();
-        assertTrue(map.enabled());assertEquals(300,map.timeLimitSeconds());assertEquals(180,map.escort().checkpointBonusSeconds());
+        assertTrue(map.enabled());assertEquals(300,map.timeLimitSeconds());assertEquals(120,map.escort().checkpointBonusSeconds());
         // Team deathmatch keeps the south base; escort defenders start at the first defense point.
         assertTrue(DeathmatchRules.defaults().arena(map).bravoArea().contains(216.5,5,-412.5));
         var escort=map.escortStart();
         assertTrue(escort.bravoArea().contains(305,5,-278));assertTrue(escort.alphaArea().contains(200,5,-190));
-        assertEquals(3,map.escort().respawns().size());
+        // Checkpoint 3 adds no entry: attackers keep spawning at the checkpoint 2 base to the end.
+        assertEquals(2,map.escort().respawns().size());
         assertTrue(map.escort().respawns().get(0).alphaArea().contains(292,5,-195));
-        assertNull(map.escort().respawns().get(2).bravo());
+        assertEquals(2,map.escort().respawns().get(1).checkpoint());assertTrue(map.escort().respawns().get(1).alphaArea().contains(230,5,-283));
     }
 }

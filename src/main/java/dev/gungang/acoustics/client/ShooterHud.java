@@ -43,7 +43,9 @@ public final class ShooterHud {
     public static void render(ForgeGui gui, GuiGraphics graphics, float partialTick, int screenWidth, int screenHeight) {
         Minecraft mc = Minecraft.getInstance();
         if (!visible(mc)) return;
-        var player = mc.player;
+        // Spectating someone (a player or a bot): their portrait, name, hands and health, as on their own screen.
+        net.minecraft.world.entity.LivingEntity player = subject(mc);
+        boolean watching = player != mc.player;
         // Two framebuffer pixels per HUD unit, independent of the Minecraft GUI scale.
         float scale = (float) (2.0 / mc.getWindow().getGuiScale());
         screenWidth = mc.getWindow().getWidth() / 2;
@@ -55,15 +57,19 @@ public final class ShooterHud {
         gui.setupOverlayRenderState(true, false);
         int team = TeamHud.teamColor(player);
         portrait(graphics, x, y + 2, 62, team);
-        PlayerFaceRenderer.draw(graphics, player.getSkinTextureLocation(), x + 3, y + 5, 56,
-                player.isModelPartShown(PlayerModelPart.HAT), false);
+        if (player instanceof net.minecraft.client.player.AbstractClientPlayer human)
+            PlayerFaceRenderer.draw(graphics, human.getSkinTextureLocation(), x + 3, y + 5, 56, human.isModelPartShown(PlayerModelPart.HAT), false);
+        else if (player instanceof dev.gungang.acoustics.server.BotEntity bot)
+            PlayerFaceRenderer.draw(graphics, BotRenderer.texture(bot.skin()), x + 3, y + 5, 56, true, false);
         RespawnPortrait.render(graphics, player.getUUID(), x + 3, y + 5, 56);
         TeamPointHud.badge(graphics,player.getUUID(),x+3,y+5,56);
         int detailX = x + 68;
-        ProgressionHud.draw(graphics,detailX,y+7,WIDTH-68);
+        if (!watching) ProgressionHud.draw(graphics,detailX,y+7,WIDTH-68);
         HudText.draw(graphics, player.getName().getString(), detailX, y + 19, WIDTH - 68, 0xFFFFFFFF);
         // Slot 1 is always inventory index 0, independent of the player's selected slot.
-        slot(graphics, player.getInventory().getItem(0), detailX, y + 32, player.getInventory().selected == 0, team);
+        if (player instanceof net.minecraft.world.entity.player.Player self && !watching)
+            slot(graphics, self.getInventory().getItem(0), detailX, y + 32, self.getInventory().selected == 0, team);
+        else slot(graphics, player.getMainHandItem(), detailX, y + 32, true, team);
         slot(graphics, player.getOffhandItem(), detailX + 38, y + 32, false, team);
         UtilityHud.placements(graphics,x+WIDTH+8,y+35);
 
@@ -85,9 +91,10 @@ public final class ShooterHud {
         int captionY = AcousticConfig.COMPASS.get() ? barY - 44 : barY - 14;
         // Any mode: name of the player whose camera is being watched; the disguise caption stacks above it.
         var watched = PropHuntClient.watched();
-        var info = watched == null || watched.equals(player.getUUID()) || mc.getConnection() == null ? null : mc.getConnection().getPlayerInfo(watched);
-        if (info != null) {
-            graphics.drawCenteredString(mc.font, "관전 중: " + info.getProfile().getName(), barX + barWidth / 2, captionY, 0xFFFFFFFF);
+        var info = watched == null || watched.equals(mc.player.getUUID()) || mc.getConnection() == null ? null : mc.getConnection().getPlayerInfo(watched);
+        String watchedName = info != null ? info.getProfile().getName() : watching ? player.getName().getString() : null;
+        if (watchedName != null) {
+            graphics.drawCenteredString(mc.font, "관전 중: " + watchedName, barX + barWidth / 2, captionY, 0xFFFFFFFF);
             captionY -= 11;
         }
         String disguise = PropHuntClient.caption();
@@ -103,6 +110,7 @@ public final class ShooterHud {
         HudHealthBars.render(graphics, barX + 1, barY + 1, barWidth - 2, HEALTH_HEIGHT - 2, layers, color);
         HudHealthBars.stripes(graphics, barX + 1, barY + 1, barWidth - 2, HEALTH_HEIGHT - 2, displayed, (player.tickCount + partialTick) / 20.0);
         finish(graphics, barX + 1, barY + 1, barWidth - 2, HEALTH_HEIGHT - 2, displayed);
+        PropAbilityHud.jump(graphics, barX, barY - 3, barWidth, partialTick);
         int airPercent = Math.round(100f * Math.max(0, Math.min(player.getMaxAirSupply(), player.getAirSupply()))
                 / Math.max(1, player.getMaxAirSupply()));
         String airLabel = airPercent + "%";
@@ -156,6 +164,16 @@ public final class ShooterHud {
         graphics.pose().popPose();
     }
 
+    /** Whose screen the HUD shows: the watched player or bot while spectating one, otherwise the local player. */
+    static net.minecraft.world.entity.LivingEntity subject(Minecraft mc) {
+        var camera = mc.getCameraEntity();
+        if (camera instanceof dev.gungang.acoustics.server.PropEntity prop && prop.owner() != null && mc.level != null) {
+            var owner = mc.level.getPlayerByUUID(prop.owner());
+            if (owner != null) return owner;
+        }
+        return camera instanceof net.minecraft.world.entity.LivingEntity living && camera != mc.player && living.isAlive()
+                && (camera instanceof net.minecraft.world.entity.player.Player || camera instanceof dev.gungang.acoustics.server.BotEntity) ? living : mc.player;
+    }
     private static void slot(GuiGraphics graphics, ItemStack stack, int x, int y, boolean selected, int team) {
         Minecraft mc = Minecraft.getInstance();
         if (selected) {

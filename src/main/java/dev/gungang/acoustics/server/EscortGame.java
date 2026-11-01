@@ -13,6 +13,8 @@ public final class EscortGame {
     public static final int OVERTIME_TICKS=5*20;
     public boolean overtime(){return remainingTicks==0&&winner.isEmpty();}
     public String motion="STOP", winner="";
+    /** Defenders push the cart back at this fraction of the base forward speed. */
+    public static final double PUSH_BACK=1/3d;
     public EscortGame(EscortRules rules,int seconds,double length,List<Double> checkpoints){
         this.rules=rules;this.length=length;this.checkpoints=List.copyOf(checkpoints);remainingTicks=seconds*20;
         if(length<=0||checkpoints.size()<1||checkpoints.size()>3)throw new IllegalArgumentException("Escort requires 1..3 checkpoints");
@@ -35,9 +37,9 @@ public final class EscortGame {
             }
             if(distance>=length){winner="ALPHA";return;}
         } else if(defenders&&attackers==0&&distance>floor){
-            // Defenders push at base speed, but cannot undo the most recently earned checkpoint.
+            // Defenders push at a third of base speed, but cannot undo the most recently earned checkpoint.
             idleTicks++;motion="REVERSE";
-            distance=Math.max(floor,distance-rules.speed()/20);
+            distance=Math.max(floor,distance-rules.speed()*PUSH_BACK/20);
         } else {
             if(attackers>0)idleTicks=0;else idleTicks++;
             if(!defenders&&attackers==0&&idleTicks>=rules.rollbackDelaySeconds()*20&&rules.rollbackSections().contains(completed)&&distance>floor&&rules.rollbackSpeed()>0){

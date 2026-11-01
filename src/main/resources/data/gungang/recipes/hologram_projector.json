@@ -1,0 +1,22 @@
+{
+    "key":  {
+                "G":  {
+                          "item":  "minecraft:glass"
+                      },
+                "R":  {
+                          "item":  "minecraft:sea_lantern"
+                      },
+                "I":  {
+                          "item":  "minecraft:iron_ingot"
+                      }
+            },
+    "pattern":  [
+                    " G ",
+                    "IRI",
+                    "III"
+                ],
+    "result":  {
+                   "item":  "gungang:hologram_projector"
+               },
+    "type":  "minecraft:crafting_shaped"
+}

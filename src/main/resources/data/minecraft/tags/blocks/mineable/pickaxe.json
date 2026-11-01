@@ -1,1 +1,10 @@
-{"replace":false,"values":["gungang:shutter"]}
+{
+    "replace":  false,
+    "values":  [
+                   "gungang:shutter",
+                   "gungang:hot_spring_nozzle",
+                   "gungang:bath_toad",
+                   "gungang:geyser",
+                   "gungang:hologram_projector"
+               ]
+}

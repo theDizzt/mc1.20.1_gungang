@@ -99,4 +99,60 @@ class BotTacticsTest {
         tactics.failed(Action.COVER,4);
         assertNotEquals(Action.COVER,tactics.choose(new Situation(.8f,0,true,1,0,1,false,12,true,false,false,NONE,false),5));
     }
+    private static Action withMission(Situation s,BotObjective.Stance stance,boolean inside,boolean guard){
+        return new BotTactics().choose(s,0,false,false,false,BotTactics.objective(s,stance,inside,guard));
+    }
+    @Test void captureMissionDrivesIdleBotsButVisibleEnemiesOffThePointComeFirst() {
+        var idle=new Situation(1,1,false,0,0,1,false,Double.POSITIVE_INFINITY,false,false,false,NONE,false);
+        assertEquals(Action.OBJECTIVE,withMission(idle,BotObjective.Stance.TAKE,false,false));
+        assertEquals(Action.OBJECTIVE,withMission(idle,BotObjective.Stance.CONTEST,false,false));
+        // A quiet point we own: guards stay, the others patrol.
+        assertEquals(Action.OBJECTIVE,withMission(idle,BotObjective.Stance.HOLD,true,true));
+        assertEquals(Action.PATROL,withMission(idle,BotObjective.Stance.HOLD,false,false));
+        var duel=new Situation(1,1,false,1,0,1,false,20,false,false,false,NONE,false);
+        assertEquals(Action.ENGAGE,withMission(duel,BotObjective.Stance.TAKE,false,false));
+        // On a contested point the fight is fought from the point.
+        assertEquals(Action.OBJECTIVE,withMission(duel,BotObjective.Stance.CONTEST,true,false));
+        // Badly hurt or out of ammo: survival first.
+        var wounded=new Situation(.25f,1,false,1,0,1,false,20,true,false,false,NONE,false);
+        assertNotEquals(Action.OBJECTIVE,withMission(wounded,BotObjective.Stance.CONTEST,true,false));
+        var empty=new Situation(1,0,true,1,0,1,false,20,false,false,false,NONE,false);
+        assertEquals(Action.COVER,withMission(empty,BotObjective.Stance.CONTEST,true,false));
+        assertEquals(0,BotTactics.objective(idle,null,false,true));
+    }
+    @Test void captureStanceFollowsTheHudState() {
+        assertEquals(BotObjective.Stance.TAKE,BotObjective.capture("A",null,"ALPHA",40,true,false).stance());
+        assertEquals(BotObjective.Stance.HOLD,BotObjective.capture("A",null,"ALPHA",100,true,false).stance());
+        assertEquals(BotObjective.Stance.CONTEST,BotObjective.capture("A",null,"ALPHA",100,false,true).stance());
+        assertEquals(BotObjective.Stance.HOLD,BotObjective.capture("A",null,"BRAVO",-100,false,false).stance());
+        assertEquals(BotObjective.Stance.TAKE,BotObjective.capture("A",null,"BRAVO",100,false,false).stance());
+    }
+    @Test void assaultAttackersAlwaysPushAndEveryDefenderGuardsThePoint() {
+        var centre=new net.minecraft.world.phys.Vec3(10,5,10);
+        var attack=BotObjective.assault("A",centre,5,"BRAVO",false,false);
+        assertEquals(BotObjective.Stance.TAKE,attack.stance());
+        assertEquals(BotObjective.Stance.CONTEST,BotObjective.assault("A",centre,5,"BRAVO",true,true).stance());
+        var defend=BotObjective.assault("A",centre,5,"ALPHA",false,false);
+        assertEquals(BotObjective.Stance.HOLD,defend.stance());
+        assertTrue(defend.guardAll());
+        assertEquals(BotObjective.Stance.CONTEST,BotObjective.assault("A",centre,5,"ALPHA",true,false).stance());
+        // Presence is feet distance to the centre, as the mode counts it.
+        assertTrue(defend.contains(new net.minecraft.world.phys.Vec3(13,5,13)));
+        assertFalse(defend.contains(new net.minecraft.world.phys.Vec3(14,5,14)));
+        var idle=new Situation(1,1,false,0,0,1,false,Double.POSITIVE_INFINITY,false,false,false,NONE,false);
+        assertEquals(Action.OBJECTIVE,withMission(idle,defend.stance(),false,defend.guardAll()));
+    }
+    @Test void escortCartIsTheMissionForBothTeams() {
+        var cart=new net.minecraft.world.phys.Vec3(0,5,0);
+        assertEquals(BotObjective.Stance.TAKE,BotObjective.escort(cart,5,"ALPHA",false,false,false).stance());
+        assertEquals(BotObjective.Stance.CONTEST,BotObjective.escort(cart,5,"ALPHA",true,true,true).stance());
+        // Defenders: stop escorts at the cart, push it back when alone, wait when it sits on a checkpoint.
+        assertEquals(BotObjective.Stance.CONTEST,BotObjective.escort(cart,5,"BRAVO",true,false,true).stance());
+        assertEquals(BotObjective.Stance.TAKE,BotObjective.escort(cart,5,"BRAVO",false,false,true).stance());
+        assertEquals(BotObjective.Stance.HOLD,BotObjective.escort(cart,5,"BRAVO",false,false,false).stance());
+        var near=BotObjective.escort(cart,5,"ALPHA",false,false,false);
+        assertTrue(near.contains(new net.minecraft.world.phys.Vec3(3,5,3))&&!near.contains(new net.minecraft.world.phys.Vec3(4,5,4)));
+        var idle=new Situation(1,1,false,0,0,1,false,Double.POSITIVE_INFINITY,false,false,false,NONE,false);
+        assertEquals(Action.OBJECTIVE,withMission(idle,near.stance(),false,near.guardAll()));
+    }
 }

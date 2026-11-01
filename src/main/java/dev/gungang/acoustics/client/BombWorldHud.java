@@ -15,6 +15,7 @@ import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID,value=Dist.CLIENT)
 public final class BombWorldHud {
+    public static final net.minecraft.client.KeyMapping KEY=new net.minecraft.client.KeyMapping("key.gungang.bomb",org.lwjgl.glfw.GLFW.GLFW_KEY_E,"key.categories.gungang");
     private static final ResourceLocation BEAM=new ResourceLocation("minecraft","textures/entity/beacon_beam.png");
     private static BombMatch.View view;
     private static long received;
@@ -107,12 +108,12 @@ public final class BombWorldHud {
     }
     private static boolean holding;
     /**
-     * E (the inventory key) plants or defuses only where it applies; elsewhere it still opens the inventory or loadout.
+     * The bomb key (E by default, shared with the inventory) plants or defuses only where it applies; elsewhere E still opens the inventory or loadout.
      * Called from KeyboardHandler before vanilla; the server times the hold between "down" and "up".
      */
     public static boolean key(int key,int scan,int action){
         var mc=Minecraft.getInstance();
-        if(!mc.options.keyInventory.matches(key,scan))return false;
+        if(!KEY.isActiveAndMatches(com.mojang.blaze3d.platform.InputConstants.getKey(key,scan)))return false;
         if(action==org.lwjgl.glfw.GLFW.GLFW_RELEASE){if(!holding)return false;release();return true;}
         if(holding)return true;
         if(action!=org.lwjgl.glfw.GLFW.GLFW_PRESS||mc.screen!=null||(plantCheck()==null&&!defusable()))return false;
@@ -127,8 +128,8 @@ public final class BombWorldHud {
         var mc=Minecraft.getInstance();if(mc.screen!=null||mc.options.hideGui||!HudVisibility.enabled())return;
         String text;int color;
         var check=plantCheck();
-        if(check!=null){boolean ok=check.site()!=null;text=ok?"설치 가능 · "+check.site()+" 지점 · E 길게 "+BombEquipment.timing.plantSeconds()+"초":"설치 불가 · "+check.reason();color=ok?0xFF7BE07B:0xFFFF6B6B;}
-        else if(defusable()){text="폭탄 해체 · E 길게 "+BombEquipment.timing.defuseSeconds()+"초";color=0xFF8CC8FF;}
+        if(check!=null){boolean ok=check.site()!=null;text=ok?"설치 가능 · "+check.site()+" 지점 · "+KEY.getTranslatedKeyMessage().getString()+" 길게 "+BombEquipment.timing.plantSeconds()+"초":"설치 불가 · "+check.reason();color=ok?0xFF7BE07B:0xFFFF6B6B;}
+        else if(defusable()){text="폭탄 해체 · "+KEY.getTranslatedKeyMessage().getString()+" 길게 "+BombEquipment.timing.defuseSeconds()+"초";color=0xFF8CC8FF;}
         else return;
         var g=event.getGuiGraphics();
         int w=mc.font.width(text)+12,x=(g.guiWidth()-w)/2,y=g.guiHeight()/2+14;

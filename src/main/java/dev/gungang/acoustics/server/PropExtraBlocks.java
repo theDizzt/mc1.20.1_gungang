@@ -14,7 +14,14 @@ public final class PropExtraBlocks {
     private static final DeferredRegister<Block> BLOCKS=DeferredRegister.create(ForgeRegistries.BLOCKS,"gungang");
     private static final DeferredRegister<Item> ITEMS=DeferredRegister.create(ForgeRegistries.ITEMS,"gungang");
     public static final RegistryObject<Block> MANNEQUIN=block("mannequin",()->new ShapeBlock(Properties.copy(Blocks.OAK_PLANKS),Block.box(4,0,4,12,29,12)));
+    /** 184·191: mannequins carrying a fixed skin (PropObjectRenderer) and an ability on the attack key (PropAbilities). */
+    public static final RegistryObject<Block> EUNBI_DOLL=block("eunbi_doll",()->new ShapeBlock(Properties.copy(Blocks.OAK_PLANKS),Block.box(4,0,4,12,29,12)));
+    public static final RegistryObject<Block> HANBI_DOLL=block("hanbi_doll",()->new ShapeBlock(Properties.copy(Blocks.OAK_PLANKS),Block.box(4,0,4,12,29,12)));
+    /** 187: a full block whose animated texture flows through pastel rainbow colours. */
+    public static final RegistryObject<Block> PRETTIEST_BLOCK=block("prettiest_block",()->new Block(Properties.copy(Blocks.WHITE_CONCRETE)));
     public static final RegistryObject<Block> DRIED_GHAST=block("dried_ghast",()->new ShapeBlock(Properties.copy(Blocks.SOUL_SAND).noOcclusion(),Block.box(3,0,3,13,10,13)));
+    /** Twice a grass block in every direction, centred on its cell so a disguise stays centred on the hider. */
+    public static final RegistryObject<Block> BIG_GRASS_BLOCK=block("big_grass_block",()->new ShapeBlock(Properties.copy(Blocks.GRASS_BLOCK).noOcclusion(),Block.box(-8,0,-8,24,32,24)));
     public static final RegistryObject<Block> WILDFLOWERS=block("wildflowers",()->new ShapeBlock(Properties.copy(Blocks.PINK_PETALS).noCollission().noOcclusion(),Block.box(0,0,0,16,3,16)));
     private static RegistryObject<Block> block(String id,java.util.function.Supplier<Block> supplier){var result=BLOCKS.register(id,supplier);ITEMS.register(id,()->new BlockItem(result.get(),new Item.Properties()));return result;}
     public static void register(net.minecraftforge.eventbus.api.IEventBus bus){BLOCKS.register(bus);ITEMS.register(bus);}
