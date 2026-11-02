@@ -228,7 +228,46 @@ public final class BombMatch {
         }
     }
     /** Where attacking bots go to plant: a pinged site, or (no living human attacker to ping) their own pick; else null. */
-    String attackSite(){return pingSite!=null?pingSite:alive(game.attacker()).isEmpty()?botSite:null;}
+    String attackSite(){
+        if(pingSite!=null)return pingSite;
+        if(!alive(game.attacker()).isEmpty())return null;
+        if(siteRound!=game.round()){
+            siteRound=game.round();
+            var a=site("A",BotObjective.Stance.TAKE,"",BotObjective.Act.PLANT).center();
+            var b=site("B",BotObjective.Stance.TAKE,"",BotObjective.Act.PLANT).center();
+            double da=0,db=0;
+            for(var bot:bots(game.attacker())){
+                var graph=BotNavGraph.of(arena,level);
+                da+=bot.position().distanceTo(a)+(graph!=null&&!graph.reachable(bot.position(),a)?10000:0);
+                db+=bot.position().distanceTo(b)+(graph!=null&&!graph.reachable(bot.position(),b)?10000:0);
+            }
+            botSite=da<=db?"A":"B";
+        }
+        return botSite;
+    }
+    private int siteRound=-1;
+    private UUID worker;
+    private String workerTask="";
+    /** Keep the current worker until death or a stalled approach; everyone else covers it. */
+    private int workerAt;
+    private double workerDistance;
+    private boolean worker(String team,int slot,Vec3 target,String task){
+        var living=bots(team);long now=level.getGameTime();
+        var current=living.stream().filter(b->b.getUUID().equals(worker)).findFirst().orElse(null);
+        if(!task.equals(workerTask)){current=null;worker=null;workerTask=task;}
+        if(current!=null){
+            double distance=current.position().distanceToSqr(target);
+            if(distance+4<workerDistance||botProgress(current.getUUID())>=0){workerAt=(int)now;workerDistance=distance;}
+        }
+        if(current==null||now-workerAt>200){
+            var old=current;
+            current=living.stream().min(java.util.Comparator.<BotEntity>comparingDouble(b->b.position().distanceToSqr(target)+(b==old?10000:0))
+                    .thenComparing(b->b.getUUID().toString())).orElse(null);
+            worker=current==null?null:current.getUUID();workerAt=(int)now;
+            workerDistance=current==null?0:current.position().distanceToSqr(target);
+        }
+        return worker!=null&&worker.equals(BotDatabase.id(slot));
+    }
     /**
      * Bomb mode as a bot reads it: attackers go plant at the pinged site and then guard the bomb; defenders guard a
      * site each (by slot), and once a bomb is down retake it and defuse.
@@ -237,10 +276,19 @@ public final class BombMatch {
         boolean attack=team.equals(game.attacker());
         if(game.planted()&&plantedPosition!=null){
             Vec3 bomb=Vec3.atBottomCenterOf(plantedPosition);
-            return attack?new BotObjective(plantedSite+" 폭탄",new AABB(bomb,bomb).inflate(6),bomb,6,BotObjective.Stance.HOLD,true,"설치 후 방어",BotObjective.Act.NONE,null)
-                    :new BotObjective(plantedSite+" 폭탄",new AABB(bomb,bomb).inflate(3),bomb,3,BotObjective.Stance.CONTEST,true,"탈환·해체",BotObjective.Act.DEFUSE,plantedPosition);
+            if(attack)return new BotObjective(plantedSite+" 폭탄",new AABB(bomb,bomb).inflate(6),bomb,6,BotObjective.Stance.HOLD,true,"설치 후 방어",BotObjective.Act.NONE,null);
+            boolean work=worker(team,slot,bomb,game.round()+"/defuse");
+            return new BotObjective(plantedSite+" 폭탄",new AABB(bomb,bomb).inflate(work?2:6),bomb,work?2:6,BotObjective.Stance.CONTEST,true,
+                    work?"탈환·해체":"해체 담당 엄호",work?BotObjective.Act.DEFUSE:BotObjective.Act.NONE,work?plantedPosition:null);
         }
-        if(attack){String site=attackSite();return site==null?null:site(site,BotObjective.Stance.TAKE,"설치",BotObjective.Act.PLANT);}
+        if(attack){
+            String site=attackSite();
+            // Human attackers may not have pinged yet. Advance and cover a site instead of idling at spawn.
+            if(site==null)return site(slot%2==0?"A":"B",BotObjective.Stance.TAKE,"설치 지점 진입·지원",BotObjective.Act.NONE);
+            var mission=site(site,BotObjective.Stance.TAKE,"설치",BotObjective.Act.PLANT);
+            boolean work=worker(team,slot,mission.center(),game.round()+"/plant/"+site);
+            return work?mission:site(site,BotObjective.Stance.TAKE,"설치 담당 엄호",BotObjective.Act.NONE);
+        }
         return site(slot%2==0?"A":"B",BotObjective.Stance.HOLD,"방어",BotObjective.Act.NONE);
     }
     private BotObjective site(String site,BotObjective.Stance stance,String doing,BotObjective.Act act){

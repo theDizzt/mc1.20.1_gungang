@@ -47,6 +47,8 @@ public final class PropCatalog {
         for(int i=0;i<types.length;i++)if(numbers[i].equals(key))return available().contains(types[i])?types[i]:null;
         return null;
     }
+    /** A block that stands for a catalog type: white for colour types, tube for corals. */
+    public static String display(String type){return type.startsWith("@")?"minecraft:white_"+type.substring(1):type.startsWith("#")?"minecraft:"+CORALS[0]+"_"+type.substring(1):id(type).toString();}
     /** Display numbers of the available types, for command suggestions. */
     public static List<String> numbers(){return available().stream().map(t->number(t.startsWith("@")?"minecraft:white_"+t.substring(1):t)).toList();}
     public static BlockState state(String id){
@@ -71,5 +73,31 @@ public final class PropCatalog {
         var block=ForgeRegistries.BLOCKS.getValue(id(item));return block==null?net.minecraft.network.chat.Component.literal(item):block.getName();
     }
     public static net.minecraft.network.chat.Component name(String item,BlockState state){return item.equals("minecraft:infested_stone")||item.equals("minecraft:flower_pot")||item.equals("minecraft:anvil")?state.getBlock().getName():name(item);}
+    /**
+     * Chat lines for /gungang prop list: every available type as "[01] name", four to a line. Colour types show their
+     * white (coral: tube) variant tagged "색상"; types with their own E effect are tagged "특수".
+     */
+    public static List<net.minecraft.network.chat.Component> listing(){
+        var lines=new ArrayList<net.minecraft.network.chat.Component>();
+        var types=available();
+        lines.add(net.minecraft.network.chat.Component.literal("변신 블록 목록 ("+types.size()+"종) · ").withStyle(net.minecraft.ChatFormatting.GOLD)
+                .append(net.minecraft.network.chat.Component.literal("특수").withStyle(net.minecraft.ChatFormatting.YELLOW))
+                .append(net.minecraft.network.chat.Component.literal(" E 효과 · ").withStyle(net.minecraft.ChatFormatting.GRAY))
+                .append(net.minecraft.network.chat.Component.literal("색상").withStyle(net.minecraft.ChatFormatting.LIGHT_PURPLE))
+                .append(net.minecraft.network.chat.Component.literal(" 무작위 색").withStyle(net.minecraft.ChatFormatting.GRAY)));
+        net.minecraft.network.chat.MutableComponent line=null;int count=0;
+        for(String type:types){
+            String block=type.startsWith("@")?"minecraft:white_"+type.substring(1):type.startsWith("#")?"minecraft:"+CORALS[0]+"_"+type.substring(1):id(type).toString();
+            var entry=net.minecraft.network.chat.Component.literal("["+number(block)+"] ").withStyle(net.minecraft.ChatFormatting.AQUA)
+                    .append(name(block).copy().withStyle(net.minecraft.ChatFormatting.WHITE));
+            if(type.startsWith("@")||type.startsWith("#"))entry.append(net.minecraft.network.chat.Component.literal(" 색상").withStyle(net.minecraft.ChatFormatting.LIGHT_PURPLE));
+            if(PropInteraction.special(block))entry.append(net.minecraft.network.chat.Component.literal(" 특수").withStyle(net.minecraft.ChatFormatting.YELLOW));
+            if(line==null)line=net.minecraft.network.chat.Component.empty();else line.append(net.minecraft.network.chat.Component.literal("  ·  ").withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
+            line.append(entry);
+            if(++count%4==0){lines.add(line);line=null;}
+        }
+        if(line!=null)lines.add(line);
+        return lines;
+    }
     private PropCatalog(){}
 }

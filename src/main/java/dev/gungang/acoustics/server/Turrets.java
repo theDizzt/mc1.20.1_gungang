@@ -48,7 +48,7 @@ public final class Turrets {
         }
         return true;
     }
-    public static boolean valid(Player p,BlockPos pos) {
+    public static boolean valid(net.minecraft.world.entity.LivingEntity p,BlockPos pos) {
         if(pos==null||!p.isAlive()||p.isSpectator()||SafeZones.contains(p))return false;
         var level=p.level();var box=bounds(pos);
         if(pos.getY()<level.getMinBuildHeight()||pos.getY()+2>level.getMaxBuildHeight()

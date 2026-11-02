@@ -213,10 +213,13 @@ final class BotActions {
      * zone when an enemy shows, and otherwise watch around, shifting spot now and then so the bot is not a fixed target.
      */
     private Node objective() {
-        var state=new Object(){Vec3 spot;int pickedAt,holdAt=-1,started=ctx.now,retries;};
+        var state=new Object(){Vec3 spot;int pickedAt,holdAt=-1,started=ctx.now,retries;BotObjective previous;};
         return BotTree.leaf(()->{
             var mission=ctx.objective;
             if(mission==null)return Status.SUCCESS;
+            if(state.previous==null||state.previous.act()!=mission.act()||!state.previous.center().equals(mission.center())){
+                state.spot=null;state.retries=0;state.previous=mission;
+            }
             boolean inside=mission.contains(ctx.bot.getBoundingBox());
             // Planting holds the spot for the whole key hold; only an idle guard shifts around.
             boolean stale=state.spot!=null&&inside&&ctx.target==null&&state.holdAt>=0&&mission.act()!=BotObjective.Act.PLANT
@@ -227,16 +230,28 @@ final class BotActions {
                 state.pickedAt=ctx.now;state.holdAt=-1;state.started=ctx.now;
             }
             if(mission.act()==BotObjective.Act.DEFUSE&&defuse(mission))return Status.RUNNING;
+            if(mission.act()==BotObjective.Act.PLANT){
+                var match=MatchManager.bomb();
+                boolean working=match!=null&&match.botProgress(ctx.bot.getUUID())>=0;
+                if(inside&&working){
+                    ctx.movement.halt(ctx.bot);ctx.allowFire=false;
+                    if(ctx.bot.onGround()&&ctx.bot.getDeltaMovement().horizontalDistanceSqr()<1e-3
+                            &&match.botUse(ctx.bot,false)==BombMatch.BotUse.FAILED)state.spot=null;
+                    return Status.RUNNING;
+                }
+            }
             if(inside&&ctx.target!=null) {
                 // Shooting is handled by the agent; the legs keep strafing on the point.
                 if(ctx.movement.combat(ctx.bot,ctx.arena,ctx.target,ctx.now,ctx.melee,ctx.shielding,mission))return Status.RUNNING;
                 // An out-of-range target cannot drive the legs; continue positioning on the mission.
             }
             // Two blocks, the radius at which travel itself reports arrival; closer would stall just short of the spot.
-            if(inside&&(arrived(ctx.bot.position(),state.spot,4)||ctx.bot.getNavigation().isDone()&&ctx.now-state.pickedAt>40)) {
+            if(mission.act()!=BotObjective.Act.DEFUSE&&inside&&(arrived(ctx.bot.position(),state.spot,mission.act()==BotObjective.Act.PLANT?.16:4)
+                    ||mission.act()==BotObjective.Act.NONE&&ctx.bot.getNavigation().isDone()&&ctx.now-state.pickedAt>40)) {
                 ctx.movement.halt(ctx.bot);
                 if(state.holdAt<0)state.holdAt=ctx.now;
                 if(mission.act()==BotObjective.Act.PLANT&&inside) {
+                    ctx.allowFire=false;
                     // Stand still on the site floor and hold the key; a floor that refuses the bomb means another spot.
                     var match=MatchManager.bomb();
                     // Moving 0.35 blocks cancels a plant, so the key is held only once the body has come to rest.
@@ -253,7 +268,7 @@ final class BotActions {
             if(ctx.now-state.started>600&&!inside)return Status.FAILURE;
             // An unreachable spot means another spot in the zone, not giving up the mission (three tries).
             if((ctx.pathTurn||ctx.bot.getNavigation().isDone())&&ctx.movement.travel(ctx.bot,ctx.arena,ctx.team,state.spot,ctx.now,false)
-                    &&!inside){
+                    &&(!inside||mission.act()==BotObjective.Act.DEFUSE)){
                 if(++state.retries>=3)return Status.FAILURE;
                 state.spot=null;
             }
@@ -271,13 +286,13 @@ final class BotActions {
         Vec3 bomb=Vec3.atCenterOf(mission.target());
         if(ctx.bot.getEyePosition().distanceTo(bomb)>4)return false;
         int total=BombEquipment.timing.defuseTicks(),done=match.botProgress(ctx.bot.getUUID());
-        if(match.game.fuseTicks()<total-Math.max(0,done))return false;
         var lead=ctx.perception.lead(ctx.now);
         boolean safe=ctx.target==null&&!ctx.perception.underFire(ctx.now)&&(lead==null||ctx.now-lead.updated>60);
-        if(!safe&&done<total*.6)return false;
+        if(!BotBombDecision.defuse(match.game.fuseTicks(),total,done,safe))return false;
         ctx.movement.halt(ctx.bot);
+        ctx.allowFire=false;
         ctx.aim.look(ctx.bot,bomb,ctx.settings);
-        if(ctx.bot.onGround()&&ctx.bot.getDeltaMovement().horizontalDistanceSqr()<1e-3)match.botUse(ctx.bot,true);
+        if(ctx.bot.onGround()&&ctx.bot.getDeltaMovement().horizontalDistanceSqr()<1e-3&&match.botUse(ctx.bot,true)==BombMatch.BotUse.FAILED)return false;
         return true;
     }
 

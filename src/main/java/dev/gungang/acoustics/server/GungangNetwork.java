@@ -45,7 +45,15 @@ public final class GungangNetwork {
     public record ConveyorSet(net.minecraft.core.BlockPos pos,int speed,boolean reverse) { }
     public record SecretBlockSync(boolean full,long[] positions,byte[] modes) { }
     public record RapierStep(int entity,float yaw) { }
+    public record Emote(int entity,int slot,boolean prop) { }
+    public record PropList() { }
     public static void register() {
+        CHANNEL.registerMessage(28,PropList.class,(p,b)->{},b->new PropList(),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->dev.gungang.acoustics.client.PropListScreen::open));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(27,Emote.class,(p,b)->{b.writeVarInt(p.entity);b.writeByte(p.slot);b.writeBoolean(p.prop);},b->new Emote(b.readVarInt(),b.readByte(),b.readBoolean()),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.EmoteClient.receive(p)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(25,RapierStep.class,(p,b)->{b.writeVarInt(p.entity);b.writeFloat(p.yaw);},b->new RapierStep(b.readVarInt(),b.readFloat()),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.RapierTrail.receive(p)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));

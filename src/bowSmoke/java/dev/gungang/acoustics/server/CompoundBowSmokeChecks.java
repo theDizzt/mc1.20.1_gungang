@@ -55,6 +55,17 @@ public final class CompoundBowSmokeChecks {
                 var config=Files.readString(Path.of("../../server_resource/config/gungang/server/weapons/26_compound-bow.json"));
                 var weapon=ServerFiles.GSON.fromJson(config,Loadouts.Weapon.class);weapon.validate(true);
                 check(weapon.id().equals("26"),"Weapon ID 26");
+                var bot=BotEntity.TYPE.get().create(level);bot.setUUID(UUID.randomUUID());bot.setPos(.5,101,.5);bot.setItemSlot(EquipmentSlot.MAINHAND,weapon.stack());
+                check(BotManager.supportedPrimary(weapon)&&BotManager.held(weapon.stack()),"Compound bow is supported in both weapon slots");
+                var spawned=new java.util.concurrent.atomic.AtomicReference<Projectile>();
+                java.util.function.Consumer<net.minecraftforge.event.entity.EntityJoinLevelEvent> capture=e->{if(!e.isCanceled()&&e.getEntity() instanceof Projectile shot&&shot.getOwner()==bot)spawned.set(shot);};
+                net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.LOWEST,false,net.minecraftforge.event.entity.EntityJoinLevelEvent.class,capture);
+                try{BotRanged.fire(bot,0,0);}finally{net.minecraftforge.common.MinecraftForge.EVENT_BUS.unregister(capture);}
+                var botArrow=spawned.get();
+                check(botArrow instanceof CompoundBow.ArrowAccess&&Math.abs(botArrow.getDeltaMovement().length()-8)<.001,"Bot fires real compound-bow projectile with bot ownership");
+                var botVictim=EntityType.COW.create(level);botVictim.setPos(8,101,8);botVictim.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000);botVictim.setHealth(1000);level.addFreshEntity(botVictim);
+                hit(botArrow,botVictim,false);check(botVictim.getHealth()<1000,"Bot compound-bow arrow actually damages a target");botArrow.discard();botVictim.discard();bot.discard();
+                System.out.println("BOT_COMPOUND_BOW_PASS selection projectile ownership damage");
                 player.getInventory().setItem(7,new ItemStack(Items.DIAMOND,3));
                 method(LobbyManager.class,"grantFree",ServerPlayer.class,Loadouts.Weapon.class,int.class).invoke(null,player,weapon,0);
                 bow=player.getMainHandItem();

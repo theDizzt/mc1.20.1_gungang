@@ -62,6 +62,8 @@ public final class PropHuntMatch {
         /** Q wall cling: the wall it hangs on, or null. */
         Direction wall;
         UUID watching;
+        /** Block choice: server tick the offer closes, the picked offer index (-1: none yet), first disguise or a change. */
+        int choiceUntil,picked=-1;boolean initial;
         final Map<String,Integer> actions=new HashMap<>();
         Member(ServerPlayer p,String team){id=p.getUUID();name=p.getGameProfile().getName();this.team=team;invisible=p.isInvisible();health=p.getAttribute(Attributes.MAX_HEALTH).getBaseValue();bot=false;}
         /** An AI bot reserved in the lobby; its body comes and goes with {@link BotAgent}. */
@@ -167,8 +169,46 @@ public final class PropHuntMatch {
         if(m.team.equals("BRAVO")){
             p.getInventory().setItem(0,seekerShotgun());p.getInventory().selected=0;
             p.getInventory().setItem(40,PropAwn.createJetpack(p));
-        }else{p.setInvisible(true);if(m.prop==null)change(p,m);}
+        }else{
+            p.setInvisible(true);
+            // The first disguise is picked from three blocks (10 s); a test session or an empty deck takes it at once.
+            if(m.prop==null&&game.offers(m.id).isEmpty()){
+                if(test||!offer(m,true))change(p,m);
+            }
+        }
         p.inventoryMenu.broadcastChanges();
+    }
+    /** How long a hider may pick its next block, and how many it sees. */
+    static final int CHOICE=10*20,OFFER=3;
+    /**
+     * Puts blocks on offer to a player hider: three, or fewer when the deck must still last every other hider still
+     * waiting for a block (bots draw at random and never get an offer). False when nothing could be offered.
+     */
+    private boolean offer(Member m,boolean initial){
+        if(test||m.bot)return false;
+        long waiting=members.values().stream().filter(o->hider(o.id)&&game.alive(o.id)&&game.offers(o.id).isEmpty()&&(!initial||o.prop==null)).count();
+        int count=Math.min(OFFER,Math.max(1,game.free()/(int)Math.max(1,waiting)));
+        if(game.offer(m.id,count,random).isEmpty())return false;
+        m.choiceUntil=server.getTickCount()+CHOICE;m.picked=-1;m.initial=initial;
+        var p=server.getPlayerList().getPlayer(m.id);
+        if(p!=null)p.sendSystemMessage(Component.literal(initial?"변신할 블록을 숫자 키로 고르세요 (10초, 고르지 않으면 무작위)":"10초 뒤 블록이 바뀝니다 · 숫자 키로 다음 블록을 고르세요 (고르지 않으면 무작위)").withStyle(net.minecraft.ChatFormatting.AQUA));
+        return true;
+    }
+    /** 10 s before a change: every living player hider gets its choice (bots keep drawing at random). */
+    private void openChoices(){
+        var hiders=members.values().stream().filter(o->hider(o.id)&&game.alive(o.id)).toList();
+        int left=hiders.size();
+        for(var o:hiders){
+            if(!o.bot){
+                int count=Math.min(OFFER,Math.max(1,game.free()/Math.max(1,left)));
+                if(!game.offer(o.id,count,random).isEmpty()){
+                    o.choiceUntil=server.getTickCount()+CHOICE;o.picked=-1;o.initial=false;
+                    var p=server.getPlayerList().getPlayer(o.id);
+                    if(p!=null)p.sendSystemMessage(Component.literal("10초 뒤 블록이 바뀝니다 · 숫자 키로 다음 블록을 고르세요 (고르지 않으면 무작위)").withStyle(net.minecraft.ChatFormatting.AQUA));
+                }
+            }
+            left--;
+        }
     }
     /** A bot body entering the match: a hider becomes its block (50 health, invisible), a seeker keeps 100 health. */
     void botSpawned(BotEntity bot){
@@ -194,7 +234,9 @@ public final class PropHuntMatch {
         // A health pack sunk into the floor comes back up first, so the new block never starts inside the ground.
         boolean sunk=m.prop!=null&&m.prop.sunk();
         if(m.prop!=null){PropInteraction.remove(m.prop);m.prop.discard();}if(p instanceof ServerPlayer sp)sp.closeContainer();
-        String item=test?items.get(m.id):PropCatalog.variant(game.draw(),random);
+        // The picked offer, a random one of the offer when time ran out, or (bots) the next free block.
+        String item=test?items.get(m.id):PropCatalog.variant(game.take(m.id,m.picked,random),random);
+        m.picked=-1;m.initial=false;m.choiceUntil=0;
         var level=(ServerLevel)p.level();
         m.prop=PropEntity.TYPE.get().create(level);m.prop.setup(m.id,item,random.nextInt(26));m.prop.setPos(m.fixed?m.anchor:p.position());
         level.addFreshEntity(m.prop);
@@ -212,6 +254,7 @@ public final class PropHuntMatch {
         // Keep the real hiding place loaded even while its owner watches a distant player.
         for(var m:members.values())if(m.prop!=null)((ServerLevel)m.prop.level()).getChunkSource().addRegionTicket(net.minecraft.server.level.TicketType.POST_TELEPORT,new net.minecraft.world.level.ChunkPos(m.prop.blockPosition()),2,m.prop.getId());
         boolean change=!test&&game.tick();
+        if(!test&&!reviewing&&phase()!=PropHuntGame.Phase.REVIEW&&game.nextChange()==CHOICE)openChoices();
         if(phase()==PropHuntGame.Phase.REVIEW&&!reviewing){
             abilities.clear();PropSummons.clear(server);
             reviewing=true;
@@ -227,6 +270,8 @@ public final class PropHuntMatch {
                 if(!game.alive(m.id))continue;
                 p.setInvisible(true);
                 if(change)change(p,m);
+                // First disguise: on the pick (see action) or when the 10 s run out.
+                else if(m.prop==null&&(game.offers(m.id).isEmpty()||server.getTickCount()>=m.choiceUntil))change(p,m);
                 if(m.watching!=null){var camera=camera(m.watching);if(camera==null)home(p,m);else if(p.getCamera()!=camera)p.setCamera(camera);}
                 if(m.fixed&&m.watching==null){hold(p,m.anchor,m.yaw,m.pitch);}
                 // Off the wall (moved past its edge, or a new disguise that no longer fits there): fall as usual.
@@ -448,6 +493,15 @@ public final class PropHuntMatch {
     public void action(ServerPlayer p,String action){
         var m=members.get(p.getUUID());if(m==null||!hider(m.id)||!game.alive(m.id)||reviewing)return;
         int now=server.getTickCount();if(now-m.actions.getOrDefault(action,-100)<2)return;m.actions.put(action,now);
+        if(action.startsWith("pick")){
+            int index;try{index=Integer.parseInt(action.substring(4))-1;}catch(NumberFormatException e){return;}
+            if(index<0||index>=game.offers(m.id).size())return;
+            m.picked=index;
+            // The first disguise starts at once; a change keeps its time and uses the pick then.
+            if(m.prop==null)change(p,m);
+            return;
+        }
+        if(m.prop==null)return;
         switch(action){
             case "lock"->{home(p,m);m.fixed=!m.fixed;m.anchor=p.position();m.yaw=p.getYRot();m.pitch=p.getXRot();m.charge=-1;}
             case "next"->cycle(p,m,1);
@@ -625,7 +679,11 @@ public final class PropHuntMatch {
                 boolean found=hider(m.id)&&!game.alive(m.id),visible=see||found;
                 rows.add(new PropHuntSnapshot.Row(m.id.toString(),m.name,m.team,visible&&m.prop!=null?m.prop.item():"",visible&&m.prop!=null?Block.getId(m.prop.state()):0,m.prop==null?-1:m.prop.getId(),found,m.fixed,game.hidden(m.id),game.found(m.id),visible?abilityRemaining(m):0,m.prop==null?0:PropAbilities.cooldown(m.prop.item()),visible?abilities.active(m.id):0,visible?abilities.auxiliary(m.id):0,visible?abilities.auxiliaryMax(m.id):0,abilities.stunned(m.id),m.wall==null?-1:m.wall.get2DDataValue()));
             }
-            GungangNetwork.send(viewer,new GungangNetwork.PropHunt(ServerFiles.GSON.toJson(new PropHuntSnapshot(true,phase().name(),test?0:(game.remaining()+19)/20,test?0:(game.nextChange()+19)/20,rows,test?0:(game.huntRemaining()+19)/20,!test&&game.finalMinute()))));
+            // Only the viewer's own block choice is sent, never anyone else's.
+            var own=members.get(viewer.getUUID());
+            var offers=own==null||reviewing||!hider(own.id)||!game.alive(own.id)?List.<String>of():game.offers(own.id);
+            int choice=offers.isEmpty()?0:Math.max(0,(own.choiceUntil-server.getTickCount()+19)/20);
+            GungangNetwork.send(viewer,new GungangNetwork.PropHunt(ServerFiles.GSON.toJson(new PropHuntSnapshot(true,phase().name(),test?0:(game.remaining()+19)/20,test?0:(game.nextChange()+19)/20,rows,test?0:(game.huntRemaining()+19)/20,!test&&game.finalMinute(),offers,offers.isEmpty()?-1:own.picked,choice,!offers.isEmpty()&&own.initial))));
         }
     }
     private int abilityRemaining(Member m){

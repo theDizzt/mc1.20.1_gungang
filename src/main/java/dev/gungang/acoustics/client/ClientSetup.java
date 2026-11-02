@@ -78,6 +78,7 @@ public final class ClientSetup {
         event.register(LobbyClient.LOBBY);
         event.register(BombWorldHud.KEY);
         event.register(ItemNbtCopy.COPY);
+        for(var key:EmoteClient.KEYS)event.register(key);
     }
     @SubscribeEvent
     public static void overlays(RegisterGuiOverlaysEvent event) {

@@ -47,6 +47,7 @@ public final class PropRenderer extends EntityRenderer<PropEntity> {
     @Override public void render(PropEntity entity,float yaw,float partial,PoseStack pose,MultiBufferSource buffers,int light){
         if(concealed(entity))return;
         var mc=Minecraft.getInstance();var state=entity.state();pose.pushPose();
+        var emote=EmoteClient.offset(entity,partial);pose.translate(emote.x,emote.y,emote.z);
         if(PropObjectRenderer.render(entity,partial,pose,buffers,light)){
         }else if(entity.item().equals("minecraft:barrier")){
             // Invisible barrier body; only authorized viewers receive a cube in the outline mask.
@@ -99,6 +100,7 @@ public final class PropRenderer extends EntityRenderer<PropEntity> {
             if(entity.item().equals("minecraft:beacon")&&entity.open())net.minecraft.client.renderer.blockentity.BeaconRenderer.renderBeaconBeam(pose,buffers,new ResourceLocation("minecraft","textures/entity/beacon_beam.png"),partial,1,entity.level().getGameTime(),0,128,new float[]{.45f,1,.85f},.2f,.25f);
         }
         pose.popPose();
+        EmoteClient.popup(entity,partial,pose,buffers,light);
         if(entity.marker())renderNameTag(entity,entity.getDisplayName(),pose,buffers,light);
     }
     /**

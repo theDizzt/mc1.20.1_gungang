@@ -25,8 +25,8 @@ import net.minecraft.world.phys.*;
  *
  * <p><b>Hider.</b> During the hiding minute it scores reachable spots for its block (same or similar blocks around,
  * walls and corners, a roof, darkness, few open sight lines, away from the seekers' room and teammates), walks there,
- * settles exactly on the block grid and turns its front to the open side. Hidden, it stays still while seekers look
- * its way and grows nervous as they close in. When shot (found out) or about to be, it runs: away from the seekers it
+ * settles exactly on the block grid and turns its front to the open side. Quiet hiders periodically relocate across
+ * the mapped arena. On seeing a seeker or being shot, it runs: away from the seekers it
  * has seen, toward ground they cannot see, leaping with charged jumps, then hides again somewhere new. It uses its
  * block: TNT and gas barrels blow up seekers in range, dispensers shoot those in line, end crystals and spawners hunt
  * them, health packs sink into the floor, and it taunts — horn, music, bells, shrieks, rude signs — when a seeker
@@ -84,20 +84,39 @@ final class BotPropHunt {
      */
     private int lastThreatAt=-10000,nextRoam;
     private boolean roaming;
+    private Vec3 sweepTo;
+    private int sweepSince;
     private final ArrayDeque<BlockPos> recentSpots=new ArrayDeque<>();
+    final BotPropReactions reactions=new BotPropReactions();
+    private final Map<BlockPos,Integer> exposed=new HashMap<>();
+    private void expose(int now){if(spot!=null)exposed.put(spot,now+600);}
+    private boolean exposed(BlockPos feet,int now){exposed.values().removeIf(until->now>=until);return exposed.keySet().stream().anyMatch(p->p.distSqr(feet)<64);}
+    private int exits(BotEntity bot,BlockPos feet){
+        int count=0;
+        for(var d:Direction.Plane.HORIZONTAL){
+            boolean open=true;
+            for(int n=1;n<=3;n++){
+                var next=BotMovement.ground(bot,BotManager.arena(),Vec3.atBottomCenterOf(feet.relative(d,n)));
+                if(next==null||Math.abs(next.getY()-feet.getY())>1){open=false;break;}
+            }
+            if(open)count++;
+        }
+        return count;
+    }
     private record Threat(LivingEntity seeker,double distance,boolean looking){}
     private List<Threat> threats=List.of();
     private final Map<UUID,Vec3> remembered=new HashMap<>();
     private final Map<UUID,Integer> rememberedAt=new HashMap<>();
 
     void reset(BotAgent a,PropHuntMatch hunt){
+        reactions.reset();
         var server=BotManager.server();int now=server==null?0:server.getTickCount();
         aiming=null;shotPending=false;quarry=null;investigate=null;seenAt.clear();seenTick.clear();
         nextScan=now+random.nextInt(8);nextLookAround=now+60+random.nextInt(80);lookUntil=0;
         state=Hide.SEARCH;spot=null;searchCentre=null;searchRadius=32;avoidSeen=false;nextSearch=now+random.nextInt(10);
         threats=List.of();nervous=0;fleeTo=null;reconsider=false;lastItem="";toggledAt=-1;
         holdPos=null;clingWall=null;clinging=false;ramTarget=null;revertAt=-1;nextFidget=now+600+random.nextInt(600);
-        lastThreatAt=-10000;roaming=false;recentSpots.clear();nextRoam=now+roamDelay();
+        lastThreatAt=-10000;roaming=false;sweepTo=null;recentSpots.clear();exposed.clear();nextRoam=now+roamDelay();
         nextTaunt=now+400+random.nextInt(400);nextAbility=now;nextPerceive=now;
         nerve=.35+random.nextDouble()*.3;boldness=.3+random.nextDouble()*.6;
         if(a.bot!=null){aimYaw=a.bot.getYRot();aimPitch=a.bot.getXRot();}
@@ -138,7 +157,9 @@ final class BotPropHunt {
         // One shot at a doubtful block: a hit makes it the quarry (see confirmed), otherwise it counts as checked.
         if(shotPending&&now-shotAt>=8){
             shotPending=false;
-            if(aiming!=null){cleared.put(aiming.cell().asLong(),now+(aiming.prop()==null?1200:500)+random.nextInt(400));aiming=null;}
+            if(aiming!=null&&(aiming.prop()==null||bot.getEyePosition().distanceTo(aiming.prop().getBoundingBox().getCenter())<=8)){
+                cleared.put(aiming.cell().asLong(),now+(aiming.prop()==null?1200:500)+random.nextInt(400));aiming=null;
+            }
         }
         if(aiming==null&&now>=nextScan){nextScan=now+8;scan(a,hunt,disguises,now);}
         if(aiming!=null){
@@ -148,10 +169,10 @@ final class BotPropHunt {
                 var point=prop!=null?prop.getBoundingBox().getCenter():aiming.point();
                 double distance=bot.getEyePosition().distanceTo(point);
                 if(now-aimSince>240&&!shotPending){cleared.put(aiming.cell().asLong(),now+400);aiming=null;return;}
-                // Shotgun range: walk up to a doubtful block before deciding.
-                if(distance>8||!sees(bot,point)){mode="수상한 블록으로 이동";go(a,point,now);bot.getLookControl().setLookAt(point.x,point.y,point.z,30,30);return;}
-                bot.getNavigation().stop();
-                mode=String.format(Locale.ROOT,"긴가민가 %.0f%% · 조준",Math.min(99,aiming.score()*100));
+                boolean visible=sees(bot,point);
+                if(distance>4.5||!visible)go(a,point,now);else bot.getNavigation().stop();
+                if(!visible){mode="수상한 블록 추적";bot.getLookControl().setLookAt(point.x,point.y,point.z,30,30);return;}
+                mode=distance>4.5?"수상한 블록 접근·사격":String.format(Locale.ROOT,"긴가민가 %.0f%% · 조준",Math.min(99,aiming.score()*100));
                 if(aim(a,point,now,false)&&!shotPending&&now-aimSince>=hesitation&&now>=a.nextShot){fire(a,now);shotPending=true;shotAt=now;}
                 return;
             }
@@ -170,6 +191,29 @@ final class BotPropHunt {
         }
         if(now>=nextLookAround){lookUntil=now+40+random.nextInt(30);lookStart=now;lookYaw=bot.getYHeadRot();nextLookAround=now+140+random.nextInt(160);return;}
         mode="수색";
+        var graph=BotNavGraph.of(BotManager.arena(),bot.level());
+        if(graph!=null){
+            if(sweepTo!=null&&(bot.position().distanceToSqr(sweepTo)<9||now-sweepSince>600))sweepTo=null;
+            if(sweepTo==null){
+                for(int i=0;i<8;i++){
+                    var candidate=graph.roamSpot(bot.position(),random);if(candidate==null)continue;
+                    if(candidate.distToCenterSqr(bot.position())<144||recentSpots.stream().anyMatch(p->p.distSqr(candidate)<144))continue;
+                    // Spread seekers across rooms instead of repeatedly searching behind another seeker.
+                    var point=Vec3.atBottomCenterOf(candidate);
+                    if(BotManager.entities().stream().filter(other->other!=bot&&BotManager.side(other).equals(a.team))
+                            .anyMatch(other->{var agent=BotManager.agent(other);return agent!=null&&agent.propHunt.sweepTo!=null&&agent.propHunt.sweepTo.distanceToSqr(point)<144;}))continue;
+                    sweepTo=Vec3.atBottomCenterOf(candidate);sweepSince=now;recentSpots.addLast(candidate);
+                    while(recentSpots.size()>8)recentSpots.removeFirst();break;
+                }
+            }
+            if(sweepTo!=null){
+                if(now>=a.nextPath||bot.getNavigation().isDone()){
+                    a.nextPath=now+10;
+                    if(a.movement.travel(bot,BotManager.arena(),a.team,sweepTo,now,false))sweepTo=null;
+                }
+                return;
+            }
+        }
         if(now>=a.nextPath||bot.getNavigation().isDone()){a.nextPath=now+BotManager.settings().pathTicks();a.movement.travel(bot,BotManager.arena(),a.team,null,now,true);}
     }
     /** What this seeker notices in front of it this glance, scored alike for real blocks and disguises. */
@@ -265,7 +309,19 @@ final class BotPropHunt {
         a.nextShot=now+(result.equals("SUCCESS")?14:4);
     }
     private void go(BotAgent a,Vec3 point,int now){
-        if(now>=a.nextPath||a.bot.getNavigation().isDone()){a.nextPath=now+10;a.movement.travel(a.bot,BotManager.arena(),a.team,point,now,false);}
+        if(now<a.nextPath&&!a.bot.getNavigation().isDone())return;
+        a.nextPath=now+10;
+        var bot=a.bot;var arena=BotManager.arena();
+        // Aim at the block's centre, but walk to reachable feet beside/below it, including airborne disguises.
+        var feet=BotMovement.ground(bot,arena,point);
+        if(feet==null)feet=BotMovement.ground(bot,arena,new Vec3(point.x,bot.getY(),point.z));
+        var destination=feet==null?point:Vec3.atBottomCenterOf(feet);
+        if(!a.movement.travel(bot,arena,a.team,destination,now,false))return;
+        for(int i=0;i<8&&!BotMovement.spent();i++){
+            double angle=i*Math.PI/4;
+            var side=BotMovement.ground(bot,arena,new Vec3(point.x+Math.cos(angle)*3,bot.getY(),point.z+Math.sin(angle)*3));
+            if(side!=null&&!a.movement.travel(bot,arena,a.team,Vec3.atBottomCenterOf(side),now,false))break;
+        }
     }
     /** A pellet of this seeker landed on a disguise: from now on it is a hider. */
     void confirmed(PropEntity prop,boolean found){
@@ -304,6 +360,9 @@ final class BotPropHunt {
         var bot=a.bot;var prop=bot.disguise();if(prop==null)return;
         if(!prop.item().equals(lastItem)){boolean first=lastItem.isEmpty();lastItem=prop.item();toggledAt=-1;if(!first)reconsider=true;}
         if(now>=nextPerceive){nextPerceive=now+5;perceive(a,hunt,prop,now);}
+        // Seeing a seeker is enough to run; never freeze in its line of fire waiting to be hit.
+        if(hunt.hunting()&&!threats.isEmpty()&&state!=Hide.FLEE&&state!=Hide.RAM)flee(a,now);
+        reactions.tick(bot,hunt,now,!threats.isEmpty()||state==Hide.FLEE||state==Hide.RAM);
         // Explosive blocks answer any seeker in range, whatever else is going on.
         if(hunt.hunting()&&PropHuntMatch.explosive(prop.item())&&hunt.botCooldown(a.id)==0){
             double radius=prop.item().equals("minecraft:tnt")?PropHuntMatch.TNT_RADIUS:GimmickConfig.gas.radius();
@@ -349,17 +408,27 @@ final class BotPropHunt {
         var level=bot.level();
         record Option(BlockPos feet,double score){}
         var options=new ArrayList<Option>();
+        var graph=BotNavGraph.of(arena,level);
+        if(graph!=null&&!avoidSeen)for(int i=0;i<16;i++){
+            var feet=graph.roamSpot(bot.position(),random);if(feet==null)continue;
+            double distance=bot.position().distanceTo(Vec3.atBottomCenterOf(feet));
+            if(distance<16||recentSpots.stream().anyMatch(p->p.distSqr(feet)<144))continue;
+            if(exposed(feet,now))continue;
+            double quality=level.hasChunkAt(feet)?score(a,hunt,prop,feet):0;
+            options.add(new Option(feet,quality+Math.min(4,distance/16)));
+        }
         for(int i=0;i<40;i++){
             double angle=random.nextDouble()*Math.PI*2,r=3+random.nextDouble()*searchRadius;
             var sample=searchCentre.add(Math.cos(angle)*r,random.nextInt(9)-4,Math.sin(angle)*r);
             var feet=BotMovement.ground(bot,arena,sample);if(feet==null)continue;
-            options.add(new Option(feet,score(a,hunt,prop,feet)));
+            if(!exposed(feet,now))options.add(new Option(feet,score(a,hunt,prop,feet)));
         }
         // Blocks that belong on walls (paintings, signs, torches...) also try hanging there (Q), well above the floor.
         Direction wallChoice=null;double heightChoice=0;
         if(wallBlock(prop)&&!options.isEmpty()){
             var top=options.stream().max(Comparator.comparingDouble(Option::score)).get();
             for(var option:new ArrayList<>(options)){
+                if(!level.hasChunkAt(option.feet()))continue;
                 var wall=hangWall(level,option.feet(),bot);if(wall==null)continue;
                 double h=1+random.nextInt(3)*.5,bonus=prop.item().equals("minecraft:painting")?1.8:.9;
                 if(option.score()+bonus>top.score()){top=new Option(option.feet(),option.score()+bonus);wallChoice=wall;heightChoice=h;}
@@ -371,6 +440,11 @@ final class BotPropHunt {
         int tries=0;
         for(var option:options){
             if(tries++>=3||BotMovement.spent())break;
+            var destination=Vec3.atBottomCenterOf(option.feet());
+            if(graph!=null&&bot.position().distanceToSqr(destination)>BotRoute.FAR*BotRoute.FAR&&graph.reachable(bot.position(),destination)){
+                if(a.movement.travel(bot,arena,a.team,destination,now,false))continue;
+                spot=option.feet();state=Hide.TRAVEL;travelSince=now;clingWall=null;clingHeight=0;return;
+            }
             var path=BotMovement.path(bot,option.feet(),0);
             if(path!=null&&path.canReach()&&bot.getNavigation().moveTo(path,avoidSeen?.85:1)){
                 spot=option.feet();state=Hide.TRAVEL;travelSince=now;
@@ -404,6 +478,7 @@ final class BotPropHunt {
             if(!blocked(level,point.add(0,.5,0),to,bot))open++;
         }
         s-=open*.15;
+        int ways=exits(bot,feet);s+=ways>=2?1.5:ways==1?-2:-5;
         var seekers=arena.bravoSpawn();double far=point.distanceTo(new Vec3(seekers.x(),seekers.y(),seekers.z()));
         s+=Math.min(1.2,far/30);
         if(BotMovement.nearSpawn(arena,"BRAVO",point))s-=4;
@@ -417,9 +492,7 @@ final class BotPropHunt {
     }
     private void travel(BotAgent a,PropHuntMatch hunt,PropEntity prop,int now){
         var bot=a.bot;mode=hunt.hiding()?"숨을 곳으로 이동":roaming?"배회 중":"새 은신처로 이동";
-        // Moving in front of a seeker gives a block away: freeze until it looks elsewhere (unless it is right here).
-        if(hunt.hunting()&&threats.stream().anyMatch(t->t.looking()&&t.distance()>4)){bot.getNavigation().stop();mode="움직임 멈춤 (술래 시선)";return;}
-        if(hunt.hunting()&&threats.stream().anyMatch(t->t.distance()<=3)){flee(a,now);return;}
+        if(hunt.hunting()&&!threats.isEmpty()){flee(a,now);return;}
         var target=Vec3.atBottomCenterOf(spot);
         double flat=Math.pow(bot.getX()-target.x,2)+Math.pow(bot.getZ()-target.z,2);
         if(flat<.5&&Math.abs(bot.getY()-target.y)<1.2){settle(a,hunt,prop,now);return;}
@@ -430,9 +503,9 @@ final class BotPropHunt {
                 bot.setDeltaMovement(dir.x,PropHuntGame.jumpVelocity((int)Math.min(20,(target.y-bot.getY())*7)),dir.z);bot.hurtMarked=true;return;
             }
             if(BotMovement.spent())return;
-            var path=BotMovement.path(bot,spot,0);
-            if(path==null||!path.canReach()||!bot.getNavigation().moveTo(path,avoidSeen?.85:1)){state=Hide.SEARCH;nextSearch=now;}
+            if(a.movement.travel(bot,BotManager.arena(),a.team,target,now,false)){state=Hide.SEARCH;nextSearch=now;}
         }
+        else if(now>=a.nextPath){a.nextPath=now+10;a.movement.travel(bot,BotManager.arena(),a.team,target,now,false);}
         // Out of hiding time (or stuck): take the nearest decent cell rather than be caught walking.
         if(now-travelSince>(hunt.hiding()?900:400)){spot=bot.blockPosition();settle(a,hunt,prop,now);}
     }
@@ -510,10 +583,10 @@ final class BotPropHunt {
         taunt(a,hunt,prop,now);
         fidget(a,hunt,prop,now);
         // Roam: quiet for a while (no seeker in sight for 10 s, none remembered close by), time to slip elsewhere.
-        if(state==Hide.HIDDEN&&now>=nextRoam&&now-lastThreatAt>200&&(!hunt.finalMinute()||boldness>.7)
+        if(state==Hide.HIDDEN&&now>=nextRoam&&now-lastThreatAt>100
                 &&remembered.values().stream().noneMatch(seen->seen.distanceTo(prop.position())<16)){
             if(prop.sinkable()&&prop.sunk())hunt.botUse(bot);
-            roaming=true;state=Hide.SEARCH;searchCentre=bot.position();searchRadius=10+random.nextDouble()*16;avoidSeen=true;nextSearch=now;
+            roaming=true;state=Hide.SEARCH;searchCentre=bot.position();searchRadius=24+random.nextDouble()*24;avoidSeen=false;nextSearch=now;
             mode="자리 옮기는 중";return;
         }
         // A new block that fits this place badly moves on, but only while nobody watches.
@@ -603,7 +676,8 @@ final class BotPropHunt {
     }
     /** Found out (or about to be): run from the seekers it knows about, toward ground they cannot see. */
     private void flee(BotAgent a,int now){
-        if(state!=Hide.FLEE){state=Hide.FLEE;fleeUntil=now+300;calmSince=now;fleeTo=null;}
+        if(state!=Hide.FLEE)exposed.put(a.bot.blockPosition(),now+600);
+        if(state!=Hide.FLEE){expose(now);state=Hide.FLEE;fleeUntil=now+300;calmSince=now;fleeTo=null;release(a.bot);a.movement.halt(a.bot);a.nextPath=now;}
     }
     private void fleeing(BotAgent a,PropHuntMatch hunt,PropEntity prop,int now){
         var bot=a.bot;mode="발각 · 도주";
@@ -614,7 +688,7 @@ final class BotPropHunt {
         for(var t:threats)known.add(t.seeker().position());
         if(known.isEmpty())known.addAll(remembered.values());
         boolean watched=!threats.isEmpty();
-        if(watched)calmSince=now;
+        if(watched){calmSince=now;fleeUntil=now+300;}
         // Lost them: hide again nearby, somewhere they have not seen.
         if(now-calmSince>60||now>fleeUntil){
             state=Hide.SEARCH;searchCentre=bot.position();searchRadius=18;avoidSeen=true;nextSearch=now;nervous=0;return;
@@ -700,8 +774,8 @@ final class BotPropHunt {
         float yaw=(float)(Mth.atan2(d.z,d.x)*180/Math.PI)-90,pitch=(float)(-(Mth.atan2(d.y,Math.sqrt(d.x*d.x+d.z*d.z))*180/Math.PI));
         bot.setYRot(yaw);bot.yBodyRot=yaw;bot.setYHeadRot(yaw);bot.setXRot(pitch);
     }
-    /** Ticks until the next roam: 30–90 s, sooner for bolder bots. */
-    private int roamDelay(){return (int)((600+random.nextInt(1200))*(1.3-boldness*.6));}
+    /** Quiet hiders relocate every 12–30 seconds, rather than camping for most of the round. */
+    private int roamDelay(){return 240+random.nextInt(361);}
     /** Lets go of the wall. */
     private void release(net.minecraft.world.entity.Mob bot){clinging=false;clingWall=null;bot.setNoGravity(false);}
     /** Blocks that really hang on walls, so a disguise up on one looks in place. */
@@ -726,20 +800,30 @@ final class BotPropHunt {
         var bot=a.bot;var level=bot.level();var arena=BotManager.arena();var here=bot.position();
         Vec3 centre=seekers.isEmpty()?here.add(bot.getLookAngle().scale(-4)):seekers.stream().reduce(Vec3.ZERO,Vec3::add).scale(1.0/seekers.size());
         double nearestNow=seekers.stream().mapToDouble(s->s.distanceTo(here)).min().orElse(99);
-        Vec3 best=null;double bestScore=-1e9;BlockPos bestFeet=null;
+        record Escape(BlockPos feet,double score){}
+        var options=new ArrayList<Escape>();
         for(int i=0;i<16;i++){
-            double angle=random.nextDouble()*Math.PI*2,r=9+random.nextDouble()*10;
+            double angle=random.nextDouble()*Math.PI*2,r=4+random.nextDouble()*15;
             var feet=BotMovement.ground(bot,arena,here.add(Math.cos(angle)*r,0,Math.sin(angle)*r));if(feet==null)continue;
             var point=Vec3.atBottomCenterOf(feet);
             double nearest=seekers.stream().mapToDouble(s->s.distanceTo(point)).min().orElse(99);
-            if(nearest<nearestNow)continue;
-            double score=nearest+point.subtract(here).normalize().dot(here.subtract(centre).normalize())*4;
-            for(var s:seekers)if(blocked(level,s.add(0,1.5,0),point.add(0,.5,0),bot))score+=5;
-            if(score>bestScore){bestScore=score;best=point;bestFeet=feet;}
+            if(nearest<Math.min(4,nearestNow))continue;
+            int ways=exits(bot,feet);
+            double score=Math.min(24,nearest)+point.subtract(here).normalize().dot(here.subtract(centre).normalize())*2+(ways>=2?8:-12);
+            for(var s:seekers)if(blocked(level,s.add(0,1.5,0),point.add(0,.5,0),bot))score+=24;
+            options.add(new Escape(feet,score));
         }
-        if(bestFeet!=null){
-            var path=BotMovement.path(bot,bestFeet,1);
-            if(path!=null&&bot.getNavigation().moveTo(path,1))return best;
+        options.sort(Comparator.comparingDouble(Escape::score).reversed());
+        for(var option:options.stream().limit(3).toList()){
+            if(BotMovement.spent())return null;
+            var path=BotMovement.path(bot,option.feet(),0);
+            if(path==null||!path.canReach())continue;
+            boolean safe=true;
+            for(int n=0;n<path.getNodeCount();n++){
+                var step=Vec3.atBottomCenterOf(path.getNode(n).asBlockPos());
+                if(seekers.stream().anyMatch(seeker->seeker.distanceToSqr(step)<9&&clear(level,seeker.add(0,1.5,0),step.add(0,.5,0),bot))){safe=false;break;}
+            }
+            if(safe&&bot.getNavigation().moveTo(path,1))return Vec3.atBottomCenterOf(option.feet());
         }
         var fallback=a.movement.escape(bot,arena,centre,8);
         if(fallback!=null)bot.getNavigation().moveTo(fallback.x,fallback.y,fallback.z,1);
@@ -750,7 +834,7 @@ final class BotPropHunt {
         var server=BotManager.server();if(server==null)return;int now=server.getTickCount();
         struckAt=now;remembered.put(seeker.getUUID(),seeker.position());rememberedAt.put(seeker.getUUID(),now);
         nervous=99;
-        if(state!=Hide.FLEE){state=Hide.FLEE;fleeUntil=now+300;calmSince=now;fleeTo=null;}
+        if(state!=Hide.FLEE){expose(now);state=Hide.FLEE;fleeUntil=now+300;calmSince=now;fleeTo=null;}
     }
     /** A seeker fired: close and toward this block is a warning, a wasted shot nearby is a chance to taunt. */
     void gunfire(BotAgent a,LivingEntity shooter){
