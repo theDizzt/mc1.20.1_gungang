@@ -325,6 +325,16 @@ final class BotNavGraph {
         return -1;
     }
     boolean contains(Vec3 p){return inside(Mth.floor(p.x),Mth.floor(p.y),Mth.floor(p.z));}
+    /** Bounded sampling over the whole connected map, including floors above/below the spawn. */
+    BlockPos roamSpot(Vec3 from,Random random){
+        int start=snap(from);if(start<0||parts[start]<0)return null;
+        int component=find(start);
+        for(int attempt=0;attempt<256;attempt++){
+            int i=random.nextInt(cells.length);
+            if(parts[i]>=0&&find(i)==component)return pos(i);
+        }
+        return null;
+    }
     /** A floor near the sample point, avoiding death zones. Null outside the grid. */
     BlockPos ground(ArenaMap arena,BotEntity bot,Vec3 sample){
         int i=snap(sample);if(i<0)return null;

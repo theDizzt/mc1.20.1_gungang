@@ -185,17 +185,17 @@ public final class BotManager {
     static void validate(Loadouts loadouts){if(added()){selectWeapon(loadouts);selectSecondary(loadouts);}}
     /** Swords, axes and any modded melee item that carries main-hand attack damage (e.g. lrtactical knives). */
     static boolean melee(ItemStack stack){
+        if(new net.minecraft.resources.ResourceLocation("lrtactical","melee").equals(net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(stack.getItem())))return true;
         if(stack.getItem() instanceof SwordItem||stack.getItem() instanceof AxeItem)return true;
-        if(stack.isEmpty()||stack.getItem() instanceof GadgetItem||BotGun.supports(stack))return false;
+        if(stack.isEmpty()||stack.getItem() instanceof GadgetItem||BotGun.supports(stack)||BotRanged.supports(stack))return false;
         return stack.getAttributeModifiers(EquipmentSlot.MAINHAND).get(Attributes.ATTACK_DAMAGE).stream().anyMatch(m->m.getAmount()>0);
     }
     /** Held secondaries replace the primary in hand; everything else is used as an ability by {@link BotGadgets}. */
-    static boolean held(ItemStack stack){return BotGun.supports(stack)||stack.is(Items.BOW)||melee(stack);}
+    static boolean held(ItemStack stack){return BotGun.supports(stack)||BotRanged.supports(stack)||melee(stack);}
+    static boolean supportedPrimary(Loadouts.Weapon w){return !w.commandOnly()&&held(w.stack());}
     static boolean supportedSecondary(Loadouts.Weapon w){
         // Command-only entries run a player command; the bot has no player to run it as.
         if(w.commandOnly())return false;
-        // The mercy bullet only fires at a teammate under a player's crosshair; a bot would aim it at enemies.
-        if(w.id().equals(MercyBullet.ID))return false;
         var stack=w.stack();return held(stack)||BotGadgets.supported(stack);
     }
     static Loadouts.Weapon selectSecondary(Loadouts loadouts){
@@ -207,8 +207,8 @@ public final class BotManager {
     }
     static Loadouts.Weapon selectWeapon(Loadouts loadouts){
         return loadouts.primary().stream().filter(w->settings.weapon().isEmpty()||w.id().equals(settings.weapon()))
-                .filter(w->{var stack=w.stack();return stack.is(Items.BOW)||BotGun.supports(stack);}).findFirst()
-                .orElseThrow(()->new IllegalArgumentException("봇 주무기는 TaCZ 총기 또는 minecraft:bow여야 합니다. /gungang bot weapon <주무기 ID>"));
+                .filter(BotManager::supportedPrimary).findFirst()
+                .orElseThrow(()->new IllegalArgumentException("봇 주무기는 TaCZ 총기·활·석궁·컴파운드 보우·근접 무기여야 합니다. /gungang bot weapon <주무기 ID>"));
     }
     static boolean weaponTaken(UUID player,String team,boolean primary,String id){
         return agents.stream().anyMatch(a->!a.id.equals(player)&&a.team.equals(team)&&(primary?a.weapon:a.secondary)!=null&&(primary?a.weapon:a.secondary).id().equals(id));

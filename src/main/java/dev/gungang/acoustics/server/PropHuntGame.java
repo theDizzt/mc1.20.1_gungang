@@ -7,7 +7,10 @@ public final class PropHuntGame {
     /** FINAL: the last minute of the hunt, without disguise changes and with faster seekers. */
     public static final int HIDE=60*20, HUNT=10*60*20, CHANGE=3*60*20, REVIEW=30*20, FINAL=60*20;
     public enum Phase { HIDING, HUNTING, REVIEW, FINISHED }
-    private final ArrayDeque<String> deck;
+    /** Blocks nobody has taken yet, shuffled. Offered blocks stay in it; only a taken block leaves. */
+    private final List<String> deck;
+    /** Choices on offer per hider; one hider's offer never shows another's, so two cannot take the same block. */
+    private final Map<UUID,List<String>> offers=new HashMap<>();
     private final Set<UUID> alive=new LinkedHashSet<>();
     private final Map<UUID,Integer> hidden=new LinkedHashMap<>(),found=new LinkedHashMap<>();
     /** Seek time in ticks; HUNT unless the map sets propHuntMinutes. */
@@ -22,17 +25,45 @@ public final class PropHuntGame {
         // Every hider draws its first block plus one per change: 3 for 10 minutes, 5 for 16.
         int draws=draws(hunt);
         if(unique.size()<new HashSet<>(hiders).size()*draws)throw new IllegalArgumentException("블록 중복 방지를 위해 숨는 인원은 최대 "+unique.size()/draws+"명입니다.");
-        Collections.shuffle(unique,random);deck=new ArrayDeque<>(unique);alive.addAll(hiders);
+        Collections.shuffle(unique,random);deck=new ArrayList<>(unique);alive.addAll(hiders);
         hiders.forEach(id->hidden.put(id,0));
     }
     /** Debug prop session: no deck, hiders join and leave freely. */
-    PropHuntGame(){deck=new ArrayDeque<>();hunt=HUNT;}
+    PropHuntGame(){deck=new ArrayList<>();hunt=HUNT;}
     /** Blocks one hider uses: the first disguise and every change before the final minute. */
     static int draws(int hunt){return 1+Math.max(0,(hunt-FINAL-1)/CHANGE);}
     public static int huntTicks(ArenaMap map){return map==null||map.propHuntMinutes()==null?HUNT:map.propHuntMinutes()*60*20;}
     void join(UUID id){alive.add(id);hidden.putIfAbsent(id,0);}
-    void remove(UUID id){alive.remove(id);}
-    public String draw(){if(deck.isEmpty())throw new IllegalStateException("Prop deck exhausted");return deck.removeFirst();}
+    void remove(UUID id){alive.remove(id);offers.remove(id);}
+    /** Takes the next block no hider has on offer (bots, and players without an offer). */
+    public String draw(){
+        for(String type:deck)if(!reserved(type)){deck.remove(type);return type;}
+        throw new IllegalStateException("Prop deck exhausted");
+    }
+    private boolean reserved(String type){for(var list:offers.values())if(list.contains(type))return true;return false;}
+    /** Blocks free to offer: in the deck and not on another hider's offer. */
+    public int free(){int n=0;for(String type:deck)if(!reserved(type))n++;return n;}
+    /** Puts up to {@code count} random free blocks on offer to this hider (replacing an earlier offer). */
+    public List<String> offer(UUID id,int count,Random random){
+        offers.remove(id);
+        var free=new ArrayList<String>();for(String type:deck)if(!reserved(type))free.add(type);
+        Collections.shuffle(free,random);
+        var list=List.copyOf(free.subList(0,Math.max(0,Math.min(count,free.size()))));
+        if(!list.isEmpty())offers.put(id,list);
+        return list;
+    }
+    public List<String> offers(UUID id){return offers.getOrDefault(id,List.of());}
+    /**
+     * Takes the offered block at {@code index} (out of range: a random one of the offer) and ends the offer; only this
+     * block leaves the deck, the others can be offered again. Without an offer, draws as usual.
+     */
+    public String take(UUID id,int index,Random random){
+        var list=offers.remove(id);
+        if(list==null||list.isEmpty())return draw();
+        String type=list.get(index>=0&&index<list.size()?index:random.nextInt(list.size()));
+        deck.remove(type);return type;
+    }
+    public void release(UUID id){offers.remove(id);}
     public Phase phase(){return winner.isEmpty()?(ticks<HIDE?Phase.HIDING:Phase.HUNTING):reviewTicks<REVIEW?Phase.REVIEW:Phase.FINISHED;}
     public boolean tick(){
         if(!winner.isEmpty()){reviewTicks++;return false;}
@@ -43,6 +74,7 @@ public final class PropHuntGame {
     }
     public boolean eliminate(UUID id,UUID hunter){
         if(!winner.isEmpty()||!alive.remove(id))return false;
+        offers.remove(id);
         if(hunter!=null)found.merge(hunter,1,Integer::sum);
         if(alive.isEmpty())winner="BRAVO";
         return true;

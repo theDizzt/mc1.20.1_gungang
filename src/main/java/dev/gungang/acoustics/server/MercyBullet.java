@@ -59,16 +59,16 @@ public final class MercyBullet {
     public static boolean passes(Entity bullet,Entity target){
         return bullet.getPersistentData().getBoolean(BULLET)&&!(bullet instanceof Projectile projectile&&ally(projectile.getOwner(),target));
     }
-    static void grant(ServerPlayer shooter,LivingEntity target){
+    static void grant(LivingEntity shooter,LivingEntity target){
         float before=target.getAbsorptionAmount();
         float bonus=Math.max(before,Math.min(BONUS,target.getMaxHealth()+BONUS-target.getHealth()));
         if(bonus>before)target.setAbsorptionAmount(bonus);
         SHIELDS.put(target.getUUID(),new Shield(target,target.level().getGameTime()+SHIELD_TICKS));
-        var level=shooter.serverLevel();
+        var level=(net.minecraft.server.level.ServerLevel)shooter.level();
         level.sendParticles(net.minecraft.core.particles.ParticleTypes.HEART,target.getX(),target.getY()+target.getBbHeight()+.3,target.getZ(),5,.3,.2,.3,0);
         level.playSound(null,target.blockPosition(),net.minecraft.sounds.SoundEvents.AMETHYST_BLOCK_CHIME,net.minecraft.sounds.SoundSource.PLAYERS,1.2f,1.4f);
-        if(target instanceof Player player)player.displayClientMessage(Component.literal(shooter.getGameProfile().getName()+"의 자비의 총알 · 추가 체력 "+Math.round(bonus)),true);
-        shooter.displayClientMessage(Component.literal(target.getName().getString()+"에게 추가 체력 "+Math.round(bonus)),true);
+        if(target instanceof Player player)player.displayClientMessage(Component.literal(shooter.getName().getString()+"의 자비의 총알 · 추가 체력 "+Math.round(bonus)),true);
+        if(shooter instanceof ServerPlayer player)player.displayClientMessage(Component.literal(target.getName().getString()+"에게 추가 체력 "+Math.round(bonus)),true);
     }
     @SubscribeEvent public static void join(EntityJoinLevelEvent event){
         if(event.getEntity() instanceof Projectile bullet&&bullet.getClass().getName().equals("com.tacz.guns.entity.EntityKineticBullet")

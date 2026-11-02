@@ -54,8 +54,10 @@ final class PropAbilityHud {
             g.flush();
         }
         g.pose().popPose();
-        if(state.getBlock() instanceof net.minecraft.world.level.block.BubbleColumnBlock){
-            var bubble=mc.getTextureAtlas(net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_PARTICLES).apply(new net.minecraft.resources.ResourceLocation("minecraft","bubble"));
+        // The particle atlas belongs to the particle engine, not the model manager: getTextureAtlas() would crash on it.
+        if(state.getBlock() instanceof net.minecraft.world.level.block.BubbleColumnBlock
+                &&mc.getTextureManager().getTexture(net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_PARTICLES) instanceof net.minecraft.client.renderer.texture.TextureAtlas atlas){
+            var bubble=atlas.getSprite(new net.minecraft.resources.ResourceLocation("minecraft","bubble"));
             int b=Math.max(4,Math.round(7*unit));
             g.pose().pushPose();g.pose().translate(0,0,300);
             g.blit(x+Math.round(5*unit),y+Math.round(10*unit),0,b,b,bubble);

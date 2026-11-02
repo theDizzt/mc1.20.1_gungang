@@ -51,6 +51,7 @@ public final class PropSmokeChecks {
         level.setBlock(gatePos,net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(),3);
         try{
             match.equip(a);if(net.minecraftforge.fml.ModList.get().isLoaded("tacz"))match.equip(b);
+            match.action(a,"pick1"); // Initial disguise now waits for the player's three-block choice.
             check(a.getMaxHealth()==(match.prop(a.getUUID()).item().equals("gungang:mannequin")?255:50),"Hider health follows disguise");check(!a.isPickable(),"Invisible player cannot absorb bullets");
             check(match.prop(a.getUUID()).isPickable(),"Prop is bullet target");
             check(StationBlocks.ALPHA_GATE.get().allows(b)&&StationBlocks.BRAVO_GATE.get().allows(a),"Both teams pass both gates");
@@ -68,6 +69,7 @@ public final class PropSmokeChecks {
             match.eliminate(b,null);check(!b.isSpectator()&&match.frozen(b.getUUID()),"Hunter death uses stationary waiting, not spectator");
             var members=(Map<?,?>)field(PropHuntMatch.class,"members").get(match);var bm=members.get(b.getUUID());field(bm.getClass(),"waiting").setInt(bm,0);
             PropExpansionChecks.run(server,match,a,b);
+            BotBehaviourChecks.run(match,b);
             var prop=match.prop(a.getUUID());check(!match.hit(prop,level.damageSources().playerAttack(b),50),"Melee cannot find props");
             if(net.minecraftforge.fml.ModList.get().isLoaded("tacz")){
                 PropBulletChecks.run(match,a,b);
@@ -90,7 +92,7 @@ public final class PropSmokeChecks {
                 check(a.getHealth()==before-10,"Hider never regenerates out of combat, health="+a.getHealth());a.setHealth(before);
                 var type=Class.forName("com.tacz.guns.entity.EntityKineticBullet");var bullet=(net.minecraft.world.entity.projectile.Projectile)type.getConstructor(net.minecraft.world.entity.EntityType.class,net.minecraft.world.level.Level.class).newInstance(type.getField("TYPE").get(null),level);bullet.setOwner(b);
                 a.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(255);a.setHealth(255);
-                check(match.hit(prop,level.damageSources().thrown(bullet,b),20),"Real TaCZ bullet damages prop");check(Math.abs(a.getHealth()-(255-match.pelletDamage()))<1e-3,"Each seeker pellet deals 100 / pellets, health="+a.getHealth());check(match.pelletDamage()*PropHuntMatch.pellets(PropHuntMatch.shotgun(Loadouts.load(),"").stack())==100,"A full volley deals 100");
+                check(match.hit(prop,level.damageSources().thrown(bullet,b),20),"Real TaCZ bullet damages prop");check(Math.abs(a.getHealth()-(255-match.pelletDamage()))<1e-3,"Each seeker pellet deals 100 / pellets, health="+a.getHealth());check(match.pelletDamage()*PropHuntMatch.pellets(gun.stack())==100,"A full volley deals 100");
                 a.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(50);a.setHealth(50);
             }
             match.eliminate(a,null);match.tick();check(prop.marker()&&prop.hasCustomName(),"Death leaves glowing named prop");check(a.isSpectator()&&b.isSpectator(),"Review grants free spectator to both teams");

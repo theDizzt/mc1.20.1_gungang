@@ -53,6 +53,7 @@ public final class BotEntity extends PathfinderMob {
     }
     public BotEntity(EntityType<? extends PathfinderMob> type,Level level){super(type,level);setPersistenceRequired();setMaxUpStep(1);}
     @Override protected void registerGoals(){}
+    @Override public boolean causeFallDamage(float distance,float multiplier,net.minecraft.world.damagesource.DamageSource source){fallDistance=0;return false;}
     @Override protected net.minecraft.world.entity.ai.navigation.PathNavigation createNavigation(Level level){
         return new GroundPathNavigation(this,level){
             @Override protected PathFinder createPathFinder(int nodes){
@@ -74,6 +75,8 @@ public final class BotEntity extends PathfinderMob {
                         }
                         // A shutter's panel is thinner than a block, so vanilla calls it open even while it is shut.
                         if(state.getBlock() instanceof ShutterBlock&&!BotNavGraph.shutterOpen(world,new net.minecraft.core.BlockPos(x,y,z)))return BlockPathTypes.BLOCKED;
+                        // An armed UXO goes off under whoever stands in its cell, so never route through it.
+                        if(state.getBlock() instanceof GimmickBlock g&&g.id.equals("uxo")&&state.getValue(GimmickBlock.ACTIVE))return BlockPathTypes.BLOCKED;
                         var type=super.getBlockPathType(world,x,y,z);
                         // Seen enemy mines and traps, fire and strike zones cost extra, so paths bend around them.
                         return type==BlockPathTypes.WALKABLE&&BotManager.avoid(BotEntity.this,x,y,z)?BlockPathTypes.DAMAGE_OTHER:type;

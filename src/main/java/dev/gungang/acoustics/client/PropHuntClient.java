@@ -91,6 +91,12 @@ public final class PropHuntClient {
     /** Called before vanilla consumes E/T/R/space, so inventory, chat and gun reload cannot steal these controls. */
     public static boolean key(int key,int scan,int action){
         var mc=Minecraft.getInstance();if(!hider()||mc.screen!=null)return false;
+        // While a block choice is open, 1-3 (or the first emote keys) pick a block instead of emoting.
+        var offers=state.offers();
+        if(offers!=null&&!offers.isEmpty())for(int i=0;i<offers.size();i++)
+            if(key==GLFW.GLFW_KEY_1+i||EmoteClient.KEYS[i].matches(key,scan)){if(action==GLFW.GLFW_PRESS)action("pick"+(i+1));return true;}
+        // No disguise yet (the first choice is open): nothing else to control.
+        if(self().block().isEmpty())return false;
         if(key==GLFW.GLFW_KEY_T){if(action==GLFW.GLFW_PRESS)action("lock");return true;}
         if(key==GLFW.GLFW_KEY_R){if(action==GLFW.GLFW_PRESS){if(fixed())action("home");else action("rotate");}return true;}
         // 178: E on one's own lectern opens the book to write in (the server only stores the text).
@@ -211,6 +217,6 @@ public final class PropHuntClient {
     }
     @SubscribeEvent public static void hide(RenderPlayerEvent.Pre e){if(hidden(e.getEntity().getUUID()))e.setCanceled(true);}
     @SubscribeEvent public static void opening(ScreenEvent.Opening e){if(active()&&(e.getNewScreen() instanceof LoadoutScreen))e.setCanceled(true);}
-    public static void draw(GuiGraphics g){if(active())PropHuntHud.draw(g,state);}
+    public static void draw(GuiGraphics g){if(active()){PropHuntHud.draw(g,state);if(hider())PropChoiceHud.draw(g,state);}}
     private PropHuntClient(){}
 }

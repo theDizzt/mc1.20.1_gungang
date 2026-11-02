@@ -35,6 +35,7 @@ final class BotRoute {
 
     void clear(){steps.clear();target=null;point=null;lever=null;usedLever=null;door=null;presses=0;state="없음";}
     void reset(){clear();blocked.clear();failedSwitches.clear();}
+    void avoidCurrent(int now){if(point!=null)blocked.put(BlockPos.containing(point).asLong(),now+200);clear();}
     boolean active(){return target!=null&&!steps.isEmpty();}
     Vec3 point(){return point;}
     String state(){return state;}
@@ -116,8 +117,8 @@ final class BotRoute {
                         }
                         state=vault?"장애물로 이동":"뛰어내릴 곳으로 이동";point=from;return Result.WALK;
                     }
-                    // A drop that would kill (or nearly kill) the bot as it is now is skipped for another way down.
-                    if(!safeDrop(bot,arena,from,to)||!survivable(bot,from,to)){bot.getNavigation().stop();blocked.put(BlockPos.containing(to).asLong(),now+BLOCK_TICKS);clear();return Result.WAIT;}
+                    // Fall damage is disabled for bots; collision, hazards and death zones still forbid unsafe drops.
+                    if(!safeDrop(bot,arena,from,to)){bot.getNavigation().stop();blocked.put(BlockPos.containing(to).asLong(),now+BLOCK_TICKS);clear();return Result.WAIT;}
                     if(!vault){
                         // Walk straight off the edge; vanilla path following refuses drops over three blocks.
                         bot.getNavigation().stop();bot.getMoveControl().setWantedPosition(to.x,from.y,to.z,1);
@@ -200,12 +201,6 @@ final class BotRoute {
             if(BotMovement.danger(arena,bot,p)||BotMovement.knownDanger(bot,p))return false;
         }
         return bot.level().noCollision(bot,bot.getDimensions(net.minecraft.world.entity.Pose.STANDING).makeBoundingBox(to));
-    }
-    /** Fall damage (blocks beyond three) must leave at least a quarter of the bot's health; water takes none. */
-    private static boolean survivable(BotEntity bot,Vec3 from,Vec3 to){
-        if(bot.level().getFluidState(BlockPos.containing(to)).is(net.minecraft.tags.FluidTags.WATER))return true;
-        double damage=Math.max(0,from.y-to.y-3);
-        return damage<=0||bot.getHealth()-damage>=bot.getMaxHealth()*.25f;
     }
     private static boolean reach(BotEntity bot,BlockPos pos){
         return bot.getEyePosition().distanceTo(Vec3.atCenterOf(pos))<=3.5;

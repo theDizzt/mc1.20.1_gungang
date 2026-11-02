@@ -122,6 +122,7 @@ public final class LobbyManager {
     }
     @SubscribeEvent public static void leave(PlayerEvent.PlayerLoggedOutEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer p)) return;
+        Emotes.forget(p.getUUID());
         if(MatchManager.propHunt()!=null)MatchManager.propHunt().leave(p);
         if(MatchManager.freeForAll()!=null)MatchManager.freeForAll().leave(p);
         Entry entry = PLAYERS.remove(p.getUUID());
@@ -197,6 +198,14 @@ public final class LobbyManager {
                 .then(Commands.literal("map_data").executes(c -> run(c.getSource(), () -> purgeMapData(c.getSource(), null)))
                         .then(Commands.argument("id", StringArgumentType.word()).suggests((c,b) -> { if (files != null) files.maps().forEach(m -> b.suggest(m.id())); return b.buildFuture(); })
                                 .executes(c -> run(c.getSource(), () -> purgeMapData(c.getSource(), StringArgumentType.getString(c,"id")))))));
+        // Modded clients answer "/gungang prop list" themselves (PropListScreen's client command); this is the
+        // fallback for the console and vanilla clients, and "off" for everyone who disguised from the list.
+        root.then(Commands.literal("prop").then(Commands.literal("list").executes(c -> {
+            if (MatchManager.active()) { c.getSource().sendFailure(Component.literal("경기 준비·진행 중에는 변신 블록 목록을 사용할 수 없습니다.")); return 0; }
+            if (c.getSource().getEntity() instanceof ServerPlayer p && GungangNetwork.installed(p)) { GungangNetwork.send(p, new GungangNetwork.PropList()); return 1; }
+            for (var line : PropCatalog.listing()) c.getSource().sendSystemMessage(line);
+            return 1;
+        })).then(Commands.literal("off").executes(c -> { propMorph(c.getSource().getPlayerOrException(), "off"); return 1; })));
         root.then(Commands.literal("stop").requires(s -> s.hasPermission(2)).executes(c -> run(c.getSource(), LobbyManager::finish)));
         root.then(Commands.literal("reset").requires(s -> s.hasPermission(2)).executes(c -> run(c.getSource(), LobbyManager::reset)));
         root.then(Commands.literal("cleardeployables").requires(s->s.hasPermission(2)).executes(c->run(c.getSource(),()->{
@@ -244,6 +253,26 @@ public final class LobbyManager {
         int removed = MapPreviewGenerator.purge(id);
         source.sendSuccess(() -> Component.literal("저장된 맵 지도 " + removed + "개를 삭제했습니다. 다음 미리보기 때 다시 생성합니다."), false);
     }
+    /**
+     * Disguise button of the block list: outside matches anyone becomes the chosen block (by catalog number) with the
+     * hider controls of the prop hunt test session; "off" restores inventory, game mode and health.
+     */
+    static void propMorph(ServerPlayer p, String value) {
+        if (MatchManager.active()) { p.sendSystemMessage(Component.literal("경기 준비·진행 중에는 변신할 수 없습니다.").withStyle(net.minecraft.ChatFormatting.RED)); return; }
+        if (value.equals("off")) {
+            if (!PropHuntMatch.testing(p.getUUID())) { p.sendSystemMessage(Component.literal("변신 중이 아닙니다.").withStyle(net.minecraft.ChatFormatting.GRAY)); return; }
+            PropHuntMatch.test(p, null, "");
+            p.sendSystemMessage(Component.literal("변신을 해제했습니다. 인벤토리·게임 모드·체력을 되돌렸습니다."));
+            return;
+        }
+        String type = PropCatalog.type(value);
+        if (type == null) { p.sendSystemMessage(Component.literal("변신할 수 없는 블록입니다.").withStyle(net.minecraft.ChatFormatting.RED)); return; }
+        try {
+            String block = PropCatalog.variant(type, new Random());
+            PropHuntMatch.test(p, "ALPHA", block);
+            p.sendSystemMessage(Component.literal("변신: ").append(PropCatalog.name(block)).append(Component.literal(" [" + PropCatalog.number(block) + "] · 숨는 팀과 같은 조작·체력 50. 목록의 변신 해제 버튼 또는 /gungang prop off로 해제")));
+        } catch (RuntimeException failure) { p.sendSystemMessage(Component.literal(String.valueOf(failure.getMessage())).withStyle(net.minecraft.ChatFormatting.RED)); }
+    }
     private interface Work { void run() throws Exception; }
     private static int run(net.minecraft.commands.CommandSourceStack source, Work work) {
         try { work.run(); return 1; } catch (Exception error) { source.sendFailure(Component.literal(String.valueOf(error.getMessage()))); return 0; }
@@ -255,6 +284,7 @@ public final class LobbyManager {
         if(action.action().equals("rapierAttack")){RapierItem.thrust(sender);return;}
         // Plant/defuse key: press and release must both arrive, so it bypasses the action rate limit.
         if(action.action().equals("bomb")){var bomb=MatchManager.bomb();if(bomb!=null)bomb.key(sender,action.value().equals("down"));return;}
+        if(action.action().equals("emote")){Emotes.request(sender,action.value());return;}
         if(action.action().equals("prop")){if(MatchManager.propHunt()!=null)MatchManager.propHunt().action(sender,action.value());return;}
         if(action.action().equals("place")||action.action().equals("cancelplace")) { GadgetManager.action(sender,action.action());return; }
         int now = server.getTickCount();
@@ -269,6 +299,7 @@ public final class LobbyManager {
                 return;
             }
             if(action.action().equals("lobby")){reopenLobby(sender);return;}
+            if(action.action().equals("propMorph")){propMorph(sender,action.value());return;}
             if(action.action().equals("mapPreview")) {
                 if(files==null)return;
                 var map=files.maps().stream().filter(m->m.id().equals(action.value())).findFirst().orElse(null);

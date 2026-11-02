@@ -9,6 +9,18 @@ class PropHuntGameTest {
     private final UUID a=UUID.randomUUID(),b=UUID.randomUUID(),hunter=UUID.randomUUID();
     private PropHuntGame game(){return new PropHuntGame(IntStream.range(0,96).mapToObj(Integer::toString).toList(),List.of(a,b),new Random(1));}
     @Test void deckNeverRepeatsAcrossPlayersOrChanges(){var g=game();var used=new HashSet<String>();for(int i=0;i<96;i++)assertTrue(used.add(g.draw()));assertThrows(IllegalStateException.class,g::draw);}
+    @Test void onlyThePickedOfferLeavesTheDeck(){
+        var g=game();var offer=g.offer(a,3,new Random(2));assertEquals(3,offer.size());
+        // Another hider never sees blocks on someone else's offer.
+        var other=g.offer(b,3,new Random(3));for(String t:other)assertFalse(offer.contains(t));
+        assertEquals(offer.get(1),g.take(a,1,new Random()));assertTrue(g.offers(a).isEmpty());
+        // The two blocks not picked come back into play; the picked one never does.
+        var seen=new HashSet<String>();g.release(b);for(int i=0;i<95;i++)seen.add(g.draw());
+        assertTrue(seen.contains(offer.get(0)));assertTrue(seen.contains(offer.get(2)));assertFalse(seen.contains(offer.get(1)));
+        assertThrows(IllegalStateException.class,g::draw);
+    }
+    @Test void unpickedOfferTakesARandomOfferedBlock(){var g=game();var offer=g.offer(a,3,new Random(4));assertTrue(offer.contains(g.take(a,-1,new Random(5))));}
+    @Test void botsDrawAroundOpenOffers(){var g=game();var offer=g.offer(a,3,new Random(6));for(int i=0;i<93;i++)assertFalse(offer.contains(g.draw()));assertThrows(IllegalStateException.class,g::draw);}
     @Test void duplicateKindsDoNotIncreaseCapacity(){assertThrows(IllegalArgumentException.class,()->new PropHuntGame(List.of("iron","iron","gold"),List.of(a),new Random()));}
     @Test void rejectsOversizedTeamBeforeStarting(){assertThrows(IllegalArgumentException.class,()->new PropHuntGame(List.of("a","b","c","d","e"),List.of(a,b),new Random()));}
     @Test void oneMinuteHideTenMinuteHuntAndNoRerollInTheFinalMinute(){
