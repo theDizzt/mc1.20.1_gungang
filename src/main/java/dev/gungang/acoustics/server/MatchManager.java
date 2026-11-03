@@ -286,7 +286,7 @@ public final class MatchManager {
         ledger.death(bot,killer,server.getTickCount(),deathmatch!=null);
         if(freeForAll!=null)freeForAll.death(bot,killer);
         BotManager.died(bot,killer);
-        if(bomb!=null){BotManager.bench(bot);return;} // out until the next round, like an eliminated player
+        if(bomb!=null){bomb.botDied(bot);BotManager.bench(bot);return;} // out until the next round, like an eliminated player
         if(freeForAll!=null){String winner=freeForAll.winner(false);if(!winner.isEmpty())LobbyManager.finish(winner);return;}
         if(deathmatch==null)return;
         String winner=deathmatch.winner(alphaScore(),bravoScore(),false);if(!winner.isEmpty())LobbyManager.finish(winner);
@@ -297,7 +297,9 @@ public final class MatchManager {
         if(bomb!=null)return bomb.game.phase()==BombGame.Phase.PREPARING||bomb.activePlay()?bomb.objective(team,slot):null;
         if(escort!=null) {
             if(!escort.game.winner.isEmpty())return null;
-            return BotObjective.escort(escort.cart.position(),escort.game.rules.radius(),team,escort.escortsAtCart,escort.defendersAtCart,escort.game.distance>escort.floor()+1e-6);
+            // A side with no human player on it: its bots coordinate on their own around the cart.
+            boolean botsOnly=server.getPlayerList().getPlayers().stream().noneMatch(p->LobbyManager.team(p.getUUID()).equals(team));
+            return BotObjective.escort(escort.cart.position(),escort.game.rules.radius(),team,escort.escortsAtCart,escort.defendersAtCart,escort.game.distance>escort.floor()+1e-6,botsOnly);
         }
         if(normandy!=null) {
             if(normandy.complete())return null;

@@ -50,7 +50,17 @@ record BotObjective(String label,AABB area,Vec3 centre,double radius,Stance stan
      * back (never past the last checkpoint, where there is nothing to push and they wait).
      */
     static BotObjective escort(Vec3 cart,double radius,String team,boolean escortsOn,boolean defendersOn,boolean backward){
+        return escort(cart,radius,team,escortsOn,defendersOn,backward,false);
+    }
+    /**
+     * {@code botsOnly}: the defenders are all bots. With no player to make calls, they rally on the cart at the
+     * highest objective priority (instead of drifting after sounds while it is quiet) and guard it together.
+     */
+    static BotObjective escort(Vec3 cart,double radius,String team,boolean escortsOn,boolean defendersOn,boolean backward,boolean botsOnly){
         boolean escorting=team.equals("ALPHA");
+        if(!escorting&&botsOnly)
+            return new BotObjective("수레",new AABB(cart,cart).inflate(radius),cart,radius,Stance.CONTEST,true,
+                    escortsOn?"수레 저지":backward?"수레 밀어내기":"수레 사수",Act.NONE,null);
         Stance stance=escorting?(defendersOn?Stance.CONTEST:Stance.TAKE):escortsOn?Stance.CONTEST:backward?Stance.TAKE:Stance.HOLD;
         String doing=escorting?(stance==Stance.CONTEST?"수레 교전":"수레 호위"):switch(stance){case CONTEST->"수레 저지";case TAKE->"수레 밀어내기";case HOLD->"수레 앞 대기";};
         return new BotObjective("수레",new AABB(cart,cart).inflate(radius),cart,radius,stance,true,doing,Act.NONE,null);

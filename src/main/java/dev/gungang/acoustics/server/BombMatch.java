@@ -42,6 +42,8 @@ public final class BombMatch {
         for(var point:List.of(arena.bomb().pointA(),arena.bomb().pointB()))if(point.y()<=level.getMinBuildHeight()||point.y()>=level.getMaxBuildHeight())throw new IllegalArgumentException("Bomb site Y is outside the dimension");
     }
     public boolean dead(UUID id){return dead.contains(id);}
+    /** A bot killed this round: listed with the dead players so HUDs (team bars, "생존 n/m") count it out. */
+    void botDied(UUID id){dead.add(id);}
     public boolean activePlay(){return game.phase()==BombGame.Phase.RUNNING;}
     public ArenaMap.Spawn spawn(String team){return team.equals(game.attacker())?arena.bomb().attackSpawn():arena.bomb().defenseSpawn();}
     public ArenaMap.Area area(String team){return team.equals(game.attacker())?arena.bomb().attackArea():arena.bomb().defenseArea();}

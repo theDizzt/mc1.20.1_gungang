@@ -39,8 +39,12 @@ public class SpawnGateBlock extends Block {
     public boolean allows(Entity entity){
         // 숨바꼭질: everyone walks through both teams' gates, bots included.
         if(entity instanceof BotEntity bot&&(bot.level().isClientSide?"PROP_HUNT".equals(clientRule.get()):MatchManager.realPropHunt()!=null))return bot.isAlive();
-        if(entity instanceof BotEntity bot)return bot.isAlive()&&bot.getTeam()!=null&&bot.getTeam().getName().equals(team.equals("ALPHA")?"Red":"Blue")
-                &&open(MatchManager.preparationGate(),team);
+        if(entity instanceof BotEntity bot){
+            // Gate ownership follows attack/defence after a bomb round swaps sides, just as it does for players.
+            String owner=owner(bot.level().isClientSide?clientRule.get():rule());
+            return owner!=null&&bot.isAlive()&&bot.getTeam()!=null&&bot.getTeam().getName().equals(owner.equals("ALPHA")?"Red":"Blue")
+                    &&open(bot.level().isClientSide?clientPreparation.get():MatchManager.preparationGate(),owner);
+        }
         if(!(entity instanceof Player player)||player.isSpectator()||!player.isAlive())return false;
         if(player.level().isClientSide?"PROP_HUNT".equals(clientRule.get()):MatchManager.realPropHunt()!=null)return true;
         if(!player.level().isClientSide) {

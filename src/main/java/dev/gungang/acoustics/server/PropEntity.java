@@ -47,14 +47,26 @@ public final class PropEntity extends LivingEntity {
     public double sinkDepth(){return healthPack()&&open()?1:state().getBlock() instanceof JumpPadBlock&&open()?.125:state().getBlock() instanceof ConveyorBlock&&open()?.5:0;}
     /** Blocks that E sinks into the floor and back: health packs and the conveyor belt. */
     public boolean sinkable(){return healthPack()||state().getBlock() instanceof ConveyorBlock;}
-    /** R: 90° turn; a dispenser instead steps through all six facings (N, E, S, W, up, down). */
+    /**
+     * R: 90° turn. Blocks a vertical turn cannot change step through every orientation instead: any block that can face
+     * up or down (dispenser, barrel, end rod, hopper...) cycles N, E, S, W, up, down (those it allows), and pillar blocks
+     * (logs, hay, chains) cycle their axis upright → along X → along Z.
+     */
     public void rotate(){
-        if(state().getBlock() instanceof net.minecraft.world.level.block.DispenserBlock){
-            var order=List.of(net.minecraft.core.Direction.NORTH,net.minecraft.core.Direction.EAST,net.minecraft.core.Direction.SOUTH,net.minecraft.core.Direction.WEST,net.minecraft.core.Direction.UP,net.minecraft.core.Direction.DOWN);
-            var facing=state().getValue(net.minecraft.world.level.block.DispenserBlock.FACING);
-            state(state().setValue(net.minecraft.world.level.block.DispenserBlock.FACING,order.get((order.indexOf(facing)+1)%order.size())));return;
+        var state=state();
+        for(var property:List.of(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING,net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING_HOPPER)){
+            if(!state.hasProperty(property))continue;
+            var order=new java.util.ArrayList<net.minecraft.core.Direction>();
+            for(var d:List.of(net.minecraft.core.Direction.NORTH,net.minecraft.core.Direction.EAST,net.minecraft.core.Direction.SOUTH,net.minecraft.core.Direction.WEST,net.minecraft.core.Direction.UP,net.minecraft.core.Direction.DOWN))
+                if(property.getPossibleValues().contains(d))order.add(d);
+            state(state.setValue(property,order.get((order.indexOf(state.getValue(property))+1)%order.size())));return;
         }
-        entityData.set(ROTATION,(rotation()+1)%4);state(state().rotate(net.minecraft.world.level.block.Rotation.CLOCKWISE_90));
+        var axis=net.minecraft.world.level.block.state.properties.BlockStateProperties.AXIS;
+        if(state.hasProperty(axis)){
+            var next=switch(state.getValue(axis)){case Y->net.minecraft.core.Direction.Axis.X;case X->net.minecraft.core.Direction.Axis.Z;case Z->net.minecraft.core.Direction.Axis.Y;};
+            entityData.set(ROTATION,(rotation()+1)%4);state(state.setValue(axis,next));return;
+        }
+        entityData.set(ROTATION,(rotation()+1)%4);state(state.rotate(net.minecraft.world.level.block.Rotation.CLOCKWISE_90));
     }
     public UUID owner(){return entityData.get(OWNER).orElse(null);}
     public void setup(UUID owner,String item,int painting){entityData.set(OWNER,Optional.of(owner));entityData.set(ITEM,item);entityData.set(PAINTING,painting);entityData.set(MODE,0);entityData.set(HEIGHT,1);entityData.set(TEXT,"");entityData.set(OPEN,false);entityData.set(FOUND,false);setGlowingTag(false);state(PropCatalog.state(item));}
