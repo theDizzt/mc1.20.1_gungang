@@ -107,7 +107,7 @@ public final class MatchHud {
         int y;
         if(state.escort()!=null)y=EscortHud.draw(g,state);
         else if(deathmatch)y=DeathmatchHud.draw(g,state);
-        else {y=ControlPointHud.draw(g,state)+4;if(state.point()==null||!"NORMANDY".equals(state.point().mode()))MatchTimerHud.draw(g,state,y);}
+        else {y=ControlPointHud.draw(g,state)+4;if(state.point()==null)MatchTimerHud.draw(g,state,y);}
         if(mc.screen==null&&mc.options.keyPlayerList.isDown()) {
             String label="경과 시간",time=MatchReport.time(state.elapsedSeconds());
             int w=mc.font.width(label)+HudText.numberWidth(time)+20,cx=g.guiWidth()/2-w/2;

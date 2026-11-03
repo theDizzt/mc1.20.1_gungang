@@ -365,7 +365,9 @@ final class BotNavGraph {
             if(Double.longBitsToDouble(top[0])>base+(Math.abs(ex-x)+Math.abs(ez-z)+Math.abs(ey-y)*.5)*1.2+1e-3)continue; // stale entry
             moves(x,y,z,level,bot,blocked,(nx,ny,nz,cost,kind)->{
                 int n=index(nx,ny,nz);
-                float extra=cost+BotManager.routeCost(bot,nx,ny,nz)+(BotManager.avoid(bot,nx,ny,nz)?8:0);
+                // UXOs re-arm during the match, so they are checked live rather than baked into the grid.
+                float uxo=BotMovement.uxoCost(level,nx,ny,nz);if(uxo==Float.POSITIVE_INFINITY)return;
+                float extra=uxo+cost+BotManager.routeCost(bot,nx,ny,nz)+(BotManager.avoid(bot,nx,ny,nz)?8:0);
                 float score=base+extra;var known=g.get(n);
                 if(known!=null&&known<=score)return;
                 g.put(n,score);from.put(n,((long)kind<<32)|(i&0xffffffffL));

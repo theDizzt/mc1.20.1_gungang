@@ -390,7 +390,7 @@ final class BotAgent {
         if(ffa!=null&&ffa.remaining(e.getUUID())>0)return false; // protected: invulnerable and invisible
         return BotManager.combatant(side)&&!side.equals(BotManager.side(bot));
     }
-    private boolean visible(LivingEntity e){return eligible(e)&&bot.hasLineOfSight(e)&&!SpawnGateProtection.separates(bot,e);}
+    private boolean visible(LivingEntity e){return eligible(e)&&bot.hasLineOfSight(e)&&!SpawnGateProtection.separates(bot,e)&&!SmokeScreen.blocks(bot,e);}
     private void think(int now)throws ReflectiveOperationException{
         perception.update(bot,team,BotManager.settings(),now);
         movement.allies(perception.allies().stream().map(Entity::position).toList());

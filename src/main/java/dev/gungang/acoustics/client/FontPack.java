@@ -1,6 +1,7 @@
 package dev.gungang.acoustics.client;
 
 import dev.gungang.acoustics.AcousticConfig;
+import dev.gungang.acoustics.FontPreset;
 import dev.gungang.acoustics.GungangAcoustics;
 import com.mojang.logging.LogUtils;
 import java.io.ByteArrayInputStream;
@@ -68,27 +69,31 @@ public final class FontPack {
         FontResources(String id, Path root) {
             super(id, root, true);
             byte[] loaded = null;
+            FontPreset preset = AcousticConfig.SPEC.isLoaded()
+                    ? AcousticConfig.FONT_PRESET.get() : AcousticConfig.FONT_PRESET.getDefault();
             try {
                 String selection = AcousticConfig.SPEC.isLoaded()
                         ? AcousticConfig.FONT_FILE.get() : AcousticConfig.FONT_FILE.getDefault();
-                loaded = ExternalFonts.load(ExternalFonts.prepareDirectory(FMLPaths.CONFIGDIR.get()), selection);
+                if (preset == FontPreset.EXTERNAL)
+                    loaded = ExternalFonts.load(ExternalFonts.prepareDirectory(FMLPaths.CONFIGDIR.get()), selection);
             } catch (IOException | IllegalArgumentException failure) {
-                LogUtils.getLogger().warn("Could not load TTF from config/gungang/fonts; using bundled Galmuri11 Bold", failure);
+                LogUtils.getLogger().warn("Could not load TTF from config/gungang/fonts; using bundled MaruMinya", failure);
             }
             external = loaded;
             int resolution = AcousticConfig.SPEC.isLoaded()
                     ? AcousticConfig.FONT_OVERSAMPLE.get() : AcousticConfig.FONT_OVERSAMPLE.getDefault();
-            String providers = external == null ? "" : provider("user.ttf", resolution) + ",";
-            definition = ("{\"providers\":[" + providers + provider("galmuri11-bold.ttf", resolution)
+            String providers = external == null ? "" : provider("user.ttf", resolution, 9) + ",";
+            definition = ("{\"providers\":[" + providers + provider(preset.file, resolution, preset.size)
+                     + (preset == FontPreset.GALMURI_LEGACY ? "" : "," + provider(FontPreset.GALMURI_LEGACY.file, resolution, 9))
                      + "]}")
                     .getBytes(StandardCharsets.UTF_8);
         }
 
-        private static String provider(String filename, int resolution) {
+        private static String provider(String filename, int resolution, double size) {
             double offsetX = AcousticConfig.SPEC.isLoaded() ? AcousticConfig.FONT_OFFSET_X.get() : AcousticConfig.FONT_OFFSET_X.getDefault();
             double offsetY = AcousticConfig.SPEC.isLoaded() ? AcousticConfig.FONT_OFFSET_Y.get() : AcousticConfig.FONT_OFFSET_Y.getDefault();
             return "{\"type\":\"ttf\",\"file\":\"gungang_acoustics:" + filename
-                    + "\",\"shift\":[" + offsetX + "," + offsetY + "],\"size\":9,\"oversample\":" + resolution + "}";
+                    + "\",\"shift\":[" + offsetX + "," + offsetY + "],\"size\":" + size + ",\"oversample\":" + resolution + "}";
         }
 
         @Override

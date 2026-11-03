@@ -11,9 +11,11 @@ import java.util.*;
  */
 public final class BotDatabase {
     public static final String DEFAULT_SKIN="minecraft:textures/entity/player/wide/steve.png";
-    public static final int MAX=4;
+    public static final int MAX=8;
     private static final UUID[] IDS={UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c016"),UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c017"),
-            UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c018"),UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c019")};
+            UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c018"),UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c019"),
+            UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c01a"),UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c01b"),
+            UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c01c"),UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c01d")};
     public static UUID id(int slot){return IDS[slot];}
     /** Slot index (0-based) of a bot UUID, or -1 for anyone else. */
     public static int slot(UUID id){for(int i=0;i<IDS.length;i++)if(IDS[i].equals(id))return i;return -1;}

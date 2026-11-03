@@ -78,7 +78,11 @@ public final class TeamHud {
         rosterBottom = 8;
         if (AcousticConfig.TEAM_HUD.get()) {
             var members = members(mc);
-            int capacity = Math.max(0, Math.min(height / 3, mainY - 20) / 34);
+            // Fill the left column down to just above the player's own card; when some still don't fit,
+            // give up a row if needed so the "+N" overflow line has room too.
+            int space = Math.max(0, mainY - 8 - 8);
+            int capacity = space / 34;
+            if (members.size() > capacity) capacity = Math.max(0, (space - 12) / 34);
             int count = Math.min(capacity, members.size());
             for (int i = 0; i < count; i++) {
                 var member = members.get(i);
@@ -105,7 +109,7 @@ public final class TeamHud {
                             Math.round((x + 35 + 78 * fraction) * scale), Math.round((y + 29) * scale));
                     HudText.healthNumber(g, HudHealth.label(p.getHealth(), p.getMaxHealth(),p.getAbsorptionAmount()), x + 36, y + 16, 76, 14, 0xFF111820, 0.78f);
                     g.disableScissor();
-                    g.renderItem(p.getMainHandItem(), x + 121, y + 11);
+                    if (!disguise(g, member.id(), x + 118, y + 8)) g.renderItem(p.getMainHandItem(), x + 121, y + 11);
                 } else if (TeamPointHud.vital(member.id()) != null) {
                     // Out of tracking range: the health the server reports for the team.
                     var vital = TeamPointHud.vital(member.id());
@@ -122,6 +126,7 @@ public final class TeamHud {
                 } else {
                     HudText.draw(g, "--", x + 36, y + 18, 76, 0xFFAAAAAA);
                 }
+                if (p == null) disguise(g, member.id(), x + 118, y + 8);
             }
             rosterBottom = 8 + count * 34;
             if (members.size() > count) {
@@ -194,8 +199,27 @@ public final class TeamHud {
             String skin = row.skin() != null && !row.skin().isEmpty() ? row.skin() : bot != null ? bot.skin() : BotDatabase.DEFAULT_SKIN;
             members.add(new Member(id, row.name(), BotRenderer.texture(skin), bot != null && bot.isAlive() ? bot : null));
         }
-        members.sort(Comparator.comparing(Member::name));
+        // Roster number order (the badge on the portrait); anyone without a number goes last, by name.
+        members.sort(Comparator.comparingInt((Member m) -> { int n = TeamPointHud.number(m.id()); return n > 0 ? n : Integer.MAX_VALUE; })
+                .thenComparing(Member::name));
         return members;
+    }
+
+    /**
+     * Prop hunt hider: the 22px item slot at (x, y) shows the disguise icon and its catalog number instead of the
+     * held item. False when the member is not a disguised hider.
+     */
+    private static boolean disguise(GuiGraphics g, UUID id, int x, int y) {
+        var row = PropHuntClient.disguiseOf(id);
+        if (row == null) return false;
+        var state = row.state() != 0 ? net.minecraft.world.level.block.Block.stateById(row.state()) : dev.gungang.acoustics.server.PropCatalog.state(row.block());
+        PropAbilityHud.icon(g, row.block(), state, x + 3, y + 3, 16);
+        // Above the item (z 150), like the disguise tiles at the top of the screen.
+        g.pose().pushPose();
+        g.pose().translate(0, 0, 180);
+        DeathmatchHud.small(g, dev.gungang.acoustics.server.PropCatalog.number(row.block()), x + 21, y + 15, .5f, 0xFFFFFFFF, false, false);
+        g.pose().popPose();
+        return true;
     }
 
     private static int actor(GuiGraphics g, Component name, int right, int y) {

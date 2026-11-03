@@ -149,7 +149,7 @@ tasks.named('processResources', ProcessResources).configure {
     inputs.property 'modVersion', project.version
     filesMatching('META-INF/mods.toml') { expand(modVersion: project.version) }
     from('font') {
-        include 'Galmuri11-Bold.ttf', 'advanced_pixel_lcd-7.ttf', 'gungang.ttf'
+        include 'Galmuri11-Bold.ttf', 'x12y12pxMaruMinyaHangul.ttf', 'advanced_pixel_lcd-7.ttf', 'gungang.ttf'
         into 'assets/gungang_acoustics/font'
         rename { it.toLowerCase(java.util.Locale.ROOT).replace(' ', '-') }
     }

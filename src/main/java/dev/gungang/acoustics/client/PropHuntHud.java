@@ -16,7 +16,7 @@ final class PropHuntHud {
 
     static void draw(GuiGraphics g,PropHuntSnapshot s) {
         var mc=Minecraft.getInstance();int top=Math.max(2,BossBarHud.bottom+1);
-        float scale=Math.min(.8f,(g.guiWidth()-12)/232f);
+        float scale=MatchRibbonHud.scale(g);
         var hiders=s.players().stream().filter(r->r.team().equals("ALPHA")).toList();
         long alive=hiders.stream().filter(r->!r.found()).count(),seekers=s.players().size()-hiders.size();
         int finds=s.players().stream().filter(r->!r.team().equals("ALPHA")).mapToInt(PropHuntSnapshot.Row::finds).sum();
@@ -25,15 +25,18 @@ final class PropHuntHud {
         // The seek timer stays separate from the hiding clock: shown on the seeker plate until the hunt starts.
         String change=review?"종료":s.changeSeconds()>0?"변신 "+MatchReport.time(s.changeSeconds()):"변신 없음";
         String seek=hiding?"찾는 시간 "+MatchReport.time(s.huntSeconds()):s.rush()?"이동속도 +35%":seekers+"명 · 발견";
-        plate(g,true,"숨는 팀","HIDE",HIDER,String.valueOf(alive),change,hiding);
-        plate(g,false,"술래","SEEK",SEEKER,String.valueOf(finds),seek,!hiding&&!review);
-        DeathmatchHud.small(g,review?"위치 확인":hiding?"숨는 시간":s.rush()?"마지막 1분":"찾는 시간",0,2,.75f,review?DeathmatchHud.MUTED:hiding?HIDER:s.rush()?0xFFFF6B6B:SEEKER,true);
-        MatchTimerHud.drawAt(g,MatchReport.time(s.seconds()),0,11);
+        MatchRibbonHud.frame(g);
+        MatchRibbonHud.wing(g,true,HIDER,(int)alive,hiders.size(),"숨는 팀 · 생존",change);
+        MatchRibbonHud.wing(g,false,SEEKER,finds,hiders.size(),"술래 · 발견",seek);
+        MatchRibbonHud.segments(g,true,hiders.size(),i->!hiders.get(i).found(),HIDER);
+        MatchRibbonHud.segments(g,false,hiders.size(),i->hiders.get(i).found(),SEEKER);
+        MatchTimerHud.drawAt(g,MatchReport.time(s.seconds()),0,3);
+        DeathmatchHud.small(g,review?"위치 확인":hiding?"숨는 시간":s.rush()?"마지막 1분":"찾는 시간",0,24,.8f,review?DeathmatchHud.MUTED:hiding?HIDER:s.rush()?FOUND:SEEKER,true);
         g.pose().popPose();
-        tiles(g,hiders,top+Math.round(34*scale)+3);
+        tiles(g,hiders,top+Math.round(35*scale)+2);
         guide(g,PropHuntClient.guide());
         if(mc.screen==null&&mc.options.keyPlayerList.isDown()) {
-            int rows=(hiders.size()+columns(g)-1)/columns(g),y=top+Math.round(34*scale)+6+rows*(TILE+GAP)+4;
+            int rows=(hiders.size()+columns(g)-1)/columns(g),y=top+Math.round(35*scale)+5+rows*(TILE+GAP)+4;
             int w=Math.min(480,g.guiWidth()-8);
             PropHuntClient.clampPage(board(g,s.players().stream().map(r->new Entry(r.id(),r.name(),r.team().equals("ALPHA"),r.found(),r.hiddenSeconds(),r.finds(),null)).toList(),
                     review,Math.max(4,(g.guiWidth()-w)/2),y,w,g.guiHeight()-y-8,PropHuntClient.page(),true));
@@ -55,22 +58,6 @@ final class PropHuntHud {
             if(i==0)g.drawString(font,line,left+(width-font.width(line))/2,y+1,HIDER,false);
             else g.drawString(font,line,left,y+1,highlight?0xFFFFE27A:0xFFFFFFFF,false);
         }
-    }
-    /** Deathmatch plate; the big number is a head count instead of a score, the tag names the role. */
-    private static void plate(GuiGraphics g,boolean left,String name,String tag,int color,String value,String note,boolean active) {
-        int inner=36,outer=116,y1=3,y2=27,x1=left?-outer:inner,x2=left?-inner:outer;
-        DeathmatchHud.plate(g,x1,y1,x2,y2,color,left,active);
-        var font=Minecraft.getInstance().font;int numberWidth=HudText.numberWidth(value);
-        float size=Math.min(1.8f,34f/Math.max(1,numberWidth));int width=Math.round(numberWidth*size);
-        // Number-font digits are 7 rows tall, so centre them on the plate like the deathmatch score.
-        g.pose().pushPose();g.pose().translate(left?x2-8-width:x1+8,y1+12-3.5f*size,0);g.pose().scale(size,size,1);
-        g.drawString(font,HudText.number(value),0,0,active?0xFFFFFFFF:0xFFC4CEDA,false);g.pose().popPose();
-        int edge=left?x1+7:x2-7;
-        DeathmatchHud.small(g,name,edge,y1+5,.75f,0xFFFFFFFF,false,left);
-        int w=Math.round(font.width(tag)*.6f)+6,tx=left?edge:edge-w;
-        g.fill(tx,y1+14,tx+w,y1+21,(color&0xFFFFFF)|0x40000000);g.fill(tx,y1+14,tx+1,y1+21,color);
-        DeathmatchHud.small(g,tag,tx+3,y1+15,.6f,color,false,true);
-        DeathmatchHud.small(g,note,left?tx+w+3:tx-3,y1+15,.6f,DeathmatchHud.MUTED,false,left);
     }
     private static int columns(GuiGraphics g){return Math.max(1,Math.min(12,(g.guiWidth()-24)/(TILE+GAP)));}
     /** Centred disguise tiles: own tile outlined, unknown disguises as "?", found hiders dimmed and struck through. */

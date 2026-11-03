@@ -32,8 +32,10 @@ public final class GimmickEntity extends BlockEntity {
         var c=block.id.equals("uxo")?GimmickConfig.uxo:GimmickConfig.gas;
         active(false);readyAt=server.getGameTime()+ExtraGadgetConfig.ticks(c.respawnSeconds());setChanged();
         var center=Vec3.atCenterOf(worldPosition);
+        // Prop hunt: hiders (disguised as blocks) are never hurt by UXO or gas barrel blasts.
+        var hunt=MatchManager.propHunt();
         for(var p:server.getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class,new AABB(center,center).inflate(c.radius()),BotEntity::participant))
-            if(p.position().distanceToSqr(center)<=c.radius()*c.radius()&&!SpawnGateProtection.shields(p,center))OrdnanceDamage.hurt(p,server.damageSources().explosion(null,null),(float)c.damage());
+            if((hunt==null||!hunt.hider(p.getUUID()))&&p.position().distanceToSqr(center)<=c.radius()*c.radius()&&!SpawnGateProtection.shields(p,center))OrdnanceDamage.hurt(p,server.damageSources().explosion(null,null),(float)c.damage());
         server.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION_EMITTER,center.x,center.y,center.z,1,0,0,0,0);
         server.playSound(null,worldPosition,net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,net.minecraft.sounds.SoundSource.BLOCKS,2,1);
     }

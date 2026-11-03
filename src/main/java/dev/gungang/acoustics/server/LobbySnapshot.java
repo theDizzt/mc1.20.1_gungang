@@ -17,11 +17,11 @@ public record LobbySnapshot(boolean enabled, boolean show, boolean administrator
     }
     public LobbySnapshot(boolean enabled,boolean show,boolean administrator,String you,String selectedMap,String phase,int seconds,
                          List<MapView> maps,List<Member> members,TeamOptions options,String selectedMode,boolean botEnabled,boolean botAdded){
-        this(enabled,show,administrator,you,selectedMap,phase,seconds,maps,members,options,selectedMode,botEnabled,botAdded,botAdded?1:0,4);
+        this(enabled,show,administrator,you,selectedMap,phase,seconds,maps,members,options,selectedMode,botEnabled,botAdded,botAdded?1:0,BotManager.MAX);
     }
     public LobbySnapshot(boolean enabled,boolean show,boolean administrator,String you,String selectedMap,String phase,int seconds,
                          List<MapView> maps,List<Member> members,TeamOptions options,String selectedMode){
-        this(enabled,show,administrator,you,selectedMap,phase,seconds,maps,members,options,selectedMode,false,false,0,4);
+        this(enabled,show,administrator,you,selectedMap,phase,seconds,maps,members,options,selectedMode,false,false,0,BotManager.MAX);
     }
     public record MapView(String id, String name, String description, int seconds, String gameMode, boolean deathmatch,String previewImage,boolean bomb,boolean deathmatchOnly,String weather,String timeOfDay,String releaseDate,List<String> supportedModes) {
         public MapView(String id,String name,String description,int seconds,String gameMode,boolean deathmatch,String previewImage,boolean bomb,boolean deathmatchOnly,String weather,String timeOfDay,String releaseDate){this(id,name,description,seconds,gameMode,deathmatch,previewImage,bomb,deathmatchOnly,weather,timeOfDay,releaseDate,null);}
