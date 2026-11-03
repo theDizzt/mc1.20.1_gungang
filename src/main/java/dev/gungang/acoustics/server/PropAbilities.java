@@ -44,7 +44,7 @@ public final class PropAbilities {
     PropAbilities(PropHuntMatch match){this.match=match;}
     private Runtime data(UUID id){return states.computeIfAbsent(id,k->{var r=new Runtime();r.born=match.now();return r;});}
     public static int cooldown(String item){return switch(item){case "minecraft:spawner"->84*20;
-        case "minecraft:respawn_anchor"->30*20;case "minecraft:end_portal_frame","minecraft:tnt_minecart"->5*20;case "minecraft:crying_obsidian","gungang:prettiest_block"->3*20;case "minecraft:daylight_detector"->2*20;case "minecraft:command_block","minecraft:end_crystal","minecraft:tnt","gungang:gas_barrel"->30*20;case "minecraft:dispenser","minecraft:jukebox"->20;case "minecraft:brewing_stand"->50*20;case "minecraft:bell"->30*20;case "gungang:small_health_pack"->ExtraGadgetConfig.ticks(GadgetConfig.smallHealthPack.cooldownSeconds());case "gungang:large_health_pack"->ExtraGadgetConfig.ticks(GadgetConfig.largeHealthPack.cooldownSeconds());default->0;};}
+        case "minecraft:respawn_anchor"->30*20;case "minecraft:end_portal_frame","minecraft:tnt_minecart"->5*20;case "minecraft:crying_obsidian","gungang:prettiest_block"->3*20;case "minecraft:daylight_detector"->2*20;case "minecraft:command_block","minecraft:end_crystal","minecraft:tnt","gungang:gas_barrel"->30*20;case "minecraft:dispenser","minecraft:jukebox"->20;case "minecraft:brewing_stand"->50*20;case "gungang:small_health_pack"->ExtraGadgetConfig.ticks(GadgetConfig.smallHealthPack.cooldownSeconds());case "gungang:large_health_pack"->ExtraGadgetConfig.ticks(GadgetConfig.largeHealthPack.cooldownSeconds());default->0;};}
     public int remaining(UUID id){var r=data(id);return Math.max(0,r.cooldown-match.now());}
     public int active(UUID id){return Math.max(0,data(id).active-match.now());}
     public boolean stunned(UUID id){return data(id).stun>match.now();}
@@ -126,7 +126,10 @@ public final class PropAbilities {
     private static void pin(LivingEntity p,double x,double y,double z){if(p instanceof ServerPlayer sp)sp.connection.teleport(x,y,z,p.getYRot(),p.getXRot());else p.setPos(x,y,z);}
     public boolean use(LivingEntity p,PropEntity prop){
         String item=prop.item();var r=data(p.getUUID());int now=match.now();
-        if(Set.of("minecraft:nether_portal","minecraft:lodestone","minecraft:command_block","minecraft:end_crystal","minecraft:tnt_minecart").contains(item)&&!match.hunting())return true;
+        if(Set.of("minecraft:nether_portal","minecraft:lodestone","minecraft:command_block","minecraft:end_crystal","minecraft:tnt_minecart").contains(item)&&!match.hunting()){
+            if(item.equals("minecraft:end_crystal"))PropHuntMatch.say(p,Component.literal("엔드 수정: 찾는 시간에만 사용할 수 있습니다"),true);
+            return true;
+        }
         if(item.equals("minecraft:spawner")&&!match.hunting()&&!match.hiding())return true;
         if(cooldown(item)>0&&r.cooldown>now)return true;
         switch(item){
@@ -213,7 +216,17 @@ public final class PropAbilities {
                 r.cooldown=now+cooldown(item);
             }
             case "minecraft:beacon"->prop.toggle();
-            case "minecraft:end_crystal"->{var target=nearest(level(p),prop.position(),24);if(target==null)return true;r.bolts.add(new Bolt(prop.position().add(0,1,0),target.getUUID()));r.cooldown=now+600;}
+            case "minecraft:end_crystal"->{
+                // The nearest seeker the bolt can actually reach (a clear line from the crystal), else nothing is spent.
+                var from=prop.position().add(0,1,0);
+                var target=match.seekers().stream().filter(q->q.level()==prop.level()&&q.distanceToSqr(from)<=24*24
+                        &&p.level().clip(new ClipContext(from,q.getBoundingBox().getCenter(),ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,p)).getType()==HitResult.Type.MISS)
+                        .min(Comparator.comparingDouble(q->q.distanceToSqr(from))).orElse(null);
+                if(target==null){PropHuntMatch.say(p,Component.literal("엔드 수정: 24블록 안에 보이는 술래가 없습니다"),true);return true;}
+                r.bolts.add(new Bolt(from,target.getUUID()));r.cooldown=now+cooldown(item);
+                p.level().playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.EVOKER_CAST_SPELL,net.minecraft.sounds.SoundSource.PLAYERS,1.2f,1.4f);
+                level(p).sendParticles(ParticleTypes.DRAGON_BREATH,from.x,from.y,from.z,20,.2,.2,.2,.02);
+            }
             case "minecraft:sculk_sensor"->{prop.toggle();prop.state(prop.state().setValue(SculkSensorBlock.PHASE,prop.open()?SculkSensorPhase.ACTIVE:SculkSensorPhase.INACTIVE));if(prop.open())scream(level(p),prop);}
             case "minecraft:sculk_shrieker"->{prop.toggle();prop.state(prop.state().setValue(SculkShriekerBlock.SHRIEKING,prop.open()));if(prop.open())scream(level(p),prop);}
             case "gungang:hologram_projector"->{int size=(prop.mode()/5+1)%HOLOGRAM_SIZES.length;prop.mode(size*5+hologramSpeed(prop.mode()));PropHuntMatch.tell(p,"홀로그램 크기 "+HOLOGRAM_SIZES[size]+"%");}
@@ -243,7 +256,8 @@ public final class PropAbilities {
             }
             case "minecraft:bell"->{
                 // Like a raid bell: three seconds after the ring, seekers within 48 blocks glow for three seconds.
-                PropInteraction.ring(prop);r.resonate=now+60;r.cooldown=now+600;
+                // No cooldown: ring freely. Rings while the resonance is pending do not push its glow back.
+                PropInteraction.ring(prop);if(r.resonate<0)r.resonate=now+60;
             }
             case "minecraft:bubble_column"->{
                 prop.state(prop.state().cycle(BubbleColumnBlock.DRAG_DOWN));boolean down=prop.state().getValue(BubbleColumnBlock.DRAG_DOWN);

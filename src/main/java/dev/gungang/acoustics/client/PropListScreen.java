@@ -193,7 +193,7 @@ public final class PropListScreen extends Screen {
         d("torchflower","닿은 술래에게 화상 10초");d("pitcher_plant","다 자란 두 블록 형태");
         d("sugar_cane","60초마다 한 블록 성장(최대 3블록). 몸 크기도 함께 커짐");
         d("beacon","E: 빔 켜기/끄기. 하나 이상 켜져 있으면 살아 있는 숨는 팀 전체 이동속도 1.2배(중첩 없음)");
-        d("minecraft:end_crystal","E: 24블록 안 가장 가까운 술래를 추적하는 입자 발사(명중 피해 50, 30초 쿨타임). 벽에 막힘");
+        d("minecraft:end_crystal","E: 24블록 안에서 보이는 가장 가까운 술래를 추적하는 입자 발사(명중 피해 50, 30초 쿨타임). 벽에 막힘");
         d("sculk_sensor","E: 비명 효과 켜기/끄기. 켜진 동안 2초마다 딸깍 소리·입자(상태 효과 없음)");
         d("gungang:hologram_projector","주무기 중 무작위 무기를 홀로그램으로 표시\nE: 크기 50~300%, R: 회전 속도");
         d("sculk_shrieker","E: 비명 효과 켜기/끄기. 켜진 동안 2초마다 비명 소리와 입자(어둠 효과 없음)");
@@ -207,7 +207,7 @@ public final class PropListScreen extends Screen {
         d("jukebox","E: 무작위 음반을 위로 발사(3초 뒤 사라짐, 1초 쿨타임)");d("turtle_egg","E: 알 1~4개 전환. 밟아도 깨지지 않음");
         d("brewing_stand","E: 점프 강화·신속·투명화 중 하나를 숨는 팀 전원에게 15초(50초 쿨타임). 투명화 중 블록도 보이지 않음");
         d("gungang:big_grass_block","2×2×2 크기의 잔디 블록");
-        d("bell","E: 타종. 3초 뒤 48블록 안 술래가 3초 동안 발광(30초 쿨타임)");
+        d("bell","E: 타종. 3초 뒤 48블록 안 술래가 3초 동안 발광(쿨타임 없음)");
         d("bubble_column","물 없이 방울만 보임. 닿은 술래를 위로 던지거나 아래로 끌어내림. E: 물살 방향 전환");
         d("water","닿은 술래의 불을 끔");d("gungang:hot_spring_water","찾는 시간에 잠긴 숨는 사람을 치유");
         d("lava","닿은 술래에게 피해 50과 화상");d("gungang:acid","산성액 접촉 효과");
