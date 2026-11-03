@@ -138,7 +138,7 @@ public final class ShooterHud {
         int effectX = barX + barWidth - 15 - airSpace;
         var effects = player.getActiveEffects().stream().filter(e -> e.showIcon())
                 .sorted(java.util.Comparator.comparingInt(e -> net.minecraft.world.effect.MobEffect.getId(e.getEffect()))).toList();
-        int numberSpace = Math.round(HudText.numberWidth(value) * 1.8f) + 10;
+        int numberSpace = Math.round(HudText.healthWidth(value) * 1.8f) + 10;
         for (var effect : effects) {
             if (effectX < barX + numberSpace) break;
             graphics.blit(effectX, barY + (HEALTH_HEIGHT - 12) / 2, 0, 12, 12,

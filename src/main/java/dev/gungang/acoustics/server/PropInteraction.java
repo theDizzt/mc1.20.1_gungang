@@ -35,7 +35,7 @@ public final class PropInteraction {
             "gungang:shutter","minecraft:sea_pickle","minecraft:turtle_egg","minecraft:note_block","minecraft:jukebox","minecraft:brewing_stand","minecraft:bell",
             "minecraft:bubble_column","minecraft:dispenser","minecraft:tnt","gungang:gas_barrel","gungang:small_health_pack","gungang:large_health_pack",
             "minecraft:respawn_anchor","minecraft:armor_stand","minecraft:daylight_detector","minecraft:lectern","minecraft:end_portal_frame","gungang:eunbi_doll",
-            "gungang:prettiest_block","minecraft:crying_obsidian","minecraft:tnt_minecart","gungang:hanbi_doll");
+            "gungang:prettiest_block","minecraft:crying_obsidian","minecraft:tnt_minecart","gungang:hanbi_doll","minecraft:conduit","gungang:nozzle");
     private static final Set<String> MENUS=Set.of("minecraft:crafting_table","minecraft:loom","minecraft:grindstone","minecraft:smithing_table","minecraft:enchanting_table",
             "minecraft:cauldron","gungang:war_table","gungang:armory");
     public static boolean special(String item){return SPECIAL.contains(item);}
@@ -45,7 +45,7 @@ public final class PropInteraction {
      */
     public static boolean interactive(String item,net.minecraft.world.level.block.state.BlockState state){
         if(special(item)||storage(item)||MENUS.contains(item))return true;
-        for(net.minecraft.world.level.block.state.properties.Property<?> property:List.<net.minecraft.world.level.block.state.properties.Property<?>>of(BlockStateProperties.OPEN,BlockStateProperties.POWERED,BlockStateProperties.LIT,BlockStateProperties.LEVEL_COMPOSTER,
+        for(net.minecraft.world.level.block.state.properties.Property<?> property:List.<net.minecraft.world.level.block.state.properties.Property<?>>of(BlockStateProperties.DELAY,BlockStateProperties.OPEN,BlockStateProperties.POWERED,BlockStateProperties.LIT,BlockStateProperties.LEVEL_COMPOSTER,
                 BlockStateProperties.OCCUPIED,BlockStateProperties.STAIRS_SHAPE,BlockStateProperties.SLAB_TYPE))if(state.hasProperty(property))return true;
         return false;
     }
@@ -62,7 +62,10 @@ public final class PropInteraction {
         else{
             prop.toggle();
             // Furnace, smoker and blast furnace have no menu here: E puts the fire out and lights it again.
-            if(state.hasProperty(BlockStateProperties.OPEN))state=state.cycle(BlockStateProperties.OPEN);
+            // 192 repeater: E steps the delay torch 1 → 4, then flips it powered / unpowered and starts over (8 looks).
+            if(state.hasProperty(BlockStateProperties.DELAY)){int delay=state.getValue(BlockStateProperties.DELAY);
+                state=delay<4?state.setValue(BlockStateProperties.DELAY,delay+1):state.setValue(BlockStateProperties.DELAY,1).cycle(BlockStateProperties.POWERED);}
+            else if(state.hasProperty(BlockStateProperties.OPEN))state=state.cycle(BlockStateProperties.OPEN);
             else if(state.hasProperty(BlockStateProperties.POWERED))state=state.cycle(BlockStateProperties.POWERED);
             else if(state.hasProperty(BlockStateProperties.LIT))state=state.cycle(BlockStateProperties.LIT);
             else if(state.hasProperty(BlockStateProperties.LEVEL_COMPOSTER))state=state.cycle(BlockStateProperties.LEVEL_COMPOSTER);

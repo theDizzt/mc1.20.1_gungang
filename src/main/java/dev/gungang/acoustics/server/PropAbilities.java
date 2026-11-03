@@ -28,7 +28,9 @@ public final class PropAbilities {
     /** The hider whose daylight detector has turned the map's time, or null. */
     private UUID dayOwner;
     static final class Runtime {
-        int cooldown,active,stun,born,contact,note,erupt,eruptReady,resonate=-1,cry,eyeStart,eyeTicks;boolean mayfly,flying,flight,bees,primary,cloak;
+        int cooldown,active,stun,born,contact,note,erupt,eruptReady,resonate=-1,cry,eyeStart,eyeTicks;
+        /** 199 lightning storm until / next strike; 194 birthday song next note / position; 39 nozzle burst until. */
+        int storm,stormNext,songAt,songNote,burst;boolean mayfly,flying,flight,bees,primary,cloak;
         /** Doll gauge in ticks of use left (-1: not a doll) and its maximum. */
         float gauge=-1,gaugeMax;
         Vec3 eyeFrom,eyeTo,eyeLand;
@@ -44,7 +46,7 @@ public final class PropAbilities {
     PropAbilities(PropHuntMatch match){this.match=match;}
     private Runtime data(UUID id){return states.computeIfAbsent(id,k->{var r=new Runtime();r.born=match.now();return r;});}
     public static int cooldown(String item){return switch(item){case "minecraft:spawner"->84*20;
-        case "minecraft:respawn_anchor"->30*20;case "minecraft:end_portal_frame","minecraft:tnt_minecart"->5*20;case "minecraft:crying_obsidian","gungang:prettiest_block"->3*20;case "minecraft:daylight_detector"->2*20;case "minecraft:command_block","minecraft:end_crystal","minecraft:tnt","gungang:gas_barrel"->30*20;case "minecraft:dispenser","minecraft:jukebox"->20;case "minecraft:brewing_stand"->50*20;case "gungang:small_health_pack"->ExtraGadgetConfig.ticks(GadgetConfig.smallHealthPack.cooldownSeconds());case "gungang:large_health_pack"->ExtraGadgetConfig.ticks(GadgetConfig.largeHealthPack.cooldownSeconds());default->0;};}
+        case "minecraft:respawn_anchor"->30*20;case "minecraft:end_portal_frame","minecraft:tnt_minecart"->5*20;case "minecraft:crying_obsidian","gungang:prettiest_block"->3*20;case "minecraft:daylight_detector"->2*20;case "minecraft:command_block","minecraft:end_crystal","minecraft:tnt","gungang:gas_barrel"->30*20;case "minecraft:dispenser","minecraft:jukebox"->20;case "minecraft:brewing_stand"->50*20;case "minecraft:conduit"->90*20;case "gungang:nozzle"->BURST_COOLDOWN;case "gungang:small_health_pack"->ExtraGadgetConfig.ticks(GadgetConfig.smallHealthPack.cooldownSeconds());case "gungang:large_health_pack"->ExtraGadgetConfig.ticks(GadgetConfig.largeHealthPack.cooldownSeconds());default->0;};}
     public int remaining(UUID id){var r=data(id);return Math.max(0,r.cooldown-match.now());}
     public int active(UUID id){return Math.max(0,data(id).active-match.now());}
     public boolean stunned(UUID id){return data(id).stun>match.now();}
@@ -117,7 +119,7 @@ public final class PropAbilities {
         if(p.getUUID().equals(dayOwner))restoreDay();
     }
     public void clear(){for(var p:match.bodies())remove(p);states.values().forEach(r->{r.mobs.forEach(Entity::discard);r.clearDiscs();});states.clear();clearTemps();restoreDay();}
-    public void resetTransient(){for(var p:match.bodies()){var r=states.get(p.getUUID());if(r!=null){r.mobs.forEach(Entity::discard);r.mobs.clear();r.bolts.clear();r.clearDiscs();r.active=0;r.stun=0;r.erupt=0;r.eyeLand=null;r.cry=0;r.primary=false;r.cloak=false;modifier(p,CLOAK,0);stopFlight(p,r);}}clearTemps();}
+    public void resetTransient(){for(var p:match.bodies()){var r=states.get(p.getUUID());if(r!=null){r.mobs.forEach(Entity::discard);r.mobs.clear();r.bolts.clear();r.clearDiscs();r.active=0;r.stun=0;r.erupt=0;r.eyeLand=null;r.cry=0;r.storm=0;r.burst=0;r.primary=false;r.cloak=false;modifier(p,CLOAK,0);stopFlight(p,r);}}clearTemps();}
     private void clearTemps(){temps.forEach(t->t.entity().discard());temps.clear();}
     private void restoreDay(){if(dayOwner!=null){dayOwner=null;MapEnvironment.override(null);}}
     private static void stopFlight(LivingEntity p,Runtime r){if(!r.flight)return;r.flight=false;p.setNoGravity(false);p.fallDistance=0;if(p instanceof ServerPlayer sp){sp.getAbilities().mayfly=r.mayfly;sp.getAbilities().flying=r.flying;sp.onUpdateAbilities();}}
@@ -126,8 +128,8 @@ public final class PropAbilities {
     private static void pin(LivingEntity p,double x,double y,double z){if(p instanceof ServerPlayer sp)sp.connection.teleport(x,y,z,p.getYRot(),p.getXRot());else p.setPos(x,y,z);}
     public boolean use(LivingEntity p,PropEntity prop){
         String item=prop.item();var r=data(p.getUUID());int now=match.now();
-        if(Set.of("minecraft:nether_portal","minecraft:lodestone","minecraft:command_block","minecraft:end_crystal","minecraft:tnt_minecart").contains(item)&&!match.hunting()){
-            if(item.equals("minecraft:end_crystal"))PropHuntMatch.say(p,Component.literal("엔드 수정: 찾는 시간에만 사용할 수 있습니다"),true);
+        if(Set.of("minecraft:nether_portal","minecraft:lodestone","minecraft:command_block","minecraft:end_crystal","minecraft:tnt_minecart","minecraft:conduit").contains(item)&&!match.hunting()){
+            if(item.equals("minecraft:end_crystal")||item.equals("minecraft:conduit"))PropHuntMatch.say(p,Component.literal(PropCatalog.name(item).getString()+": 찾는 시간에만 사용할 수 있습니다"),true);
             return true;
         }
         if(item.equals("minecraft:spawner")&&!match.hunting()&&!match.hiding())return true;
@@ -259,6 +261,18 @@ public final class PropAbilities {
                 // No cooldown: ring freely. Rings while the resonance is pending do not push its glow back.
                 PropInteraction.ring(prop);if(r.resonate<0)r.resonate=now+60;
             }
+            // 199: a lightning storm over seekers within 24 blocks for four seconds.
+            case "minecraft:conduit"->{
+                if(nearest(level(p),prop.position(),STORM_RANGE)==null){PropHuntMatch.say(p,Component.literal("전달체: 24블록 안에 술래가 없습니다"),true);return true;}
+                r.storm=now+STORM_TICKS;r.stormNext=now;r.cooldown=now+cooldown(item);
+                p.level().playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.CONDUIT_ACTIVATE,net.minecraft.sounds.SoundSource.BLOCKS,2,1);
+                p.level().playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.TRIDENT_THUNDER,net.minecraft.sounds.SoundSource.WEATHER,3,1);
+            }
+            // 39: E opens a three-second burst that throws whatever stands in the stream into the air.
+            case "gungang:nozzle"->{
+                r.burst=now+BURST_TICKS;r.cooldown=now+cooldown(item);
+                p.level().playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.GENERIC_SPLASH,net.minecraft.sounds.SoundSource.BLOCKS,1.5f,.7f);
+            }
             case "minecraft:bubble_column"->{
                 prop.state(prop.state().cycle(BubbleColumnBlock.DRAG_DOWN));boolean down=prop.state().getValue(BubbleColumnBlock.DRAG_DOWN);
                 p.level().playSound(null,prop.blockPosition(),down?net.minecraft.sounds.SoundEvents.BUBBLE_COLUMN_WHIRLPOOL_INSIDE:net.minecraft.sounds.SoundEvents.BUBBLE_COLUMN_UPWARDS_INSIDE,net.minecraft.sounds.SoundSource.BLOCKS,1,1);
@@ -364,6 +378,55 @@ public final class PropAbilities {
         if(now%8==0)level.playSound(null,from.x,from.y,from.z,net.minecraft.sounds.SoundEvents.BEACON_AMBIENT,net.minecraft.sounds.SoundSource.PLAYERS,1,1.8f);
     }
     private LivingEntity nearest(ServerLevel level,Vec3 pos,double range){return match.seekers().stream().filter(p->p.level()==level&&p.distanceToSqr(pos)<=range*range).min(Comparator.comparingDouble(p->p.distanceToSqr(pos))).orElse(null);}
+    static final int STORM_TICKS=80,STORM_INTERVAL=3,BURST_TICKS=60,BURST_COOLDOWN=10*20;
+    static final double STORM_RANGE=24,STRIKE_RADIUS=2.5,BURST_TALL=2,BURST_LAUNCH=1.25;
+    static final float STRIKE_DAMAGE=10;
+    /** 199: a strike every few ticks, mostly right on a seeker in range, otherwise somewhere around them. Hits seekers only. */
+    private void storm(LivingEntity p,PropEntity prop,Runtime r,int now){
+        if(now>=r.storm||now<r.stormNext)return;
+        r.stormNext=now+STORM_INTERVAL;
+        var level=level(p);var random=p.getRandom();
+        var targets=match.seekers().stream().filter(q->q.level()==level&&q.distanceToSqr(prop)<=STORM_RANGE*STORM_RANGE).toList();
+        if(targets.isEmpty())return;
+        var target=targets.get(random.nextInt(targets.size()));double spread=random.nextFloat()<.7f?1:4;
+        var at=target.position().add((random.nextDouble()*2-1)*spread,0,(random.nextDouble()*2-1)*spread);
+        // A bolt, even visual-only, scrubs copper and powers lightning rods where it lands: no strike entity there (no map edits).
+        var ground=level.getBlockState(BlockPos.containing(at.x,at.y-1e-6,at.z)).getBlock();
+        if(ground instanceof WeatheringCopper||ground instanceof LightningRodBlock)level.sendParticles(ParticleTypes.ELECTRIC_SPARK,at.x,at.y+.5,at.z,30,.3,.8,.3,.3);
+        else{var bolt=EntityType.LIGHTNING_BOLT.create(level);if(bolt==null)return;bolt.moveTo(at.x,at.y,at.z);bolt.setVisualOnly(true);level.addFreshEntity(bolt);}
+        for(var seeker:targets)if(seeker.position().distanceToSqr(at)<=STRIKE_RADIUS*STRIKE_RADIUS){seeker.invulnerableTime=0;seeker.hurt(p.damageSources().magic(),STRIKE_DAMAGE);}
+    }
+    /**
+     * 194: while its candle burns, the birthday cake plays "Happy Birthday" on the wide-range note sound, on a loop.
+     * Notes are semitones from the harp's F#4; lengths in ticks.
+     */
+    private static final int[][] BIRTHDAY={{-6,6},{-6,2},{-4,8},{-6,8},{-1,8},{-2,16},{-6,6},{-6,2},{-4,8},{-6,8},{1,8},{-1,16},
+            {-6,6},{-6,2},{6,8},{3,8},{-1,8},{-2,8},{-4,16},{4,6},{4,2},{3,8},{-1,8},{1,8},{-1,16},{Integer.MIN_VALUE,24}};
+    private void song(LivingEntity p,PropEntity prop,Runtime r,int now){
+        var state=prop.state();
+        if(!(state.getBlock() instanceof CandleCakeBlock)||!state.getValue(BlockStateProperties.LIT)){r.songNote=0;r.songAt=0;return;}
+        if(now<r.songAt)return;
+        var note=BIRTHDAY[r.songNote];r.songNote=(r.songNote+1)%BIRTHDAY.length;r.songAt=now+note[1];
+        if(note[0]==Integer.MIN_VALUE)return;
+        p.level().playSound(null,prop.getX(),prop.getY()+.5,prop.getZ(),GimmickBlocks.PROP_NOTE.get(),net.minecraft.sounds.SoundSource.RECORDS,2,(float)Math.pow(2,note[0]/12d));
+        level(p).sendParticles(ParticleTypes.NOTE,prop.getX(),prop.getY()+1,prop.getZ(),0,net.minecraft.util.Mth.clamp(note[0]+12,0,24)/24d,0,0,1);
+    }
+    /** 39: the burst stream throws seekers and other hiders' disguises standing in it into the air. */
+    private void burst(LivingEntity p,PropEntity prop,Runtime r,int now){
+        if(now>=r.burst||!(prop.state().getBlock() instanceof NozzleBlock nozzle))return;
+        var level=level(p);var pos=prop.blockPosition();
+        nozzle.particles(level,pos,BURST_TALL,4);
+        if(now%2==0)level.sendParticles(nozzle.acid()?NozzleBlock.ACID_SPRAY:ParticleTypes.SPLASH,pos.getX()+.5,pos.getY()+1.2,pos.getZ()+.5,12,.15,.4,.15,.2);
+        var column=nozzle.column(pos,BURST_TALL);
+        for(var body:match.bodies()){
+            if(body==p||body.level()!=level||body.getDeltaMovement().y>BURST_LAUNCH*.5)continue;
+            boolean seeker=!match.hider(body.getUUID());
+            if(seeker&&!match.seekers().contains(body))continue; // frozen (hiding time) or out
+            var disguise=match.prop(body.getUUID());
+            var box=seeker||disguise==null?body.getBoundingBox():disguise.getBoundingBox();
+            if(box.intersects(column))match.launch(body,BURST_LAUNCH);
+        }
+    }
     public void tick(LivingEntity p,PropEntity prop){
         var r=data(p.getUUID());int now=match.now();String item=prop.item();
         boolean moving=r.lastPosition!=null&&p.position().subtract(r.lastPosition).horizontalDistanceSqr()>.0001;r.lastPosition=p.position();
@@ -414,7 +477,10 @@ public final class PropAbilities {
             for(var seeker:match.seekers())if(seeker.level()==prop.level()&&seeker.distanceToSqr(prop)<=48*48)seeker.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.GLOWING,60,0,false,false,false));
             p.level().playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.BELL_RESONATE,net.minecraft.sounds.SoundSource.BLOCKS,1,1);
         }
+        song(p,prop,r,now);
+        burst(p,prop,r,now);
         if(!match.hunting())return;
+        storm(p,prop,r,now);
         // Hot spring water heals the hider soaking in it (only while hunting; seekers never touch the healing).
         if(item.equals("gungang:hot_spring_water"))HotSpringEffect.touch(p);
         for(var it=r.bolts.iterator();it.hasNext();){var bolt=it.next();var target=match.seekers().stream().filter(q->q.getUUID().equals(bolt.target)&&q.level()==prop.level()).findFirst().orElse(null);

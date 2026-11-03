@@ -200,13 +200,13 @@ public final class TaczAmmoHud {
     }
     /**
      * Tabular digits: each character centred in a fixed cell so the count does not shift as it changes.
-     * No drop shadow: the number font's counters and gaps are one pixel wide, so a 1px shadow fills them as dark lines.
+     * Drawn with the black HUD number shadow (HudText.drawNumber).
      */
     static void digits(GuiGraphics g,net.minecraft.client.gui.Font font,String text,int firstCell,int color) {
         int cell=digitCell(font);
         for(int i=0;i<text.length();i++) {
             String c=String.valueOf(text.charAt(i));int x=(firstCell+i)*cell+(cell-HudText.numberWidth(c))/2;
-            g.drawString(font,HudText.number(c),x,0,color,false);
+            HudText.drawNumber(g,HudText.number(c),x,0,color);
         }
     }
     /** Text with a translucent drop shadow instead of vanilla's opaque one. */

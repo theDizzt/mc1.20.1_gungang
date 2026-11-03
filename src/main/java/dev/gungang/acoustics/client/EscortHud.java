@@ -52,15 +52,15 @@ public final class EscortHud {
     private static void distance(GuiGraphics g,String text,int cx,int cy){
         float size=Math.min(1.8f,56f/Math.max(1,HudText.numberWidth(text)));
         g.pose().pushPose();g.pose().translate(cx-HudText.numberWidth(text)*size/2,cy-3.5f*size,0);
-        g.pose().scale(size,size,1);g.drawString(Minecraft.getInstance().font,HudText.number(text),0,0,0xFFFFFFFF,false);
+        g.pose().scale(size,size,1);HudText.drawNumber(g,HudText.number(text),0,0,0xFFFFFFFF);
         g.pose().popPose();
     }
     private static String meters(double d){return Integer.toString((int)Math.ceil(Math.max(0,d)));}
-    /** Overtime seconds centred under the label in the number font, shadow-free so its 1px counters stay open. */
+    /** Overtime seconds centred under the label in the number font, with the black HUD number shadow. */
     private static void overtime(GuiGraphics g,String text,int y,float size,int color){
         var font=Minecraft.getInstance().font;var number=HudText.number(text);float width=(font.width(number)-1)*size;
         g.pose().pushPose();g.pose().translate(-width/2,y,0);g.pose().scale(size,size,1);
-        g.drawString(font,number,0,0,color,false);g.pose().popPose();
+        HudText.drawNumber(g,number,0,0,color);g.pose().popPose();
     }
     /** Route track: pushed section in ALPHA, current leg highlighted, diamond checkpoints, goal flag and a cart pointer with a status chip. */
     private static void track(GuiGraphics g,EscortMatch.View v,int alpha,int bravo,double next){

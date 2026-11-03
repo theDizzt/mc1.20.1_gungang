@@ -16,7 +16,7 @@ import net.minecraft.world.phys.AABB;
 
 /** Operator-only selection editor. JSON fields not being edited are preserved verbatim as data. */
 public final class AreaEditor {
-    private static final List<String> TYPES=List.of("map","alpha","bravo","deathzone","capture","attack","defense","bomb_a","bomb_b","escort","escort_alpha","escort_bravo","normandy","normandy_spawn","attack_launch","spectator");
+    private static final List<String> TYPES=List.of("map","alpha","bravo","capture","attack","defense","bomb_a","bomb_b","escort","escort_alpha","escort_bravo","normandy","normandy_spawn","attack_launch","spectator");
     private record Change(String file,String before,String after){}
     @FunctionalInterface private interface Work{void run() throws Exception;}
     private static int run(CommandSourceStack source,Work action){
@@ -112,7 +112,7 @@ public final class AreaEditor {
     }
     static void save(ServerPlayer p,String id,String type,int index)throws Exception{
         LobbyManager.requireMapEditing();if(!TYPES.contains(type))throw new IllegalArgumentException("지원하지 않는 종류: "+type);
-        boolean indexed=Set.of("deathzone","escort_alpha","escort_bravo","normandy","normandy_spawn").contains(type);
+        boolean indexed=Set.of("escort_alpha","escort_bravo","normandy","normandy_spawn").contains(type);
         if(index!=0&&!indexed)throw new IllegalArgumentException(type+"에는 번호를 사용하지 않습니다.");
         var sel=SpatialWand.selection(p);var b=sel.bounds();Path path=find(id);String before=Files.exists(path)?read(path):null;
         var json=before==null?fresh(id,p):JsonParser.parseString(before).getAsJsonObject();
@@ -125,8 +125,6 @@ public final class AreaEditor {
                 if(type.equals("attack")||type.equals("defense")||bomb){target=required(json,"bomb");team=type.equals("alpha")?"attack":type.equals("bravo")?"defense":type;}
                 target.add(team+"Area",box(b,false));target.add(team+"Spawn",safeSpawn(p,b));
             }
-            case "deathzone" -> {var zones=json.has("deathZones")&&!json.get("deathZones").isJsonNull()?json.getAsJsonArray("deathZones"):new JsonArray();
-                if(index==0||index==zones.size()+1)zones.add(box(b,false));else if(index<=zones.size())zones.set(index-1,box(b,false));else throw new IllegalArgumentException("데스존 번호는 기존 번호 또는 다음 번호여야 합니다.");json.add("deathZones",zones);}
             case "capture" -> {var cap=json.has("capture")&&!json.get("capture").isJsonNull()?json.getAsJsonObject("capture"):new JsonObject();
                 if(!cap.has("name")){cap.addProperty("name","중앙 거점");cap.addProperty("winningScore",100);cap.addProperty("captureStepTicks",2);cap.addProperty("scoreIntervalTicks",30);}cap.add("area",box(b,false));json.add("capture",cap);}
             case "bomb_a","bomb_b" -> {b.validate();required(json,"bomb").add(type.equals("bomb_a")?"areaA":"areaB",box(b,true));}

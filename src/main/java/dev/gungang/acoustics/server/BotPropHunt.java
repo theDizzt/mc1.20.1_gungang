@@ -498,6 +498,11 @@ final class BotPropHunt {
         if(flat<.5&&Math.abs(bot.getY()-target.y)<1.2){settle(a,hunt,prop,now);return;}
         if(bot.getNavigation().isDone()){
             // A spot a ledge up and close by: a charged leap, as a hiding player would.
+            // 95 / 190 cannot jump: they climb the wall up to it instead.
+            if(PropSticky.sticky(prop.item())&&flat<9&&target.y-bot.getY()>=.9&&target.y-bot.getY()<=6){
+                var dir=new Vec3(target.x-bot.getX(),0,target.z-bot.getZ()).normalize().scale(PropSticky.SPEED);
+                bot.setDeltaMovement(dir.x,bot.horizontalCollision||target.y>bot.getY()?.2:0,dir.z);bot.fallDistance=0;bot.hurtMarked=true;return;
+            }
             if(bot.onGround()&&flat<9&&target.y-bot.getY()>=.9&&target.y-bot.getY()<=3.2){
                 var dir=new Vec3(target.x-bot.getX(),0,target.z-bot.getZ()).normalize().scale(.25);
                 bot.setDeltaMovement(dir.x,PropHuntGame.jumpVelocity((int)Math.min(20,(target.y-bot.getY())*7)),dir.z);bot.hurtMarked=true;return;
@@ -618,6 +623,10 @@ final class BotPropHunt {
                 }
             }
             case "minecraft:end_crystal"->{if(unaware!=null&&unaware.distance()<22&&random.nextDouble()<.5+boldness*.5){hunt.botUse(bot);nextAbility=now+40;mode="수정 번개";}}
+            // 199: call the lightning storm once seekers come within its 24 blocks.
+            case "minecraft:conduit"->{if(threats.stream().anyMatch(t->t.distance()<20)&&random.nextDouble()<.4+boldness*.5){hunt.botUse(bot);nextAbility=now+40;mode="번개 폭풍";}}
+            // 39: a burst when a seeker steps into the stream.
+            case "gungang:nozzle"->{if(threats.stream().anyMatch(t->t.distance()<2.5)){hunt.botUse(bot);nextAbility=now+40;mode="대량 분사";}}
             case "minecraft:spawner"->{if(!threats.isEmpty()||random.nextDouble()<.02){hunt.botUse(bot);nextAbility=now+40;mode="거미 소환";}}
             case "minecraft:brewing_stand"->{if(threats.stream().allMatch(t->t.distance()>16)){hunt.botUse(bot);nextAbility=now+40;mode="팀 물약";}}
             case "minecraft:bell"->{if(!threats.isEmpty()&&threats.stream().allMatch(t->t.distance()>12)){hunt.botUse(bot);nextAbility=now+40;mode="종 울리기";}}
@@ -698,7 +707,7 @@ final class BotPropHunt {
         }
         // Charged leaps make it a hard target at close range.
         var nearest=threats.stream().mapToDouble(Threat::distance).min().orElse(99);
-        if(bot.onGround()&&nearest<9&&random.nextDouble()<.06){
+        if(bot.onGround()&&nearest<9&&random.nextDouble()<.06&&!PropSticky.sticky(prop.item())){
             var motion=bot.getDeltaMovement();
             bot.setDeltaMovement(motion.x*1.4,PropHuntGame.jumpVelocity(8+random.nextInt(12)),motion.z*1.4);bot.hurtMarked=true;
         }

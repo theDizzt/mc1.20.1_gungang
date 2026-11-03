@@ -209,5 +209,6 @@
     "block.gungang.mannequin":  "Mannequin",
     "block.gungang.eunbi_doll":  "Doll Holding Eunbi's Soul",
     "block.gungang.hanbi_doll":  "Doll Holding Hanbi's Soul",
-    "block.gungang.prettiest_block":  "The Prettiest Block in the World"
+    "block.gungang.prettiest_block":  "The Prettiest Block in the World",
+    "block.gungang.death_zone":  "Death Zone Marker"
 }

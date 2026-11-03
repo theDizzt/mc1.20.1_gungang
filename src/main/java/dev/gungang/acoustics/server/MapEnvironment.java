@@ -16,6 +16,15 @@ public final class MapEnvironment {
     /** 177 daylight detector: a hider's day/night switch over the map's own time, until it is restored (null). */
     private static Long override;
     public static long dayTime(){return override!=null?override:time;}
+    /**
+     * Time of day for match snapshots: the daylight detector's switch while it holds, else the map's own. Clients pin
+     * their sky to the snapshot every tick, so without this the map's forced time would hide the switch.
+     */
+    public static String timeOfDay(String map){
+        if(override==null)return map;
+        long t=Math.floorMod(override,24000L);
+        return t>=23000?"dawn":t>=18000?"night":t>=12000?"dusk":"day";
+    }
     public static void override(Long value){override=value;apply();if(level!=null)sync(level,true);}
     public static boolean preventSnowAccumulation(net.minecraft.world.level.LevelReader target){return level!=null&&level==target&&snow;}
     public static void begin(MinecraftServer server,ArenaMap map) {

@@ -54,6 +54,13 @@ public final class PropEntity extends LivingEntity {
      */
     public void rotate(){
         var state=state();
+        // 195·197·198 torches: standing → on a wall facing N, E, S, W → standing again (a redstone torch keeps its on/off).
+        var wall=TORCHES.get(state.getBlock());
+        if(wall!=null){state(copyLit(state,wall.defaultBlockState().setValue(net.minecraft.world.level.block.WallTorchBlock.FACING,net.minecraft.core.Direction.NORTH)));return;}
+        for(var torch:TORCHES.entrySet())if(torch.getValue()==state.getBlock()){
+            var facing=state.getValue(net.minecraft.world.level.block.WallTorchBlock.FACING);
+            state(facing==net.minecraft.core.Direction.WEST?copyLit(state,torch.getKey().defaultBlockState()):state.setValue(net.minecraft.world.level.block.WallTorchBlock.FACING,facing.getClockWise()));return;
+        }
         for(var property:List.of(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING,net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING_HOPPER)){
             if(!state.hasProperty(property))continue;
             var order=new java.util.ArrayList<net.minecraft.core.Direction>();
@@ -67,6 +74,15 @@ public final class PropEntity extends LivingEntity {
             entityData.set(ROTATION,(rotation()+1)%4);state(state.setValue(axis,next));return;
         }
         entityData.set(ROTATION,(rotation()+1)%4);state(state.rotate(net.minecraft.world.level.block.Rotation.CLOCKWISE_90));
+    }
+    /** Standing torch → its wall-mounted form. */
+    private static final java.util.Map<Block,Block> TORCHES=java.util.Map.of(
+            net.minecraft.world.level.block.Blocks.TORCH,net.minecraft.world.level.block.Blocks.WALL_TORCH,
+            net.minecraft.world.level.block.Blocks.SOUL_TORCH,net.minecraft.world.level.block.Blocks.SOUL_WALL_TORCH,
+            net.minecraft.world.level.block.Blocks.REDSTONE_TORCH,net.minecraft.world.level.block.Blocks.REDSTONE_WALL_TORCH);
+    private static BlockState copyLit(BlockState from,BlockState to){
+        var lit=net.minecraft.world.level.block.state.properties.BlockStateProperties.LIT;
+        return from.hasProperty(lit)&&to.hasProperty(lit)?to.setValue(lit,from.getValue(lit)):to;
     }
     public UUID owner(){return entityData.get(OWNER).orElse(null);}
     public void setup(UUID owner,String item,int painting){entityData.set(OWNER,Optional.of(owner));entityData.set(ITEM,item);entityData.set(PAINTING,painting);entityData.set(MODE,0);entityData.set(HEIGHT,1);entityData.set(TEXT,"");entityData.set(OPEN,false);entityData.set(FOUND,false);setGlowingTag(false);state(PropCatalog.state(item));}

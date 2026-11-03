@@ -692,8 +692,7 @@ public final class LobbyManager {
         tickRespawns(now);
         if(activeMap!=null&&(phase.equals("PREPARING")||phase.equals("RUNNING"))){
             for(var p:server.getPlayerList().getPlayers())if(!p.isSpectator()&&p.isAlive()&&p.level().dimension().location().toString().equals(activeMap.dimension())){
-                var b=p.getBoundingBox();
-                if(activeMap.deathZones().stream().anyMatch(z->z.intersects(b.minX,b.minY,b.minZ,b.maxX,b.maxY,b.maxZ)))MatchManager.deathZone(p);
+                if(DeathZoneBlock.touching(p))MatchManager.deathZone(p);
             }
         }
         if (phase.equals("PREPARING")&&MatchManager.bomb()==null) {

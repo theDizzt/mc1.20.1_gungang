@@ -25,6 +25,7 @@
     "FontPixelSnapMixin",
     "MaruFontWeightMixin",
     "EffectColorAccessor",
+    "ConduitStateAccessor",
     "BossHealthOverlayMixin",
     "ChatComponentMixin",
     "ChatScreenMixin",

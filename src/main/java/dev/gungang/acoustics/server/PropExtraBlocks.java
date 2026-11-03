@@ -23,6 +23,8 @@ public final class PropExtraBlocks {
     /** Twice a grass block in every direction, centred on its cell so a disguise stays centred on the hider. */
     public static final RegistryObject<Block> BIG_GRASS_BLOCK=block("big_grass_block",()->new ShapeBlock(Properties.copy(Blocks.GRASS_BLOCK).noOcclusion(),Block.box(-8,0,-8,24,32,24)));
     public static final RegistryObject<Block> WILDFLOWERS=block("wildflowers",()->new ShapeBlock(Properties.copy(Blocks.PINK_PETALS).noCollission().noOcclusion(),Block.box(0,0,0,16,3,16)));
+    /** Death zone marker (DeathZoneBlock): invisible except to whoever holds one; kills match participants who touch it. */
+    public static final RegistryObject<Block> DEATH_ZONE=block("death_zone",DeathZoneBlock::new);
     private static RegistryObject<Block> block(String id,java.util.function.Supplier<Block> supplier){var result=BLOCKS.register(id,supplier);ITEMS.register(id,()->new BlockItem(result.get(),new Item.Properties()));return result;}
     public static void register(net.minecraftforge.eventbus.api.IEventBus bus){BLOCKS.register(bus);ITEMS.register(bus);}
     private static final class ShapeBlock extends Block {

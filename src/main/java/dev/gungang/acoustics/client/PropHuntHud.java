@@ -122,7 +122,7 @@ final class PropHuntHud {
         g.drawString(font,title,left+14,top+7,0xFFFFFFFF,false);
         g.drawString(font,subtitle,left+14,top+17,TacticalStyle.MUTED,false);
         g.pose().pushPose();g.pose().translate(right-8-HudText.numberWidth(total)*2,top+6,0);g.pose().scale(2,2,1);
-        g.drawString(font,HudText.number(total),0,0,0xFFFFFFFF,false);g.pose().popPose();
+        HudText.drawNumber(g,HudText.number(total),0,0,0xFFFFFFFF);g.pose().popPose();
         // Hiders: status + hidden time; seekers: find count. Right-anchored so names keep the rest.
         int value=right-8,status=value-52,face=left+26,nameX=face+30,cy=top+HEAD,nameEnd=hider?status-34:value-30;
         g.fill(left,cy,right,cy+COLS,0x30000000);g.fill(left,cy+COLS-1,right,cy+COLS,TacticalStyle.EDGE);
@@ -137,7 +137,7 @@ final class PropHuntHud {
             if(mine){g.fill(left,ry,right,ry+ROW,rgb|0x38000000);g.fill(left,ry,left+2,ry+ROW,color);}
             else if(i%2==1)g.fill(left,ry,right,ry+ROW,0x10FFFFFF);
             String number=String.valueOf(rank);
-            g.drawString(font,HudText.number(number),left+8+(10-HudText.numberWidth(number))/2,ry+5,rank==1&&(hider?row.seconds()>0:row.finds()>0)?0xFFFFD166:DIM,false);
+            HudText.drawNumber(g,HudText.number(number),left+8+(10-HudText.numberWidth(number))/2,ry+5,rank==1&&(hider?row.seconds()>0:row.finds()>0)?0xFFFFD166:DIM);
             g.fill(face-1,ry+2,face+13,ry+16,mine?color:found?0xFF5A2A2A:TacticalStyle.EDGE);
             PlayerFaceRenderer.draw(g,row.skin()!=null&&!row.skin().isEmpty()?BotRenderer.texture(row.skin()):MatchHud.skin(row.id()),face,ry+3,12);
             if(found)g.fill(face,ry+3,face+12,ry+15,0x90141511);

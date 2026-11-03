@@ -93,6 +93,7 @@ public final class ClientSetup {
         dev.gungang.acoustics.server.SpawnGateBlock.clientRule=MatchHud::gateRule;
         dev.gungang.acoustics.server.SpawnGateBlock.clientPreparation=MatchHud::gatePreparation;
         dev.gungang.acoustics.server.EscortSpawnGateBlock.clientEditing=()->dev.gungang.acoustics.server.EscortSpawnGateBlock.editing(net.minecraft.client.Minecraft.getInstance().player);
+        dev.gungang.acoustics.server.DeathZoneBlock.clientHolding=()->dev.gungang.acoustics.server.DeathZoneBlock.holding(net.minecraft.client.Minecraft.getInstance().player);
         event.enqueueWork(()->{
             net.minecraft.client.gui.screens.MenuScreens.register(dev.gungang.acoustics.server.HologramBlocks.MENU.get(),HologramScreen::new);
             net.minecraft.client.renderer.ItemBlockRenderTypes.setRenderLayer(dev.gungang.acoustics.server.HotSpringContent.SOURCE.get(),net.minecraft.client.renderer.RenderType.translucent());

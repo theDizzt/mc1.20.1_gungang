@@ -152,7 +152,7 @@ final class BotNavGraph {
             if(state.getFluidState().is(FluidTags.LAVA)||state.is(BlockTags.FIRE)||block instanceof AcidBlock||AcidLogging.acid(state)
                     ||block instanceof PuddleBlock puddle&&puddle.acid
                     ||block==Blocks.MAGMA_BLOCK||block==Blocks.CACTUS||block==Blocks.SWEET_BERRY_BUSH||block==Blocks.POWDER_SNOW
-                    ||block==Blocks.WITHER_ROSE||block instanceof CampfireBlock&&state.getValue(CampfireBlock.LIT))flags|=DANGER;
+                    ||block==Blocks.WITHER_ROSE||block instanceof CampfireBlock&&state.getValue(CampfireBlock.LIT)||block instanceof DeathZoneBlock)flags|=DANGER;
             net.minecraft.world.phys.shapes.VoxelShape shape;
             try{shape=state.getCollisionShape(EmptyBlockGetter.INSTANCE,BlockPos.ZERO);}
             catch(RuntimeException error){shape=state.getCollisionShape(level,pos);}
@@ -164,17 +164,12 @@ final class BotNavGraph {
         }
         KINDS.put(state,(short)flags);return flags;
     }
-    /** Shutters with a switch close enough to be the one wired to them, and death zones as hazards. */
+    /** Shutters with a switch close enough to be the one wired to them. Death zones are blocks, flagged by kind(). */
     private void prepare(){
         for(var shutter:shutters)for(var lever:switches)
             if(Math.abs(lever.getX()-shutter.getX())<=SWITCH_RANGE&&Math.abs(lever.getZ()-shutter.getZ())<=SWITCH_RANGE&&Math.abs(lever.getY()-shutter.getY())<=4){
                 cells[index(shutter.getX(),shutter.getY(),shutter.getZ())]|=SWITCHABLE;break;
             }
-        if(arena.deathZones()!=null)for(var zone:arena.deathZones()){
-            int ax=Math.max(x0,Mth.floor(zone.minX())),bx=Math.min(x0+w-1,Mth.floor(zone.maxX())),ay=Math.max(y0,Mth.floor(zone.minY())),by=Math.min(y0+h-1,Mth.floor(zone.maxY()));
-            int az=Math.max(z0,Mth.floor(zone.minZ())),bz=Math.min(z0+d-1,Mth.floor(zone.maxZ()));
-            for(int x=ax;x<=bx;x++)for(int y=ay;y<=by;y++)for(int z=az;z<=bz;z++)cells[index(x,y,z)]|=DANGER;
-        }
     }
     /** Every ledge a launch from this pad lands on: rise straight up, then drift over at walking pace. */
     private void padLandings(int i,ServerLevel level,int x,int y,int z){

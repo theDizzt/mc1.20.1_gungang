@@ -71,7 +71,7 @@ public final class FreeForAllHud {
         if(leader!=null) {
             String total=String.valueOf(leader.score()),label="1위";
             g.pose().pushPose();g.pose().translate(right-8-HudText.numberWidth(total)*2,y+6,0);g.pose().scale(2,2,1);
-            g.drawString(font,HudText.number(total),0,0,0xFFFFFFFF,false);g.pose().popPose();
+            HudText.drawNumber(g,HudText.number(total),0,0,0xFFFFFFFF);g.pose().popPose();
             g.drawString(font,label,right-12-HudText.numberWidth(total)*2-font.width(label),y+13,GOLD,false);
         }
         int dmg=right-8,assist=dmg-46,death=assist-22,kill=death-22,score=kill-30,face=x+26,nameX=face+30,cy=y+HEAD;
@@ -87,7 +87,7 @@ public final class FreeForAllHud {
             else if(i%2==1)g.fill(x,ry,right,ry+ROW,0x10FFFFFF);
             g.fill(x,ry,x+2,ry+ROW,color);
             String number=String.valueOf(rank);
-            g.drawString(font,HudText.number(number),x+8+(10-HudText.numberWidth(number))/2,ry+5,rank<=3&&r.score()>0?rankColor(rank):DIM,false);
+            HudText.drawNumber(g,HudText.number(number),x+8+(10-HudText.numberWidth(number))/2,ry+5,rank<=3&&r.score()>0?rankColor(rank):DIM);
             g.fill(face-1,ry+2,face+13,ry+16,mine?color:TacticalStyle.EDGE);
             PlayerFaceRenderer.draw(g,MatchHud.skin(r.id()),face,ry+3,12);
             PlayerLevels.draw(g,r.id(),face+15,ry+3,12);

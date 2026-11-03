@@ -100,11 +100,15 @@ public final class NozzleBlock extends GimmickBlock implements LiquidBlockContai
     private double height(){return acid()?GimmickConfig.acidNozzle.height():GimmickConfig.nozzle.height();}
     /** The spray column above the nozzle, where its effect applies. */
     public AABB column(BlockPos pos){return new AABB(pos.getX()+.3,pos.getY()+1,pos.getZ()+.3,pos.getX()+.7,pos.getY()+1+height(),pos.getZ()+.7);}
-    public void particles(ServerLevel level,BlockPos pos){
+    /** The wider, {@code tall} times higher column of a 39 disguise's E burst. */
+    public AABB column(BlockPos pos,double tall){return new AABB(pos.getX()+.1,pos.getY()+1,pos.getZ()+.1,pos.getX()+.9,pos.getY()+1+height()*tall,pos.getZ()+.9);}
+    public void particles(ServerLevel level,BlockPos pos){particles(level,pos,1,1);}
+    /** Spray particles; a 39 disguise's E burst sprays {@code tall} times higher and {@code dense} times thicker. */
+    public void particles(ServerLevel level,BlockPos pos,double tall,int dense){
         int perSecond=acid()?GimmickConfig.acidNozzle.particlesPerSecond():GimmickConfig.nozzle.particlesPerSecond();
         if(level.getGameTime()%4!=0||perSecond<=0)return;
-        double height=height();
-        var packet=new GungangNetwork.NozzleBurst(pos,acid(),height,Math.max(1,perSecond/5));
+        double height=height()*tall;
+        var packet=new GungangNetwork.NozzleBurst(pos,acid(),height,Math.max(1,perSecond/5)*dense);
         for(var player:level.players()){
             double nearestY=Math.max(pos.getY()+1,Math.min(pos.getY()+1+height,player.getY()));
             if(player.distanceToSqr(pos.getX()+.5,nearestY,pos.getZ()+.5)<=32*32)GungangNetwork.send(player,packet);
