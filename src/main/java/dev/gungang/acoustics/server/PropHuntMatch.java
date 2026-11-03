@@ -49,6 +49,12 @@ public final class PropHuntMatch {
     static void tell(LivingEntity p,String text){say(p,Component.literal(text),true);}
     static void say(LivingEntity p,Component text,boolean overlay){if(p instanceof ServerPlayer sp)sp.displayClientMessage(text,overlay);}
     /** A push that reaches a player's client at once; a bot just takes the motion. */
+    /** 39 nozzle burst: thrown straight up, first freed from a T lock or a wall, so the body steers freely while airborne. */
+    void launch(LivingEntity body,double up){
+        var m=members.get(body.getUUID());
+        if(m!=null){if(m.fixed)unlock(body);if(body instanceof ServerPlayer sp)release(sp,m);else if(m.wall!=null){m.wall=null;body.setNoGravity(false);}}
+        var v=body.getDeltaMovement();impulse(body,new Vec3(v.x,up,v.z));body.fallDistance=0;
+    }
     static void impulse(LivingEntity p,Vec3 motion){if(p instanceof ServerPlayer sp)PlayerImpulse.apply(sp,motion);else{p.setDeltaMovement(motion);p.hurtMarked=true;p.hasImpulse=true;}}
     Vec3 randomMapPosition(LivingEntity p){
         if(map!=null&&map.previewArea()!=null){var a=map.previewArea();return new Vec3(a.minX()+random.nextDouble()*(a.maxX()-a.minX()+1),a.minY()+random.nextDouble()*(a.maxY()-a.minY()+1),a.minZ()+random.nextDouble()*(a.maxZ()-a.minZ()+1));}
@@ -373,6 +379,9 @@ public final class PropHuntMatch {
             if(id.equals("gungang:uxo")){
                 m.hazard=server.getTickCount()+100;
                 explode(prop,3);
+            }else if(id.equals("gungang:death_zone")){
+                // 196: a seeker who touches the death zone disguise dies on the spot (and respawns as seekers do).
+                eliminate(target,owner);
             }else if(id.endsWith("health_pack")){
                 var config=id.contains("large")?GadgetConfig.largeHealthPack:GadgetConfig.smallHealthPack;
                 if(target.getHealth()<target.getMaxHealth()){target.heal((float)config.heal());m.hazard=server.getTickCount()+(int)Math.ceil(config.cooldownSeconds()*20);}
@@ -512,12 +521,13 @@ public final class PropHuntMatch {
             case "cling"->cling(p,m);
             case "interact"->{noise(m);if(m.prop!=null&&m.watching==null&&abilities.use(p,m.prop)){m.prop.setPos(spot(m,p));p.refreshDimensions();}else if(m.prop!=null&&m.watching==null&&m.prop.item().equals("minecraft:dispenser"))fire(p,m);else if(m.prop!=null&&m.watching==null&&explosive(m.prop.item()))blast(p,m);else if(m.prop!=null&&m.watching==null){PropInteraction.use(p,m.prop);if(m.prop.sinkable()){m.prop.setPos(spot(m,p));p.displayClientMessage(Component.literal(m.prop.sunk()?"생명력 팩: 바닥 아래로 들어갔습니다 · E로 나오기":"생명력 팩: 바닥 위로 나왔습니다 · E로 들어가기"),true);}p.refreshDimensions();}}
             // On a jump pad the jump key launches at once, as for everyone else; elsewhere it starts the charge.
-            case "charge"->{if(!m.fixed&&m.wall==null&&p.onGround()){if(PropSurfacePhysics.pad(p)!=null){p.setDeltaMovement(p.getDeltaMovement().x,PropSurfacePhysics.jump(p,0),p.getDeltaMovement().z);p.hurtMarked=true;m.charge=-1;}else m.charge=server.getTickCount();}}
+            // 95 / 190 slime and honey disguises climb instead of jumping.
+            case "charge"->{if(!m.fixed&&m.wall==null&&p.onGround()&&(m.prop==null||!PropSticky.sticky(m.prop.item()))){if(PropSurfacePhysics.pad(p)!=null){p.setDeltaMovement(p.getDeltaMovement().x,PropSurfacePhysics.jump(p,0),p.getDeltaMovement().z);p.hurtMarked=true;m.charge=-1;}else m.charge=server.getTickCount();}}
             case "cancelCharge"->m.charge=-1;
             case "horn"->horn(m);
             // Dolls (184, 191): the attack key held down and let go.
             case "primaryDown","primaryUp"->{if(m.prop!=null&&m.watching==null)abilities.primary(p,m.prop,action.equals("primaryDown"));}
-            case "jump"->{if(!m.fixed&&m.wall==null&&p.onGround()&&m.charge>=0){p.setDeltaMovement(p.getDeltaMovement().x,PropSurfacePhysics.jump(p,PropHuntGame.jumpVelocity(server.getTickCount()-m.charge)),p.getDeltaMovement().z);p.hurtMarked=true;}m.charge=-1;}
+            case "jump"->{if(!m.fixed&&m.wall==null&&p.onGround()&&m.charge>=0&&(m.prop==null||!PropSticky.sticky(m.prop.item()))){p.setDeltaMovement(p.getDeltaMovement().x,PropSurfacePhysics.jump(p,PropHuntGame.jumpVelocity(server.getTickCount()-m.charge)),p.getDeltaMovement().z);p.hurtMarked=true;}m.charge=-1;}
         }
         sync();
     }

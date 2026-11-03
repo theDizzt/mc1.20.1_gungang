@@ -161,7 +161,7 @@ public final class MatchHud {
         g.drawString(font,rows.size()+"명 · "+kills+" 킬",left+14,top+17,TacticalStyle.MUTED,false);
         String total=String.valueOf(score);
         g.pose().pushPose();g.pose().translate(right-8-HudText.numberWidth(total)*2,top+6,0);g.pose().scale(2,2,1);
-        g.drawString(font,HudText.number(total),0,0,leading?0xFFFFFFFF:0xFFB4C0CE,false);g.pose().popPose();
+        HudText.drawNumber(g,HudText.number(total),0,0,leading?0xFFFFFFFF:0xFFB4C0CE);g.pose().popPose();
         // Columns are right-anchored so the name gets every remaining pixel.
         int dmg=right-8,assist=dmg-46,death=assist-22,kill=death-22,face=left+26,nameX=face+30,cy=top+HEAD;
         g.fill(left,cy,right,cy+COLS,0x30000000);g.fill(left,cy+COLS-1,right,cy+COLS,TacticalStyle.EDGE);
@@ -177,7 +177,7 @@ public final class MatchHud {
             if(mine){g.fill(left,ry,right,ry+ROW,rgb|0x38000000);g.fill(left,ry,left+2,ry+ROW,color|0xFF000000);}
             else if(i%2==1)g.fill(left,ry,right,ry+ROW,0x10FFFFFF);
             String number=String.valueOf(rank);
-            g.drawString(font,HudText.number(number),left+8+(10-HudText.numberWidth(number))/2,ry+5,rank==1&&row.kills()>0?0xFFFFD166:TacticalStyle.DIM,false);
+            HudText.drawNumber(g,HudText.number(number),left+8+(10-HudText.numberWidth(number))/2,ry+5,rank==1&&row.kills()>0?0xFFFFD166:TacticalStyle.DIM);
             g.fill(face-1,ry+2,face+13,ry+16,mine?color|0xFF000000:TacticalStyle.EDGE);
             PlayerFaceRenderer.draw(g,row.skin()!=null&&!row.skin().isEmpty()?BotRenderer.texture(row.skin()):skin(row.id()),face,ry+3,12);
             PlayerLevels.draw(g,row.id(),face+15,ry+3,12);
@@ -194,7 +194,7 @@ public final class MatchHud {
         }
     }
     static void column(GuiGraphics g,String text,int right,int y,int color) {
-        var font=Minecraft.getInstance().font;var value=HudText.numbers(text);g.drawString(font,value,right-font.width(value),y,color,false);
+        var font=Minecraft.getInstance().font;var value=HudText.numbers(text);HudText.drawNumber(g,value,right-font.width(value),y,color);
     }
     static ResourceLocation skin(String id) {
         var mc=Minecraft.getInstance();var connection=mc.getConnection();

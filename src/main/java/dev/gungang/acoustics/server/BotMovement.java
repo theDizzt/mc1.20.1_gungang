@@ -736,7 +736,6 @@ final class BotMovement {
     }
     static boolean danger(ArenaMap arena,BotEntity bot,Vec3 feet) {
         var box=bot.getDimensions(Pose.STANDING).makeBoundingBox(feet);
-        if(arena.deathZones()!=null&&arena.deathZones().stream().anyMatch(z->z.intersects(box.minX,box.minY,box.minZ,box.maxX,box.maxY,box.maxZ)))return true;
         // Include the contact surface and the whole body, not only the centre of the feet.
         for(var pos:BlockPos.betweenClosed(Mth.floor(box.minX),Mth.floor(box.minY-.05),Mth.floor(box.minZ),
                 Mth.floor(box.maxX-1e-6),Mth.floor(box.maxY-1e-6),Mth.floor(box.maxZ-1e-6))) {
@@ -749,7 +748,7 @@ final class BotMovement {
                     ||block==net.minecraft.world.level.block.Blocks.WITHER_ROSE||block==net.minecraft.world.level.block.Blocks.POWDER_SNOW
                     ||block instanceof net.minecraft.world.level.block.CampfireBlock&&state.getValue(net.minecraft.world.level.block.CampfireBlock.LIT)
                     // An armed UXO goes off as soon as a body overlaps its cell (see GimmickEntity.tick).
-                    ||uxo(state))return true;
+                    ||uxo(state)||block instanceof DeathZoneBlock)return true;
         }
         return false;
     }

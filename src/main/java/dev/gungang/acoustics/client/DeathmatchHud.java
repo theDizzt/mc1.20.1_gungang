@@ -76,7 +76,7 @@ final class DeathmatchHud {
         g.pose().pushPose();g.pose().translate(cx,cy,0);g.pose().scale(size*pop,size*pop,1);
         // Centre the inked digits: 7 rows tall, advance minus the trailing 1px letter gap.
         g.pose().translate(-(HudText.numberWidth(text)-1)/2f,-3.5f,0);
-        g.drawString(font,HudText.number(text),0,0,bright||ScorePop.popping(team)?0xFFFFFFFF:0xFFC4CEDA,false);
+        HudText.drawNumber(g,HudText.number(text),0,0,bright||ScorePop.popping(team)?0xFFFFFFFF:0xFFC4CEDA);
         g.pose().popPose();
     }
     /** Dark plate whose team tint fades from the centre outward, with a solid underline. */

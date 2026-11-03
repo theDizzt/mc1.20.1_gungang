@@ -105,12 +105,16 @@ public final class PropHuntClient {
         if(key==GLFW.GLFW_KEY_T){if(action==GLFW.GLFW_PRESS)action("lock");return true;}
         if(key==GLFW.GLFW_KEY_R){if(action==GLFW.GLFW_PRESS){if(fixed())action("home");else action("rotate");}return true;}
         // 178: E on one's own lectern opens the book to write in (the server only stores the text).
+        // 95 / 190: E lets go of the wall or ceiling (the blocks have no other E effect).
+        if(key==GLFW.GLFW_KEY_E&&sticky()&&stuck){if(action==GLFW.GLFW_PRESS)letGo=true;return true;}
         if(key==GLFW.GLFW_KEY_E){if(action==GLFW.GLFW_PRESS){var own=mc.player==null?null:prop(mc.player);if(own!=null&&own.item().equals("minecraft:lectern")&&!fixed())PropBook.edit(own);else action("interact");}return true;}
         if(key==GLFW.GLFW_KEY_G){if(action==GLFW.GLFW_PRESS)action("horn");return true;}
         // Q (the team point key) hangs the disguise on a wall or lets go; hiders do not mark team points.
         if(TeamPointHud.POINT.matches(key,scan)){if(action==GLFW.GLFW_PRESS){if(charging){charging=false;action("cancelCharge");}action("cling");}return true;}
         if(mc.options.keyJump.matches(key,scan)){
             if(action==GLFW.GLFW_PRESS)jumpHeld=true;else if(action==GLFW.GLFW_RELEASE)jumpHeld=false;
+            // 95 / 190 cannot jump (they swim in liquids like everyone else).
+            if(sticky()&&!liquid()){charging=false;return true;}
             if(self().active()>elapsed(0)&&self().block().equals("minecraft:command_block"))return true;
             // In water, lava or another liquid the jump key swims (see movement); on a wall it does nothing.
             if(action==GLFW.GLFW_PRESS&&!fixed()&&clinging()==null&&!liquid()){
@@ -124,6 +128,9 @@ public final class PropHuntClient {
     }
     /** Attack key held for a doll's beam or cloak (184, 191), sent on press and release. */
     private static boolean primary;
+    /** 95 / 190: stuck to a wall or ceiling this tick; let go with E until the disguise lands. */
+    private static boolean stuck,letGo;
+    private static boolean sticky(){var s=self();return s!=null&&dev.gungang.acoustics.server.PropSticky.sticky(s.block());}
     private static boolean doll(){var s=self();return hider()&&(s.block().equals("gungang:eunbi_doll")||s.block().equals("gungang:hanbi_doll"));}
     private static void primary(boolean down){if(primary!=down){primary=down;action(down?"primaryDown":"primaryUp");}}
     @SubscribeEvent(priority=EventPriority.HIGHEST) public static void mouse(InputEvent.MouseButton.Pre e){
@@ -135,7 +142,7 @@ public final class PropHuntClient {
     private static void restore(){
         if(primary&&Minecraft.getInstance().getConnection()!=null)primary(false);
         var mc=Minecraft.getInstance();if(previous!=null){mc.options.setCameraType(previous);previous=null;}charging=false;jumpHeld=false;
-        if(clung&&mc.player!=null)mc.player.setNoGravity(false);clung=false;
+        if((clung||stuck)&&mc.player!=null)mc.player.setNoGravity(false);clung=false;stuck=false;letGo=false;
     }
     @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut e){restore();state=null;lastBlock="";noticeUntil=0;page=0;}
     @SubscribeEvent public static void tick(net.minecraftforge.event.TickEvent.ClientTickEvent e){
@@ -180,9 +187,13 @@ public final class PropHuntClient {
             case "minecraft:crying_obsidian"->"울기";
             case "gungang:prettiest_block"->"사랑 뿜뿜";
             case "minecraft:tnt_minecart"->"TNT 설치";
+            case "gungang:nozzle"->"대량 분사";
+            case "minecraft:conduit"->"번개 폭풍";
+            case "minecraft:repeater"->"모양 바꾸기";
+            case "minecraft:redstone_torch"->"켜기/끄기";
             case "gungang:mannequin","gungang:eunbi_doll","gungang:hanbi_doll"->"포즈 바꾸기";
             case "gungang:small_health_pack","gungang:large_health_pack","gungang:conveyor_belt"->"바닥에 넣기/꺼내기";
-            default->PropInteraction.special(block)?"특수 효과":"상호작용";
+            default->block.endsWith("candle_cake")?"촛불 켜기/끄기":PropInteraction.special(block)?"특수 효과":"상호작용";
         };
         String q=TeamPointHud.POINT.getTranslatedKeyMessage().getString().toUpperCase(Locale.ROOT);
         if(fixed()){
@@ -192,7 +203,9 @@ public final class PropHuntClient {
             lines.add("이동 키  벽에서 위치 조정");lines.add(q+"  벽에서 떨어지기");if(interactive)lines.add("E  "+use);lines.add("G  경적");lines.add("T  고정");
             lines.add("벽에서는 점프·정렬 불가");
         }else{
-            lines.add(liquid()?"점프  헤엄쳐 오르기":"점프 길게  높이 충전");lines.add("Shift  정렬");if(interactive)lines.add("E  "+use);lines.add("G  경적");lines.add("T  고정");
+            if(sticky()&&!liquid()){lines.add("벽·천장에 닿으면 붙어서 이동");if(stuck)lines.add("E  떨어지기");lines.add("점프 불가");}
+            else lines.add(liquid()?"점프  헤엄쳐 오르기":"점프 길게  높이 충전");
+            lines.add("Shift  정렬");if(interactive)lines.add("E  "+use);lines.add("G  경적");lines.add("T  고정");
             lines.add("R  "+(shoot?"방향 전환":hologram?"회전 속도":"90° 회전"));lines.add(q+"  벽에 붙기");
             if(block.equals("gungang:eunbi_doll"))lines.add("좌클릭 (꾹)  광선");
             if(block.equals("gungang:hanbi_doll"))lines.add("좌클릭 (꾹)  투명화·무적");
@@ -217,6 +230,26 @@ public final class PropHuntClient {
             player.setNoGravity(true);clung=true;
             input.forwardImpulse=0;input.leftImpulse=0;input.jumping=false;input.shiftKeyDown=false;input.up=false;input.down=false;input.left=false;input.right=false;
         }else if(clung){clung=false;player.setNoGravity(false);}
+        // 95 / 190: stuck to whatever wall or ceiling the body touches (a wall from the ground only when walking into it).
+        boolean stick=false;
+        if(wall==null&&!fixed()&&!self().stunned()&&sticky()&&!liquid()){
+            if(player.onGround())letGo=false;
+            if(!letGo){
+                var box=player.getBoundingBox();var level=player.level();float yaw=player.getYRot();
+                var side=dev.gungang.acoustics.server.PropSticky.wall(level,box,yaw);
+                net.minecraft.world.phys.Vec3 motion=null;
+                if(side!=null&&(!player.onGround()||input.forwardImpulse>0&&net.minecraft.core.Direction.fromYRot(yaw)==side))
+                    motion=dev.gungang.acoustics.server.PropSticky.wallMotion(side,input.forwardImpulse,input.leftImpulse,yaw);
+                else if(!player.onGround()&&dev.gungang.acoustics.server.PropSticky.ceiling(level,box))
+                    motion=dev.gungang.acoustics.server.PropSticky.ceilingMotion(input.forwardImpulse,input.leftImpulse,yaw);
+                if(motion!=null){
+                    player.setDeltaMovement(motion);player.setNoGravity(true);stick=true;
+                    input.forwardImpulse=0;input.leftImpulse=0;input.jumping=false;input.shiftKeyDown=false;input.up=false;input.down=false;input.left=false;input.right=false;
+                }
+            }
+        }
+        if(stick)stuck=true;else if(stuck){stuck=false;player.setNoGravity(false);}
+        if(sticky()&&!liquid())input.jumping=false;
         if(self().active()>elapsed(0)&&self().block().equals("minecraft:command_block")){input.shiftKeyDown=false;e.getEntity().setDeltaMovement(e.getEntity().getDeltaMovement().multiply(1,0,1));}
         if(fixed()||self().stunned()){input.forwardImpulse=0;input.leftImpulse=0;input.jumping=false;input.shiftKeyDown=false;input.up=false;input.down=false;input.left=false;input.right=false;}
     }

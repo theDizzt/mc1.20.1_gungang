@@ -164,7 +164,7 @@ final class BotAgent {
         if(bot.isRemoved()){bot=null;respawnAt=now+20;return;}
         if(!running){bot.getNavigation().stop();return;}
         var bounds=bot.getBoundingBox();
-        if(bot.getY()<bot.level().getMinBuildHeight()||arena.deathZones().stream().anyMatch(z->z.intersects(bounds.minX,bounds.minY,bounds.minZ,bounds.maxX,bounds.maxY,bounds.maxZ))){
+        if(bot.getY()<bot.level().getMinBuildHeight()||DeathZoneBlock.touching(bot)){
             hunt.eliminate(bot,null);return;
         }
         if(bot.parkour.active())return;
@@ -273,7 +273,7 @@ final class BotAgent {
         if(bot==null){if(server.getTickCount()>=respawnAt)spawn();return;}
         if(bot.isRemoved()){remove();respawnAt=server.getTickCount()+20;return;}
         var bounds=bot.getBoundingBox();
-        if(bot.getY()<bot.level().getMinBuildHeight()||arena.deathZones().stream().anyMatch(z->z.intersects(bounds.minX,bounds.minY,bounds.minZ,bounds.maxX,bounds.maxY,bounds.maxZ))){
+        if(bot.getY()<bot.level().getMinBuildHeight()||DeathZoneBlock.touching(bot)){
             MatchManager.botDeath(id,null);return;
         }
         int now=server.getTickCount();
