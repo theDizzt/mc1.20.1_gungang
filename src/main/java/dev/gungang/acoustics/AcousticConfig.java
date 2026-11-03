@@ -7,6 +7,7 @@ public final class AcousticConfig {
     public static final ForgeConfigSpec SPEC;
     public static final ForgeConfigSpec.BooleanValue CUSTOM_FONT;
     public static final ForgeConfigSpec.ConfigValue<String> FONT_FILE;
+    public static final ForgeConfigSpec.EnumValue<FontPreset> FONT_PRESET;
     public static final ForgeConfigSpec.IntValue FONT_OVERSAMPLE;
     public static final ForgeConfigSpec.IntValue FOOTSTEP_VOLUME, WEAPON_VOLUME;
     public static final ForgeConfigSpec.BooleanValue FOOTSTEP_OCCLUSION, WATER_EFFECTS;
@@ -31,9 +32,11 @@ public final class AcousticConfig {
                 .defineInRange("weaponVolume", 100, 0, 300);
         HUD_TEXT_SIZE = b.comment("HUD name/health text size in percent. Independent of GUI scale.").defineInRange("hudTextSize", 150, 100, 150);
         HUD_BOLD_TEXT = b.define("hudBoldText", true);
-        CUSTOM_FONT = b.comment("Use a TTF from config/gungang/fonts, or bundled Galmuri11 Bold. Disable to restore the normal game/resource-pack font.")
+        CUSTOM_FONT = b.comment("Use the selected font preset. Disable to restore the normal game/resource-pack font.")
                 .define("customFont", true);
-        FONT_FILE = b.comment("TTF filename in config/gungang/fonts. Empty selects the first .ttf in filename order; no files uses bundled Galmuri11 Bold.")
+        FONT_PRESET = b.comment("MARU_MINYA, GALMURI_LEGACY (default), or EXTERNAL. Bundled sizes are normalized to the legacy Hangul height.")
+                .defineEnum("fontPreset", FontPreset.GALMURI_LEGACY);
+        FONT_FILE = b.comment("EXTERNAL preset only: TTF filename in config/gungang/fonts. Empty selects the first .ttf; missing/invalid files fall back to MaruMinya.")
                 .define("fontFile", "");
         FONT_OVERSAMPLE = b.comment("Selected and bundled TTF raster resolution multiplier, 1..8. Higher values use more atlas memory. Reload resources after changing.")
                 .defineInRange("fontOversample", 6, 1, 8);

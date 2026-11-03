@@ -9,21 +9,42 @@ final class DeathmatchHud {
     static final int SURFACE=0xB0141511,EDGE=0xB455564C,MUTED=TacticalStyle.MUTED;
     static int draw(GuiGraphics g,MatchSnapshot state) {
         int top=Math.max(2,BossBarHud.bottom+1);
-        float scale=Math.min(.8f,(g.guiWidth()-12)/232f);
-        var options=state.options()==null?TeamOptions.defaults():state.options();
-        var bomb=state.bomb();int alpha=state.alphaScore(),bravo=state.bravoScore();
-        g.pose().pushPose();g.pose().translate(g.guiWidth()/2f,top,0);g.pose().scale(scale,scale,1);
-        if(FreeForAllHud.is(state)) FreeForAllHud.top(g,state);
-        else {
-        team(g,true,"ALPHA",options.color("ALPHA"),alpha,alpha>bravo,bomb==null?null:"ALPHA".equals(bomb.attacker()),bomb==null?"":alive(state,"ALPHA"));
-        team(g,false,"BRAVO",options.color("BRAVO"),bravo,bravo>alpha,bomb==null?null:"BRAVO".equals(bomb.attacker()),bomb==null?"":alive(state,"BRAVO"));
+        if(state.bomb()==null) {
+            float scale=MatchRibbonHud.scale(g);
+            g.pose().pushPose();g.pose().translate(g.guiWidth()/2f,top,0);g.pose().scale(scale,scale,1);
+            MatchRibbonHud.frame(g);
+            if(FreeForAllHud.is(state))FreeForAllHud.top(g,state);
+            else {
+                var colors=state.options()==null?TeamOptions.defaults():state.options();
+                int goal=state.point()==null?0:state.point().goal();
+                MatchRibbonHud.wing(g,true,colors.color("ALPHA"),state.alphaScore(),goal,"ALPHA",goal>0?"목표 "+goal:"");
+                MatchRibbonHud.wing(g,false,colors.color("BRAVO"),state.bravoScore(),goal,"BRAVO",goal>0?"목표 "+goal:"");
+            }
+            MatchTimerHud.drawAt(g,state,0,3);
+            g.pose().popPose();
+            return top+Math.round(MatchRibbonHud.HEIGHT*scale);
         }
-        if(bomb!=null){
-            small(g,"ROUND "+bomb.round()+" / "+bomb.totalRounds(),0,2,.75f,0xFFFFFFFF,true);
-            MatchTimerHud.drawAt(g,state,0,11);
-        }else MatchTimerHud.drawAt(g,state,0,7);
-        g.pose().popPose();
-        return top+Math.round((FreeForAllHud.is(state)?37:32)*scale);
+        float scale=MatchRibbonHud.scale(g);
+        var options=state.options()==null?TeamOptions.defaults():state.options();
+        var bomb=state.bomb();
+        g.pose().pushPose();g.pose().translate(g.guiWidth()/2f,top,0);g.pose().scale(scale,scale,1);
+        MatchRibbonHud.frame(g);
+        for(boolean left:new boolean[]{true,false}) {
+            String name=left?"ALPHA":"BRAVO";
+            int color=options.color(name),score=left?state.alphaScore():state.bravoScore();
+            MatchRibbonHud.wing(g,left,color,score,1,name+" · "+(name.equals(bomb.attacker())?"ATK":"DEF"),alive(state,name));
+            int start=left?-179:44,end=left?-44:179;
+            g.fill(start,6,end,11,0xFF141B23);
+            var members=state.players().stream().filter(r->name.equals(r.team())).toList();
+            var dead=bomb.deadPlayers()==null?java.util.List.<String>of():bomb.deadPlayers();
+            for(int i=0;i<members.size();i++) {
+                int x1=start+i*(end-start)/members.size(),x2=start+(i+1)*(end-start)/members.size();
+                g.fill(x1,6,Math.max(x1+1,x2-1),11,dead.contains(members.get(i).id())?0xFF454B52:color|0xFF000000);
+            }
+        }
+        MatchTimerHud.drawAt(g,state,0,3);
+        small(g,"ROUND "+bomb.round()+" / "+bomb.totalRounds(),0,25,.8f,0xFFFFFFFF,true);
+        g.pose().popPose();return top+Math.round(MatchRibbonHud.HEIGHT*scale);
     }
     /** Bomb round survivors of a team, e.g. "생존 3/5"; the dead watch until the next round. */
     private static String alive(MatchSnapshot state,String team) {

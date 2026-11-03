@@ -67,6 +67,11 @@ public final class PropHuntClient {
         if(!hider())restore();
         var mc=Minecraft.getInstance();if(mc.level!=null)for(var p:mc.level.players())p.refreshDimensions();
     }
+    /** A hider's current disguise row (not found, block chosen), or null outside the hunt or for seekers. */
+    static PropHuntSnapshot.Row disguiseOf(UUID id){
+        if(!active()||review())return null;
+        return state.players().stream().filter(r->r.id().equals(id.toString())&&r.team().equals("ALPHA")&&!r.found()&&!r.block().isEmpty()).findFirst().orElse(null);
+    }
     /** "참나무 판자 [01]" for a drawn block or colour variant. */
     static String disguise(String block){
         String name=PropCatalog.name(block).getString();

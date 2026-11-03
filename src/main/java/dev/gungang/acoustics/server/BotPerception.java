@@ -76,7 +76,7 @@ final class BotPerception {
             if(scan&&distanceSqr<=SCAN_RANGE*SCAN_RANGE)note(bot,player,Cue.SCAN,now,.5);
             if(distanceSqr>range*range)continue;
             boolean inView=distanceSqr<=PERIPHERAL*PERIPHERAL||inCone(bot,player.getEyePosition(),settings.fov());
-            if(inView&&bot.hasLineOfSight(player)&&!SpawnGateProtection.separates(bot,player)) {
+            if(inView&&bot.hasLineOfSight(player)&&!SpawnGateProtection.separates(bot,player)&&!SmokeScreen.blocks(bot,player)) {
                 var contact=contacts.computeIfAbsent(player.getUUID(),Contact::new);
                 if(contact.position!=null&&contact.cue==Cue.SEEN&&now>contact.updated)
                     contact.velocity=player.position().subtract(contact.position).scale(1.0/(now-contact.updated));

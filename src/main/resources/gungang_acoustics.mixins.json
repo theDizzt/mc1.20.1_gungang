@@ -23,6 +23,7 @@
     "MineOutlineMixin",
     "FontTextureMixin",
     "FontPixelSnapMixin",
+    "MaruFontWeightMixin",
     "EffectColorAccessor",
     "BossHealthOverlayMixin",
     "ChatComponentMixin",

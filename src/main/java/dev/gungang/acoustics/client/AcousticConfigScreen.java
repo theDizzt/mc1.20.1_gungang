@@ -2,6 +2,7 @@ package dev.gungang.acoustics.client;
 
 import com.mojang.logging.LogUtils;
 import dev.gungang.acoustics.AcousticConfig;
+import dev.gungang.acoustics.FontPreset;
 import dev.gungang.acoustics.server.AcousticPolicy;
 import java.util.ArrayList;
 import java.util.List;
@@ -57,13 +58,14 @@ public final class AcousticConfigScreen extends Screen {
         options.add(new Option(2, "killLog", AcousticConfig.KILL_LOG, Boolean::parseBoolean, true).right());
         options.add(new Option(2, "teamSilhouettes", AcousticConfig.TEAM_SILHOUETTES, Boolean::parseBoolean, true).right());
         options.add(new Option(2, "autoSprint", AcousticConfig.AUTO_SPRINT, Boolean::parseBoolean, true).right());
-        // Fonts, one column.
+        // Presets/files on the left, raster settings on the right.
         options.add(new Option(3, "customFont", AcousticConfig.CUSTOM_FONT, Boolean::parseBoolean, true));
+        options.add(new Option(3, "fontPreset", AcousticConfig.FONT_PRESET, FontPreset::valueOf, false));
         options.add(new Option(3, "fontFile", AcousticConfig.FONT_FILE, ExternalFonts::filename, false));
-        options.add(new Option(3, "fontOversample", AcousticConfig.FONT_OVERSAMPLE, s -> ConfigInput.integer(s, 1, 8), false));
-        options.add(new Option(3, "fontSmoothing", AcousticConfig.FONT_SMOOTHING, Boolean::parseBoolean, true));
-        decimal(3, "fontOffsetX", AcousticConfig.FONT_OFFSET_X, -8, 8);
-        decimal(3, "fontOffsetY", AcousticConfig.FONT_OFFSET_Y, -8, 8);
+        options.add(new Option(3, "fontOversample", AcousticConfig.FONT_OVERSAMPLE, s -> ConfigInput.integer(s, 1, 8), false).right());
+        options.add(new Option(3, "fontSmoothing", AcousticConfig.FONT_SMOOTHING, Boolean::parseBoolean, true).right());
+        decimal(3, "fontOffsetX", AcousticConfig.FONT_OFFSET_X, -8, 8).right();
+        decimal(3, "fontOffsetY", AcousticConfig.FONT_OFFSET_Y, -8, 8).right();
     }
 
     private void toggle(String key, ForgeConfigSpec.BooleanValue value) {
@@ -92,7 +94,14 @@ public final class AcousticConfigScreen extends Screen {
         for (Option option : options) {
             if (option.page != page) continue;
             Tooltip tip = Tooltip.create(text(option.key + ".tip"));
-            if (option.toggle) {
+            if (option.value == AcousticConfig.FONT_PRESET) {
+                addRenderableWidget(Button.builder(presetLabel(option), b -> {
+                    FontPreset[] presets = FontPreset.values();
+                    option.draft = presets[(FontPreset.valueOf(option.draft).ordinal()+1)%presets.length].name();
+                    b.setMessage(presetLabel(option));
+                    status = Component.empty();
+                }).bounds(option.x, option.y, option.width, 20).tooltip(tip).build());
+            } else if (option.toggle) {
                 addRenderableWidget(Button.builder(toggleLabel(option), b -> {
                     option.draft = Boolean.toString(!Boolean.parseBoolean(option.draft));
                     b.setMessage(toggleLabel(option));
@@ -148,8 +157,8 @@ public final class AcousticConfigScreen extends Screen {
         }
         return rows[1];
     }
-    /** Every page but fonts splits into two columns. */
-    private boolean columns() { return page != 3; }
+    /** Two columns leave space for the footer at the minimum GUI height. */
+    private boolean columns() { return true; }
     private int columnWidth() { return (bodyWidth() - 6) / 2; }
 
     private void validate() {
@@ -161,6 +170,7 @@ public final class AcousticConfigScreen extends Screen {
         List<Object> before = options.stream().map(o -> (Object) o.value.get()).toList();
         boolean oldFont = AcousticConfig.CUSTOM_FONT.get();
         String oldFontFile = AcousticConfig.FONT_FILE.get();
+        FontPreset oldPreset = AcousticConfig.FONT_PRESET.get();
         int oldOversample = AcousticConfig.FONT_OVERSAMPLE.get();
         boolean oldSmoothing = AcousticConfig.FONT_SMOOTHING.get();
         double oldOffsetX = AcousticConfig.FONT_OFFSET_X.get();
@@ -171,6 +181,7 @@ public final class AcousticConfigScreen extends Screen {
             onClose();
             if (oldFont != AcousticConfig.CUSTOM_FONT.get()
                     || !oldFontFile.equals(AcousticConfig.FONT_FILE.get())
+                    || oldPreset != AcousticConfig.FONT_PRESET.get()
                     || oldOversample != AcousticConfig.FONT_OVERSAMPLE.get()
                     || oldSmoothing != AcousticConfig.FONT_SMOOTHING.get()
                     || oldOffsetX != AcousticConfig.FONT_OFFSET_X.get()
@@ -193,7 +204,7 @@ public final class AcousticConfigScreen extends Screen {
         graphics.drawCenteredString(font, title, width / 2, 12, 0xFFFFFF);
         for (Option option : options) {
             if (option.page != page) continue;
-            if (!option.toggle) graphics.drawString(font, text(option.key), option.x, option.y + (option.list ? 0 : 6), 0xEEEEEE);
+            if (!option.toggle && option.value != AcousticConfig.FONT_PRESET) graphics.drawString(font, text(option.key), option.x, option.y + (option.list ? 0 : 6), 0xEEEEEE);
         }
         Component message = !status.getString().isEmpty() ? status :
                 options.stream().anyMatch(o -> !o.valid()) ? text("invalid") : text("hint." + page);
@@ -208,6 +219,9 @@ public final class AcousticConfigScreen extends Screen {
     private static Component text(String key) { return Component.translatable("gungang.options." + key); }
     private static Component toggleLabel(Option option) {
         return Component.translatable("gungang.options.toggle", text(option.key), text(Boolean.parseBoolean(option.draft) ? "on" : "off"));
+    }
+    private static Component presetLabel(Option option) {
+        return text("fontPreset").copy().append(": ").append(text("fontPreset."+option.draft));
     }
 
     private static final class Option {

@@ -747,9 +747,22 @@ final class BotMovement {
                     ||state.is(net.minecraft.tags.BlockTags.FIRE)||block==net.minecraft.world.level.block.Blocks.MAGMA_BLOCK
                     ||block==net.minecraft.world.level.block.Blocks.CACTUS||block==net.minecraft.world.level.block.Blocks.SWEET_BERRY_BUSH
                     ||block==net.minecraft.world.level.block.Blocks.WITHER_ROSE||block==net.minecraft.world.level.block.Blocks.POWDER_SNOW
-                    ||block instanceof net.minecraft.world.level.block.CampfireBlock&&state.getValue(net.minecraft.world.level.block.CampfireBlock.LIT))return true;
+                    ||block instanceof net.minecraft.world.level.block.CampfireBlock&&state.getValue(net.minecraft.world.level.block.CampfireBlock.LIT)
+                    // An armed UXO goes off as soon as a body overlaps its cell (see GimmickEntity.tick).
+                    ||uxo(state))return true;
         }
         return false;
+    }
+    static boolean uxo(net.minecraft.world.level.block.state.BlockState state) {
+        return state.getBlock() instanceof GimmickBlock g&&g.id.equals("uxo")&&state.getValue(GimmickBlock.ACTIVE);
+    }
+    /** Route cost for a cell: unusable on an armed UXO, extra beside one, where a wobble or corner clips its cell. */
+    static float uxoCost(net.minecraft.world.level.Level level,int x,int y,int z) {
+        if(level==null)return 0;
+        var at=new BlockPos(x,y,z);
+        if(uxo(level.getBlockState(at))||uxo(level.getBlockState(at.below())))return Float.POSITIVE_INFINITY;
+        for(var direction:Direction.Plane.HORIZONTAL)if(uxo(level.getBlockState(at.relative(direction))))return 6;
+        return 0;
     }
     private static double flat(Vec3 a,Vec3 b) {double x=a.x-b.x,z=a.z-b.z;return x*x+z*z;}
 }
