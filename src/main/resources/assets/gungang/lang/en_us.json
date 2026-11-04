@@ -20,6 +20,7 @@
     "item.gungang.arrow_grenade":  "Arrow Fragmentation Grenade",
     "death.attack.gungang.arrow_fragment":  "%1$s was struck by a grenade arrow",
     "death.attack.gungang.arrow_fragment.player":  "%1$s was struck by %2$s\u0027s grenade arrow",
+    "death.gungang.prop_found":  "%1$s was found by %2$s",
     "block.gungang.shutter":  "Rolling Shutter",
     "block.gungang.hot_spring_water":  "Hot Spring Water",
     "item.gungang.hot_spring_bucket":  "Hot Spring Water Bucket",

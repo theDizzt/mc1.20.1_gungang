@@ -20,6 +20,7 @@
     "item.gungang.arrow_grenade":  "화살분열 수류탄",
     "death.attack.gungang.arrow_fragment":  "%1$s이(가) 수류탄 화살에 맞았습니다",
     "death.attack.gungang.arrow_fragment.player":  "%1$s이(가) %2$s의 수류탄 화살에 맞았습니다",
+    "death.gungang.prop_found":  "%1$s님이 %2$s님에게 발견되었습니다",
     "block.gungang.shutter":  "셔터",
     "block.gungang.hot_spring_water":  "온천수",
     "item.gungang.hot_spring_bucket":  "온천수 양동이",

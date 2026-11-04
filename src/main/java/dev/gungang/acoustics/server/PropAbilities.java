@@ -376,7 +376,7 @@ public final class PropAbilities {
             if(clip.isPresent()&&from.distanceToSqr(clip.get())<best){best=from.distanceToSqr(clip.get());target=seeker;at=clip.get();}
         }
         // 5 damage every other tick (50 a second); the hit pause is cleared so every share lands.
-        if(target!=null&&now%2==0){target.invulnerableTime=0;target.hurt(p.damageSources().magic(),BEAM_DPS/10);}
+        if(target!=null&&now%2==0){target.invulnerableTime=0;match.credit(target,p.getUUID());target.hurt(p.damageSources().magic(),BEAM_DPS/10);}
         double length=from.distanceTo(at);int points=(int)Math.min(200,length/.35);
         var dust=new net.minecraft.core.particles.DustParticleOptions(new org.joml.Vector3f(1f,.55f,.85f),1.1f);
         for(int i=0;i<=points;i++){var pos=from.add(dir.scale(length*i/Math.max(1,points)));level.sendParticles(dust,pos.x,pos.y,pos.z,1,0,0,0,0);}
@@ -400,7 +400,7 @@ public final class PropAbilities {
         var ground=level.getBlockState(BlockPos.containing(at.x,at.y-1e-6,at.z)).getBlock();
         if(ground instanceof WeatheringCopper||ground instanceof LightningRodBlock)level.sendParticles(ParticleTypes.ELECTRIC_SPARK,at.x,at.y+.5,at.z,30,.3,.8,.3,.3);
         else{var bolt=EntityType.LIGHTNING_BOLT.create(level);if(bolt==null)return;bolt.moveTo(at.x,at.y,at.z);bolt.setVisualOnly(true);level.addFreshEntity(bolt);}
-        for(var seeker:targets)if(seeker.position().distanceToSqr(at)<=STRIKE_RADIUS*STRIKE_RADIUS){seeker.invulnerableTime=0;seeker.hurt(p.damageSources().magic(),STRIKE_DAMAGE);}
+        for(var seeker:targets)if(seeker.position().distanceToSqr(at)<=STRIKE_RADIUS*STRIKE_RADIUS){seeker.invulnerableTime=0;match.credit(seeker,p.getUUID());seeker.hurt(p.damageSources().magic(),STRIKE_DAMAGE);}
     }
     /**
      * 194: while its candle burns, the birthday cake plays "Happy Birthday" on the wide-range note sound, on a loop.
@@ -495,13 +495,13 @@ public final class PropAbilities {
             var hit=p.level().clip(new net.minecraft.world.level.ClipContext(bolt.pos,next,net.minecraft.world.level.ClipContext.Block.COLLIDER,net.minecraft.world.level.ClipContext.Fluid.NONE,p));
             if(hit.getType()!=HitResult.Type.MISS){it.remove();continue;}
             level(p).sendParticles(ParticleTypes.DRAGON_BREATH,next.x,next.y,next.z,5,.07,.07,.07,.01);bolt.pos=next;
-            if(next.distanceTo(goal)<.65){target.hurt(p.damageSources().magic(),50);level(p).sendParticles(ParticleTypes.EXPLOSION_EMITTER,next.x,next.y,next.z,1,0,0,0,0);p.level().playSound(null,target.blockPosition(),net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,net.minecraft.sounds.SoundSource.PLAYERS,1,1);it.remove();}
+            if(next.distanceTo(goal)<.65){match.credit(target,p.getUUID());target.hurt(p.damageSources().magic(),50);level(p).sendParticles(ParticleTypes.EXPLOSION_EMITTER,next.x,next.y,next.z,1,0,0,0,0);p.level().playSound(null,target.blockPosition(),net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,net.minecraft.sounds.SoundSource.PLAYERS,1,1);it.remove();}
         }
         if(now<r.contact)return;
         for(var target:match.seekers()){
             if(target.level()!=prop.level()||!target.getBoundingBox().inflate(.1).intersects(prop.getBoundingBox()))continue;
-            if(item.equals("minecraft:fire")||item.equals("minecraft:soul_fire")){target.hurt(p.damageSources().inFire(),50);target.setSecondsOnFire(10);r.contact=now+20;}
-            if(item.equals("minecraft:torchflower")){target.setSecondsOnFire(10);r.contact=now+20;}
+            if(item.equals("minecraft:fire")||item.equals("minecraft:soul_fire")){match.credit(target,p.getUUID());target.hurt(p.damageSources().inFire(),50);target.setSecondsOnFire(10);r.contact=now+20;}
+            if(item.equals("minecraft:torchflower")){match.credit(target,p.getUUID());target.setSecondsOnFire(10);r.contact=now+20;}
             if(item.equals("minecraft:water"))target.clearFire();
             if(item.equals("minecraft:bubble_column")){
                 // Rising columns throw seekers up, whirlpools drag them down; the server sends the push since only the client moves the player.
@@ -510,7 +510,7 @@ public final class PropAbilities {
                 p.level().playSound(null,target.blockPosition(),down?net.minecraft.sounds.SoundEvents.BUBBLE_COLUMN_WHIRLPOOL_INSIDE:net.minecraft.sounds.SoundEvents.BUBBLE_COLUMN_UPWARDS_INSIDE,net.minecraft.sounds.SoundSource.BLOCKS,1,1);
                 r.contact=now+10;
             }
-            if(item.equals("minecraft:minecart")&&moving){target.hurt(p.damageSources().generic(),50);var away=target.position().subtract(prop.position()).normalize();PropHuntMatch.impulse(target,target.getDeltaMovement().add(away.x*1.4,.5,away.z*1.4));r.stun=now+20;r.stunPosition=p.position();r.contact=now+20;}
+            if(item.equals("minecraft:minecart")&&moving){match.credit(target,p.getUUID());target.hurt(p.damageSources().generic(),50);var away=target.position().subtract(prop.position()).normalize();PropHuntMatch.impulse(target,target.getDeltaMovement().add(away.x*1.4,.5,away.z*1.4));r.stun=now+20;r.stunPosition=p.position();r.contact=now+20;}
         }
     }
     public void struck(LivingEntity owner,PropEntity prop){

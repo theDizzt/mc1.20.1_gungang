@@ -19,7 +19,7 @@
     "MinecraftInputMixin",
     "TaczShootInputMixin",
     "TaczAimInputMixin",
-    "TeamSilhouetteMixin",
+    "TeamSilhouetteMixin", "TeamSilhouetteCullMixin",
     "MineOutlineMixin",
     "FontTextureMixin",
     "FontPixelSnapMixin",
