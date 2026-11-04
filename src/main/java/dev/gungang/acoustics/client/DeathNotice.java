@@ -4,7 +4,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.contents.TranslatableContents;
 
-public record DeathNotice(Component victim, Component killer) {
+/** {@code found}: a prop hunt hider was found rather than killed. */
+public record DeathNotice(Component victim, Component killer, boolean found) {
     public static DeathNotice parse(Component text) {
         if (text.getContents() instanceof TranslatableContents translated
                 && translated.getKey().startsWith("death.")) {
@@ -23,7 +24,7 @@ public record DeathNotice(Component victim, Component killer) {
                             || translated.getKey().equals("death.attack.arrow")
                             || translated.getKey().equals("death.attack.trident")) killer = candidate;
                 }
-                return new DeathNotice(victim, killer);
+                return new DeathNotice(victim, killer, translated.getKey().equals("death.gungang.prop_found"));
             }
         }
         for (Component sibling : text.getSiblings()) {

@@ -34,7 +34,9 @@ public final class TeamHud {
         Kill(DeathNotice notice, long started, long expires) { this.notice = notice; this.started = started; this.expires = expires; }
     }
     /** Softer charcoal than the card surface behind a teammate's missing health. */
-    private static final int BAR_TRACK = 0xFF292B24;
+    private static final int BAR_TRACK = 0x99292B24;
+    /** Teammate item slot: the card surface, see-through like the bar track. */
+    private static final int SLOT_SURFACE = 0x99000000 | (ShooterHud.SURFACE & 0xFFFFFF);
     private static final long ENTER_NS = 280_000_000L, EXIT_NS = 400_000_000L, LIFE_NS = 8_000_000_000L;
     private static long lastFrame;
     private static final ArrayDeque<Kill> KILLS = new ArrayDeque<>();
@@ -97,7 +99,7 @@ public final class TeamHud {
                 int nameX = level != null ? x + 49 : x + 34;
                 HudText.draw(g, member.name(), nameX, y + 1, x + 114 - nameX, 0xFFFFFFFF);
                 ShooterHud.card(g, x + 34, y + 16, 80, 14, ShooterHud.BAR_EDGE, BAR_TRACK, 0);
-                ShooterHud.card(g, x + 118, y + 8, 22, 22, ShooterHud.EDGE, ShooterHud.SURFACE, 0);
+                ShooterHud.card(g, x + 118, y + 8, 22, 22, ShooterHud.EDGE, SLOT_SURFACE, 0);
                 if (p != null) {
                     var layers = HudHealthBars.layers(p, partialTick);
                     float fraction = layers.absorptionEnd();
@@ -159,7 +161,7 @@ public final class TeamHud {
                 int y = Math.round(kill.y), right = width - 8;
                 skull(g, right - 10, y + 3);
                 right = actor(g, kill.notice.victim(), right - 16, y);
-                String verb = kill.notice.killer() == null ? "DIED" : "KILLED";
+                String verb = kill.notice.killer() == null ? "DIED" : kill.notice.found() ? "FOUND" : "KILLED";
                 int verbWidth = mc.font.width(verb);
                 g.drawString(mc.font, verb, right - verbWidth - 5, y + 4, 0xFFE2E6E8, false);
                 if (kill.notice.killer() != null) actor(g, kill.notice.killer(), right - verbWidth - 10, y);

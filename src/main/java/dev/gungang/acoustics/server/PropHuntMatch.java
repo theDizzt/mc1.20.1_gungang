@@ -21,6 +21,16 @@ import net.minecraftforge.eventbus.api.*;
 public final class PropHuntMatch {
     final PropAbilities abilities=new PropAbilities(this);
     int now(){return server.getTickCount();}
+    /** Hider gimmicks hurt seekers with ownerless damage sources; remember who did it so the kill log can name them. */
+    private record Credit(UUID owner,int tick){}
+    private final Map<UUID,Credit> credits=new HashMap<>();
+    /** Fire set by a gimmick burns for up to 10 seconds; credit the hider that long. */
+    private static final int CREDIT_TICKS=200;
+    void credit(LivingEntity target,UUID owner){if(target!=null&&owner!=null&&!owner.equals(target.getUUID()))credits.put(target.getUUID(),new Credit(owner,now()));}
+    private LivingEntity credited(LivingEntity victim){
+        var c=credits.remove(victim.getUUID());
+        return c==null||now()-c.tick()>CREDIT_TICKS?null:body(c.owner());
+    }
     boolean hunting(){return !reviewing&&phase()==PropHuntGame.Phase.HUNTING;}
     boolean hiding(){return !reviewing&&phase()==PropHuntGame.Phase.HIDING;}
     List<ServerPlayer> players(){return members.keySet().stream().map(id->server.getPlayerList().getPlayer(id)).filter(Objects::nonNull).toList();}
@@ -367,7 +377,7 @@ public final class PropHuntMatch {
             if(nozzle.acid()&&server.getTickCount()<m.hazard)return;
             for(var target:seekers()){
                 if(target.level()!=owner.level()||!target.getBoundingBox().intersects(column))continue;
-                if(nozzle.acid()){target.hurt(owner.damageSources().magic(),CONTACT_DAMAGE);AcidBlock.poison(owner.level(),target);hit=true;}else target.clearFire();
+                if(nozzle.acid()){credit(target,owner.getUUID());target.hurt(owner.damageSources().magic(),CONTACT_DAMAGE);AcidBlock.poison(owner.level(),target);hit=true;}else target.clearFire();
             }
             if(hit)m.hazard=server.getTickCount()+20;
             return;
@@ -387,13 +397,13 @@ public final class PropHuntMatch {
                 if(target.getHealth()<target.getMaxHealth()){target.heal((float)config.heal());m.hazard=server.getTickCount()+(int)Math.ceil(config.cooldownSeconds()*20);}
             }else if(contactDamage(prop.state())){
                 // Damaging blocks deal a fixed hit to seekers only (never another hider), at most once a second per disguise.
-                target.hurt(contactSource(owner,prop.state()),CONTACT_DAMAGE);m.hazard=server.getTickCount()+20;
+                credit(target,owner.getUUID());target.hurt(contactSource(owner,prop.state()),CONTACT_DAMAGE);m.hazard=server.getTickCount()+20;
                 // Status effects still apply on top (acid puddle poison).
                 if(prop.state().getBlock() instanceof PuddleBlock)prop.state().entityInside(owner.level(),prop.blockPosition(),target);
                 if(prop.state().getBlock() instanceof LiquidBlock)target.setSecondsOnFire(15);
             }else{
                 // Other blocks keep their real contact behavior (webs, acid, water, etc.).
-                prop.state().entityInside(owner.level(),prop.blockPosition(),target);
+                credit(target,owner.getUUID());prop.state().entityInside(owner.level(),prop.blockPosition(),target);
                 prop.state().getBlock().stepOn(owner.level(),prop.blockPosition(),prop.state(),target);
             }
         }
@@ -450,20 +460,23 @@ public final class PropHuntMatch {
     /** A blast that breaks nothing: seekers within {@code radius} of {@code at} take {@code damage}, hiders none. */
     void blast(ServerLevel level,Vec3 at,double radius,float damage,UUID source){
         for(var target:bodies())if(target.level()==level&&!hider(target.getUUID())&&target.position().distanceTo(at)<=radius)
-            target.hurt(level.damageSources().explosion(null,null),damage);
+            {credit(target,source);target.hurt(level.damageSources().explosion(null,null),damage);}
         level.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION_EMITTER,at.x,at.y+.5,at.z,1,0,0,0,0);
         BotManager.propNoise(at,source);
         level.playSound(null,BlockPos.containing(at),net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,net.minecraft.sounds.SoundSource.BLOCKS,1,1);
     }
-    public void eliminate(LivingEntity body,LivingEntity killer){
+    public void eliminate(LivingEntity body,LivingEntity killer){eliminate(body,killer,killer);}
+    /** {@code cause} is who the kill log names; only {@code killer} is credited with a find. */
+    void eliminate(LivingEntity body,LivingEntity killer,LivingEntity cause){
         var m=members.get(body.getUUID());if(m==null||reviewing)return;
         body.setHealth(body.getMaxHealth());body.clearFire();body.fallDistance=0;
         if(test){body.sendSystemMessage(Component.literal("[테스트] "+(m.team.equals("ALPHA")?"발견됨":"쓰러짐")+" · 체력을 회복하고 계속합니다."));return;}
-        if(!(body instanceof ServerPlayer p)){eliminateBot(body,m,killer);sync();return;}
+        if(!(body instanceof ServerPlayer p)){eliminateBot(body,m,killer,cause);sync();return;}
         p.setCamera(p);
         if(m.team.equals("ALPHA")){
             abilities.found(p,m.prop);
             if(!game.eliminate(m.id,killer==null?null:killer.getUUID()))return;
+            announce(p,cause,true);
             // A found gas barrel or TNT goes off where it stood.
             if(m.prop!=null&&(m.prop.item().equals("gungang:gas_barrel")||m.prop.item().equals("minecraft:tnt"))){
                 m.prop.setPos(spot(m,p));explode(m.prop,radius(m.prop));
@@ -471,15 +484,17 @@ public final class PropHuntMatch {
             if(m.prop!=null){m.prop.setPos(spot(m,p));mark(m);}release(p,m);home(p,m);m.fixed=false;p.setInvisible(false);p.setGameMode(GameType.SPECTATOR);p.refreshDimensions();
         }else{
             if(m.waiting>server.getTickCount())return;
+            announce(p,cause,false);
             var s=map.bravoSpawn();p.teleportTo(p.serverLevel(),s.x(),s.y(),s.z(),s.yaw(),s.pitch());p.setGameMode(GameType.ADVENTURE);m.waiting=server.getTickCount()+100;equip(p);
         }
         sync();
     }
     /** A bot found or killed: hiders leave their marker block behind and the body goes; seekers go back to wait 5 s. */
-    private void eliminateBot(LivingEntity body,Member m,LivingEntity killer){
+    private void eliminateBot(LivingEntity body,Member m,LivingEntity killer,LivingEntity cause){
         if(m.team.equals("ALPHA")){
             abilities.found(body,m.prop);
             if(!game.eliminate(m.id,killer==null?null:killer.getUUID()))return;
+            announce(body,cause,true);
             if(m.prop!=null&&explosive(m.prop.item())){m.prop.setPos(spot(m,body));explode(m.prop,radius(m.prop));}
             if(m.prop!=null){m.prop.setPos(spot(m,body));mark(m);}
             m.fixed=false;abilities.remove(body);
@@ -487,8 +502,21 @@ public final class PropHuntMatch {
             return;
         }
         if(m.waiting>server.getTickCount())return;
+        announce(body,cause,false);
         var s=map.bravoSpawn();teleport(body,new Vec3(s.x(),s.y(),s.z()));body.setYRot(s.yaw());m.waiting=server.getTickCount()+100;
         BotManager.propRespawn(m.id);
+    }
+    /**
+     * Kill log line for every client, in the vanilla death-message shape the HUD already reads:
+     * a found hider ("death.gungang.prop_found"), a seeker taken out by a hider, or a member who simply died.
+     */
+    private void announce(LivingEntity victim,LivingEntity killer,boolean found){
+        if(killer!=null&&(killer==victim||!participant(killer.getUUID())))killer=null;
+        if(killer==null&&!found)killer=credited(victim);else credits.remove(victim.getUUID());
+        Component message=killer==null?Component.translatable("death.attack.generic",victim.getDisplayName())
+                :found?Component.translatableWithFallback("death.gungang.prop_found","%1$s was found by %2$s",victim.getDisplayName(),killer.getDisplayName())
+                :Component.translatable("death.attack.player",victim.getDisplayName(),killer.getDisplayName());
+        for(var p:server.getPlayerList().getPlayers())p.sendSystemMessage(message);
     }
     private void mark(Member m){m.prop.markFound();m.prop.setCustomName(Component.literal(m.name));m.prop.setCustomNameVisible(true);}
     public void leave(ServerPlayer p){if(test){test(p,null,"");return;}var m=members.get(p.getUUID());if(m==null)return;if(hider(m.id)){game.eliminate(m.id,null);if(m.prop!=null)mark(m);}restore(p,m);}
@@ -702,7 +730,7 @@ public final class PropHuntMatch {
     }
     /** Players and bots of the match. */
     private static boolean member(PropHuntMatch m,net.minecraft.world.entity.Entity entity){return (entity instanceof ServerPlayer||entity instanceof BotEntity)&&m.participant(entity.getUUID());}
-    @SubscribeEvent(priority=EventPriority.HIGHEST) public static void death(net.minecraftforge.event.entity.living.LivingDeathEvent e){var m=MatchManager.propHunt();if(m!=null&&member(m,e.getEntity())){e.setCanceled(true);m.eliminate(e.getEntity(),null);}}
+    @SubscribeEvent(priority=EventPriority.HIGHEST) public static void death(net.minecraftforge.event.entity.living.LivingDeathEvent e){var m=MatchManager.propHunt();if(m!=null&&member(m,e.getEntity())){e.setCanceled(true);m.eliminate(e.getEntity(),null,DamageCredit.attacker(e.getEntity(),e.getSource()) instanceof LivingEntity killer?killer:null);}}
     @SubscribeEvent(priority=EventPriority.HIGHEST) public static void attack(net.minecraftforge.event.entity.living.LivingAttackEvent e){
         var m=MatchManager.propHunt();if(m==null)return;
         if(member(m,e.getEntity())){var p=e.getEntity();

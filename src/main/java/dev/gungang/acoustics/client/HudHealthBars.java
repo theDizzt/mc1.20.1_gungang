@@ -28,7 +28,7 @@ final class HudHealthBars {
 
     static Layers layers(LivingEntity entity, float partialTick) {
         float health = fraction(entity, partialTick);
-        double seconds = (entity.tickCount + (double) partialTick) / 20.0;
+        double seconds = clock();
         float maximum = Math.max(1, entity.getMaxHealth());
         float amount = Math.max(0, entity.getAbsorptionAmount());
         HealthBarAnimation animation = ABSORPTION.computeIfAbsent(entity, ignored -> {
@@ -67,7 +67,7 @@ final class HudHealthBars {
     }
 
     static float fraction(LivingEntity player, float partialTick) {
-        double seconds = (player.tickCount + (double) partialTick) / 20.0;
+        double seconds = clock();
         return ANIMATIONS.computeIfAbsent(player, ignored -> new HealthBarAnimation())
                 .update(player.getHealth(), player.getMaxHealth(), seconds);
     }
@@ -75,8 +75,14 @@ final class HudHealthBars {
     static float trail(LivingEntity entity, float partialTick) {
         var animation = ANIMATIONS.get(entity);
         return animation == null ? HudHealth.fraction(entity.getHealth(), entity.getMaxHealth())
-                : animation.trail((entity.tickCount + (double) partialTick) / 20.0);
+                : animation.trail(clock());
     }
+
+    /**
+     * Wall-clock seconds. Entity tick counts stop for players in chunks the client does not tick (far teammates),
+     * which froze their bars mid-animation even though health kept arriving.
+     */
+    private static double clock() { return net.minecraft.Util.getMillis() / 1000.0; }
 
     static void stripes(GuiGraphics graphics, int x, int y, int width, int height, float fraction, double seconds) {
         int filled = Math.round(width * fraction);

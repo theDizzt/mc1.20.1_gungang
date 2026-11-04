@@ -170,14 +170,46 @@ public final class TaczAmmoHud {
             RenderSystem.setShaderColor(1,1,1,1);
         }
         float ratio=capacity>0?Math.max(0,Math.min(1,ammo/(float)capacity)):ammo>0?1:0;
-        int fill=Math.round(countW*ratio);
-        g.fill(right-countW+1,barTop+1,right+1,barTop+BAR_H+1,SHADOW);
-        g.fill(right-countW,barTop,right,barTop+BAR_H,0x803A3B32);
-        g.fill(right-countW,barTop,right-countW+fill,barTop+BAR_H,color);
-        g.pose().pushPose();g.pose().translate(right-countW,countTop,0);g.pose().scale(AMMO_SCALE,AMMO_SCALE,1);
+        // Switching weapons (or slots) snaps; firing and reloading on the same gun animate.
+        String key=mc.player.getInventory().selected+"|"+gunId;
+        if(!key.equals(animatedGun)){animatedGun=key;BAR.reset();lastAmmo=ammo;shotAt=reloadAt=-10;}
+        boolean heat=heatData!=null;double clock=System.nanoTime()/1e9;
+        if(ammo!=lastAmmo){
+            // Heat climbs while firing, so for the heat gauge a rise is the shot.
+            if(ammo<lastAmmo!=heat)shotAt=clock;else reloadAt=clock;
+            lastAmmo=ammo;
+        }
+        float shown=BAR.update(ratio);
+        int x0=right-countW,fill=Math.round(countW*shown);
+        g.fill(x0+1,barTop+1,right+1,barTop+BAR_H+1,SHADOW);
+        g.fill(x0,barTop,right,barTop+BAR_H,0x803A3B32);
+        g.fill(x0,barTop,x0+fill,barTop+BAR_H,color);
+        float flash=BAR.flash();
+        if(flash>0){
+            // The rounds just spent linger white and fade; reloaded rounds glow as the bar fills.
+            int lo=x0+Math.round(countW*BAR.flashLow()),hi=x0+Math.round(countW*BAR.flashHigh());
+            int alpha=Math.round((BAR.rising()?150:230)*flash);
+            if(hi>lo)g.fill(lo,barTop-(BAR.rising()?0:1),hi,barTop+BAR_H+(BAR.rising()?0:1),alpha<<24|0xFFFFFF);
+        }
+        double sinceReload=clock-reloadAt;
+        if(sinceReload>=0&&sinceReload<.5&&fill>0){
+            // A sheen sweeps across the refilled bar.
+            float t=(float)(sinceReload/.5);int sweep=x0+Math.round((countW+16)*t)-16;
+            int a=Math.max(x0,sweep),b=Math.min(x0+fill,sweep+10);
+            if(b>a)g.fill(a,barTop,b,barTop+BAR_H,Math.round(170*(1-t))<<24|0xFFFFFF);
+        }
+        // Shot: a quick upward kick and white flash. Reload: a larger pulse that settles, tinted green.
+        float kick=pulse(clock-shotAt,.14),pop=pulse(clock-reloadAt,.38);
+        float grow=1+.10f*kick+.18f*pop;
+        int digitColor=color;
+        if(kick>0)digitColor=ArenaScreen.blend(digitColor,0xFFFFFFFF,.6f*kick);
+        if(pop>0&&!alert)digitColor=ArenaScreen.blend(digitColor,0xFF9CF2B0,.75f*pop);
+        float cx=x0+countW/2f,cy=countTop+3.5f*AMMO_SCALE;
+        g.pose().pushPose();g.pose().translate(cx,cy-2.5f*kick,0);g.pose().scale(grow,grow,1);g.pose().translate(-cx,-cy,0);
+        g.pose().translate(x0,countTop,0);g.pose().scale(AMMO_SCALE,AMMO_SCALE,1);
         // An empty magazine shows a solid red "000" instead of dimmed padding.
         digits(g,font,padding,0,alert?color:ArenaScreen.blend(0xFF1A2230,color,.35f));
-        digits(g,font,count,padding.length(),color);g.pose().popPose();
+        digits(g,font,count,padding.length(),digitColor);g.pose().popPose();
         // Fire selector to the right of the name: every mode the gun has, the current one lit.
         String current=String.valueOf(api.fireMode().invoke(gun,stack));
         var modes=new java.util.ArrayList<String>();
@@ -193,6 +225,15 @@ public final class TaczAmmoHud {
         String name=font.plainSubstrByWidth(stack.getHoverName().getString(),Math.max(1,width/2-MARGIN-(right-nameRight)));
         text(g,font,name,nameRight-font.width(name),rowTop-11,0xFFE2E8F0);
         g.pose().popPose();
+    }
+    /** Ammo bar easing and the last count seen, per held gun. */
+    private static final BarTween BAR=new BarTween(.32,.07);
+    private static String animatedGun;
+    private static int lastAmmo;
+    private static double shotAt=-10,reloadAt=-10;
+    /** 1 at the start of an effect lasting {@code seconds}, easing out to 0. */
+    private static float pulse(double elapsed,double seconds){
+        if(elapsed<0||elapsed>=seconds)return 0;float t=(float)(elapsed/seconds);return (1-t)*(1-t);
     }
     /** Width of the widest number-font digit, so every digit gets the same cell. */
     private static int digitCell(net.minecraft.client.gui.Font font) {
