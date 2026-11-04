@@ -29,15 +29,47 @@ final class PropObjectRenderer {
         // 184 / 191: the dolls wear their own fixed skins; the mannequin a seeker's.
         boolean doll=!item.equals("gungang:mannequin");
         var info=doll||mc.getConnection()==null?null:mc.getConnection().getPlayerInfo(prop.skin());boolean slim=info!=null&&info.getModelName().equals("slim");
-        var model=new net.minecraft.client.model.PlayerModel<PropEntity>(mc.getEntityModels().bakeLayer(slim?net.minecraft.client.model.geom.ModelLayers.PLAYER_SLIM:net.minecraft.client.model.geom.ModelLayers.PLAYER),slim);
         var texture=doll?new net.minecraft.resources.ResourceLocation("gungang","textures/entity/doll/"+(item.equals("gungang:eunbi_doll")?"eunbi":"hanbi")+".png"):MatchHud.skin(prop.skin().toString());
         pose.pushPose();pose.mulPose(Axis.YP.rotationDegrees(180-net.minecraft.util.Mth.rotLerp(partial,prop.yRotO,prop.getYRot())));pose.scale(-1,-1,1);pose.translate(0,-1.501,0);
-        int mode=prop.mode();model.leftArm.zRot=mode==1?-1.57f:mode==2?-.8f:0;model.rightArm.zRot=mode==1?1.57f:mode==2?.8f:0;
-        if(mode==3){model.leftArm.xRot=-2.6f;model.rightArm.xRot=-2.6f;}
-        if(mode==4){model.leftLeg.xRot=-1.5f;model.rightLeg.xRot=-1.5f;model.leftArm.xRot=-.7f;model.rightArm.xRot=-.7f;}
-        if(mode==5){model.rightArm.zRot=2.5f;model.head.zRot=.25f;}
-        model.hat.copyFrom(model.head);model.jacket.copyFrom(model.body);model.leftSleeve.copyFrom(model.leftArm);model.rightSleeve.copyFrom(model.rightArm);model.leftPants.copyFrom(model.leftLeg);model.rightPants.copyFrom(model.rightLeg);
-        model.renderToBuffer(pose,buffers.getBuffer(RenderType.entityCutoutNoCull(texture)),light,OverlayTexture.NO_OVERLAY,1,1,1,1);pose.popPose();return true;
+        var root=figure(slim);root.getAllParts().forEach(net.minecraft.client.model.geom.ModelPart::resetPose);
+        var head=root.getChild("head");var leftArm=root.getChild("left_arm");var rightArm=root.getChild("right_arm");var leftLeg=root.getChild("left_leg");var rightLeg=root.getChild("right_leg");
+        int mode=prop.mode();leftArm.zRot=mode==1?-1.57f:mode==2?-.8f:0;rightArm.zRot=mode==1?1.57f:mode==2?.8f:0;
+        if(mode==3){leftArm.xRot=-2.6f;rightArm.xRot=-2.6f;}
+        if(mode==4){leftLeg.xRot=-1.5f;rightLeg.xRot=-1.5f;leftArm.xRot=-.7f;rightArm.xRot=-.7f;}
+        if(mode==5){rightArm.zRot=2.5f;head.zRot=.25f;}
+        // Each outer layer (hat, jacket, sleeves, trousers) is a child of its limb, so it follows the pose.
+        root.render(pose,buffers.getBuffer(RenderType.entityTranslucent(texture)),light,OverlayTexture.NO_OVERLAY);pose.popPose();return true;
+    }
+    /**
+     * The mannequin and dolls' own player-shaped model, built here rather than through PlayerModel/HumanoidModel: other
+     * client mods (Armourer's Workshop, gun animation mods) hook those classes for real players, and drawing a skin
+     * through them twisted the torso edge-on and dropped parts of the second skin layer.
+     */
+    private static net.minecraft.client.model.geom.ModelPart wide,slimFigure;
+    private static net.minecraft.client.model.geom.ModelPart figure(boolean slim){
+        if(slim)return slimFigure==null?slimFigure=bake(true):slimFigure;
+        return wide==null?wide=bake(false):wide;
+    }
+    private static net.minecraft.client.model.geom.ModelPart bake(boolean slim){
+        var mesh=new net.minecraft.client.model.geom.builders.MeshDefinition();var root=mesh.getRoot();
+        var none=net.minecraft.client.model.geom.builders.CubeDeformation.NONE;var thin=new net.minecraft.client.model.geom.builders.CubeDeformation(.25f);
+        var head=root.addOrReplaceChild("head",box(0,0,-4,-8,-4,8,8,8,none),net.minecraft.client.model.geom.PartPose.ZERO);
+        head.addOrReplaceChild("hat",box(32,0,-4,-8,-4,8,8,8,new net.minecraft.client.model.geom.builders.CubeDeformation(.5f)),net.minecraft.client.model.geom.PartPose.ZERO);
+        var body=root.addOrReplaceChild("body",box(16,16,-4,0,-2,8,12,4,none),net.minecraft.client.model.geom.PartPose.ZERO);
+        body.addOrReplaceChild("jacket",box(16,32,-4,0,-2,8,12,4,thin),net.minecraft.client.model.geom.PartPose.ZERO);
+        int arm=slim?3:4;float shoulder=slim?2.5f:2;
+        var right=root.addOrReplaceChild("right_arm",box(40,16,slim?-2:-3,-2,-2,arm,12,4,none),net.minecraft.client.model.geom.PartPose.offset(-5,shoulder,0));
+        right.addOrReplaceChild("right_sleeve",box(40,32,slim?-2:-3,-2,-2,arm,12,4,thin),net.minecraft.client.model.geom.PartPose.ZERO);
+        var left=root.addOrReplaceChild("left_arm",box(32,48,-1,-2,-2,arm,12,4,none),net.minecraft.client.model.geom.PartPose.offset(5,shoulder,0));
+        left.addOrReplaceChild("left_sleeve",box(48,48,-1,-2,-2,arm,12,4,thin),net.minecraft.client.model.geom.PartPose.ZERO);
+        var rightLeg=root.addOrReplaceChild("right_leg",box(0,16,-2,0,-2,4,12,4,none),net.minecraft.client.model.geom.PartPose.offset(-1.9f,12,0));
+        rightLeg.addOrReplaceChild("right_pants",box(0,32,-2,0,-2,4,12,4,thin),net.minecraft.client.model.geom.PartPose.ZERO);
+        var leftLeg=root.addOrReplaceChild("left_leg",box(16,48,-2,0,-2,4,12,4,none),net.minecraft.client.model.geom.PartPose.offset(1.9f,12,0));
+        leftLeg.addOrReplaceChild("left_pants",box(0,48,-2,0,-2,4,12,4,thin),net.minecraft.client.model.geom.PartPose.ZERO);
+        return net.minecraft.client.model.geom.builders.LayerDefinition.create(mesh,64,64).bakeRoot();
+    }
+    private static net.minecraft.client.model.geom.builders.CubeListBuilder box(int u,int v,float x,float y,float z,int w,int h,int d,net.minecraft.client.model.geom.builders.CubeDeformation grow){
+        return net.minecraft.client.model.geom.builders.CubeListBuilder.create().texOffs(u,v).addBox(x,y,z,w,h,d,grow);
     }
     /** 176: one client armour stand per disguise, rebuilt when its armour (TEXT) or pose (MODE) changes. */
     private static final java.util.Map<Integer,net.minecraft.world.entity.decoration.ArmorStand> STANDS=new java.util.HashMap<>();

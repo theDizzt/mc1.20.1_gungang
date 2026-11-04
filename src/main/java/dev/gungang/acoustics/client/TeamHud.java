@@ -217,7 +217,7 @@ public final class TeamHud {
         // Above the item (z 150), like the disguise tiles at the top of the screen.
         g.pose().pushPose();
         g.pose().translate(0, 0, 180);
-        DeathmatchHud.small(g, dev.gungang.acoustics.server.PropCatalog.number(row.block()), x + 21, y + 15, .5f, 0xFFFFFFFF, false, false);
+        DeathmatchHud.small(g, dev.gungang.acoustics.server.PropCatalog.number(row.block()), x + 21, y + 14, .62f, 0xFFFFFFFF, false, false);
         g.pose().popPose();
         return true;
     }

@@ -78,6 +78,12 @@ public final class PropEffects {
             // 196: the death zone disguise shows the skull marker a held death zone block shows, to everyone.
             if(prop.item().equals("gungang:death_zone")&&level.getGameTime()%20==0&&!PropRenderer.concealed(prop))
                 level.addParticle(new net.minecraft.core.particles.BlockParticleOption(net.minecraft.core.particles.ParticleTypes.BLOCK_MARKER,prop.state()),prop.getX(),prop.getY()+.5,prop.getZ(),0,0,0);
+            // 105: soul sand gives off drifting souls and soul fire flecks, as it does under someone with Soul Speed.
+            if(prop.item().equals("minecraft:soul_sand")&&!PropRenderer.concealed(prop)){
+                var random=level.random;
+                if(random.nextInt(10)==0)level.addParticle(net.minecraft.core.particles.ParticleTypes.SOUL,prop.getX()+(random.nextDouble()-.5)*.9,prop.getY()+1.02,prop.getZ()+(random.nextDouble()-.5)*.9,0,.03+random.nextDouble()*.02,0);
+                if(random.nextInt(6)==0)level.addParticle(net.minecraft.core.particles.ParticleTypes.SOUL_FIRE_FLAME,prop.getX()+(random.nextDouble()-.5)*.9,prop.getY()+1.02,prop.getZ()+(random.nextDouble()-.5)*.9,0,.01,0);
+            }
             BlockPos cell=BlockPos.containing(prop.getX(),prop.getY()+.5,prop.getZ());
             glow(level,prop.getId(),emission>0&&!PropRenderer.concealed(prop)?cell:null,emission);
         }

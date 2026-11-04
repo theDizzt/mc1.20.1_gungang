@@ -76,10 +76,14 @@ public final class PropAbilities {
         if(item.equals("minecraft:armor_stand")){prop.text(armor(p.getRandom()));prop.mode(p.getRandom().nextInt(ARMOR_POSES));}
         if(doll(item)){r.gaugeMax=item.equals(EUNBI)?BEAM_TICKS:CLOAK_TICKS;r.gauge=r.gaugeMax;}
         if(item.equals("gungang:mannequin")){var seekers=match.players().stream().filter(q->!match.hider(q.getUUID())).toList();prop.skin(seekers.isEmpty()?p.getUUID():seekers.get(p.getRandom().nextInt(seekers.size())).getUUID());}
-        // Sturdy disguises: mannequins and dolls, (crying) obsidian 255; bedrock 999; every other block 50.
-        double maximum=Set.of("gungang:mannequin",EUNBI,HANBI,"minecraft:obsidian","minecraft:crying_obsidian").contains(item)?255:item.equals("minecraft:bedrock")?999:50;float health=p.getHealth();boolean resized=p.getMaxHealth()!=maximum;
+        double maximum=maxHealth(item);float health=p.getHealth();boolean resized=p.getMaxHealth()!=maximum;
         p.getAttribute(Attributes.MAX_HEALTH).setBaseValue(maximum);p.setHealth(resized?p.getMaxHealth():Math.min(health,p.getMaxHealth()));
         modifier(p,CART,item.equals("minecraft:minecart")||item.equals("minecraft:tnt_minecart")?1.5:0);
+    }
+    /** Sturdy disguises (tagged "견고"): mannequins and dolls, (crying) obsidian, end crystal, geyser, war table, armory 255; big grass block 400; bedrock 999; every other block 50. */
+    public static double maxHealth(String item){
+        return Set.of("gungang:mannequin",EUNBI,HANBI,"minecraft:obsidian","minecraft:crying_obsidian","minecraft:end_crystal","gungang:geyser","gungang:war_table","gungang:armory").contains(item)?255
+                :item.equals("gungang:big_grass_block")?400:item.equals("minecraft:bedrock")?999:50;
     }
     /** 176: four random armour pieces (or none in a slot), as item ids "head,chest,legs,feet". */
     static final int ARMOR_POSES=6;
@@ -302,7 +306,9 @@ public final class PropAbilities {
      * the nozzle and bath toad streams heal hiders. Effects apply while hunting; the water is always shown.
      */
     private void thermal(LivingEntity p,PropEntity prop,Runtime r,int now){
-        if(!(prop.state().getBlock() instanceof ThermalEmitterBlock block)||now%2!=0)return;
+        // Gate on the level's clock, not the match's (server tick count): spray() sends its particles when game time is a
+        // multiple of 4, and with an odd offset between the two clocks an even match tick never landed on one.
+        if(!(prop.state().getBlock() instanceof ThermalEmitterBlock block)||level(p).getGameTime()%2!=0)return;
         var level=level(p);boolean hunting=match.hunting();var base=prop.position();
         if(block.geyser()){
             var plume=new AABB(base.x-1.5,base.y,base.z-1.5,base.x+1.5,base.y+8,base.z+1.5);var seekers=match.seekers();
