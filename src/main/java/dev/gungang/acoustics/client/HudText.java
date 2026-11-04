@@ -18,11 +18,13 @@ public final class HudText {
         return Component.literal(value).withStyle(style -> style.withFont(NUMBER_FONT));
     }
     public static int numberWidth(String value) { return Minecraft.getInstance().font.width(number(value)); }
-    /** Number-font text with a pure black drop shadow one glyph pixel down-right (vanilla's is only a darker tint). */
+    /** Number-font text with a translucent black drop shadow one glyph pixel down-right (vanilla's is only a darker tint). */
     public static void drawNumber(GuiGraphics g, Component text, int x, int y, int color) {
         var font = Minecraft.getInstance().font;
-        // Keep the text's own alpha; an alpha of 0 means opaque to drawString.
-        int shadow = (color & 0xFC000000) == 0 ? 0xFF000000 : color & 0xFF000000;
+        // Translucent black: half the text's own alpha (an alpha below 4 means opaque to drawString), never below 4
+        // itself, which drawString would also read as opaque.
+        int alpha = (color & 0xFC000000) == 0 ? 255 : color >>> 24;
+        int shadow = Math.max(4, alpha * 0x80 / 255) << 24;
         g.drawString(font, text, x + 1, y + 1, shadow, false);
         g.drawString(font, text, x, y, color, false);
     }

@@ -39,6 +39,58 @@ public final class PropInteraction {
     private static final Set<String> MENUS=Set.of("minecraft:crafting_table","minecraft:loom","minecraft:grindstone","minecraft:smithing_table","minecraft:enchanting_table",
             "minecraft:cauldron","gungang:war_table","gungang:armory");
     public static boolean special(String item){return SPECIAL.contains(item);}
+    /** Disguises that can hurt or kill seekers, tagged "공격" in red in the block list and HUD. */
+    private static final Set<String> ATTACK=Set.of("minecraft:tnt","gungang:gas_barrel","minecraft:dispenser","minecraft:cactus","minecraft:campfire",
+            "minecraft:soul_campfire","minecraft:magma_block","minecraft:pointed_dripstone","minecraft:stonecutter","gungang:acid_puddle","gungang:acid_nozzle",
+            "gungang:uxo","minecraft:spawner","minecraft:fire","minecraft:soul_fire","minecraft:bee_nest","minecraft:infested_stone","minecraft:minecart",
+            "minecraft:end_crystal","minecraft:torchflower","gungang:geyser","minecraft:lava","gungang:acid","gungang:eunbi_doll","minecraft:tnt_minecart",
+            "gungang:death_zone","minecraft:conduit");
+    public static boolean attack(String item){return ATTACK.contains(item);}
+    /** Disguises that put a status effect on seekers (poison, burning, slowness, glowing), tagged "디버프" in purple. */
+    private static final Set<String> DEBUFF=Set.of("gungang:acid_puddle","gungang:acid_nozzle","gungang:acid","minecraft:spawner","minecraft:cobweb",
+            "minecraft:fire","minecraft:soul_fire","minecraft:torchflower","gungang:geyser","minecraft:lava","minecraft:bell","minecraft:soul_sand");
+    public static boolean debuff(String item){return DEBUFF.contains(item);}
+    /** Disguises that move faster or speed up hiders (minecarts, hanbi doll's cloak, beacon, brewing stand's swiftness), tagged "신속" in blue. */
+    private static final Set<String> SWIFT=Set.of("minecraft:minecart","minecraft:tnt_minecart","gungang:hanbi_doll","minecraft:beacon","minecraft:brewing_stand");
+    public static boolean swift(String item){return SWIFT.contains(item);}
+    /** A liquid disguise (water, lava, acid, hot spring water, bubble column): no block model, drawn as its fluid. */
+    public static boolean liquid(net.minecraft.world.level.block.state.BlockState state){
+        return state.getRenderShape()!=net.minecraft.world.level.block.RenderShape.MODEL&&!state.getFluidState().isEmpty();
+    }
+    /** A block that gives off light in some state of it (lit or unlit candles, lamps and campfires included), tagged "광원" in gold. */
+    public static boolean glows(net.minecraft.world.level.block.state.BlockState state){
+        return state.getBlock().getStateDefinition().getPossibleStates().stream().anyMatch(s->s.getLightEmission()>0);
+    }
+    /** The tags as words in their exact colours, each followed by a space. */
+    public static net.minecraft.network.chat.MutableComponent tagComponent(String item){
+        var text=net.minecraft.network.chat.Component.empty();
+        for(var t:tags(item))text.append(net.minecraft.network.chat.Component.literal(t.label()+" ").withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(t.color()&0xFFFFFF)));
+        return text;
+    }
+    /** A category label shown by a disguise's name, with its colour as ARGB and as a chat colour code. */
+    public record Tag(String label,int color,char code){}
+    /** Every category of a disguise in display order: 공격, 디버프, 견고, 접착, 신속, 액체, 광원, 특수, 색상. */
+    public static java.util.List<Tag> tags(String item,net.minecraft.world.level.block.state.BlockState state){
+        var tags=new java.util.ArrayList<Tag>();
+        if(attack(item))tags.add(new Tag("공격",0xFFFF5A5A,'c'));
+        if(debuff(item))tags.add(new Tag("디버프",0xFFC77DFF,'5'));
+        if(PropAbilities.maxHealth(item)>50)tags.add(new Tag("견고",0xFF9DFF5A,'a'));
+        if(PropSticky.sticky(item))tags.add(new Tag("접착",0xFFFF8030,'6'));
+        if(swift(item))tags.add(new Tag("신속",0xFF4D8BFF,'9'));
+        if(liquid(state))tags.add(new Tag("액체",0xFF6CD8FF,'b'));
+        if(glows(state))tags.add(new Tag("광원",0xFFE6B422,'6'));
+        if(tagged(item,state))tags.add(new Tag("특수",0xFFFFD84A,'e'));
+        if(PropCatalog.colored(item))tags.add(new Tag("색상",0xFFFF8AD0,'d'));
+        return tags;
+    }
+    public static java.util.List<Tag> tags(String item){return tags(item,PropCatalog.state(item));}
+    /** The tags as chat-coloured words, each followed by a space. */
+    public static String tagText(String item){var text=new StringBuilder();for(var t:tags(item))text.append('§').append(t.code()).append(t.label()).append(' ');return text.toString();}
+    /** Special without an E action: 122 dragon egg teleports away when hit. */
+    private static final Set<String> PASSIVE=Set.of("minecraft:dragon_egg");
+    /** The "특수" tag: any disguise E does something for (its own ability or a state switch / menu), or with a passive ability. */
+    public static boolean tagged(String item,net.minecraft.world.level.block.state.BlockState state){return PASSIVE.contains(item)||interactive(item,state);}
+    public static boolean tagged(String item){return interactive(item,PropCatalog.state(item));}
     /**
      * Whether E does anything for this disguise: a special ability, a menu, or switching the block's own state (open,
      * powered, lit, filled, occupied, stair corner, slab half). Turning the block is R's job, never E's.

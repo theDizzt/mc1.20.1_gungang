@@ -12,14 +12,13 @@ final class PropAbilityHud {
         if(state.isAir())state=dev.gungang.acoustics.server.PropCatalog.state(row.block());
         float scale=(float)(2/mc.getWindow().getGuiScale());g.pose().pushPose();g.pose().scale(scale,scale,1);
         String name=dev.gungang.acoustics.server.PropCatalog.name(row.block(),state).getString();
-        // A block with its own E effect says so in yellow right after its name.
-        // A random colour variant says "색상" in pink.
-        boolean special=dev.gungang.acoustics.server.PropInteraction.special(row.block()),colored=dev.gungang.acoustics.server.PropCatalog.colored(row.block());
-        int specialW=special?mc.font.width("특수")+4:0,colorW=colored?mc.font.width("색상")+4:0;
-        name=mc.font.plainSubstrByWidth(name,Math.max(1,mc.getWindow().getWidth()/4-18-specialW-colorW));
-        TaczAmmoHud.text(g,mc.font,name,l.right()-specialW-colorW-mc.font.width(name),l.rowTop()-11,0xFFE2E8F0);
-        if(special)TaczAmmoHud.text(g,mc.font,"특수",l.right()-colorW-mc.font.width("특수"),l.rowTop()-11,0xFFFFD84A);
-        if(colored)TaczAmmoHud.text(g,mc.font,"색상",l.right()-mc.font.width("색상"),l.rowTop()-11,0xFFFF8AD0);
+        // Its categories (공격, 디버프, 견고, 접착, 신속, 액체, 광원, 특수, 색상) follow the name in their colours.
+        var tags=dev.gungang.acoustics.server.PropInteraction.tags(row.block(),state);
+        int tagsW=0;for(var t:tags)tagsW+=mc.font.width(t.label())+4;
+        name=mc.font.plainSubstrByWidth(name,Math.max(1,mc.getWindow().getWidth()/4-18-tagsW));
+        TaczAmmoHud.text(g,mc.font,name,l.right()-tagsW-mc.font.width(name),l.rowTop()-11,0xFFE2E8F0);
+        int tx=l.right()-tagsW+4;
+        for(var t:tags){TaczAmmoHud.text(g,mc.font,t.label(),tx,l.rowTop()-11,t.color());tx+=mc.font.width(t.label())+4;}
         icon(g,row.block(),state,l.iconX()+26,l.iconY());
         String number=dev.gungang.acoustics.server.PropCatalog.number(row.block());
         if(number.chars().allMatch(Character::isDigit))number="0".repeat(Math.max(0,3-number.length()))+number;else number="???";

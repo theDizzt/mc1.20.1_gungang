@@ -162,7 +162,7 @@ public final class PropHuntClient {
         var mc=Minecraft.getInstance();if(!hider()||mc.player==null||mc.screen!=null)return List.of();
         var lines=new ArrayList<String>();lines.add("숨는 팀 조작");
         // A block with its own E effect is tagged "특수" in yellow (§e) after its name.
-        if(System.currentTimeMillis()<noticeUntil)lines.add("변신: "+disguise(self().block())+(PropInteraction.special(self().block())?" §e특수§r":"")+(PropCatalog.colored(self().block())?" §d색상§r":""));
+        if(System.currentTimeMillis()<noticeUntil)lines.add("변신: "+disguise(self().block())+(PropInteraction.tagText(self().block()).isEmpty()?"":" "+PropInteraction.tagText(self().block()).trim()+"§r"));
         // TNT and gas barrels blast with E (30 s cooldown on the server).
         // Dispensers shoot an arrow with E (1 s cooldown) and turn through six facings with R.
         String block=self().block();boolean blast=block.equals("minecraft:tnt")||block.equals("gungang:gas_barrel"),shoot=block.equals("minecraft:dispenser");

@@ -27,7 +27,7 @@ final class PropChoiceHud {
             g.pose().pushPose();g.pose().translate(0,0,300);
             String name=font.plainSubstrByWidth(PropCatalog.name(block).getString(),CARD-4);
             g.drawCenteredString(font,name,x+CARD/2,top+ICON+6,0xFFE2E8F0);
-            String tags=(PropInteraction.special(block)?"§e특수 ":"")+(type.startsWith("@")||type.startsWith("#")?"§d색상 ":"")+"§7["+PropCatalog.number(block)+"]";
+            var tags=PropInteraction.tagComponent(block).append(net.minecraft.network.chat.Component.literal("["+PropCatalog.number(block)+"]").withStyle(net.minecraft.ChatFormatting.GRAY));
             g.drawCenteredString(font,tags,x+CARD/2,top+ICON+17,0xFFFFFFFF);
             g.pose().popPose();
         }

@@ -32,7 +32,7 @@ public final class PropListScreen extends Screen {
         var mc=Minecraft.getInstance();if(mc.screen instanceof net.minecraft.client.gui.screens.ChatScreen)return;
         pending=false;if(mc.player!=null&&!MatchHud.active())open();
     }
-    private record Entry(String type,String block,BlockState state,String number,Component name,boolean special,boolean colored,String description){}
+    private record Entry(String type,String block,BlockState state,String number,Component name,boolean special,boolean attack,boolean colored,String description,List<PropInteraction.Tag> tags){}
     private final List<Entry> entries=new ArrayList<>();
     private int scroll;
     private Entry selected;
@@ -42,7 +42,7 @@ public final class PropListScreen extends Screen {
         for(String type:PropCatalog.available()){
             String block=PropCatalog.display(type);
             var state=PropCatalog.state(block);
-            entries.add(new Entry(type,block,state,PropCatalog.number(block),PropCatalog.name(block),PropInteraction.special(block),type.startsWith("@")||type.startsWith("#"),describe(type,block,state)));
+            entries.add(new Entry(type,block,state,PropCatalog.number(block),PropCatalog.name(block),PropInteraction.tagged(block,state),PropInteraction.attack(block),type.startsWith("@")||type.startsWith("#"),describe(type,block,state),PropInteraction.tags(block,state)));
         }
     }
     public static void open(){
@@ -96,7 +96,7 @@ public final class PropListScreen extends Screen {
         scroll=Math.min(scroll,maxScroll());
         int cell=cell(),columns=columns(),left=(width-cell*columns)/2,top=top();
         g.drawCenteredString(font,Component.literal("변신 블록 목록 ("+entries.size()+"종)"),width/2,top-28,0xFFFFFFFF);
-        g.drawCenteredString(font,Component.literal("§e■ 특수§7 E 고유 능력  §d■ 색상§7 무작위 색  §8· 클릭해 선택 후 변신"+(maxScroll()>0?" · 휠로 스크롤":"")),width/2,top-15,0xFFB0B0B0);
+        g.drawCenteredString(font,Component.literal("§c■ 공격  §5■ 디버프  §a■ 견고  §6■ 접착  §9■ 신속  §b■ 액체  §6■ 광원  §e■ 특수  §d■ 색상  §8· 클릭해 선택 후 변신"+(maxScroll()>0?" · 휠로 스크롤":"")),width/2,top-15,0xFFB0B0B0);
         Entry hovered=null;
         int first=scroll*columns,last=Math.min(entries.size(),first+visibleRows()*columns);
         for(int i=first;i<last;i++){
@@ -106,13 +106,13 @@ public final class PropListScreen extends Screen {
             g.fill(x+1,y+1,x+cell-1,y+cell-1,over?0x60FFFFFF:0x30000000);
             if(e==selected)g.fill(x+1,y+1,x+cell-1,y+cell-1,0x7070CDBF);
             if(e==selected)g.renderOutline(x,y,cell,cell,0xFF70CDBF);
-            else if(e.special)g.renderOutline(x+1,y+1,cell-2,cell-2,0xFFFFD84A);
-            else if(e.colored)g.renderOutline(x+1,y+1,cell-2,cell-2,0xFFFF8AD0);
+            else if(!e.tags.isEmpty())g.renderOutline(x+1,y+1,cell-2,cell-2,e.tags.get(0).color());
             int size=cell-6;
             PropAbilityHud.icon(g,e.block,e.state,x+3,y+2,size);
-            g.pose().pushPose();g.pose().translate(0,0,400);
-            float s=.5f;g.pose().scale(s,s,1);
-            String n=e.number;g.drawString(font,n,(int)((x+cell-2)/s)-font.width(n),(int)((y+cell-2)/s)-8,0xFFFFFFFF,true);
+            // Above the item (z ~150-170) but below the tooltip (z 400), which it used to cover.
+            g.pose().pushPose();g.pose().translate(0,0,250);
+            float s=.65f;g.pose().scale(s,s,1);
+            String n=e.number;g.drawString(font,n,Math.round((x+cell-2)/s)-font.width(n),Math.round((y+cell-1)/s)-9,0xFFFFFFFF,true);
             g.pose().popPose();
             if(over)hovered=e;
         }
@@ -129,8 +129,7 @@ public final class PropListScreen extends Screen {
     private List<FormattedCharSequence> tooltip(Entry e){
         var lines=new ArrayList<FormattedCharSequence>();
         var head=Component.literal("["+e.number+"] ").withStyle(net.minecraft.ChatFormatting.AQUA).append(e.name.copy().withStyle(net.minecraft.ChatFormatting.WHITE));
-        if(e.special)head.append(Component.literal(" 특수").withStyle(net.minecraft.ChatFormatting.YELLOW));
-        if(e.colored)head.append(Component.literal(" 색상").withStyle(net.minecraft.ChatFormatting.LIGHT_PURPLE));
+        for(var t:e.tags)head.append(Component.literal(" "+t.label()).withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(t.color()&0xFFFFFF)));
         lines.add(head.getVisualOrderText());
         int wrap=Math.max(120,Math.min(260,width/2));
         for(String part:e.description.split("\n"))lines.addAll(font.split(Component.literal(part).withStyle(net.minecraft.ChatFormatting.GRAY),wrap));
@@ -170,10 +169,10 @@ public final class PropListScreen extends Screen {
         d("barrier","본체가 투명. 숨는 팀에게는 흰 테두리만 보임");d("cobweb","닿은 술래를 느리게 함. 다른 플레이어가 지나갈 수 있음");
         d("obsidian","체력 255");d("bedrock","체력 999");d("minecraft:painting","몸이 액자 두께만큼 얇아 벽에 바로 붙을 수 있음");
         d("chest","E: 27칸 보관함(닫으면 뚜껑이 닫힘)");d("barrel","E: 27칸 보관함");
-        d("gungang:war_table","E: 로비 화면(경기 규칙에 따라 제한). R: 회전");d("gungang:armory","E: 무기 화면(경기 규칙에 따라 제한). R: 회전");
+        d("gungang:war_table","체력 255. E: 로비 화면(경기 규칙에 따라 제한). R: 회전");d("gungang:armory","체력 255. E: 무기 화면(경기 규칙에 따라 제한). R: 회전");
         d("rose_bush","충돌 판정이 없어 다른 플레이어가 지나갈 수 있음");
         d("spawner","E: 술래 근처에 독거미 소환(체력 100, 피해 16, 독 5초, 84초 쿨타임). 독거미 체력은 보조 체력바");
-        d("anvil","E: 모루·금 간 모루·손상된 모루 전환. R: 회전");d("hay_block","R: 축 회전");
+        d("soul_sand","위를 걷는 개체가 느려짐(진짜 영혼 모래와 같음). 영혼 입자가 피어오름");d("anvil","E: 모루·금 간 모루·손상된 모루 전환. R: 회전");d("hay_block","R: 축 회전");
         d("flower_pot","처음 식물 무작위(빈 화분 포함). E: 다시 선택. 심긴 식물까지 피격 판정");
         d("fire","닿은 술래에게 피해 50, 화상 10초(1초 간격)");d("soul_fire","닿은 술래에게 피해 50, 화상 10초(1초 간격). 영혼 불 외관");
         d("nether_portal","E: 닿은 참가자를 팀 구분 없이 맵 안 임의 위치로 이동(안전 위치 보장 없음)");
@@ -193,11 +192,11 @@ public final class PropListScreen extends Screen {
         d("torchflower","닿은 술래에게 화상 10초");d("pitcher_plant","다 자란 두 블록 형태");
         d("sugar_cane","60초마다 한 블록 성장(최대 3블록). 몸 크기도 함께 커짐");
         d("beacon","E: 빔 켜기/끄기. 하나 이상 켜져 있으면 살아 있는 숨는 팀 전체 이동속도 1.2배(중첩 없음)");
-        d("minecraft:end_crystal","E: 24블록 안에서 보이는 가장 가까운 술래를 추적하는 입자 발사(명중 피해 50, 30초 쿨타임). 벽에 막힘");
+        d("minecraft:end_crystal","체력 255. E: 24블록 안에서 보이는 가장 가까운 술래를 추적하는 입자 발사(명중 피해 50, 30초 쿨타임). 벽에 막힘");
         d("sculk_sensor","E: 비명 효과 켜기/끄기. 켜진 동안 2초마다 딸깍 소리·입자(상태 효과 없음)");
         d("gungang:hologram_projector","주무기 중 무작위 무기를 홀로그램으로 표시\nE: 크기 50~300%, R: 회전 속도");
         d("sculk_shrieker","E: 비명 효과 켜기/끄기. 켜진 동안 2초마다 비명 소리와 입자(어둠 효과 없음)");
-        d("gungang:geyser","3×3 바닥 모습. 찾는 시간에 술래가 3블록 안에 오면 높이 8블록 물기둥 3초 분출(화상 10초)");
+        d("gungang:geyser","체력 255. 3×3 바닥 모습. 찾는 시간에 술래가 3블록 안에 오면 높이 8블록 물기둥 3초 분출(화상 10초)");
         d("gungang:hot_spring_nozzle","바라보는 방향으로 약 3블록 물줄기. 찾는 시간에 닿은 숨는 팀 치유. R: 방향 전환");
         d("gungang:bath_toad","치유 물줄기(온천수 노즐과 같음). R: 방향 전환");
         d("gungang:shutter","E: 말려 올라가며 열리고 내려오며 닫힘. R: 축 회전");
@@ -206,7 +205,7 @@ public final class PropListScreen extends Screen {
         d("note_block","E: 모차르트 피아노 소나타 16번 도입부를 한 음씩 연주");
         d("jukebox","E: 무작위 음반을 위로 발사(3초 뒤 사라짐, 1초 쿨타임)");d("turtle_egg","E: 알 1~4개 전환. 밟아도 깨지지 않음");
         d("brewing_stand","E: 점프 강화·신속·투명화 중 하나를 숨는 팀 전원에게 15초(50초 쿨타임). 투명화 중 블록도 보이지 않음");
-        d("gungang:big_grass_block","2×2×2 크기의 잔디 블록");
+        d("gungang:big_grass_block","체력 400. 2×2×2 크기의 잔디 블록");
         d("bell","E: 타종. 3초 뒤 48블록 안 술래가 3초 동안 발광(쿨타임 없음)");
         d("bubble_column","물 없이 방울만 보임. 닿은 술래를 위로 던지거나 아래로 끌어내림. E: 물살 방향 전환");
         d("water","닿은 술래의 불을 끔");d("gungang:hot_spring_water","찾는 시간에 잠긴 숨는 사람을 치유");
