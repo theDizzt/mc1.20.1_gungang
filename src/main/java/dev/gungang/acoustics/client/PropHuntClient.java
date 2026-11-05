@@ -44,6 +44,8 @@ public final class PropHuntClient {
         return viewer!=null&&!review()&&viewer.team().equals("ALPHA")&&prop.owner()!=null
                 &&state.players().stream().anyMatch(r->r.id().equals(prop.owner().toString())&&r.team().equals("ALPHA"));
     }
+    /** The local player is on the seeking team while the round is being played. */
+    public static boolean seeker(){var s=self();return s!=null&&s.team().equals("BRAVO")&&!review();}
     public static boolean fixed(){var s=self();return hider()&&s.fixed();}
     /** The wall the own disguise clings to (Q), or null. */
     static net.minecraft.core.Direction clinging(){var s=self();return hider()?s.clinging():null;}
@@ -74,7 +76,9 @@ public final class PropHuntClient {
     }
     /** "참나무 판자 [01]" for a drawn block or colour variant. */
     static String disguise(String block){
-        String name=PropCatalog.name(block).getString();
+        // An assorted type names the look it drew (e.g. 자작나무 판자), from the own row's state.
+        var own=self();var drawn=own!=null&&own.block().equals(block)&&own.state()!=0?net.minecraft.world.level.block.Block.stateById(own.state()):null;
+        String name=(drawn==null?PropCatalog.name(block):PropCatalog.name(block,drawn)).getString();
         return name+" ["+PropCatalog.number(block)+"]";
     }
     /** Caption above the health bar: the own disguise, or while watching someone their disguise ("술래" for seekers). */
@@ -175,6 +179,11 @@ public final class PropHuntClient {
             case "gungang:hologram_projector"->"홀로그램 크기";
             case "gungang:shutter"->"열기/닫기";
             case "minecraft:note_block"->"연주";
+            case "minecraft:cartography_table"->"미니맵 보기";
+            case "minecraft:farmland"->"작물 바꾸기";
+            case "minecraft:piston","minecraft:sticky_piston"->"피스톤 작동";
+            case "gungang:desk_clock"->"알람 켜기/끄기";
+            case "gungang:money_cart"->"현금 인출기 소리";
             case "minecraft:jukebox"->"CD 발사";
             case "minecraft:brewing_stand"->"팀 물약 효과";
             case "minecraft:bell"->"타종";
@@ -206,7 +215,7 @@ public final class PropHuntClient {
             if(sticky()&&!liquid()){lines.add("벽·천장에 닿으면 붙어서 이동");if(stuck)lines.add("E  떨어지기");lines.add("점프 불가");}
             else lines.add(liquid()?"점프  헤엄쳐 오르기":"점프 길게  높이 충전");
             lines.add("Shift  정렬");if(interactive)lines.add("E  "+use);lines.add("G  경적");lines.add("T  고정");
-            lines.add("R  "+(shoot?"방향 전환":hologram?"회전 속도":"90° 회전"));lines.add(q+"  벽에 붙기");
+            lines.add("R  "+(shoot||block.endsWith("piston")?"방향 전환":hologram?"회전 속도":block.equals("minecraft:note_block")?"곡 바꾸기":"90° 회전"));if(!state.clingOff())lines.add(q+"  벽에 붙기");
             if(block.equals("gungang:eunbi_doll"))lines.add("좌클릭 (꾹)  광선");
             if(block.equals("gungang:hanbi_doll"))lines.add("좌클릭 (꾹)  투명화·무적");
         }

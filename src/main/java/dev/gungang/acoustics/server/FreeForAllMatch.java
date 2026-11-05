@@ -20,7 +20,9 @@ public final class FreeForAllMatch {
         if(blocked(e.getEntity())){e.setCancellationResult(net.minecraft.world.InteractionResult.FAIL);e.setCanceled(true);}
     }
     /** After each respawn: invulnerable, unable to attack, and mutually invisible with everyone else. */
-    public static final int RESPAWN_PROTECTION_TICKS=300;
+    public static final int RESPAWN_PROTECTION_TICKS=300,OPENING_TICKS=600;
+    /** This match's opening grace and respawn protection: the lobby's values, else the defaults above. */
+    private final int openingTicks,protectionTicks;
     public static final int[] COLORS={0xEF4444,0xF97316,0xFACC15,0xA3E635,0x16A34A,0x06B6D4,0x2563EB,0x312E81,0x7C3AED,0x800040,0xD946EF,0xF9A8D4,0x92400E,0xFFFFFF,0x808080,0x151515};
     final MinecraftServer server;
     final ArenaMap map;
@@ -30,7 +32,12 @@ public final class FreeForAllMatch {
     private final List<Integer> palette=new ArrayList<>();
     private final Map<ArenaMap.Spawn,Integer> used=new HashMap<>();
     private int started=-1;
-    public FreeForAllMatch(MinecraftServer server,ArenaMap map){this.server=server;this.map=map;for(int c:COLORS)palette.add(c);Collections.shuffle(palette);}
+    public FreeForAllMatch(MinecraftServer server,ArenaMap map){
+        this.server=server;this.map=map;for(int c:COLORS)palette.add(c);Collections.shuffle(palette);
+        var o=LobbyManager.options().game().freeForAll();
+        openingTicks=o.preparationSeconds()==null?OPENING_TICKS:o.preparationSeconds()*20;
+        protectionTicks=o.protectionSeconds()==null?RESPAWN_PROTECTION_TICKS:o.protectionSeconds()*20;
+    }
     public void add(net.minecraft.world.entity.LivingEntity p){
         scores.add(p.getUUID());colors.computeIfAbsent(p.getUUID(),id->palette.get(colors.size()%palette.size()));
         String id="ffa_"+p.getUUID().toString().replace("-","").substring(0,12);
@@ -45,11 +52,11 @@ public final class FreeForAllMatch {
     public int color(UUID id){return colors.getOrDefault(id,0xFFFFFF);}
     public void leave(ServerPlayer p){restore(p);}
     public void start(){started=server.getTickCount();}
-    public boolean opening(){return started<0||server.getTickCount()-started<600;}
+    public boolean opening(){return started<0||server.getTickCount()-started<openingTicks;}
     public boolean participant(UUID id){return colors.containsKey(id);}
-    public int remaining(UUID id){if(!participant(id))return 0;return opening()?started<0?600:Math.max(0,600-(server.getTickCount()-started)):Math.max(0,hiddenUntil.getOrDefault(id,0)-server.getTickCount());}
+    public int remaining(UUID id){if(!participant(id))return 0;return opening()?started<0?openingTicks:Math.max(0,openingTicks-(server.getTickCount()-started)):Math.max(0,hiddenUntil.getOrDefault(id,0)-server.getTickCount());}
     /** Players and bots alike: a bot respawning gets the same protection, invisibility and silence. */
-    public void protect(net.minecraft.world.entity.LivingEntity p){hiddenUntil.put(p.getUUID(),server.getTickCount()+RESPAWN_PROTECTION_TICKS);update(p);}
+    public void protect(net.minecraft.world.entity.LivingEntity p){hiddenUntil.put(p.getUUID(),server.getTickCount()+protectionTicks);update(p);}
     private void update(net.minecraft.world.entity.LivingEntity p){
         int left=remaining(p.getUUID());boolean hidden=left>0&&!p.isSpectator();
         if(hidden){silence.putIfAbsent(p.getUUID(),p.isSilent());invisibility.putIfAbsent(p.getUUID(),p.isInvisible());p.setSilent(true);p.setInvisible(true);p.stopUsingItem();
@@ -87,7 +94,7 @@ public final class FreeForAllMatch {
     public String winner(boolean expired){UUID id=scores.winner(map.freeForAll().winningScore(),expired);return id==null?"":id.toString();}
     public List<MatchSnapshot.Row> rows(List<MatchSnapshot.Row> stats){
         var result=new ArrayList<MatchSnapshot.Row>();
-        for(UUID id:scores.ranking())for(var r:stats)if(r.id().equals(id.toString()))result.add(new MatchSnapshot.Row(r.id(),r.name(),r.team(),r.kills(),r.deaths(),r.assists(),r.damage(),r.playSeconds(),scores.points(id),colors.get(id),remaining(id),opening()?600:RESPAWN_PROTECTION_TICKS));
+        for(UUID id:scores.ranking())for(var r:stats)if(r.id().equals(id.toString()))result.add(new MatchSnapshot.Row(r.id(),r.name(),r.team(),r.kills(),r.deaths(),r.assists(),r.damage(),r.playSeconds(),scores.points(id),colors.get(id),remaining(id),opening()?openingTicks:protectionTicks));
         return result;
     }
     public static boolean blocked(net.minecraft.world.entity.LivingEntity entity){var match=MatchManager.freeForAll();return !entity.level().isClientSide&&match!=null&&(match.remaining(entity.getUUID())>0||LobbyManager.respawning(entity.getUUID()));}

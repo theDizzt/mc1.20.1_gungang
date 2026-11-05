@@ -11,7 +11,7 @@ public final class LoadoutAttributes {
         float ratio=player.getHealth()/player.getMaxHealth();
         var health=player.getAttribute(Attributes.MAX_HEALTH); var speed=player.getAttribute(Attributes.MOVEMENT_SPEED);
         health.removeModifier(HEALTH);
-        health.addTransientModifier(new AttributeModifier(HEALTH,"GunGang primary health",weapon.maxHealth()-health.getBaseValue(),AttributeModifier.Operation.ADDITION));
+        health.addTransientModifier(new AttributeModifier(HEALTH,"GunGang primary health",weapon.maxHealth()*LobbyManager.healthScale(player.getUUID())-health.getBaseValue(),AttributeModifier.Operation.ADDITION));
         speed.removeModifier(SPEED);
         speed.addTransientModifier(new AttributeModifier(SPEED,"GunGang primary speed",weapon.movementSpeed()/100-1,AttributeModifier.Operation.MULTIPLY_TOTAL));
         player.setHealth(needsRecovery?SurvivalRules.LIFE_HEALTH:Math.max(1,Math.min(player.getMaxHealth(),ratio*player.getMaxHealth())));

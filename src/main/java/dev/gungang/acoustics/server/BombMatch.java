@@ -14,10 +14,12 @@ import net.minecraft.world.phys.*;
 @net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid=dev.gungang.acoustics.GungangAcoustics.ID)
 public final class BombMatch {
     public record View(int round,int totalRounds,String attacker,String phase,BombRules.Point pointA,BombRules.Point pointB,
-                       String plantedSite,int fuseTicks,String dimension,List<String> deadPlayers,BombRules.Site areaA,BombRules.Site areaB,BombRules.Point plantedPosition,List<Mate> mates,String mapId,MapPreviewArea previewArea){
+                       String plantedSite,int fuseTicks,String dimension,List<String> deadPlayers,BombRules.Site areaA,BombRules.Site areaB,BombRules.Point plantedPosition,List<Mate> mates,String mapId,MapPreviewArea previewArea,
+                       /* This match's plant/defuse hold times (0: an older server, use the client's own timing). */ double plantSeconds,double defuseSeconds){
+        public View(int round,int totalRounds,String attacker,String phase,BombRules.Point pointA,BombRules.Point pointB,String plantedSite,int fuseTicks,String dimension,List<String> deadPlayers,BombRules.Site areaA,BombRules.Site areaB,BombRules.Point plantedPosition,List<Mate> mates,String mapId,MapPreviewArea previewArea){this(round,totalRounds,attacker,phase,pointA,pointB,plantedSite,fuseTicks,dimension,deadPlayers,areaA,areaB,plantedPosition,mates,mapId,previewArea,0,0);}
         public View(int round,int totalRounds,String attacker,String phase,BombRules.Point pointA,BombRules.Point pointB,String plantedSite,int fuseTicks,String dimension,List<String> deadPlayers,BombRules.Site areaA,BombRules.Site areaB,BombRules.Point plantedPosition){this(round,totalRounds,attacker,phase,pointA,pointB,plantedSite,fuseTicks,dimension,deadPlayers,areaA,areaB,plantedPosition,List.of(),"",null);}
         /** Same view with only the given team's members, so the TAB minimap never reveals enemies. */
-        public View forTeam(String team){return new View(round,totalRounds,attacker,phase,pointA,pointB,plantedSite,fuseTicks,dimension,deadPlayers,areaA,areaB,plantedPosition,mates==null?List.of():mates.stream().filter(m->m.team().equals(team)).toList(),mapId,previewArea);}
+        public View forTeam(String team){return new View(round,totalRounds,attacker,phase,pointA,pointB,plantedSite,fuseTicks,dimension,deadPlayers,areaA,areaB,plantedPosition,mates==null?List.of():mates.stream().filter(m->m.team().equals(team)).toList(),mapId,previewArea,plantSeconds,defuseSeconds);}
         public View(int round,int totalRounds,String attacker,String phase,BombRules.Point pointA,BombRules.Point pointB,String plantedSite,int fuseTicks,String dimension){this(round,totalRounds,attacker,phase,pointA,pointB,plantedSite,fuseTicks,dimension,List.of(),null,null,null);}
     }
     /** A living player for the TAB minimap; each team receives only its own. */
@@ -36,7 +38,9 @@ public final class BombMatch {
     private BlockPos plantedPosition;
     private BlockState replaced;
     public BombMatch(MinecraftServer server,ArenaMap arena){
-        this.server=server;this.arena=arena;timing=BombEquipment.timing;
+        this.server=server;this.arena=arena;
+        var o=LobbyManager.options().game().bomb();var t=BombEquipment.timing;
+        timing=new BombEquipment.Timing(o.plantSeconds()==null?t.plantSeconds():o.plantSeconds(),o.fuseSeconds()==null?t.fuseSeconds():o.fuseSeconds(),o.defuseSeconds()==null?t.defuseSeconds():o.defuseSeconds());
         level=server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,new net.minecraft.resources.ResourceLocation(arena.dimension())));
         game=new BombGame(arena.bomb(),arena.timeLimitSeconds(),level.random.nextBoolean());
         for(var point:List.of(arena.bomb().pointA(),arena.bomb().pointB()))if(point.y()<=level.getMinBuildHeight()||point.y()>=level.getMaxBuildHeight())throw new IllegalArgumentException("Bomb site Y is outside the dimension");
@@ -330,7 +334,9 @@ public final class BombMatch {
         int total=use.defuser?timing.defuseTicks():timing.plantTicks();
         return new CombatGadgets.Gauge(use.defuser?"bomb_defuse":"bomb_plant",Math.max(0,total-(level.getGameTime()-use.start)),total,true);
     }
-    public View view(){return new View(game.round(),arena.bomb().rounds(),game.attacker(),game.phase().name(),arena.bomb().pointA(),arena.bomb().pointB(),plantedSite,game.fuseTicks(),arena.dimension(),dead.stream().map(UUID::toString).sorted().toList(),arena.bomb().areaA(),arena.bomb().areaB(),plantedPosition==null?null:new BombRules.Point(plantedPosition.getX(),plantedPosition.getY(),plantedPosition.getZ()),mates(),arena.id(),arena.previewArea());}
+    public View view(){return new View(game.round(),arena.bomb().rounds(),game.attacker(),game.phase().name(),arena.bomb().pointA(),arena.bomb().pointB(),plantedSite,game.fuseTicks(),arena.dimension(),dead.stream().map(UUID::toString).sorted().toList(),arena.bomb().areaA(),arena.bomb().areaB(),plantedPosition==null?null:new BombRules.Point(plantedPosition.getX(),plantedPosition.getY(),plantedPosition.getZ()),mates(),arena.id(),arena.previewArea(),timing.plantSeconds(),timing.defuseSeconds());}
+    /** Plant, fuse and defuse times of this match: the lobby's values, else the bomb/defuser item files. */
+    public BombEquipment.Timing timing(){return timing;}
     private List<Mate> mates(){
         var mates=new ArrayList<Mate>();
         for(String team:List.of("ALPHA","BRAVO")){

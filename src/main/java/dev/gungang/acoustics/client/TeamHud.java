@@ -87,6 +87,7 @@ public final class TeamHud {
             if (members.size() > capacity) capacity = Math.max(0, (space - 12) / 34);
             int count = Math.min(capacity, members.size());
             for (int i = 0; i < count; i++) {
+                if (!AcousticConfig.LEGACY_TEAM_HUD.get()) { compact(g, mc, members.get(i), x, 8 + i * 34, partialTick); continue; }
                 var member = members.get(i);
                 LivingEntity p = member.entity();
                 int y = 8 + i * 34;
@@ -140,8 +141,10 @@ public final class TeamHud {
         KILLS.removeIf(k -> k.expires < now);
         float dt = lastFrame == 0 ? 0 : Math.min(.1f, (now - lastFrame) / 1e9f);
         lastFrame = now;
+        // The mission card sits at the top right; the kill log lines up below it.
+        int killTop = MissionHud.render(g, width);
         if (AcousticConfig.KILL_LOG.get()) {
-            int slot = 8;
+            int slot = killTop;
             for (Kill kill : KILLS) {
                 if (slot + 16 > height / 2) break;
                 if (Float.isNaN(kill.y)) kill.y = slot;
@@ -205,6 +208,50 @@ public final class TeamHud {
         members.sort(Comparator.comparingInt((Member m) -> { int n = TeamPointHud.number(m.id()); return n > 0 ? n : Integer.MAX_VALUE; })
                 .thenComparing(Member::name));
         return members;
+    }
+
+    /**
+     * The compact teammate row (legacy layout off): the portrait, then beside it the roster number badge and the held
+     * item (a hider's disguise icon and catalog number in prop hunt), a short health bar, and the health below it.
+     */
+    private static void compact(GuiGraphics g, Minecraft mc, Member member, int x, int y, float partialTick) {
+        LivingEntity p = member.entity();
+        ShooterHud.portrait(g, x, y, 30, teamColor(mc.player));
+        PlayerFaceRenderer.draw(g, member.skin(), x + 2, y + 2, 26);
+        RespawnPortrait.render(g, member.id(), x + 2, y + 2, 26);
+        int left = x + 34, barW = 48;
+        TeamPointHud.square(g, member.id(), left, y + 1, 11);
+        // Item slot right of the badge: no box of its own, only the item (or the disguise and its number).
+        int slotX = left + 15;
+        var row = PropHuntClient.disguiseOf(member.id());
+        if (row != null) {
+            var state = row.state() != 0 ? net.minecraft.world.level.block.Block.stateById(row.state()) : dev.gungang.acoustics.server.PropCatalog.state(row.block());
+            PropAbilityHud.icon(g, row.block(), state, slotX, y, 12);
+            g.pose().pushPose(); g.pose().translate(slotX + 14, y + 3, 180); g.pose().scale(.8f, .8f, 1);
+            HudText.drawNumber(g, HudText.number(dev.gungang.acoustics.server.PropCatalog.number(row.block())), 0, 0, 0xFFFFFFFF);
+            g.pose().popPose();
+        } else if (p != null && !p.getMainHandItem().isEmpty()) {
+            g.pose().pushPose(); g.pose().translate(slotX, y, 0); g.pose().scale(.75f, .75f, 1);
+            g.renderItem(p.getMainHandItem(), 0, 0); g.pose().popPose();
+        }
+        int barY = y + 16;
+        ShooterHud.card(g, left, barY, barW, 6, ShooterHud.BAR_EDGE, BAR_TRACK, 0);
+        String label;
+        if (p != null) {
+            var layers = HudHealthBars.layers(p, partialTick);
+            HudHealthBars.render(g, left + 1, barY + 1, barW - 2, 4, layers, 0xFFF5F5F0);
+            ShooterHud.finish(g, left + 1, barY + 1, barW - 2, 4, layers.absorptionEnd());
+            label = HudHealth.label(p.getHealth(), p.getMaxHealth(), p.getAbsorptionAmount());
+        } else if (TeamPointHud.vital(member.id()) != null) {
+            // Out of tracking range: the health the server reports for the team.
+            var vital = TeamPointHud.vital(member.id());
+            float maximum = Math.max(1, vital.maximum());
+            HudHealthBars.fill(g, left + 1, barY + 1, barW - 2, 4, Math.min(1, vital.health() / maximum), 0xFFF5F5F0);
+            ShooterHud.finish(g, left + 1, barY + 1, barW - 2, 4, Math.min(1, (vital.health() + vital.absorption()) / maximum));
+            label = HudHealth.label(vital.health(), maximum, vital.absorption());
+        } else label = null;
+        if (label != null) HudText.healthNumber(g, label, left, y + 23, barW + 20, 9, 0xFFFFFFFF, 0.78f);
+        else HudText.draw(g, "--", left, y + 23, barW, 0xFFAAAAAA);
     }
 
     /**

@@ -249,7 +249,7 @@ final class BotPropHunt {
         }
         if(best==null)return;
         // Ever more trigger-happy as time runs out, and right where something gave a hider away.
-        double elapsed=1-Math.min(1,hunt.huntRemaining()/(double)PropHuntGame.HUNT);
+        double elapsed=1-Math.min(1,hunt.huntRemaining()/(double)hunt.game.huntTicks());
         double threshold=.62-elapsed*.18-(hunt.finalMinute()?.1:0)+(nerve-.5)*.2;
         if(best.score()<threshold)return;
         aiming=best;aimSince=now;
@@ -448,7 +448,7 @@ final class BotPropHunt {
             var path=BotMovement.path(bot,option.feet(),0);
             if(path!=null&&path.canReach()&&bot.getNavigation().moveTo(path,avoidSeen?.85:1)){
                 spot=option.feet();state=Hide.TRAVEL;travelSince=now;
-                boolean hang=tries==1&&wallChoice!=null;clingWall=hang?wallChoice:null;clingHeight=hang?heightChoice:0;
+                boolean hang=tries==1&&wallChoice!=null&&hunt.clingEnabled();clingWall=hang?wallChoice:null;clingHeight=hang?heightChoice:0;
                 return;
             }
         }
@@ -505,7 +505,7 @@ final class BotPropHunt {
             }
             if(bot.onGround()&&flat<9&&target.y-bot.getY()>=.9&&target.y-bot.getY()<=3.2){
                 var dir=new Vec3(target.x-bot.getX(),0,target.z-bot.getZ()).normalize().scale(.25);
-                bot.setDeltaMovement(dir.x,PropHuntGame.jumpVelocity((int)Math.min(20,(target.y-bot.getY())*7)),dir.z);bot.hurtMarked=true;return;
+                bot.setDeltaMovement(dir.x,PropHuntGame.jumpVelocity(bot,(int)Math.min(20,(target.y-bot.getY())*7)),dir.z);bot.hurtMarked=true;return;
             }
             if(BotMovement.spent())return;
             if(a.movement.travel(bot,BotManager.arena(),a.team,target,now,false)){state=Hide.SEARCH;nextSearch=now;}
@@ -709,7 +709,7 @@ final class BotPropHunt {
         var nearest=threats.stream().mapToDouble(Threat::distance).min().orElse(99);
         if(bot.onGround()&&nearest<9&&random.nextDouble()<.06&&!PropSticky.sticky(prop.item())){
             var motion=bot.getDeltaMovement();
-            bot.setDeltaMovement(motion.x*1.4,PropHuntGame.jumpVelocity(8+random.nextInt(12)),motion.z*1.4);bot.hurtMarked=true;
+            bot.setDeltaMovement(motion.x*1.4,PropHuntGame.jumpVelocity(bot,8+random.nextInt(12)),motion.z*1.4);bot.hurtMarked=true;
         }
         // Parting shots on the way.
         if(hunt.botCooldown(a.id)==0&&now>=nextAbility&&nearest<16){

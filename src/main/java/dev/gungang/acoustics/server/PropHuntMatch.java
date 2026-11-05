@@ -80,6 +80,8 @@ public final class PropHuntMatch {
         UUID watching;
         /** Block choice: server tick the offer closes, the picked offer index (-1: none yet), first disguise or a change. */
         int choiceUntil,picked=-1;boolean initial;
+        /** First-come: the tick a bot makes its pick (0: none pending). */
+        int botPickAt;
         final Map<String,Integer> actions=new HashMap<>();
         Member(ServerPlayer p,String team){id=p.getUUID();name=p.getGameProfile().getName();this.team=team;invisible=p.isInvisible();health=p.getAttribute(Attributes.MAX_HEALTH).getBaseValue();bot=false;}
         /** An AI bot reserved in the lobby; its body comes and goes with {@link BotAgent}. */
@@ -114,8 +116,26 @@ public final class PropHuntMatch {
         hiders.addAll(BotManager.lobbyIds().stream().filter(id->BotManager.team(id).equals("ALPHA")).toList());
         if(server.getPlayerList().getPlayers().stream().noneMatch(p->LobbyManager.team(p.getUUID()).equals("BRAVO"))
                 &&BotManager.lobbyIds().stream().noneMatch(id->BotManager.team(id).equals("BRAVO")))throw new IllegalArgumentException("술래가 필요합니다.");
-        new PropHuntGame(PropCatalog.available(),hiders,new Random(),PropHuntGame.huntTicks(map));return gun;
+        game(hiders,new Random(),map);return gun;
     }
+    /** The lobby's prop hunt options (the defaults in a debug session). */
+    private static GameOptions.PropHunt options(){return LobbyManager.options().game().propHunt();}
+    /** A new game with the lobby's seek time, hiding time, change count and excluded blocks. */
+    private static PropHuntGame game(Collection<UUID> hiders,Random random,ArenaMap map){
+        var o=options();
+        var excluded=new HashSet<String>();for(var n:o.excluded()){var type=PropCatalog.type(n);if(type!=null)excluded.add(type);}
+        var types=PropCatalog.available().stream().filter(t->!excluded.contains(t)).toList();
+        int hunt=o.timeSeconds()==null?PropHuntGame.huntTicks(map):o.timeSeconds()*20;
+        int hide=o.preparationSeconds()==null?PropHuntGame.HIDE:o.preparationSeconds()*20;
+        return new PropHuntGame(types,hiders,random,hunt,hide,o.changes());
+    }
+    /** Block choice of this match: none (random), three each, or one first-come list for every hider. */
+    private final GameOptions.Choice choice;
+    /** Wall cling (Q) allowed in this match. */
+    private final boolean cling;
+    boolean clingEnabled(){return cling;}
+    /** First-come: the tick the open shared list closes. */
+    private int sharedUntil;
     /** Weapon ID, or the M1014 when empty; must be a real TaCZ shotgun. */
     static Loadouts.Weapon shotgun(Loadouts loadouts,String id){
         var gun=loadouts.primary().stream().filter(w->id.isEmpty()?w.itemNbt().contains("tacz:m1014"):w.id().equals(id)).findFirst()
@@ -133,9 +153,12 @@ public final class PropHuntMatch {
         this.server=server;this.map=map;this.shotgun=shotgun;test=false;
         for(var p:server.getPlayerList().getPlayers())if(Set.of("ALPHA","BRAVO").contains(LobbyManager.team(p.getUUID())))members.put(p.getUUID(),new Member(p,LobbyManager.team(p.getUUID())));
         for(var id:BotManager.lobbyIds()){String team=BotManager.team(id);if(Set.of("ALPHA","BRAVO").contains(team))members.put(id,new Member(id,BotManager.name(id),team));}
-        game=new PropHuntGame(PropCatalog.available(),members.values().stream().filter(m->m.team.equals("ALPHA")).map(m->m.id).toList(),random,PropHuntGame.huntTicks(map));
+        game=game(members.values().stream().filter(m->m.team.equals("ALPHA")).map(m->m.id).toList(),random,map);
+        choice=options().choiceOrDefault();cling=options().clingEnabled();
+        // First-come: one list for the first disguises, as many blocks as there are hiders.
+        if(choice==GameOptions.Choice.FIRST_COME)openShared();
     }
-    private PropHuntMatch(MinecraftServer server){this.server=server;map=null;test=true;game=new PropHuntGame();}
+    private PropHuntMatch(MinecraftServer server){this.server=server;map=null;test=true;game=new PropHuntGame();choice=GameOptions.Choice.BASIC;cling=true;}
     private PropHuntGame.Phase phase(){return test?PropHuntGame.Phase.HUNTING:game.phase();}
     private static PropHuntMatch testMatch;
     /** The debug prop session, or null. */
@@ -176,6 +199,7 @@ public final class PropHuntMatch {
     @SubscribeEvent public static void testTick(net.minecraftforge.event.TickEvent.ServerTickEvent e){if(e.phase==net.minecraftforge.event.TickEvent.Phase.END&&testMatch!=null)testMatch.tick();}
     @SubscribeEvent public static void stopping(net.minecraftforge.event.server.ServerStoppingEvent e){endTest();}
     public boolean participant(UUID id){return members.containsKey(id);}
+    ArenaMap map(){return map;}
     public boolean hider(UUID id){var m=members.get(id);return m!=null&&m.team.equals("ALPHA");}
     public boolean frozen(UUID id){var m=members.get(id);return m!=null&&!reviewing&&(m.fixed||abilities.stunned(id)||m.waiting>server.getTickCount()||m.team.equals("BRAVO")&&phase()==PropHuntGame.Phase.HIDING);}
     public void equip(ServerPlayer p){
@@ -201,7 +225,12 @@ public final class PropHuntMatch {
      * waiting for a block (bots draw at random and never get an offer). False when nothing could be offered.
      */
     private boolean offer(Member m,boolean initial){
-        if(test||m.bot)return false;
+        if(test||m.bot||choice==GameOptions.Choice.OFF)return false;
+        if(choice==GameOptions.Choice.FIRST_COME){
+            if(game.offers(m.id).isEmpty())return false;
+            m.choiceUntil=sharedUntil;m.picked=game.claimed(m.id);m.initial=initial;
+            return true;
+        }
         long waiting=members.values().stream().filter(o->hider(o.id)&&game.alive(o.id)&&game.offers(o.id).isEmpty()&&(!initial||o.prop==null)).count();
         int count=Math.min(OFFER,Math.max(1,game.free()/(int)Math.max(1,waiting)));
         if(game.offer(m.id,count,random).isEmpty())return false;
@@ -212,6 +241,8 @@ public final class PropHuntMatch {
     }
     /** 10 s before a change: every living player hider gets its choice (bots keep drawing at random). */
     private void openChoices(){
+        if(choice==GameOptions.Choice.OFF)return;
+        if(choice==GameOptions.Choice.FIRST_COME){openShared();return;}
         var hiders=members.values().stream().filter(o->hider(o.id)&&game.alive(o.id)).toList();
         int left=hiders.size();
         for(var o:hiders){
@@ -234,7 +265,7 @@ public final class PropHuntMatch {
             bot.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND,ItemStack.EMPTY);
             bot.getAttribute(Attributes.MAX_HEALTH).setBaseValue(50);bot.setHealth(50);
             bot.setInvisible(true);bot.setCustomNameVisible(false);
-            if(m.prop==null||m.prop.isRemoved())change(bot,m);else{bot.disguise(m.prop);bot.refreshDimensions();}
+            if(m.prop==null||m.prop.isRemoved()){botPick(bot,m);change(bot,m);}else{bot.disguise(m.prop);bot.refreshDimensions();}
         }else{bot.getAttribute(Attributes.MAX_HEALTH).setBaseValue(100);bot.setHealth(100);}
     }
     /** The seekers' issued shotgun: infinite dummy ammunition, marked so its pellets count against disguises. */
@@ -252,7 +283,7 @@ public final class PropHuntMatch {
         if(m.prop!=null){PropInteraction.remove(m.prop);m.prop.discard();}if(p instanceof ServerPlayer sp)sp.closeContainer();
         // The picked offer, a random one of the offer when time ran out, or (bots) the next free block.
         String item=test?items.get(m.id):PropCatalog.variant(game.take(m.id,m.picked,random),random);
-        m.picked=-1;m.initial=false;m.choiceUntil=0;
+        m.picked=-1;m.initial=false;m.choiceUntil=0;m.botPickAt=0;
         var level=(ServerLevel)p.level();
         m.prop=PropEntity.TYPE.get().create(level);m.prop.setup(m.id,item,random.nextInt(26));m.prop.setPos(m.fixed?m.anchor:p.position());
         level.addFreshEntity(m.prop);
@@ -271,6 +302,7 @@ public final class PropHuntMatch {
         for(var m:members.values())if(m.prop!=null)((ServerLevel)m.prop.level()).getChunkSource().addRegionTicket(net.minecraft.server.level.TicketType.POST_TELEPORT,new net.minecraft.world.level.ChunkPos(m.prop.blockPosition()),2,m.prop.getId());
         boolean change=!test&&game.tick();
         if(!test&&!reviewing&&phase()!=PropHuntGame.Phase.REVIEW&&game.nextChange()==CHOICE)openChoices();
+        if(game.sharing())for(var m:members.values())if(m.bot&&m.botPickAt>0&&server.getTickCount()>=m.botPickAt&&body(m.id) instanceof BotEntity bot){m.botPickAt=0;botPick(bot,m);}
         if(phase()==PropHuntGame.Phase.REVIEW&&!reviewing){
             abilities.clear();PropSummons.clear(server);
             reviewing=true;
@@ -312,7 +344,41 @@ public final class PropHuntMatch {
             }
         }
         abilities.orphanTick();
+        // Every hider changed (or took a random block) when the first-come list ran out of time.
+        if(game.sharing()&&server.getTickCount()>=sharedUntil)game.closeShared();
         if(server.getTickCount()%4==0)sync();
+    }
+    /**
+     * Opens a first-come list with a block for every living hider: players pick with the number keys, bots pick a few
+     * seconds later (players first), each taking the block that blends in best where it stands.
+     */
+    private void openShared(){
+        var hiders=members.values().stream().filter(o->hider(o.id)&&game.alive(o.id)).toList();
+        if(hiders.isEmpty()||game.openShared(Math.min(MAX_SHARED,hiders.size()),random).isEmpty())return;
+        sharedUntil=server.getTickCount()+CHOICE;
+        boolean initial=members.values().stream().anyMatch(o->hider(o.id)&&o.prop==null);
+        for(var o:hiders){
+            if(o.bot){o.botPickAt=server.getTickCount()+60+random.nextInt(80);continue;}
+            o.choiceUntil=sharedUntil;o.picked=-1;o.initial=o.prop==null;
+            var p=server.getPlayerList().getPlayer(o.id);
+            if(p!=null)p.sendSystemMessage(Component.literal((initial?"선착순 블록 선택":"10초 뒤 블록이 바뀝니다 · 선착순 선택")+" · 숫자 키로 먼저 고른 사람이 가져갑니다 (고르지 않으면 남은 블록 중 무작위)").withStyle(net.minecraft.ChatFormatting.AQUA));
+        }
+    }
+    /** Number keys 1-9 pick; a bigger hider group shares nine blocks and the rest draw at random. */
+    static final int MAX_SHARED=9;
+    /** A bot's first-come pick: the unclaimed block most like what surrounds it (ties at random). */
+    private void botPick(BotEntity bot,Member m){
+        if(!game.sharing()||game.claimed(m.id)>=0)return;
+        var free=game.unclaimed();if(free.isEmpty())return;
+        var around=new HashMap<String,Integer>();var level=bot.level();var base=bot.blockPosition();
+        for(var pos:BlockPos.betweenClosed(base.offset(-4,-2,-4),base.offset(4,2,4))){
+            var state=level.getBlockState(pos);if(state.isAir())continue;
+            var key=net.minecraftforge.registries.ForgeRegistries.BLOCKS.getKey(state.getBlock());
+            if(key!=null)around.merge(PropCatalog.number(key.toString()),1,Integer::sum);
+        }
+        var offers=game.offers(m.id);int best=-1;double score=-1;
+        for(int i:free){double s=around.getOrDefault(PropCatalog.number(PropCatalog.display(offers.get(i))),0)+random.nextDouble();if(s>score){score=s;best=i;}}
+        if(best>=0)game.claim(m.id,best);
     }
     /**
      * A bot member's share of the match tick, the server-side half of what a player's client does: the disguise follows
@@ -533,6 +599,7 @@ public final class PropHuntMatch {
         if(action.startsWith("pick")){
             int index;try{index=Integer.parseInt(action.substring(4))-1;}catch(NumberFormatException e){return;}
             if(index<0||index>=game.offers(m.id).size())return;
+            if(choice==GameOptions.Choice.FIRST_COME&&!game.claim(m.id,index)){p.displayClientMessage(Component.literal("다른 숨는 사람이 먼저 고른 블록입니다"),true);sync();return;}
             m.picked=index;
             // The first disguise starts at once; a change keeps its time and uses the pick then.
             if(m.prop==null)change(p,m);
@@ -555,13 +622,14 @@ public final class PropHuntMatch {
             case "horn"->horn(m);
             // Dolls (184, 191): the attack key held down and let go.
             case "primaryDown","primaryUp"->{if(m.prop!=null&&m.watching==null)abilities.primary(p,m.prop,action.equals("primaryDown"));}
-            case "jump"->{if(!m.fixed&&m.wall==null&&p.onGround()&&m.charge>=0&&(m.prop==null||!PropSticky.sticky(m.prop.item()))){p.setDeltaMovement(p.getDeltaMovement().x,PropSurfacePhysics.jump(p,PropHuntGame.jumpVelocity(server.getTickCount()-m.charge)),p.getDeltaMovement().z);p.hurtMarked=true;}m.charge=-1;}
+            case "jump"->{if(!m.fixed&&m.wall==null&&p.onGround()&&m.charge>=0&&(m.prop==null||!PropSticky.sticky(m.prop.item()))){p.setDeltaMovement(p.getDeltaMovement().x,PropSurfacePhysics.jump(p,PropHuntGame.jumpVelocity(p,server.getTickCount()-m.charge)),p.getDeltaMovement().z);p.hurtMarked=true;}m.charge=-1;}
         }
         sync();
     }
     /** Q: hang on the wall beside the disguise, or let go of it. Not while locked or watching someone else. */
     private void cling(ServerPlayer p,Member m){
         if(m.wall!=null){release(p,m);return;}
+        if(!cling){p.displayClientMessage(Component.literal("이번 경기에서는 벽에 붙기가 꺼져 있습니다"),true);return;}
         if(m.fixed||m.watching!=null)return;
         var wall=PropCling.find(p.level(),p.getBoundingBox(),p.getYRot());
         if(wall==null){p.displayClientMessage(Component.literal("붙을 벽이 없습니다 · 몸보다 0.6블록 이상 높은 벽 옆에서 사용하세요"),true);return;}
@@ -720,8 +788,10 @@ public final class PropHuntMatch {
             // Only the viewer's own block choice is sent, never anyone else's.
             var own=members.get(viewer.getUUID());
             var offers=own==null||reviewing||!hider(own.id)||!game.alive(own.id)?List.<String>of():game.offers(own.id);
-            int choice=offers.isEmpty()?0:Math.max(0,(own.choiceUntil-server.getTickCount()+19)/20);
-            GungangNetwork.send(viewer,new GungangNetwork.PropHunt(ServerFiles.GSON.toJson(new PropHuntSnapshot(true,phase().name(),test?0:(game.remaining()+19)/20,test?0:(game.nextChange()+19)/20,rows,test?0:(game.huntRemaining()+19)/20,!test&&game.finalMinute(),offers,offers.isEmpty()?-1:own.picked,choice,!offers.isEmpty()&&own.initial))));
+            boolean shared=choice==GameOptions.Choice.FIRST_COME&&!offers.isEmpty();
+            int picked=offers.isEmpty()?-1:shared?game.claimed(own.id):own.picked;
+            int seconds=offers.isEmpty()?0:Math.max(0,((shared?sharedUntil:own.choiceUntil)-server.getTickCount()+19)/20);
+            GungangNetwork.send(viewer,new GungangNetwork.PropHunt(ServerFiles.GSON.toJson(new PropHuntSnapshot(true,phase().name(),test?0:(game.remaining()+19)/20,test?0:(game.nextChange()+19)/20,rows,test?0:(game.huntRemaining()+19)/20,!test&&game.finalMinute(),offers,picked,seconds,!offers.isEmpty()&&own.initial,shared?game.takenByOthers(own.id):List.of(),!cling,shared,abilities.scout(viewer.getUUID())))));
         }
     }
     private int abilityRemaining(Member m){

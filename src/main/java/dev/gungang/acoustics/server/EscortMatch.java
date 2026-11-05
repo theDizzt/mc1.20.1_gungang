@@ -30,6 +30,10 @@ public final class EscortMatch {
     }
     public EscortMatch(MinecraftServer server,ArenaMap map,EscortRoute route){
         this.map=map;this.route=route;level=level(server,map);game=new EscortGame(map.escort(),map.timeLimitSeconds(),route.length,route.checkpoints);
+        var o=LobbyManager.options().game().escort();
+        if(o.reverseSpeed()!=null)game.reverseSpeed=o.reverseSpeed();
+        if(o.overtimeSeconds()!=null)game.overtimeLimit=o.overtimeSeconds()*20;
+        for(int i=0;i<game.bonusSeconds.length;i++)if(o.bonus(i)!=null)game.bonusSeconds[i]=o.bonus(i);
         EscortTracks.get(level).rebuild(level,route);
         for(var p:route.markers){var state=level.getBlockState(p);hidden.put(p,state.getValue(EscortBlocks.Marker.HIDDEN));level.setBlock(p,state.setValue(EscortBlocks.Marker.HIDDEN,true),3);}
         for(var p:route.samples){var cp=new net.minecraft.world.level.ChunkPos(BlockPos.containing(p));if(tickets.add(cp))level.getChunkSource().addRegionTicket(TICKET,cp,2,route.markers.get(0));}
@@ -59,7 +63,7 @@ public final class EscortMatch {
         cart.advance(route.at(game.distance),route.direction(game.distance));
         if(game.completed!=previousCheckpoint)gates();
         if(before>.000001&&level.getGameTime()%20==0)level.playSound(null,cart.blockPosition(),net.minecraft.sounds.SoundEvents.MINECART_RIDING,net.minecraft.sounds.SoundSource.BLOCKS,.8f,game.motion.equals("REVERSE")?.7f:1f);
-        if(game.stopTicks>0&&(game.completed!=previousCheckpoint||level.getGameTime()%4==0))for(var p:level.players())if(Set.of("ALPHA","BRAVO").contains(LobbyManager.team(p.getUUID())))p.displayClientMessage(Component.literal("임시 정차 중 · "+String.format(Locale.ROOT,"%.1f",game.stopTicks/20.0)+"초 뒤 다시 이동 · +"+game.rules.checkpointBonusSeconds()+"초 지급 완료"),true);
+        if(game.stopTicks>0&&(game.completed!=previousCheckpoint||level.getGameTime()%4==0))for(var p:level.players())if(Set.of("ALPHA","BRAVO").contains(LobbyManager.team(p.getUUID())))p.displayClientMessage(Component.literal("임시 정차 중 · "+String.format(Locale.ROOT,"%.1f",game.stopTicks/20.0)+"초 뒤 다시 이동 · +"+game.bonus(game.completed-1)+"초 지급 완료"),true);
         if(!game.winner.isEmpty())LobbyManager.finish(game.winner);
     }
     public ArenaMap.Spawn spawn(String team){

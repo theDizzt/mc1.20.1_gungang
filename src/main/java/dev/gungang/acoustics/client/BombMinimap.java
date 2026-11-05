@@ -31,7 +31,7 @@ final class BombMinimap {
         int w=(int)Math.round(spanX*scale),h=(int)Math.round(spanZ*scale),left=x+(size-w)/2,top=y+(size-h)/2;
         g.fill(left-2,top-13,left+w+2,top+h+2,0xC00B121C);g.fill(left-2,top+h+1,left+w+2,top+h+2,0xFF70CDBF);
         g.drawString(font,"미니맵",left,top-11,0xFF9AAABD,false);
-        boolean image=background(g,v,left,top,w,h);
+        boolean image=background(g,v.mapId(),v.previewArea(),left,top,w,h);
         // Sites: orange area, white A/B with a black outline. The generated map image already carries them.
         for(int i=0;i<2&&!image;i++){
             var site=i==0?v.areaA():v.areaB();var point=i==0?v.pointA():v.pointB();String name=i==0?"A":"B";
@@ -71,14 +71,42 @@ final class BombMinimap {
         g.drawString(font,text,left,y,0xFFFFFFFF,false);
     }
     /** The generated preview image's map region (it has a legend strip below), or a plain surface; true for the image. */
-    private static boolean background(GuiGraphics g,BombMatch.View v,int left,int top,int w,int h){
-        var a=v.previewArea();var image=a==null||v.mapId()==null||v.mapId().isEmpty()?null:PreviewCache.image(v.mapId());
+    private static boolean background(GuiGraphics g,String mapId,MapPreviewArea a,int left,int top,int w,int h){
+        var image=a==null||mapId==null||mapId.isEmpty()?null:PreviewCache.image(mapId);
         if(image==null||image.texture()==null){g.fill(left,top,left+w,top+h,0xFF1A222C);return false;}
         // Same layout as MapPreviewGenerator.Job: map pixels are width*unit by height*unit at the top-left.
         int dx=a.maxX()-a.minX()+1,dz=a.maxZ()-a.minZ()+1;double scale=Math.min(1,256.0/Math.max(dx,dz));
         int width=Math.max(1,(int)Math.ceil(dx*scale)),height=Math.max(1,(int)Math.ceil(dz*scale)),unit=Math.max(2,(int)Math.ceil(256.0/Math.max(width,height)));
         g.blit(image.texture(),left,top,w,h,0,0,width*unit,height*unit,image.width(),image.height());
         return true;
+    }
+    /**
+     * 214 cartography table: the map's preview image (or a plain surface framing everyone) with every seeker and living
+     * teammate as a team-coloured dot; the viewer is white.
+     */
+    static void scout(GuiGraphics g,PropHuntSnapshot.Scout scout,TeamOptions options,int x,int y,int size){
+        var marks=scout.marks()==null?java.util.List.<BombMatch.Mate>of():scout.marks();var a=scout.previewArea();
+        double[] b;
+        if(a!=null)b=new double[]{a.minX(),a.minZ(),a.maxX()+1,a.maxZ()+1};
+        else{
+            double minX=Double.MAX_VALUE,minZ=Double.MAX_VALUE,maxX=-Double.MAX_VALUE,maxZ=-Double.MAX_VALUE;
+            for(var m:marks){minX=Math.min(minX,m.x());minZ=Math.min(minZ,m.z());maxX=Math.max(maxX,m.x());maxZ=Math.max(maxZ,m.z());}
+            if(minX>maxX)return;
+            double pad=8+Math.max(maxX-minX,maxZ-minZ)*.08;b=new double[]{minX-pad,minZ-pad,maxX+pad,maxZ+pad};
+        }
+        var mc=Minecraft.getInstance();var font=mc.font;
+        double spanX=b[2]-b[0],spanZ=b[3]-b[1],scale=size/Math.max(spanX,spanZ);
+        int w=(int)Math.round(spanX*scale),h=(int)Math.round(spanZ*scale),left=x+(size-w)/2,top=y+(size-h)/2;
+        g.fill(left-2,top-13,left+w+2,top+h+2,0xC00B121C);g.fill(left-2,top+h+1,left+w+2,top+h+2,0xFF70CDBF);
+        g.drawString(font,"지도 제작대 · "+scout.seconds()+"초",left,top-11,0xFF9AAABD,false);
+        background(g,scout.mapId(),a,left,top,w,h);
+        String self=mc.player==null?"":mc.player.getUUID().toString();
+        for(var m:marks){
+            int px=sx(m.x(),b,left,scale),pz=sz(m.z(),b,top,scale);
+            if(px<left||px>=left+w||pz<top||pz>=top+h)continue;
+            boolean me=m.id().equals(self);int color=me?0xFFFFFFFF:options.color(m.team())|0xFF000000,r=me?3:2;
+            g.fill(px-r-1,pz-r-1,px+r+1,pz+r+1,0xFF000000);g.fill(px-r,pz-r,px+r,pz+r,color);
+        }
     }
     private static int sx(double world,double[] b,int left,double scale){return left+(int)Math.round((world-b[0])*scale);}
     private static int sz(double world,double[] b,int top,double scale){return top+(int)Math.round((world-b[1])*scale);}

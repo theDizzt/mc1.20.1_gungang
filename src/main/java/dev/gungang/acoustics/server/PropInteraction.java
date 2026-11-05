@@ -35,7 +35,8 @@ public final class PropInteraction {
             "gungang:shutter","minecraft:sea_pickle","minecraft:turtle_egg","minecraft:note_block","minecraft:jukebox","minecraft:brewing_stand","minecraft:bell",
             "minecraft:bubble_column","minecraft:dispenser","minecraft:tnt","gungang:gas_barrel","gungang:small_health_pack","gungang:large_health_pack",
             "minecraft:respawn_anchor","minecraft:armor_stand","minecraft:daylight_detector","minecraft:lectern","minecraft:end_portal_frame","gungang:eunbi_doll",
-            "gungang:prettiest_block","minecraft:crying_obsidian","minecraft:tnt_minecart","gungang:hanbi_doll","minecraft:conduit","gungang:nozzle");
+            "gungang:prettiest_block","minecraft:crying_obsidian","minecraft:tnt_minecart","gungang:hanbi_doll","minecraft:conduit","gungang:nozzle",
+            "minecraft:cartography_table","minecraft:farmland","minecraft:piston","minecraft:sticky_piston","gungang:desk_clock","gungang:money_cart");
     private static final Set<String> MENUS=Set.of("minecraft:crafting_table","minecraft:loom","minecraft:grindstone","minecraft:smithing_table","minecraft:enchanting_table",
             "minecraft:cauldron","gungang:war_table","gungang:armory");
     public static boolean special(String item){return SPECIAL.contains(item);}
@@ -51,8 +52,11 @@ public final class PropInteraction {
             "minecraft:fire","minecraft:soul_fire","minecraft:torchflower","gungang:geyser","minecraft:lava","minecraft:bell","minecraft:soul_sand");
     public static boolean debuff(String item){return DEBUFF.contains(item);}
     /** Disguises that move faster or speed up hiders (minecarts, hanbi doll's cloak, beacon, brewing stand's swiftness), tagged "신속" in blue. */
-    private static final Set<String> SWIFT=Set.of("minecraft:minecart","minecraft:tnt_minecart","gungang:hanbi_doll","minecraft:beacon","minecraft:brewing_stand");
+    private static final Set<String> SWIFT=Set.of("minecraft:minecart","minecraft:tnt_minecart","gungang:hanbi_doll","minecraft:beacon","minecraft:brewing_stand","minecraft:sponge","gungang:money_cart");
     public static boolean swift(String item){return SWIFT.contains(item);}
+    /** Disguises seekers cannot see (barrier, structure void, death zone), tagged "은신" in black. */
+    private static final Set<String> STEALTH=Set.of("minecraft:barrier","minecraft:structure_void","gungang:death_zone");
+    public static boolean stealth(String item){return STEALTH.contains(item);}
     /** A liquid disguise (water, lava, acid, hot spring water, bubble column): no block model, drawn as its fluid. */
     public static boolean liquid(net.minecraft.world.level.block.state.BlockState state){
         return state.getRenderShape()!=net.minecraft.world.level.block.RenderShape.MODEL&&!state.getFluidState().isEmpty();
@@ -62,9 +66,11 @@ public final class PropInteraction {
         return state.getBlock().getStateDefinition().getPossibleStates().stream().anyMatch(s->s.getLightEmission()>0);
     }
     /** The tags as words in their exact colours, each followed by a space. */
-    public static net.minecraft.network.chat.MutableComponent tagComponent(String item){
+    public static net.minecraft.network.chat.MutableComponent tagComponent(String item){return tagComponent(item,true);}
+    /** As above; without black tags ("은신") when {@code black} is false, for callers that draw those outlined themselves. */
+    public static net.minecraft.network.chat.MutableComponent tagComponent(String item,boolean black){
         var text=net.minecraft.network.chat.Component.empty();
-        for(var t:tags(item))text.append(net.minecraft.network.chat.Component.literal(t.label()+" ").withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(t.color()&0xFFFFFF)));
+        for(var t:tags(item))if(black||(t.color()&0xFFFFFF)!=0)text.append(net.minecraft.network.chat.Component.literal(t.label()+" ").withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(t.color()&0xFFFFFF)));
         return text;
     }
     /** A category label shown by a disguise's name, with its colour as ARGB and as a chat colour code. */
@@ -81,6 +87,9 @@ public final class PropInteraction {
         if(glows(state))tags.add(new Tag("광원",0xFFE6B422,'6'));
         if(tagged(item,state))tags.add(new Tag("특수",0xFFFFD84A,'e'));
         if(PropCatalog.colored(item))tags.add(new Tag("색상",0xFFFF8AD0,'d'));
+        // "종류": one of several looks drawn at random (assorted types; 91 painting picks a random painting).
+        if(PropCatalog.assorted(item)||item.equals("minecraft:painting"))tags.add(new Tag("종류",0xFF55D6D6,'3'));
+        if(stealth(item))tags.add(new Tag("은신",0xFF000000,'0'));
         return tags;
     }
     public static java.util.List<Tag> tags(String item){return tags(item,PropCatalog.state(item));}
@@ -93,12 +102,13 @@ public final class PropInteraction {
     public static boolean tagged(String item){return interactive(item,PropCatalog.state(item));}
     /**
      * Whether E does anything for this disguise: a special ability, a menu, or switching the block's own state (open,
-     * powered, lit, filled, occupied, stair corner, slab half). Turning the block is R's job, never E's.
+     * powered, lit, filled, occupied, slab half). Turning the block is R's job, never E's: a stair's corner shape reads
+     * as a turn, so E leaves stairs alone.
      */
     public static boolean interactive(String item,net.minecraft.world.level.block.state.BlockState state){
         if(special(item)||storage(item)||MENUS.contains(item))return true;
         for(net.minecraft.world.level.block.state.properties.Property<?> property:List.<net.minecraft.world.level.block.state.properties.Property<?>>of(BlockStateProperties.DELAY,BlockStateProperties.OPEN,BlockStateProperties.POWERED,BlockStateProperties.LIT,BlockStateProperties.LEVEL_COMPOSTER,
-                BlockStateProperties.OCCUPIED,BlockStateProperties.STAIRS_SHAPE,BlockStateProperties.SLAB_TYPE))if(state.hasProperty(property))return true;
+                BlockStateProperties.OCCUPIED,BlockStateProperties.SLAB_TYPE))if(state.hasProperty(property))return true;
         return false;
     }
     public static void use(net.minecraft.world.entity.LivingEntity p,PropEntity prop){
@@ -122,7 +132,6 @@ public final class PropInteraction {
             else if(state.hasProperty(BlockStateProperties.LIT))state=state.cycle(BlockStateProperties.LIT);
             else if(state.hasProperty(BlockStateProperties.LEVEL_COMPOSTER))state=state.cycle(BlockStateProperties.LEVEL_COMPOSTER);
             else if(state.hasProperty(BlockStateProperties.OCCUPIED))state=state.cycle(BlockStateProperties.OCCUPIED);
-            else if(state.hasProperty(BlockStateProperties.STAIRS_SHAPE))state=state.cycle(BlockStateProperties.STAIRS_SHAPE);
             else if(state.hasProperty(BlockStateProperties.SLAB_TYPE))state=state.cycle(BlockStateProperties.SLAB_TYPE);
             if(id.equals("minecraft:cauldron"))state=state.is(net.minecraft.world.level.block.Blocks.CAULDRON)?net.minecraft.world.level.block.Blocks.WATER_CAULDRON.defaultBlockState():state.hasProperty(BlockStateProperties.LEVEL_CAULDRON)&&state.getValue(BlockStateProperties.LEVEL_CAULDRON)<3?state.cycle(BlockStateProperties.LEVEL_CAULDRON):net.minecraft.world.level.block.Blocks.CAULDRON.defaultBlockState();
             prop.state(state);

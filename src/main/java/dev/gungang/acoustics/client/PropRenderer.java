@@ -42,8 +42,11 @@ public final class PropRenderer extends EntityRenderer<PropEntity> {
         try{for(var sprite:list)MARK_ACTIVE.invokeExact(sprite);}catch(Throwable ignored){}
     }
     public PropRenderer(EntityRendererProvider.Context context){super(context);shadowRadius=0;}
-    /** A disguise under brewing-stand invisibility: only hiders still hiding see it. */
-    static boolean concealed(PropEntity entity){var self=Minecraft.getInstance().player;return entity.isInvisible()&&!entity.marker()&&(self==null||!PropHuntClient.hidden(self.getUUID()));}
+    /**
+     * A disguise under invisibility (159 brewing stand, 191 doll's cloak) is not drawn at all while the effect lasts, for
+     * everyone, its own hider and teammates included; a found block's marker still shows.
+     */
+    static boolean concealed(PropEntity entity){return entity.isInvisible()&&!entity.marker();}
     @Override public void render(PropEntity entity,float yaw,float partial,PoseStack pose,MultiBufferSource buffers,int light){
         if(concealed(entity))return;
         var mc=Minecraft.getInstance();var state=entity.state();pose.pushPose();
@@ -131,5 +134,5 @@ public final class PropRenderer extends EntityRenderer<PropEntity> {
         }
     }
     @Override public ResourceLocation getTextureLocation(PropEntity entity){return TextureAtlas.LOCATION_BLOCKS;}
-    @Override public boolean shouldRender(PropEntity entity,net.minecraft.client.renderer.culling.Frustum frustum,double x,double y,double z){return entity.marker()||super.shouldRender(entity,frustum,x,y,z);}
+    @Override public boolean shouldRender(PropEntity entity,net.minecraft.client.renderer.culling.Frustum frustum,double x,double y,double z){return entity.marker()||PropObjectRenderer.beaming(entity)||super.shouldRender(entity,frustum,x,y,z);}
 }

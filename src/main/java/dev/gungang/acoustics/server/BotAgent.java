@@ -86,6 +86,7 @@ final class BotAgent {
             chooseOnSpawn=false;
             LogUtils.getLogger().info("[GunGang] Bot {} loadout primary={} secondary={} reason={}",slot+1,weapon.id(),secondary==null?"none":secondary.id(),choiceReason);
         }
+        if(LobbyManager.secondaryBanned(team))secondary=null; // head-count handicap: the bigger team plays without secondaries
         bot=BotEntity.TYPE.get().create(level);if(bot==null)throw new IllegalStateException("Bot creation failed");
         bot.setUUID(id);
         // Free-for-all: the free-for-all spawn farthest from everyone, like a player's respawn.
@@ -98,7 +99,7 @@ final class BotAgent {
         // Free-for-all hides every name tag; the bot's must not give it away either.
         bot.setCustomName(Component.literal(name()).withStyle(LobbyManager.options().formatting(team)));bot.setCustomNameVisible(ffa==null);
         bot.skin(BotManager.skin(slot));
-        bot.getAttribute(Attributes.MAX_HEALTH).setBaseValue(weapon.maxHealth());
+        bot.getAttribute(Attributes.MAX_HEALTH).setBaseValue(weapon.maxHealth()*LobbyManager.healthScale(team));
         usingSecondary=false;secondarySupplied=false;nextSwitch=switchedAt=0;health.reset();movement.reset();
         primaryStack=weapon.stack();secondaryStack=secondary==null?ItemStack.EMPTY:secondary.stack();
         updateSpeed();
@@ -250,7 +251,7 @@ final class BotAgent {
         remember(primaryHistory,weapon.id(),lastLife);
         if(secondary!=null)remember(secondaryHistory,secondary.id(),lastLife);
         chooseOnSpawn=true;
-        remove();respawnAt=server.getTickCount()+LobbyManager.options().respawnSeconds()*20;
+        remove();respawnAt=server.getTickCount()+LobbyManager.respawnTicks();
     }
     private static void remember(Map<String,List<BotLoadoutChoice.Outcome>> history,String id,BotLoadoutChoice.Outcome outcome) {
         var entries=history.computeIfAbsent(id,key->new ArrayList<>());entries.add(outcome);
@@ -331,7 +332,7 @@ final class BotAgent {
                 gadgets.shielding(time)&&seen,point!=null,missionScore);
         if(bombMatch!=null&&mission!=null&&mission.act()!=BotObjective.Act.NONE&&!situation.hazard()){
             boolean defusing=mission.act()==BotObjective.Act.DEFUSE;
-            int duration=defusing?BombEquipment.timing.defuseTicks():BombEquipment.timing.plantTicks();
+            int duration=defusing?bombMatch.timing().defuseTicks():bombMatch.timing().plantTicks();
             int timer=defusing?bombMatch.game.fuseTicks():bombMatch.game.remainingTicks();
             boolean safe=!seen&&!perception.underFire(now)&&(lead==null||now-lead.updated>60);
             if(BotBombDecision.commit(defusing,timer,duration,bombMatch.botProgress(id),safe))action=BotTactics.Action.OBJECTIVE;

@@ -35,6 +35,12 @@ final class PropHuntHud {
         g.pose().popPose();
         tiles(g,hiders,top+Math.round(35*scale)+2);
         guide(g,PropHuntClient.guide());
+        // 214: the cartography table's map, bottom left above the hotbar line.
+        if(s.scout()!=null){
+            var options=MatchHud.state()!=null&&MatchHud.state().options()!=null?MatchHud.state().options():TeamOptions.defaults();
+            int size=Math.min(150,Math.min(g.guiWidth(),g.guiHeight())/2);
+            BombMinimap.scout(g,s.scout(),options,8,g.guiHeight()-size-40,size);
+        }
         if(mc.screen==null&&mc.options.keyPlayerList.isDown()) {
             int rows=(hiders.size()+columns(g)-1)/columns(g),y=top+Math.round(35*scale)+5+rows*(TILE+GAP)+4;
             int w=Math.min(480,g.guiWidth()-8);

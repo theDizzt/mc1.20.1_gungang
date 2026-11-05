@@ -47,6 +47,8 @@ public final class GungangNetwork {
     public record RapierStep(int entity,float yaw) { }
     public record Emote(int entity,int slot,boolean prop) { }
     public record PropList() { }
+    /** Longest lobby action value: the game options JSON, with room for every mode's section and a long excluded-block list. */
+    static final int ACTION_VALUE=8192;
     public static void register() {
         CHANNEL.registerMessage(28,PropList.class,(p,b)->{},b->new PropList(),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->dev.gungang.acoustics.client.PropListScreen::open));ctx.setPacketHandled(true);
@@ -147,8 +149,9 @@ public final class GungangNetwork {
                             () -> () -> dev.gungang.acoustics.client.LobbyClient.receive(p.json)));
                     ctx.setPacketHandled(true);
                 }, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
-        CHANNEL.registerMessage(2, Action.class, (p, b) -> { b.writeUtf(p.action, 16); b.writeUtf(p.value, 64); b.writeUtf(p.target, 36); },
-                b -> new Action(b.readUtf(16), b.readUtf(64), b.readUtf(36)), (p, context) -> {
+        // The value carries whole game options as JSON (several hundred characters with per-mode settings), so it is not capped at 64.
+        CHANNEL.registerMessage(2, Action.class, (p, b) -> { b.writeUtf(p.action, 16); b.writeUtf(p.value, ACTION_VALUE); b.writeUtf(p.target, 36); },
+                b -> new Action(b.readUtf(16), b.readUtf(ACTION_VALUE), b.readUtf(36)), (p, context) -> {
                     var ctx = context.get();
                     ctx.enqueueWork(() -> { if (ctx.getSender() != null) LobbyManager.action(ctx.getSender(), p); });
                     ctx.setPacketHandled(true);

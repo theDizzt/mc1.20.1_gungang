@@ -18,6 +18,6 @@ class LobbySnapshotTest {
         assertNotNull(state.you());assertNotNull(state.selectedMap());
     }
     @Test void invalidOptionsAreRejectedRatherThanBecomingRenderableState(){
-        assertThrows(RuntimeException.class,()->ServerFiles.GSON.fromJson("{\"options\":{\"game\":{\"minutes\":1441}}}",LobbySnapshot.class));
+        assertThrows(RuntimeException.class,()->ServerFiles.GSON.fromJson("{\"options\":{\"game\":{\"control\":{\"timeSeconds\":5}}}}",LobbySnapshot.class));
     }
 }

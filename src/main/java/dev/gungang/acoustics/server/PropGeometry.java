@@ -9,8 +9,19 @@ import net.minecraft.world.level.block.state.properties.*;
 /** Shared visible parts and collision bounds for beds, doors, gas tanks and multipart furniture. */
 public final class PropGeometry {
     public record Part(BlockPos offset,BlockState state){}
+    /** 215: the crops a farmland disguise grows, fully grown; its MODE picks one. */
+    public static final int CROPS=4;
+    public static BlockState crop(int index){
+        return switch(Math.floorMod(index,CROPS)){
+            case 0->Blocks.WHEAT.defaultBlockState().setValue(BlockStateProperties.AGE_7,7);
+            case 1->Blocks.CARROTS.defaultBlockState().setValue(BlockStateProperties.AGE_7,7);
+            case 2->Blocks.POTATOES.defaultBlockState().setValue(BlockStateProperties.AGE_7,7);
+            default->Blocks.BEETROOTS.defaultBlockState().setValue(BlockStateProperties.AGE_3,3);
+        };
+    }
     public static List<Part> parts(PropEntity prop){
         if(prop.item().equals("minecraft:sugar_cane")){var result=new ArrayList<Part>();for(int y=0;y<prop.height();y++)result.add(new Part(BlockPos.ZERO.above(y),prop.state()));return result;}
+        if(prop.item().equals("minecraft:farmland")&&prop.state().getBlock() instanceof FarmBlock){var result=new ArrayList<>(parts(prop.state()));result.add(new Part(BlockPos.ZERO.above(),crop(prop.mode())));return result;}
         return parts(prop.state());
     }
     public static List<Part> parts(BlockState state){
@@ -24,6 +35,12 @@ public final class PropGeometry {
             result.add(new Part(BlockPos.ZERO,state));
             if(state.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF))result.add(new Part(BlockPos.ZERO.above(),state.setValue(BlockStateProperties.DOUBLE_BLOCK_HALF,DoubleBlockHalf.UPPER)));
             if(state.getBlock() instanceof BedBlock)result.add(new Part(BlockPos.ZERO.relative(state.getValue(BlockStateProperties.HORIZONTAL_FACING)),state.setValue(BlockStateProperties.BED_PART,BedPart.HEAD)));
+            // 218/219: a fired piston shows its head in the cell it faces.
+            if(state.getBlock() instanceof net.minecraft.world.level.block.piston.PistonBaseBlock&&state.getValue(net.minecraft.world.level.block.piston.PistonBaseBlock.EXTENDED)){
+                var facing=state.getValue(net.minecraft.world.level.block.piston.PistonBaseBlock.FACING);
+                result.add(new Part(BlockPos.ZERO.relative(facing),Blocks.PISTON_HEAD.defaultBlockState().setValue(net.minecraft.world.level.block.piston.PistonHeadBlock.FACING,facing)
+                        .setValue(net.minecraft.world.level.block.piston.PistonHeadBlock.TYPE,state.is(Blocks.STICKY_PISTON)?PistonType.STICKY:PistonType.DEFAULT)));
+            }
             if(state.getBlock()==GimmickBlocks.GAS.get())result.add(new Part(BlockPos.ZERO.above(),state.setValue(GimmickBlock.TOP,true)));
         }
         return result;

@@ -41,7 +41,12 @@ final class PropAbilityHud {
         g.pose().pushPose();
         float unit=size/26f;
         boolean liquid=state.getRenderShape()!=net.minecraft.world.level.block.RenderShape.MODEL&&!state.getFluidState().isEmpty();
-        if(item!=null&&item!=net.minecraft.world.item.Items.AIR&&!id.equals("minecraft:flower_pot")&&!liquid){
+        // 61 / 62 health packs show as a potion: light blue for the small pack, green for the large one.
+        int potion=id.equals("gungang:small_health_pack")?0x55C8FF:id.equals("gungang:large_health_pack")?0x3FD44A:-1;
+        if(potion>=0){
+            var stack=new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.POTION);stack.getOrCreateTag().putInt("CustomPotionColor",potion);
+            g.pose().translate(x,y,0);g.pose().scale(size/16f,size/16f,1);g.renderItem(stack,0,0);
+        }else if(item!=null&&item!=net.minecraft.world.item.Items.AIR&&!id.equals("minecraft:flower_pot")&&!liquid){
             g.pose().translate(x,y,0);g.pose().scale(size/16f,size/16f,1);
             g.renderItem(new net.minecraft.world.item.ItemStack(item),0,0);
         }else{

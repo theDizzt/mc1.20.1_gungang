@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "gungang:block/money_cart"
+    },
+    "facing=east": {
+      "model": "gungang:block/money_cart",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "gungang:block/money_cart",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "gungang:block/money_cart",
+      "y": 270
+    }
+  }
+}

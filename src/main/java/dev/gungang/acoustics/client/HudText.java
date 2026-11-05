@@ -39,6 +39,29 @@ public final class HudText {
         }
         return text;
     }
+    /** "00:00"-style clock text (also "1:05:09"); drawn with {@link #drawTime} so the digits keep fixed cells. */
+    public static boolean time(String value) { return value.matches("[0-9]+(:[0-9][0-9])+"); }
+    private static int digitCell() {
+        int cell = 0;
+        for (char c = '0'; c <= '9'; c++) cell = Math.max(cell, numberWidth(String.valueOf(c)));
+        return cell;
+    }
+    /** Width of {@code value} in the number font with tabular digits. */
+    public static int timeWidth(String value) {
+        int cell = digitCell(), colon = numberWidth(":"), width = 0;
+        for (int i = 0; i < value.length(); i++) width += value.charAt(i) == ':' ? colon : cell;
+        return width;
+    }
+    /** Number-font clock with every digit centred in the widest digit's cell, so the time never shifts as it counts. */
+    public static void drawTime(GuiGraphics g, String value, int x, int y, int color) {
+        int cell = digitCell(), colon = numberWidth(":");
+        for (int i = 0; i < value.length(); i++) {
+            String c = String.valueOf(value.charAt(i));
+            int w = c.equals(":") ? colon : cell;
+            drawNumber(g, number(c), x + (w - numberWidth(c)) / 2, y, color);
+            x += w;
+        }
+    }
     private static boolean numeric(char c) { return c >= '0' && c <= '9' || ".:/+-%".indexOf(c) >= 0; }
 
     public static void draw(GuiGraphics graphics, String value, int x, int y, int maxWidth, int color) {

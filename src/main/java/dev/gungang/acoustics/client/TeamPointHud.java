@@ -59,11 +59,23 @@ public final class TeamPointHud {
     }
     static void drawBadge(GuiGraphics g,int number,int x,int y,int size,int color){number(g,number,x+size-7,y+size-6,color);}
     private static void number(GuiGraphics g,int number,int cx,int cy,int color) {
-        var font=Minecraft.getInstance().font;String text=Integer.toString(number);
+        var font=Minecraft.getInstance().font;var text=HudText.number(Integer.toString(number));
         int width=Math.max(10,font.width(text)+4);
         g.fill(cx-width/2-1,cy-6,cx+(width+1)/2+1,cy+6,0xFF101820);
         g.fill(cx-width/2,cy-5,cx+(width+1)/2,cy+5,color|0xFF000000);
-        g.drawString(font,text,cx-font.width(text)/2,cy-4,0xFFFFFFFF,false);
+        // The number font sits 1.5 px low in its line: y = cy-5 centres its 7-row digits in the badge.
+        g.drawString(font,text,cx-font.width(text)/2,cy-5,numberColor(),false);
+    }
+    /** Roster numbers read black on ALPHA's badge and white on BRAVO's. */
+    private static int numberColor(){return active()&&"ALPHA".equals(view.team())?0xFF000000:0xFFFFFFFF;}
+    /** The compact team HUD's number badge: a team-coloured square of {@code size} with the roster number, or nothing. */
+    static void square(GuiGraphics g,UUID id,int x,int y,int size){
+        int n=number(id);if(n<=0)return;
+        var font=Minecraft.getInstance().font;var text=HudText.number(Integer.toString(n));
+        int width=Math.max(size,font.width(text)+4);
+        g.fill(x-1,y-1,x+width+1,y+size+1,0xFF101820);
+        g.fill(x,y,x+width,y+size,view.color()|0xFF000000);
+        g.drawString(font,text,x+(width-font.width(text)+1)/2,y+(size-7)/2-1,numberColor(),false);
     }
     private static List<TeamPointState.Point> points() {
         if(!active())return List.of();

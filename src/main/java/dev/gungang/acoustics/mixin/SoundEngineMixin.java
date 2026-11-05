@@ -20,11 +20,11 @@ public abstract class SoundEngineMixin {
     @Inject(method = "play", at = @At("HEAD"))
     private void gungang$prepare(SoundInstance sound, CallbackInfo ci) { AcousticManager.prepare(sound); }
 
-    /** Vanilla clamps pitch to 0.5-2 (two octaves); the note block disguise plays four (0.25-4). */
+    /** Vanilla clamps pitch to 0.5-2 (two octaves); the note block disguise plays six (0.125-8, F#1 to F#7 on the harp). */
     @Inject(method = "calculatePitch", at = @At("HEAD"), cancellable = true)
     private void gungang$notePitch(SoundInstance sound, CallbackInfoReturnable<Float> cir) {
         if (sound.getLocation().getNamespace().equals("gungang") && sound.getLocation().getPath().equals("prop_note"))
-            cir.setReturnValue(net.minecraft.util.Mth.clamp(sound.getPitch(), .25f, 4f));
+            cir.setReturnValue(net.minecraft.util.Mth.clamp(sound.getPitch(), .125f, 8f));
     }
 
     @Inject(method = "tick", at = @At("TAIL"))

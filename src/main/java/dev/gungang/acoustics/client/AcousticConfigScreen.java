@@ -55,6 +55,7 @@ public final class AcousticConfigScreen extends Screen {
         options.add(new Option(2, "hudTextSize", AcousticConfig.HUD_TEXT_SIZE, s -> ConfigInput.integer(s, 100, 150), false));
         options.add(new Option(2, "hudBoldText", AcousticConfig.HUD_BOLD_TEXT, Boolean::parseBoolean, true));
         options.add(new Option(2, "teamHud", AcousticConfig.TEAM_HUD, Boolean::parseBoolean, true).right());
+        options.add(new Option(2, "legacyTeamHud", AcousticConfig.LEGACY_TEAM_HUD, Boolean::parseBoolean, true).right());
         options.add(new Option(2, "killLog", AcousticConfig.KILL_LOG, Boolean::parseBoolean, true).right());
         options.add(new Option(2, "teamSilhouettes", AcousticConfig.TEAM_SILHOUETTES, Boolean::parseBoolean, true).right());
         options.add(new Option(2, "autoSprint", AcousticConfig.AUTO_SPRINT, Boolean::parseBoolean, true).right());

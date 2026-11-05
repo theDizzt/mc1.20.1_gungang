@@ -110,10 +110,10 @@ public final class MatchHud {
         else {y=ControlPointHud.draw(g,state)+4;if(state.point()==null)MatchTimerHud.draw(g,state,y);}
         if(mc.screen==null&&mc.options.keyPlayerList.isDown()) {
             String label="경과 시간",time=MatchReport.time(state.elapsedSeconds());
-            int w=mc.font.width(label)+HudText.numberWidth(time)+20,cx=g.guiWidth()/2-w/2;
+            int w=mc.font.width(label)+HudText.timeWidth(time)+20,cx=g.guiWidth()/2-w/2;
             g.fill(cx,y+18,cx+w,y+31,0x90141511);g.fill(cx,y+30,cx+w,y+31,TacticalStyle.GOLD);
             g.drawString(mc.font,label,cx+7,y+21,TacticalStyle.MUTED,false);
-            g.drawString(mc.font,HudText.number(time),cx+w-7-HudText.numberWidth(time),y+21,0xFFFFFFFF,false);
+            HudText.drawTime(g,time,cx+w-7-HudText.timeWidth(time),y+21,0xFFFFFFFF);
             int height=g.guiHeight()-y-48;
             if(state.bomb()!=null){
                 // Bomb mode: the scoreboard shares the width with a square minimap on its right.
@@ -194,6 +194,7 @@ public final class MatchHud {
         }
     }
     static void column(GuiGraphics g,String text,int right,int y,int color) {
+        if(HudText.time(text)){HudText.drawTime(g,text,right-HudText.timeWidth(text),y,color);return;}
         var font=Minecraft.getInstance().font;var value=HudText.numbers(text);HudText.drawNumber(g,value,right-font.width(value),y,color);
     }
     static ResourceLocation skin(String id) {
