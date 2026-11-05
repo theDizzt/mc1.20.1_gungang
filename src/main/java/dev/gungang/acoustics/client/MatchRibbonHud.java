@@ -7,12 +7,14 @@ import net.minecraft.client.gui.GuiGraphics;
 final class MatchRibbonHud {
     static final int HEIGHT=47;
     static float scale(GuiGraphics g){return .75f*Math.min(1f,(g.guiWidth()-16)/360f);}
-    static void outlined(GuiGraphics g,String text,int cx,int y,float size,int color){
+    static void outlined(GuiGraphics g,String text,int cx,int y,float size,int color){outlined(g,text,cx,y,size,color,0xFF000000);}
+    /** Centred text with a one-pixel outline of {@code outline} on all eight sides. */
+    static void outlined(GuiGraphics g,String text,int cx,int y,float size,int color,int outline){
         var font=Minecraft.getInstance().font;
         g.pose().pushPose();g.pose().translate(cx,y,0);g.pose().scale(size,size,1);
         int x=-font.width(text)/2;
         for(int dx=-1;dx<=1;dx++)for(int dy=-1;dy<=1;dy++)
-            if(dx!=0||dy!=0)g.drawString(font,text,x+dx,dy,0xFF000000,false);
+            if(dx!=0||dy!=0)g.drawString(font,text,x+dx,dy,outline,false);
         g.drawString(font,text,x,0,color,false);g.pose().popPose();
     }
     /** Soft drop shadow under the ribbon's lines and bars. */

@@ -80,7 +80,7 @@ public final class MatchManager {
         freeForAll=arena.freeForAll()==null?null:new FreeForAllMatch(s,arena);
         if(freeForAll!=null)for(var p:s.getPlayerList().getPlayers())if(java.util.Set.of("ALPHA","BRAVO").contains(LobbyManager.team(p.getUUID())))freeForAll.add(p);
         server=s; map=arena; ledger=new MatchLedger(); capture=new CaptureGame(); ticks=0; running=false;
-        normandy=arena.normandy()==null?null:new NormandyGame(arena.normandy());
+        normandy=arena.normandy()==null?null:new NormandyGame(arena.normandy(),LobbyManager.options().game().normandyTicks(arena.normandy()));
         bomb=arena.bomb()==null?null:new BombMatch(s,arena);
         escort=escortRoute==null?null:new EscortMatch(s,arena,escortRoute);
         presence.clear(); contested=false;
@@ -164,7 +164,9 @@ public final class MatchManager {
                     if(presence.update(bot.getUUID(),bot.getBoundingBox(),box)) {alpha |= team.equals("ALPHA"); bravo |= team.equals("BRAVO");}
                 }
                 presence.retain(eligible);alphaOnPoint=alpha;bravoOnPoint=bravo;
-                capture.tick(alpha,bravo,c.captureStepTicks(),c.scoreIntervalTicks());
+                // 점령 시간 override: seconds from neutral to fully held, 100 steps.
+                var custom=LobbyManager.options().game().control().captureSeconds();
+                capture.tick(alpha,bravo,custom==null?c.captureStepTicks():custom*20/100.0,c.scoreIntervalTicks());
                 contested=alpha&&bravo;
                 floor.color(capture.scoringOwner());
                 String winner=capture.winner(c.winningScore());

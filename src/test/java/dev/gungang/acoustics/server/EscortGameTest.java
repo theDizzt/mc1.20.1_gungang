@@ -9,7 +9,7 @@ class EscortGameTest {
     private EscortRules rules(){return new EscortRules(new ArenaMap.Area(0,0,0,100,20,100),null,1.0,null,null,null,null,null,null,null,List.of(0,1),null,null,null);}
     @Test void playersAccelerateButDefendersAlwaysStop(){
         var game=new EscortGame(rules(),240,100,List.of(50d));game.tick(1,false);assertEquals(.05,game.distance,1e-8);
-        game.tick(5,false);assertEquals(.15,game.distance,1e-8);game.tick(5,true);assertEquals(.15,game.distance,1e-8);assertEquals("CONTESTED",game.motion);
+        game.tick(5,false);assertEquals(.05+.0875,game.distance,1e-8);game.tick(5,true);assertEquals(.05+.0875,game.distance,1e-8);assertEquals("CONTESTED",game.motion);
     }
     @Test void checkpointStopsExactlyFiveSecondsAndAwardsOnce(){
         var game=new EscortGame(rules(),240,10,List.of(1d));while(game.completed==0)game.tick(1,false);

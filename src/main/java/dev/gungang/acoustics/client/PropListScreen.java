@@ -106,7 +106,7 @@ public final class PropListScreen extends Screen {
             g.fill(x+1,y+1,x+cell-1,y+cell-1,over?0x60FFFFFF:0x30000000);
             if(e==selected)g.fill(x+1,y+1,x+cell-1,y+cell-1,0x7070CDBF);
             if(e==selected)g.renderOutline(x,y,cell,cell,0xFF70CDBF);
-            else if(!e.tags.isEmpty())g.renderOutline(x+1,y+1,cell-2,cell-2,e.tags.get(0).color());
+            else{var tag=e.tags.stream().filter(t->(t.color()&0xFFFFFF)!=0).findFirst();if(tag.isPresent())g.renderOutline(x+1,y+1,cell-2,cell-2,tag.get().color());}
             int size=cell-6;
             PropAbilityHud.icon(g,e.block,e.state,x+3,y+2,size);
             // Above the item (z ~150-170) but below the tooltip (z 400), which it used to cover.
@@ -192,7 +192,7 @@ public final class PropListScreen extends Screen {
         d("torchflower","닿은 술래에게 화상 10초");d("pitcher_plant","다 자란 두 블록 형태");
         d("sugar_cane","60초마다 한 블록 성장(최대 3블록). 몸 크기도 함께 커짐");
         d("beacon","E: 빔 켜기/끄기. 하나 이상 켜져 있으면 살아 있는 숨는 팀 전체 이동속도 1.2배(중첩 없음)");
-        d("minecraft:end_crystal","체력 255. E: 24블록 안에서 보이는 가장 가까운 술래를 추적하는 입자 발사(명중 피해 50, 30초 쿨타임). 벽에 막힘");
+        d("minecraft:end_crystal","체력 255. E: 24블록 안의 모든 술래를 벽 너머까지 감지해 10초간 엔드 수정 광선으로 공격(초당 16 피해, 30초 쿨타임)");
         d("sculk_sensor","E: 비명 효과 켜기/끄기. 켜진 동안 2초마다 딸깍 소리·입자(상태 효과 없음)");
         d("gungang:hologram_projector","주무기 중 무작위 무기를 홀로그램으로 표시\nE: 크기 50~300%, R: 회전 속도");
         d("sculk_shrieker","E: 비명 효과 켜기/끄기. 켜진 동안 2초마다 비명 소리와 입자(어둠 효과 없음)");
@@ -202,11 +202,11 @@ public final class PropListScreen extends Screen {
         d("gungang:shutter","E: 말려 올라가며 열리고 내려오며 닫힘. R: 축 회전");
         d("sea_pickle","E: 1~4개 전환, 개수에 따라 밝기 증가");d("lightning_rod","E: 충전(빛남) 켜기/끄기, 켜진 동안 전기 불꽃 입자");
         d("crimson_hyphae","R: 축 회전");
-        d("note_block","E: 모차르트 피아노 소나타 16번 도입부를 한 음씩 연주");
+        d("note_block","E: 고른 곡을 한 음씩 연주(6옥타브). R: 곡 바꾸기(모차르트 소나타·엘리제를 위하여·카논·나비·월광·흑건·작은 별)");
         d("jukebox","E: 무작위 음반을 위로 발사(3초 뒤 사라짐, 1초 쿨타임)");d("turtle_egg","E: 알 1~4개 전환. 밟아도 깨지지 않음");
-        d("brewing_stand","E: 점프 강화·신속·투명화 중 하나를 숨는 팀 전원에게 15초(50초 쿨타임). 투명화 중 블록도 보이지 않음");
+        d("brewing_stand","E: 점프 강화·신속·투명화 중 하나를 숨는 팀 전원에게 15초(50초 쿨타임). 투명화가 걸린 동안 변신 블록이 누구에게도 보이지 않음(자신·팀원 포함)");
         d("gungang:big_grass_block","체력 400. 2×2×2 크기의 잔디 블록");
-        d("bell","E: 타종. 3초 뒤 48블록 안 술래가 3초 동안 발광(쿨타임 없음)");
+        d("bell","E: 타종. 3초 뒤 48블록 안 술래가 3초 동안 발광(15초 쿨타임)");
         d("bubble_column","물 없이 방울만 보임. 닿은 술래를 위로 던지거나 아래로 끌어내림. E: 물살 방향 전환");
         d("water","닿은 술래의 불을 끔");d("gungang:hot_spring_water","찾는 시간에 잠긴 숨는 사람을 치유");
         d("lava","닿은 술래에게 피해 50과 화상");d("gungang:acid","산성액 접촉 효과");
@@ -218,7 +218,7 @@ public final class PropListScreen extends Screen {
         d("gungang:eunbi_doll","체력 255, 전용 스킨. E: 6가지 포즈\n좌클릭(꾹): 거리 제한 없는 광선, 처음 닿은 술래에게 초당 50. 최대 5초, 10초에 걸쳐 회복");
         d("gungang:prettiest_block","파스텔 무지개 색으로 계속 변함. E: 하트 입자와 문구 팝업, 효과음(3초 쿨타임)");
         d("crying_obsidian","체력 255. E: 약 2.5초 동안 눈물이 흐르고 낑낑 소리(3초 쿨타임)");
-        d("minecraft:tnt_minecart","이동속도 2.5배(들이받기 없음). E: 불붙은 TNT 설치(5초 쿨타임), 5초 뒤 반경 4블록 술래에게 피해 80");
+        d("minecraft:tnt_minecart","이동속도 2.5배(들이받기 없음). E: 불붙은 TNT 설치(5초 쿨타임), 5초 뒤 반경 4블록 술래에게 피해 120");
         d("gungang:hanbi_doll","체력 255, 전용 스킨. E: 6가지 포즈\n좌클릭(꾹): 투명화·이동속도 2.4배·무적. 최대 8초, 16초에 걸쳐 회복");
         d("slime_block","벽·천장에 닿으면 붙어서 이동(벽은 앞으로 걸어 들어가면 붙음). E: 떨어지기. 점프 불가");
         d("honey_block","벽·천장에 닿으면 붙어서 이동(벽은 앞으로 걸어 들어가면 붙음). E: 떨어지기. 점프 불가");
@@ -226,9 +226,27 @@ public final class PropListScreen extends Screen {
         d("ladder","R: 회전");
         d("@candle_cake","초 16색 중 무작위. E: 촛불 켜기/끄기. 켜져 있는 동안 생일 축하 노래 재생");
         d("redstone_torch","E: 켜기/끄기. R: 바닥 → 벽(4방향) 순서로 회전");
-        d("gungang:death_zone","해골 표시만 보이는 데스존 블록. 닿은 술래는 즉시 사망");
+        d("gungang:death_zone","술래에게는 보이지 않는 데스존 블록(같은 팀에게만 해골 표시). 닿은 술래는 즉시 사망");
         d("torch","R: 바닥 → 벽(4방향) 순서로 회전");
         d("soul_torch","R: 바닥 → 벽(4방향) 순서로 회전");
+        d("oak_planks","나무 11종 판자 중 무작위");d("oak_log","나무 11종 원목·자루·대나무 블록 중 무작위. R: 축 회전");
+        d("oak_stairs","나무 11종 계단 중 무작위");d("oak_slab","나무 11종 반 블록 중 무작위");d("oak_fence","모든 울타리 중 무작위");
+        d("oak_pressure_plate","모든 압력판 중 무작위");d("stripped_oak_log","껍질 벗긴 나무 11종 중 무작위. R: 축 회전");
+        d("sandstone","사암·매끄러운 사암·조각된 사암 중 무작위");d("red_sandstone","붉은 사암·매끄러운 붉은 사암·조각된 붉은 사암 중 무작위");
+        d("stone_bricks","석재 벽돌·이끼 낀·금 간·조각된 석재 벽돌 중 무작위");
+        d("oak_door","나무 11종 문 중 무작위. E: 열기/닫기");d("oak_trapdoor","나무 11종 다락문 중 무작위. E: 열기/닫기");
+        d("polished_blackstone","윤나는 흑암·조각된 윤나는 흑암 중 무작위");d("oak_leaves","나뭇잎 9종 중 무작위");
+        d("coal_ore","석탄·철·구리·금·레드스톤·에메랄드·청금석·다이아몬드 광석 중 무작위");d("deepslate_coal_ore","심층암 광석 8종 중 무작위");
+        d("polished_blackstone_bricks","윤나는 흑암 벽돌·금 간 윤나는 흑암 벽돌 중 무작위");
+        d("sponge","이동속도 1.25배. 물·웅덩이·액체에 닿으면 젖은 스펀지가 되어 1.0배");
+        d("cobblestone_wall","돌 담장 22종 중 무작위");d("nether_bricks","네더 벽돌·금 간 네더 벽돌·조각된 네더 벽돌 중 무작위");
+        d("cartography_table","E: 8초 동안 맵 미니맵에 모든 술래와 팀원 위치 표시(30초 쿨타임)");
+        d("farmland","밀·당근·감자·비트 중 무작위 작물이 심김. E: 작물 바꾸기");d("oak_sapling","묘목 10종 중 무작위");
+        d("piston","E: 피스톤 작동(다시 E로 수축). 앞 두 칸의 술래·팀원을 밀쳐냄. 맵 블록은 밀지 못함. R: 여섯 방향 회전");
+        d("sticky_piston","피스톤과 같음. 앞의 팀원은 밀치지 않고 머리에 붙여 함께 움직이고, 수축하면 끌어당김");
+        d("gungang:desk_clock","현재 시각(24시간 시·분·초)을 보여주는 LCD 탁상 시계. E: 알람 켜기/끄기(켜진 동안 계속 울림). R: 회전");
+        d("gungang:money_cart","이동속도 2.4배. 이동하는 동안 돈(에메랄드·금 조각)을 흘림(3초 뒤 사라짐). E: 현금 인출기 소리(3초 쿨타임)");
+        d("red_mushroom","빨간·갈색 버섯, 진홍·뒤틀린 균 중 무작위");
         d("conduit","E: 4초 동안 24블록 안 술래에게 번개 폭풍(번개 1회 피해 10, 90초 쿨타임). 찾는 시간에만");
     }
 }

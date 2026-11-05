@@ -46,6 +46,8 @@
   "gungang.options.fontFile.tip": "외부 TTF 프리셋에서만 사용합니다. config/gungang/fonts의 파일명이며 비워 두면 첫 TTF를 선택합니다. 잘못된 파일은 MaruMinya로 복원합니다. 파일 교체 후 F3+T로 다시 불러오세요.",
   "gungang.options.teamHud": "팀원 목록·체력바",
   "gungang.options.teamHud.tip": "왼쪽 상단에 같은 팀원의 초상화·체력·무기를 표시합니다. 본인 HUD와 같은 너비이며 전체 배경 없이 슬롯·체력바만 반투명합니다.",
+  "gungang.options.legacyTeamHud": "팀원 HUD 레거시 디자인",
+  "gungang.options.legacyTeamHud.tip": "켜면 이전 팀원 HUD(이름·긴 체력바·아이템 칸)를 씁니다. 끄면 초상화 옆에 번호·아이템, 짧은 체력바와 체력 수치를 보여주는 새 디자인입니다.",
   "gungang.options.killLog": "킬로그",
   "gungang.options.killLog.tip": "큰 타이머 아래에 얼굴·이름과 KILLED/DIED 킬로그를 오른쪽 정렬합니다. 최근 최대 5개를 8초 표시합니다.",
   "gungang.options.teamSilhouettes": "팀원 검은 실루엣",

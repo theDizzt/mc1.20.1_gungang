@@ -329,13 +329,7 @@ public final class LobbyManager {
                     var game=ServerFiles.GSON.fromJson(action.value(),GameOptions.class);
                     if(game==null)throw new IllegalArgumentException("게임 옵션이 없습니다.");
                     var arena=selectedArena();
-                    if(arena!=null){
-                        if(selectedMode.equals("PROP_HUNT"))arena=PropHuntRules.arena(arena);
-                        if(selectedMode.equals("DEATHMATCH"))arena=game.deathmatch(options().deathmatch()).arena(arena);
-                        if(selectedMode.equals("BOMB")&&arena.freeForAll()!=null)arena=arena.withoutFreeForAll();
-                        if(selectedMode.equals("FREE_FOR_ALL")&&arena.bomb()!=null)arena=arena.withoutBomb();
-                        game.apply(arena);
-                    }
+                    if(arena!=null)game.apply(modeArena(arena,selectedMode,game),selectedMode);
                     var old=options();var next=new TeamOptions(old.alphaColor(),old.bravoColor(),old.respawnSeconds(),old.deathmatch(),old.experience(),game);
                     var path=ServerFiles.root().resolve("server/option.json");
                     var json=com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(path)).getAsJsonObject();
@@ -361,6 +355,18 @@ public final class LobbyManager {
                     if (player == null || !PLAYERS.containsKey(target)) return;
                     setTeam(player, action.value());
                 }
+                case "swap" -> {
+                    // Two lobby members trade panels (administrators): each takes the other's team, a spectator/unassigned slot becomes SPECTATOR.
+                    admin(sender);
+                    UUID first=UUID.fromString(action.value()),second=UUID.fromString(action.target());
+                    String a=lobbyTeam(first),b=lobbyTeam(second);
+                    if(a==null||b==null)throw new IllegalArgumentException("로비에 없는 참가자입니다.");
+                    if(a.equals(b)){send(sender,false);return;}
+                    if(BotManager.identity(first)&&!Set.of("ALPHA","BRAVO").contains(b)||BotManager.identity(second)&&!Set.of("ALPHA","BRAVO").contains(a))
+                        throw new IllegalArgumentException("봇은 관전석으로 옮길 수 없습니다.");
+                    moveMember(first,b);moveMember(second,a);
+                    if(BotManager.identity(first)||BotManager.identity(second))botChanged();
+                }
                 case "ready" -> {
                     if(!action.target().isEmpty()&&!action.target().equals(selected+":"+selectedMode)){send(sender,false);return;}
                     var e = PLAYERS.get(sender.getUUID());
@@ -375,6 +381,17 @@ public final class LobbyManager {
             if(action.action().equals("gameOptions"))LogUtils.getLogger().warn("Could not apply lobby game options from {}",sender.getGameProfile().getName(),failure);
             sender.sendSystemMessage(Component.literal(String.valueOf(failure.getMessage())).withStyle(ChatFormatting.RED));
         }
+    }
+    /** A lobby member's panel team (ALPHA, BRAVO, else SPECTATOR), or null when the id is not in the lobby. */
+    private static String lobbyTeam(UUID id){
+        String team;
+        if(BotManager.identity(id)){if(!BotManager.lobbyIds().contains(id))return null;team=BotManager.team(id);}
+        else{var e=PLAYERS.get(id);if(e==null||server.getPlayerList().getPlayer(id)==null)return null;team=e.team;}
+        return team.equals("ALPHA")||team.equals("BRAVO")?team:"SPECTATOR";
+    }
+    private static void moveMember(UUID id,String team){
+        if(BotManager.identity(id)){BotManager.lobbyTeam(id,team);return;}
+        setTeam(server.getPlayerList().getPlayer(id),team);
     }
     private static void admin(ServerPlayer p) { if (!p.hasPermissions(2)) throw new IllegalArgumentException("관리자 권한이 필요합니다."); }
     private static void select(String id) {
@@ -580,16 +597,13 @@ public final class LobbyManager {
     private static void prepare() {
         activeMap = files.maps().stream().filter(m -> m.id().equals(selected)).findFirst().orElseThrow();
         DeathmatchRules deathmatch=selectedMode.equals("DEATHMATCH")?options().game().deathmatch(options().deathmatch()):null;
-        if(deathmatch!=null)activeMap=deathmatch.arena(activeMap);
-        if(selectedMode.equals("PROP_HUNT"))activeMap=PropHuntRules.arena(activeMap);
-        if(selectedMode.equals("ESCORT"))activeMap=activeMap.escortStart();
-        if(selectedMode.equals("BOMB")&&activeMap.freeForAll()!=null)activeMap=activeMap.withoutFreeForAll();
-        if(selectedMode.equals("FREE_FOR_ALL")&&activeMap.bomb()!=null)activeMap=activeMap.withoutBomb();
-        activeMap=options().game().apply(activeMap);
+        activeMode=selectedMode;
+        activeMap=options().game().apply(modeArena(activeMap,selectedMode,options().game()),selectedMode);
         level(activeMap);
         if(activeMap.propHunt()!=null)PropHuntMatch.validate(server,activeMap,loadouts);
         if(activeMap.escort()!=null)EscortMatch.validate(server,activeMap);
         if(LobbyRules.bots(selectedMode))BotManager.validate(loadouts);
+        handicap();
         var choices=allocateLoadouts();
         choices.forEach((id,choice)->{var e=PLAYERS.get(id);e.primary=choice[0];e.secondary=choice[1];});
         phase = "PREPARING"; deadline = server.getTickCount() + preparationSeconds(activeMap)*20;
@@ -623,7 +637,54 @@ public final class LobbyManager {
         if(phase.equals("RUNNING")&&e.team.equals("BRAVO")&&activeMap.normandy()!=null) spawn=MatchManager.attackSpawn();
         p.stopRiding(); p.teleportTo(level(activeMap), spawn.x(), spawn.y(), spawn.z(), spawn.yaw(), spawn.pitch()); p.fallDistance = 0;
     }
-    public static int preparationSeconds(ArenaMap arena) {if(arena.propHunt()!=null)return 0;if(arena.freeForAll()!=null)return 0;return arena.bomb()!=null?arena.bomb().preparationSeconds():arena.normandy()==null?30:45;}
+    public static int preparationSeconds(ArenaMap arena) {
+        if(arena.propHunt()!=null)return 0;if(arena.freeForAll()!=null)return 0;if(arena.bomb()!=null)return arena.bomb().preparationSeconds();
+        Integer custom=options().game().preparation(activeMode);
+        return custom!=null?custom:arena.normandy()==null?30:45;
+    }
+    /** The mode of the match being prepared or played (the lobby's selection may differ once it closes). */
+    private static String activeMode="CONTROL";
+    /** The selected map as the chosen mode plays it, before lobby overrides. */
+    private static ArenaMap modeArena(ArenaMap arena,String mode,GameOptions game){
+        if(mode.equals("PROP_HUNT"))arena=PropHuntRules.arena(arena);
+        if(mode.equals("DEATHMATCH"))arena=game.deathmatch(options().deathmatch()).arena(arena);
+        if(mode.equals("ESCORT"))arena=arena.escortStart();
+        if(mode.equals("BOMB")&&arena.freeForAll()!=null)arena=arena.withoutFreeForAll();
+        if(mode.equals("FREE_FOR_ALL")&&arena.bomb()!=null)arena=arena.withoutBomb();
+        return arena;
+    }
+    /** Head-count handicap of the current match: the bigger team (no secondaries) and the smaller one (more health); "" when even or off. */
+    private static String handicapLarge="",handicapSmall="";
+    private static void handicap(){
+        handicapLarge=handicapSmall="";
+        var common=options().game().common();
+        boolean health=common.handicapHealth()!=null&&common.handicapHealth()>1;
+        if(!GameOptions.teamMode(activeMode)||!common.handicapSecondary()&&!health)return;
+        long alpha=PLAYERS.values().stream().filter(e->e.team.equals("ALPHA")).count(),bravo=PLAYERS.values().stream().filter(e->e.team.equals("BRAVO")).count();
+        if(LobbyRules.bots(activeMode))for(var bot:BotManager.lobbyIds()){String t=BotManager.team(bot);if(t.equals("ALPHA"))alpha++;else if(t.equals("BRAVO"))bravo++;}
+        if(alpha==bravo)return;
+        handicapLarge=alpha>bravo?"ALPHA":"BRAVO";handicapSmall=alpha>bravo?"BRAVO":"ALPHA";
+        var parts=new ArrayList<String>();
+        if(common.handicapSecondary())parts.add(handicapLarge+" 보조무기 금지");
+        if(health)parts.add(handicapSmall+" 체력 x"+String.format(java.util.Locale.ROOT,"%.2f",common.handicapHealth()));
+        for(var p:server.getPlayerList().getPlayers())if(PLAYERS.containsKey(p.getUUID()))
+            p.sendSystemMessage(Component.literal("인원 핸디캡 (ALPHA "+alpha+" : BRAVO "+bravo+") · "+String.join(" · ",parts)).withStyle(net.minecraft.ChatFormatting.YELLOW));
+    }
+    /** Whether this team plays without secondaries in the current match. */
+    static boolean secondaryBanned(String team){return activeMap!=null&&!handicapLarge.isEmpty()&&team.equals(handicapLarge)&&options().game().common().handicapSecondary();}
+    /** Max-health multiplier for this team in the current match (1 outside a match or without a handicap). */
+    static double healthScale(String team){
+        var scale=options().game().common().handicapHealth();
+        return activeMap!=null&&!handicapSmall.isEmpty()&&team.equals(handicapSmall)&&scale!=null?scale:1;
+    }
+    static double healthScale(UUID player){var e=PLAYERS.get(player);return e==null?1:healthScale(e.team);}
+    /** Free-for-all respawn wait unless the lobby sets one. */
+    static final int FFA_RESPAWN_TICKS=100;
+    static int respawnTicks(){
+        var custom=options().game().common().respawnSeconds();
+        if(custom!=null)return custom*20;
+        return MatchManager.freeForAll()!=null?FFA_RESPAWN_TICKS:options().respawnSeconds()*20;
+    }
     static void bombTeleport(ServerPlayer p){var e=PLAYERS.get(p.getUUID());if(e!=null)teleportSpawn(p,e);}
     static void prepareBombRound(){
         phase="PREPARING";deadline=server.getTickCount()+preparationSeconds(activeMap)*20;
@@ -774,6 +835,7 @@ public final class LobbyManager {
             ItemStack old = p.getInventory().getItem(i);
             if (issued(old) && old.getTag().getInt(TAG) == slot) p.getInventory().setItem(i, ItemStack.EMPTY);
         }
+        if(slot==40&&e!=null&&secondaryBanned(e.team)){p.inventoryMenu.broadcastChanges();return;} // head-count handicap
         if(weapon.commandOnly()) {executeSecondaryCommand(p,weapon,slot,TAG);return;}
         ItemStack displaced = p.getInventory().getItem(slot);
         ItemStack stack = weapon.stack(); LoadoutSlots.mark(stack,TAG,slot);
@@ -785,7 +847,7 @@ public final class LobbyManager {
         p.inventoryMenu.broadcastChanges();
     }
     /** Individual mode has no teammates; opposing teams may use the same weapon. */
-    private static boolean duplicates(boolean primary){return primary?options().game().duplicatePrimary():options().game().duplicateSecondary();}
+    private static boolean duplicates(boolean primary){return primary?options().game().common().duplicatePrimary():options().game().common().duplicateSecondary();}
     private static boolean weaponTaken(UUID player,boolean primary,String id){
         var self=PLAYERS.get(player);
         if(!enabled||self==null||!Set.of("ALPHA","BRAVO").contains(self.team)||selectedMode.equals("FREE_FOR_ALL")||duplicates(primary))return false;
@@ -992,14 +1054,30 @@ public final class LobbyManager {
     }
     private static void send(ServerPlayer p, boolean show) {
         var mapViews = files == null ? List.<LobbySnapshot.MapView>of() : files.maps().stream().map(m -> new LobbySnapshot.MapView(m.id(),m.name(),m.description(),
-                options().game().minutes()>0?options().game().minutes()*60:selectedMode.equals("DEATHMATCH")&&DeathmatchRules.supported(m)?options().deathmatch().timeLimitSeconds():m.timeLimitSeconds(),
+                m.id().equals(selected)?selectedSeconds(m):selectedMode.equals("DEATHMATCH")&&DeathmatchRules.supported(m)?options().deathmatch().timeLimitSeconds():m.timeLimitSeconds(),
                 m.propHunt()!=null?"숨바꼭질":m.freeForAll()!=null&&(m.bomb()==null||m.id().equals(selected)&&selectedMode.equals("FREE_FOR_ALL"))?"개인전":m.escort()!=null?"호위":m.normandy()!=null?"이동점령":(DeathmatchRules.exclusive(m)||selectedMode.equals("DEATHMATCH")&&DeathmatchRules.supported(m))?"팀 데스매치":m.bomb()!=null?"폭탄전":"쟁탈전",DeathmatchRules.supported(m),m.previewArea()!=null?"@generated":m.previewImage(),m.bomb()!=null,DeathmatchRules.exclusive(m),m.weather(),m.timeOfDay(),m.releaseDate(),modes(m))).toList();
         List<LobbySnapshot.Member> members = new ArrayList<>();
         for (var entry : PLAYERS.entrySet()) { var player = server.getPlayerList().getPlayer(entry.getKey()); if (player != null) members.add(new LobbySnapshot.Member(entry.getKey().toString(),player.getGameProfile().getName(),entry.getValue().team,entry.getValue().ready)); }
         if(LobbyRules.bots(selectedMode))for(var bot:BotManager.lobbyIds())members.add(new LobbySnapshot.Member(bot.toString(),BotManager.name(bot),BotManager.team(bot),true,BotManager.skin(bot)));
         var snapshot = new LobbySnapshot(enabled, show, p.hasPermissions(2), p.getUUID().toString(), selected, phase,
-                phase.equals("LOBBY") ? 0 : Math.max(0,(deadline - server.getTickCount() + 19)/20), mapViews, members, options(),selectedMode,BotManager.settings().enabled(),BotManager.added(),BotManager.lobbyCount(),BotManager.MAX);
+                phase.equals("LOBBY") ? 0 : Math.max(0,(deadline - server.getTickCount() + 19)/20), mapViews, members, options(),selectedMode,BotManager.settings().enabled(),BotManager.added(),BotManager.lobbyCount(),BotManager.MAX,
+                gameDefaults(),normandyPoints());
         GungangNetwork.send(p, new GungangNetwork.Lobby(ServerFiles.GSON.toJson(snapshot)));
+    }
+    /** The selected map/mode's own values, shown as placeholders in the game options screen. */
+    private static GameOptions gameDefaults(){
+        var arena=selectedArena();ArenaMap mode=null;
+        try{if(arena!=null&&modes(arena).contains(selectedMode))mode=modeArena(arena,selectedMode,GameOptions.defaults());}
+        catch(RuntimeException failure){LogUtils.getLogger().debug("Game option defaults unavailable: {}",failure.getMessage());}
+        return GameOptions.effectiveDefaults(mode,selectedMode,options());
+    }
+    private static List<String> normandyPoints(){var arena=selectedArena();return arena==null||arena.normandy()==null?List.of():arena.normandy().points().stream().map(NormandyRules.Point::name).toList();}
+    /** Time limit the selected map plays with in the selected mode, lobby overrides included. */
+    private static int selectedSeconds(ArenaMap m){
+        try{
+            if(selectedMode.equals("PROP_HUNT")){var t=options().game().propHunt().timeSeconds();return t!=null?t:PropHuntGame.huntTicks(m)/20;}
+            return options().game().apply(modeArena(m,selectedMode,options().game()),selectedMode).timeLimitSeconds();
+        }catch(RuntimeException failure){return m.timeLimitSeconds();}
     }
     private static void broadcast(boolean show) { if (server != null) for (var p : server.getPlayerList().getPlayers()) send(p, show); }
     /** Refresh every open lobby immediately; editing bot participation never triggers a match start. */
@@ -1013,7 +1091,7 @@ public final class LobbyManager {
         var entry=PLAYERS.get(victim.getUUID());
         if((!phase.equals("RUNNING")&&!(suicide&&phase.equals("PREPARING")))||entry==null||(!entry.team.equals("ALPHA")&&!entry.team.equals("BRAVO"))||RESPAWNING.containsKey(victim.getUUID())) return false;
         var message=suicide?Component.literal(victim.getGameProfile().getName()+" 님이 데스존에서 자살했습니다."):victim.getCombatTracker().getDeathMessage();
-        int duration=MatchManager.freeForAll()!=null?100:options().respawnSeconds()*20;
+        int duration=respawnTicks();
         boolean self=suicide||killer==null||killer==victim;
         // Void deaths would otherwise leave the camera below the world.
         Vec3 spot=self?new Vec3(victim.getX(),Math.max(victim.getY(),victim.level().getMinBuildHeight()+2),victim.getZ()):null;

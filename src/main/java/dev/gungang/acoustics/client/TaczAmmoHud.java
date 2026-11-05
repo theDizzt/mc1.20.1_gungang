@@ -252,6 +252,8 @@ public final class TaczAmmoHud {
     }
     /** Text with a translucent drop shadow instead of vanilla's opaque one. */
     static void text(GuiGraphics g,net.minecraft.client.gui.Font font,String text,int x,int y,int color) {
+        // Black text (the "은신" tag) would vanish into its shadow: a light outline instead.
+        if((color&0xFFFFFF)==0){for(int dx=-1;dx<=1;dx++)for(int dy=-1;dy<=1;dy++)if(dx!=0||dy!=0)g.drawString(font,text,x+dx,y+dy,0xFFC8CED6,false);g.drawString(font,text,x,y,color,false);return;}
         g.drawString(font,text,x+1,y+1,SHADOW,false);
         g.drawString(font,text,x,y,color,false);
     }

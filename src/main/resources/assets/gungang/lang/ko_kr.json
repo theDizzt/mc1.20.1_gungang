@@ -28,5 +28,9 @@
     "block.gungang.geyser":  "간헐천",
     "block.gungang.bath_toad":  "목욕탕 두꺼비",
     "effect.gungang.hot_spring_healing":  "온천 치유",
-    "block.gungang.hologram_projector":  "홀로그램 영사기"
+    "block.gungang.hologram_projector":  "홀로그램 영사기",
+    "block.gungang.desk_clock":  "탁상 시계",
+    "block.gungang.money_cart":  "돈을 실은 수레",
+    "subtitles.gungang.clock_alarm":  "시계 알람이 울림",
+    "subtitles.gungang.cash_machine":  "현금 인출기 작동"
 }

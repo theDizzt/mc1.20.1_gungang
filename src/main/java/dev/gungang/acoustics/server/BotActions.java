@@ -285,7 +285,7 @@ final class BotActions {
         var match=MatchManager.bomb();if(match==null||mission.target()==null)return false;
         Vec3 bomb=Vec3.atCenterOf(mission.target());
         if(ctx.bot.getEyePosition().distanceTo(bomb)>4)return false;
-        int total=BombEquipment.timing.defuseTicks(),done=match.botProgress(ctx.bot.getUUID());
+        int total=match.timing().defuseTicks(),done=match.botProgress(ctx.bot.getUUID());
         var lead=ctx.perception.lead(ctx.now);
         boolean safe=ctx.target==null&&!ctx.perception.underFire(ctx.now)&&(lead==null||ctx.now-lead.updated>60);
         if(!BotBombDecision.defuse(match.game.fuseTicks(),total,done,safe))return false;

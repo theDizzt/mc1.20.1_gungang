@@ -124,12 +124,13 @@ public final class BombWorldHud {
         // A screen or losing the role mid-hold would swallow the release.
         if(event.phase==TickEvent.Phase.END&&holding&&(Minecraft.getInstance().screen!=null||!on(true)&&!on(false)))release();
     }
+    private static String seconds(double value){return value==Math.rint(value)?Long.toString((long)value):String.format(java.util.Locale.ROOT,"%.1f",value);}
     @SubscribeEvent public static void hint(RenderGuiEvent.Post event){
         var mc=Minecraft.getInstance();if(mc.screen!=null||mc.options.hideGui||!HudVisibility.enabled())return;
         String text;int color;
         var check=plantCheck();
-        if(check!=null){boolean ok=check.site()!=null;text=ok?"설치 가능 · "+check.site()+" 지점 · "+KEY.getTranslatedKeyMessage().getString()+" 길게 "+BombEquipment.timing.plantSeconds()+"초":"설치 불가 · "+check.reason();color=ok?0xFF7BE07B:0xFFFF6B6B;}
-        else if(defusable()){text="폭탄 해체 · "+KEY.getTranslatedKeyMessage().getString()+" 길게 "+BombEquipment.timing.defuseSeconds()+"초";color=0xFF8CC8FF;}
+        if(check!=null){boolean ok=check.site()!=null;text=ok?"설치 가능 · "+check.site()+" 지점 · "+KEY.getTranslatedKeyMessage().getString()+" 길게 "+seconds(view!=null&&view.plantSeconds()>0?view.plantSeconds():BombEquipment.timing.plantSeconds())+"초":"설치 불가 · "+check.reason();color=ok?0xFF7BE07B:0xFFFF6B6B;}
+        else if(defusable()){text="폭탄 해체 · "+KEY.getTranslatedKeyMessage().getString()+" 길게 "+seconds(view!=null&&view.defuseSeconds()>0?view.defuseSeconds():BombEquipment.timing.defuseSeconds())+"초";color=0xFF8CC8FF;}
         else return;
         var g=event.getGuiGraphics();
         int w=mc.font.width(text)+12,x=(g.guiWidth()-w)/2,y=g.guiHeight()/2+14;

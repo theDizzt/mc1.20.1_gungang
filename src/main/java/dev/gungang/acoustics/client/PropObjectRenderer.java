@@ -22,7 +22,9 @@ final class PropObjectRenderer {
             // Vanilla crystal origin is one block above its base; props are anchored at floor height.
             boolean crystal=prop.item().equals("minecraft:end_crystal");
             float yaw=net.minecraft.util.Mth.rotLerp(partial,prop.yRotO,prop.getYRot())+90;
-            mc.getEntityRenderDispatcher().render(object,0,crystal?1:0,0,crystal?0:yaw,partial,pose,buffers,crystal?LightTexture.pack(15,LightTexture.sky(light)):light);return true;
+            mc.getEntityRenderDispatcher().render(object,0,crystal?1:0,0,crystal?0:yaw,partial,pose,buffers,crystal?LightTexture.pack(15,LightTexture.sky(light)):light);
+            if(object instanceof net.minecraft.world.entity.boss.enderdragon.EndCrystal endCrystal)beams(prop,endCrystal,partial,pose,buffers,light);
+            return true;
         }
         String item=prop.item();
         if(!item.equals("gungang:mannequin")&&!item.equals("gungang:eunbi_doll")&&!item.equals("gungang:hanbi_doll"))return false;
@@ -39,6 +41,24 @@ final class PropObjectRenderer {
         if(mode==5){rightArm.zRot=2.5f;head.zRot=.25f;}
         // Each outer layer (hat, jacket, sleeves, trousers) is a child of its limb, so it follows the pose.
         root.render(pose,buffers.getBuffer(RenderType.entityTranslucent(texture)),light,OverlayTexture.NO_OVERLAY);pose.popPose();return true;
+    }
+    /** 139: the crystal's text lists the entity ids of the seekers its beams are burning. */
+    static boolean beaming(PropEntity prop){return prop.item().equals("minecraft:end_crystal")&&!prop.text().isEmpty();}
+    /** The vanilla crystal beam from each locked seeker's chest to the bobbing crystal, as EndCrystalRenderer draws it. */
+    private static void beams(PropEntity prop,net.minecraft.world.entity.boss.enderdragon.EndCrystal crystal,float partial,PoseStack pose,MultiBufferSource buffers,int light){
+        if(!beaming(prop))return;
+        float bob=net.minecraft.client.renderer.entity.EndCrystalRenderer.getY(crystal,partial);
+        var origin=prop.getPosition(partial);
+        for(var part:prop.text().split(",")){
+            net.minecraft.world.entity.Entity target;
+            try{target=prop.level().getEntity(Integer.parseInt(part));}catch(NumberFormatException e){continue;}
+            if(target==null)continue;
+            var at=target.getPosition(partial).add(0,target.getBbHeight()*.6,0).subtract(origin);
+            float dx=(float)at.x,dy=(float)at.y,dz=(float)at.z;
+            pose.pushPose();pose.translate(dx,dy,dz);
+            net.minecraft.client.renderer.entity.EnderDragonRenderer.renderCrystalBeams(-dx,-dy+1+bob,-dz,partial,prop.tickCount,pose,buffers,light);
+            pose.popPose();
+        }
     }
     /**
      * The mannequin and dolls' own player-shaped model, built here rather than through PlayerModel/HumanoidModel: other

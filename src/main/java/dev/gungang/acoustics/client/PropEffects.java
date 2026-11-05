@@ -75,8 +75,9 @@ public final class PropEffects {
                     if(state.getBlock() instanceof EntityBlock block&&!(block instanceof dev.gungang.acoustics.server.ConveyorBlock))clientTicker(level,block,state,pos,blockEntity(prop,part.offset(),state,block));
                 }
             }finally{particleOffset=net.minecraft.world.phys.Vec3.ZERO;}
-            // 196: the death zone disguise shows the skull marker a held death zone block shows, to everyone.
-            if(prop.item().equals("gungang:death_zone")&&level.getGameTime()%20==0&&!PropRenderer.concealed(prop))
+            // 196: the death zone disguise shows the skull marker a held death zone block shows, but never to seekers:
+            // to them it is as invisible as a barrier.
+            if(prop.item().equals("gungang:death_zone")&&level.getGameTime()%20==0&&!PropRenderer.concealed(prop)&&!PropHuntClient.seeker())
                 level.addParticle(new net.minecraft.core.particles.BlockParticleOption(net.minecraft.core.particles.ParticleTypes.BLOCK_MARKER,prop.state()),prop.getX(),prop.getY()+.5,prop.getZ(),0,0,0);
             // 105: soul sand gives off drifting souls and soul fire flecks, as it does under someone with Soul Speed.
             if(prop.item().equals("minecraft:soul_sand")&&!PropRenderer.concealed(prop)){

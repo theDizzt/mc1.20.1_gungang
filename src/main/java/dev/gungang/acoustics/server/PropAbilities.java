@@ -15,11 +15,15 @@ import net.minecraft.world.phys.*;
 /** Per-match state for the extended disguise deck. No ability edits the map. */
 public final class PropAbilities {
     private static final UUID CART=UUID.fromString("ca3ad028-bc47-4995-9a62-d91fdc065319"),BEACON=UUID.fromString("bcbd5028-bc47-4995-9a62-d91fdc065319"),
-            CLOAK=UUID.fromString("c10a6028-bc47-4995-9a62-d91fdc065319");
+            CLOAK=UUID.fromString("c10a6028-bc47-4995-9a62-d91fdc065319"),SPONGE=UUID.fromString("5b0e6028-bc47-4995-9a62-d91fdc065319");
+    /** 209 dry sponge speed bonus; 214 cartography table map time; 218/219 piston push speed. */
+    static final double SPONGE_SPEED=.25,PISTON_PUSH=1.6,MONEY_SPEED=1.4;static final String CLOCK="gungang:desk_clock",MONEY_CART="gungang:money_cart";static final int SCOUT_TICKS=160;
     static final String EUNBI="gungang:eunbi_doll",HANBI="gungang:hanbi_doll";
     /** 184 beam: 5 s of use refilled over 10 s, 50 damage a second; 191 cloak: 8 s refilled over 16 s, 2.4× speed. */
     static final int BEAM_TICKS=100,BEAM_REFILL=200,CLOAK_TICKS=160,CLOAK_REFILL=320;
-    static final float BEAM_DPS=50,TNT_DAMAGE=80;
+    static final float BEAM_DPS=50,TNT_DAMAGE=120;
+    /** 139 end crystal: beams on every seeker within 24 blocks for 10 s, 16 damage a second each. */
+    static final int CRYSTAL_TICKS=200;static final double CRYSTAL_RANGE=24;static final float CRYSTAL_DPS=16;
     static final double TNT_CART_RADIUS=4;
     static boolean doll(String item){return item.equals(EUNBI)||item.equals(HANBI);}
     /** Short-lived entities an ability leaves in the world: emoticon pop-ups and TNT about to go off. */
@@ -28,7 +32,7 @@ public final class PropAbilities {
     /** The hider whose daylight detector has turned the map's time, or null. */
     private UUID dayOwner;
     static final class Runtime {
-        int cooldown,active,stun,born,contact,note,erupt,eruptReady,resonate=-1,cry,eyeStart,eyeTicks;
+        int cooldown,active,stun,born,contact,note,song,erupt,eruptReady,resonate=-1,cry,eyeStart,eyeTicks;
         /** 199 lightning storm until / next strike; 194 birthday song next note / position; 39 nozzle burst until. */
         int storm,stormNext,songAt,songNote,burst;boolean mayfly,flying,flight,bees,primary,cloak;
         /** Doll gauge in ticks of use left (-1: not a doll) and its maximum. */
@@ -36,17 +40,19 @@ public final class PropAbilities {
         Vec3 eyeFrom,eyeTo,eyeLand;
         Vec3 stunPosition,lastPosition;double flightY;
         final List<PropSummonEntity> mobs=new ArrayList<>();
-        final List<Bolt> bolts=new ArrayList<>();
+        /** 214: the minimap shows until this tick; 219: teammates stuck to the sticky piston, held until {@code stuckUntil}. */
+        int scoutUntil,stuckUntil;final List<UUID> stuck=new ArrayList<>();
+        /** 139: seekers the crystal beams are on, until {@code crystalUntil}. */
+        List<UUID> crystal=new ArrayList<>();int crystalUntil;
         final List<net.minecraft.world.entity.item.ItemEntity> discs=new ArrayList<>();
         void clearDiscs(){discs.forEach(Entity::discard);discs.clear();}
     }
-    private static final class Bolt {Vec3 pos;final UUID target;int age;Bolt(Vec3 pos,UUID target){this.pos=pos;this.target=target;}}
     private final PropHuntMatch match;
     private final Map<UUID,Runtime> states=new HashMap<>();
     PropAbilities(PropHuntMatch match){this.match=match;}
     private Runtime data(UUID id){return states.computeIfAbsent(id,k->{var r=new Runtime();r.born=match.now();return r;});}
     public static int cooldown(String item){return switch(item){case "minecraft:spawner"->84*20;
-        case "minecraft:respawn_anchor"->30*20;case "minecraft:end_portal_frame","minecraft:tnt_minecart"->5*20;case "minecraft:crying_obsidian","gungang:prettiest_block"->3*20;case "minecraft:daylight_detector"->2*20;case "minecraft:command_block","minecraft:end_crystal","minecraft:tnt","gungang:gas_barrel"->30*20;case "minecraft:dispenser","minecraft:jukebox"->20;case "minecraft:brewing_stand"->50*20;case "minecraft:conduit"->90*20;case "gungang:nozzle"->BURST_COOLDOWN;case "gungang:small_health_pack"->ExtraGadgetConfig.ticks(GadgetConfig.smallHealthPack.cooldownSeconds());case "gungang:large_health_pack"->ExtraGadgetConfig.ticks(GadgetConfig.largeHealthPack.cooldownSeconds());default->0;};}
+        case "minecraft:respawn_anchor"->30*20;case "minecraft:end_portal_frame","minecraft:tnt_minecart"->5*20;case "minecraft:crying_obsidian","gungang:prettiest_block"->3*20;case "minecraft:daylight_detector"->2*20;case "minecraft:command_block","minecraft:end_crystal","minecraft:tnt","gungang:gas_barrel"->30*20;case "minecraft:dispenser","minecraft:jukebox"->20;case "minecraft:brewing_stand"->50*20;case "minecraft:conduit"->90*20;case "minecraft:cartography_table"->30*20;case "minecraft:piston","minecraft:sticky_piston"->10;case "gungang:money_cart"->60;case "minecraft:bell"->15*20;case "gungang:nozzle"->BURST_COOLDOWN;case "gungang:small_health_pack"->ExtraGadgetConfig.ticks(GadgetConfig.smallHealthPack.cooldownSeconds());case "gungang:large_health_pack"->ExtraGadgetConfig.ticks(GadgetConfig.largeHealthPack.cooldownSeconds());default->0;};}
     public int remaining(UUID id){var r=data(id);return Math.max(0,r.cooldown-match.now());}
     public int active(UUID id){return Math.max(0,data(id).active-match.now());}
     public boolean stunned(UUID id){return data(id).stun>match.now();}
@@ -73,12 +79,16 @@ public final class PropAbilities {
             prop.state(blocks.get(p.getRandom().nextInt(blocks.size())).defaultBlockState());
         }
         if(item.equals("gungang:hologram_projector")){prop.text(weapon(p));prop.mode(2*5+2);}
+        // Assorted types wear one of their looks at random (wood kinds, ores, walls ...); 215 farmland grows a random crop.
+        if(PropCatalog.assorted(item))prop.state(PropCatalog.randomState(item,n->p.getRandom().nextInt(n)));
+        if(item.equals("minecraft:farmland"))prop.mode(p.getRandom().nextInt(PropGeometry.CROPS));
         if(item.equals("minecraft:armor_stand")){prop.text(armor(p.getRandom()));prop.mode(p.getRandom().nextInt(ARMOR_POSES));}
         if(doll(item)){r.gaugeMax=item.equals(EUNBI)?BEAM_TICKS:CLOAK_TICKS;r.gauge=r.gaugeMax;}
         if(item.equals("gungang:mannequin")){var seekers=match.players().stream().filter(q->!match.hider(q.getUUID())).toList();prop.skin(seekers.isEmpty()?p.getUUID():seekers.get(p.getRandom().nextInt(seekers.size())).getUUID());}
         double maximum=maxHealth(item);float health=p.getHealth();boolean resized=p.getMaxHealth()!=maximum;
         p.getAttribute(Attributes.MAX_HEALTH).setBaseValue(maximum);p.setHealth(resized?p.getMaxHealth():Math.min(health,p.getMaxHealth()));
-        modifier(p,CART,item.equals("minecraft:minecart")||item.equals("minecraft:tnt_minecart")?1.5:0);
+        modifier(p,CART,item.equals("minecraft:minecart")||item.equals("minecraft:tnt_minecart")?1.5:item.equals(MONEY_CART)?MONEY_SPEED:0);
+        modifier(p,SPONGE,item.equals("minecraft:sponge")?SPONGE_SPEED:0);
     }
     /** Sturdy disguises (tagged "견고"): mannequins and dolls, (crying) obsidian, end crystal, geyser, war table, armory 255; big grass block 400; bedrock 999; every other block 50. */
     public static double maxHealth(String item){
@@ -108,22 +118,60 @@ public final class PropAbilities {
         catch(java.io.IOException|RuntimeException e){return "";}
     }
     /**
-     * Mozart, Piano Sonata No. 16 (K. 545), first movement opening at its written pitch, in semitones from the harp's own F#4
-     * (C5 = 6). It spans A3 to C6, past the vanilla note block's two octaves, so it plays through the wide-range gungang:prop_note.
+     * 155: each E press plays the next note of the chosen piece at its written pitch; R picks the next piece.
+     * Pitches are semitones from the harp's own F#4 (C5 = 6). The wide-range gungang:prop_note plays six octaves
+     * (F#1 to F#7, see SoundEngineMixin), so no piece is folded into the vanilla note block's two.
      */
-    private static final int[] SONATA={6,10,13,5,6,8,6,15,13,18,13,13,11,10,11,10,
-            3,5,6,8,10,11,13,15,1,3,5,6,8,10,11,13,-1,1,3,5,6,8,10,11,-2,-1,1,3,5,6,8,10,
-            -4,-2,-1,1,3,5,6,8,-6,-4,-2,-1,1,3,5,6,-7,-6,-4,-2,-1,1,3,5,-9,-7,-6,-4,-2,-1,1,3,8,6,5,6,1,6};
+    record Song(String name,int[] notes){}
+    static final List<Song> SONGS=List.of(
+            // Mozart, Piano Sonata No. 16 (K. 545), first movement opening.
+            new Song("모차르트 피아노 소나타 16번",new int[]{6,10,13,5,6,8,6,15,13,18,13,13,11,10,11,10,
+                    3,5,6,8,10,11,13,15,1,3,5,6,8,10,11,13,-1,1,3,5,6,8,10,11,-2,-1,1,3,5,6,8,10,
+                    -4,-2,-1,1,3,5,6,8,-6,-4,-2,-1,1,3,5,6,-7,-6,-4,-2,-1,1,3,5,-9,-7,-6,-4,-2,-1,1,3,8,6,5,6,1,6}),
+            new Song("엘리제를 위하여",notes("E5 D#5 E5 D#5 E5 B4 D5 C5 A4 C4 E4 A4 B4 E4 G#4 B4 C5 E4 "
+                    +"E5 D#5 E5 D#5 E5 B4 D5 C5 A4 C4 E4 A4 B4 E4 C5 B4 A4 "
+                    +"B4 C5 D5 E5 G4 F5 E5 D5 F4 E5 D5 C5 E4 D5 C5 B4 E4 E5 E5 E6 D#5 E5 D#5 E5 D#5 E5 "
+                    +"D#5 E5 D#5 E5 B4 D5 C5 A4 C4 E4 A4 B4 E4 C5 B4 A4")),
+            new Song("파헬벨 카논",notes("F#5 E5 D5 C#5 B4 A4 B4 C#5 D5 C#5 B4 A4 G4 F#4 G4 E4 "
+                    +"D4 F#4 A4 G4 F#4 D4 F#4 E4 D4 B3 D4 A4 G4 B4 A4 G4 "
+                    +"F#5 D5 E5 F#5 D5 E5 F#5 F#4 G4 A4 B4 C#5 D5 E5 D5 B4 C#5 D5 D4 E4 F#4 G4 F#4 E4 F#4 D4 E4 F#4 "
+                    +"G4 B4 A4 G4 F#4 E4 F#4 E4 D4 E4 F#4 G4 A4 B4 G4 B4 A4 B4 C#5 D5 A4 B4 C#5 D5 E5 F#5 G5 A5")),
+            // Chopin, Etude Op. 25 No. 9 "Butterfly" in G-flat major: the fluttering octave figure, top line simplified.
+            new Song("쇼팽 나비 에튀드",notes("Ab5 Ab4 Bb5 Bb4 Cb6 Cb5 Bb5 Bb4 Ab5 Ab4 Gb5 Gb4 F5 F4 Gb5 Gb4 "
+                    +"Ab5 Ab4 Bb5 Bb4 Db6 Db5 Cb6 Cb5 Bb5 Bb4 Ab5 Ab4 Gb5 Gb4 F5 F4 "
+                    +"Eb5 Eb4 F5 F4 Gb5 Gb4 Ab5 Ab4 Bb5 Bb4 Db6 Db5 Gb6 Gb5 F6 F5 Eb6 Eb5 Db6 Db5 Bb5 Bb4 Gb5 Gb4")),
+            // Beethoven, "Moonlight" Sonata, first movement: the bass and triplets of bars 1-4, then the melody.
+            new Song("베토벤 월광 소나타",notes("C#3 G#3 C#4 E4 G#3 C#4 E4 G#3 C#4 E4 G#3 C#4 E4 "
+                    +"B2 G#3 C#4 E4 G#3 C#4 E4 A2 A3 C#4 E4 F#2 A3 D4 F#4 "
+                    +"G#2 G#3 C4 F#4 G#3 C#4 E4 G#3 C#4 D#4 F#3 C4 D#4 C#3 E3 G#3 C#4 "
+                    +"G#4 G#4 G#4 G#4 G#4 G#4 A4 G#4 F#4 B4 E4 G#4 G#4 G#4 G#4 G#4 G#4 A4 G#4 F#4 B4 E4")),
+            // Chopin, Etude Op. 10 No. 5 "Black Key": the right hand's black-key triplets, simplified.
+            new Song("쇼팽 흑건",notes("Db6 Bb5 Gb5 Eb6 Db6 Bb5 Gb6 Eb6 Db6 Bb5 Ab5 Gb5 Eb5 Db5 Bb4 "
+                    +"Ab4 Bb4 Db5 Eb5 Gb5 Ab5 Bb5 Db6 Eb6 Gb6 Eb6 Db6 Bb5 Ab5 Gb5 "
+                    +"Db6 Bb5 Gb5 Eb6 Db6 Bb5 Gb6 Eb6 Db6 Bb5 Ab5 Gb5 Ab5 Gb5 Eb5 Db5 Gb5")),
+            new Song("작은 별",notes("C5 C5 G5 G5 A5 A5 G5 F5 F5 E5 E5 D5 D5 C5 G5 G5 F5 F5 E5 E5 D5 "
+                    +"G5 G5 F5 F5 E5 E5 D5 C5 C5 G5 G5 A5 A5 G5 F5 F5 E5 E5 D5 D5 C5")));
+    /** Space-separated note names (C4, F#5, Bb3, Cb6 ...) as semitones from F#4. */
+    static int[] notes(String text){
+        var parts=text.trim().split("\\s+");var out=new int[parts.length];
+        for(int i=0;i<parts.length;i++){
+            String n=parts[i];int pc="C D EF G A B".indexOf(n.charAt(0));int k=1;
+            if(pc<0)throw new IllegalArgumentException(n);
+            if(n.charAt(k)=='#'){pc++;k++;}else if(n.charAt(k)=='b'){pc--;k++;}
+            out[i]=12*(Integer.parseInt(n.substring(k))+1)+pc-66;
+        }
+        return out;
+    }
     private static void modifier(LivingEntity p,UUID id,double value){if(p instanceof Mob&&value!=0)value=Math.sqrt(1+value)-1; // path-walking bots move attribute²
         var attr=p.getAttribute(Attributes.MOVEMENT_SPEED);if(attr==null)return;var old=attr.getModifier(id);if(old!=null&&old.getAmount()==value)return;if(old!=null)attr.removeModifier(id);if(value!=0)attr.addTransientModifier(new AttributeModifier(id,"prop_ability",value,AttributeModifier.Operation.MULTIPLY_TOTAL));}
     public void remove(LivingEntity p){
         var r=states.remove(p.getUUID());if(r!=null){r.mobs.forEach(Entity::discard);r.clearDiscs();stopFlight(p,r);}
-        modifier(p,CART,0);modifier(p,BEACON,0);modifier(p,CLOAK,0);
+        modifier(p,CART,0);modifier(p,BEACON,0);modifier(p,CLOAK,0);modifier(p,SPONGE,0);
         // A new block, leaving the match or being found puts the map's time back.
         if(p.getUUID().equals(dayOwner))restoreDay();
     }
     public void clear(){for(var p:match.bodies())remove(p);states.values().forEach(r->{r.mobs.forEach(Entity::discard);r.clearDiscs();});states.clear();clearTemps();restoreDay();}
-    public void resetTransient(){for(var p:match.bodies()){var r=states.get(p.getUUID());if(r!=null){r.mobs.forEach(Entity::discard);r.mobs.clear();r.bolts.clear();r.clearDiscs();r.active=0;r.stun=0;r.erupt=0;r.eyeLand=null;r.cry=0;r.storm=0;r.burst=0;r.primary=false;r.cloak=false;modifier(p,CLOAK,0);stopFlight(p,r);}}clearTemps();}
+    public void resetTransient(){for(var p:match.bodies()){var r=states.get(p.getUUID());if(r!=null){r.mobs.forEach(Entity::discard);r.mobs.clear();r.crystal.clear();r.crystalUntil=0;var prop=match.prop(p.getUUID());if(prop!=null&&prop.item().equals("minecraft:end_crystal"))prop.text("");r.clearDiscs();r.active=0;r.stun=0;r.erupt=0;r.eyeLand=null;r.cry=0;r.storm=0;r.burst=0;r.primary=false;r.cloak=false;modifier(p,CLOAK,0);stopFlight(p,r);}}clearTemps();}
     private void clearTemps(){temps.forEach(t->t.entity().discard());temps.clear();}
     private void restoreDay(){if(dayOwner!=null){dayOwner=null;MapEnvironment.override(null);}}
     private static void stopFlight(LivingEntity p,Runtime r){if(!r.flight)return;r.flight=false;p.setNoGravity(false);p.fallDistance=0;if(p instanceof ServerPlayer sp){sp.getAbilities().mayfly=r.mayfly;sp.getAbilities().flying=r.flying;sp.onUpdateAbilities();}}
@@ -222,16 +270,31 @@ public final class PropAbilities {
                 r.cooldown=now+cooldown(item);
             }
             case "minecraft:beacon"->prop.toggle();
+            // 214: the map with every seeker and teammate on it, for a few seconds.
+            case "minecraft:cartography_table"->{
+                r.scoutUntil=now+SCOUT_TICKS;r.cooldown=now+cooldown(item);
+                p.level().playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.UI_CARTOGRAPHY_TABLE_TAKE_RESULT,net.minecraft.sounds.SoundSource.PLAYERS,1,1);
+                PropHuntMatch.say(p,Component.literal("지도 제작대: "+SCOUT_TICKS/20+"초 동안 술래·팀원 위치 표시"),true);
+            }
+            // 215: E plants the next crop.
+            case "minecraft:farmland"->{prop.mode((prop.mode()+1)%PropGeometry.CROPS);p.refreshDimensions();
+                p.level().playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.CROP_PLANTED,net.minecraft.sounds.SoundSource.BLOCKS,1,1);}
+            case "minecraft:piston","minecraft:sticky_piston"->{piston(p,prop,r,now);r.cooldown=now+cooldown(item);}
+            // 221: E sets or clears the alarm (it beeps while set, see tick).
+            case CLOCK->{if(prop.state().hasProperty(DeskBlocks.Clock.ALARM)){prop.state(prop.state().cycle(DeskBlocks.Clock.ALARM));
+                p.level().playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.STONE_BUTTON_CLICK_ON,net.minecraft.sounds.SoundSource.BLOCKS,.5f,1.6f);
+                PropHuntMatch.say(p,Component.literal(prop.state().getValue(DeskBlocks.Clock.ALARM)?"탁상 시계: 알람 켜짐":"탁상 시계: 알람 꺼짐"),true);}}
+            // 222: the cash machine sound.
+            case MONEY_CART->{r.cooldown=now+cooldown(item);p.level().playSound(null,prop.blockPosition(),DeskBlocks.CASH.get(),net.minecraft.sounds.SoundSource.BLOCKS,1.2f,1);}
             case "minecraft:end_crystal"->{
-                // The nearest seeker the bolt can actually reach (a clear line from the crystal), else nothing is spent.
+                // 139: locks onto every seeker within 24 blocks, walls or not, and burns them with crystal beams for 10 s.
                 var from=prop.position().add(0,1,0);
-                var target=match.seekers().stream().filter(q->q.level()==prop.level()&&q.distanceToSqr(from)<=24*24
-                        &&p.level().clip(new ClipContext(from,q.getBoundingBox().getCenter(),ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,p)).getType()==HitResult.Type.MISS)
-                        .min(Comparator.comparingDouble(q->q.distanceToSqr(from))).orElse(null);
-                if(target==null){PropHuntMatch.say(p,Component.literal("엔드 수정: 24블록 안에 보이는 술래가 없습니다"),true);return true;}
-                r.bolts.add(new Bolt(from,target.getUUID()));r.cooldown=now+cooldown(item);
+                var targets=match.seekers().stream().filter(q->q.level()==prop.level()&&q.isAlive()&&q.distanceToSqr(from)<=CRYSTAL_RANGE*CRYSTAL_RANGE).map(Entity::getUUID).toList();
+                if(targets.isEmpty()){PropHuntMatch.say(p,Component.literal("엔드 수정: 24블록 안에 술래가 없습니다"),true);return true;}
+                r.crystal=new ArrayList<>(targets);r.crystalUntil=now+CRYSTAL_TICKS;r.cooldown=now+cooldown(item);
                 p.level().playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.EVOKER_CAST_SPELL,net.minecraft.sounds.SoundSource.PLAYERS,1.2f,1.4f);
                 level(p).sendParticles(ParticleTypes.DRAGON_BREATH,from.x,from.y,from.z,20,.2,.2,.2,.02);
+                PropHuntMatch.say(p,Component.literal("엔드 수정: 술래 "+targets.size()+"명 공격 중"),true);
             }
             case "minecraft:sculk_sensor"->{prop.toggle();prop.state(prop.state().setValue(SculkSensorBlock.PHASE,prop.open()?SculkSensorPhase.ACTIVE:SculkSensorPhase.INACTIVE));if(prop.open())scream(level(p),prop);}
             case "minecraft:sculk_shrieker"->{prop.toggle();prop.state(prop.state().setValue(SculkShriekerBlock.SHRIEKING,prop.open()));if(prop.open())scream(level(p),prop);}
@@ -240,7 +303,8 @@ public final class PropAbilities {
             case "minecraft:sea_pickle"->prop.state(prop.state().cycle(SeaPickleBlock.PICKLES));
             case "minecraft:turtle_egg"->prop.state(prop.state().cycle(TurtleEggBlock.EGGS));
             case "minecraft:note_block"->{
-                int note=SONATA[r.note];r.note=(r.note+1)%SONATA.length;
+                var song=SONGS.get(Math.floorMod(r.song,SONGS.size()));
+                int note=song.notes()[r.note%song.notes().length];r.note=(r.note+1)%song.notes().length;
                 // The block state and particle colour only cover the vanilla range; the pitch does not.
                 int shown=net.minecraft.util.Mth.clamp(note+12,0,24);prop.state(prop.state().setValue(BlockStateProperties.NOTE,shown));
                 p.level().playSound(null,prop.getX(),prop.getY()+.5,prop.getZ(),GimmickBlocks.PROP_NOTE.get(),net.minecraft.sounds.SoundSource.RECORDS,3,(float)Math.pow(2,note/12d));
@@ -262,8 +326,8 @@ public final class PropAbilities {
             }
             case "minecraft:bell"->{
                 // Like a raid bell: three seconds after the ring, seekers within 48 blocks glow for three seconds.
-                // No cooldown: ring freely. Rings while the resonance is pending do not push its glow back.
-                PropInteraction.ring(prop);if(r.resonate<0)r.resonate=now+60;
+                // 15 s cooldown between rings.
+                PropInteraction.ring(prop);if(r.resonate<0)r.resonate=now+60;r.cooldown=now+cooldown(item);
             }
             // 199: a lightning storm over seekers within 24 blocks for four seconds.
             case "minecraft:conduit"->{
@@ -286,8 +350,13 @@ public final class PropAbilities {
         }
         return true;
     }
-    /** R on a hologram projector steps the spin speed instead of turning the block. */
+    /** R on a hologram projector steps the spin speed, and on a note block picks the next piece, instead of turning the block. */
     public boolean rotate(LivingEntity p,PropEntity prop){
+        if(prop.item().equals("minecraft:note_block")){
+            if(p instanceof net.minecraft.world.entity.Mob)return false; // bots keep turning it
+            var r=data(p.getUUID());r.song=(r.song+1)%SONGS.size();r.note=0;
+            PropHuntMatch.say(p,Component.literal("♪ "+SONGS.get(r.song).name()+" ("+(r.song+1)+"/"+SONGS.size()+")"),true);return true;
+        }
         if(!prop.item().equals("gungang:hologram_projector"))return false;
         int speed=(hologramSpeed(prop.mode())+1)%5;prop.mode(prop.mode()/5*5+speed);PropHuntMatch.say(p,Component.literal("홀로그램 회전 "+HOLOGRAM_SPEEDS[speed]),true);return true;
     }
@@ -417,6 +486,110 @@ public final class PropAbilities {
         p.level().playSound(null,prop.getX(),prop.getY()+.5,prop.getZ(),GimmickBlocks.PROP_NOTE.get(),net.minecraft.sounds.SoundSource.RECORDS,2,(float)Math.pow(2,note[0]/12d));
         level(p).sendParticles(ParticleTypes.NOTE,prop.getX(),prop.getY()+1,prop.getZ(),0,net.minecraft.util.Mth.clamp(note[0]+12,0,24)/24d,0,0,1);
     }
+    /**
+     * 139: every 2 ticks each locked seeker still alive and within range takes its share of 16 damage a second. The
+     * crystal's text carries their entity ids so clients draw the vanilla crystal beam to each of them.
+     */
+    private void crystal(LivingEntity p,PropEntity prop,Runtime r,int now){
+        if(!prop.item().equals("minecraft:end_crystal"))return;
+        var from=prop.position().add(0,1,0);var ids=new StringBuilder();
+        if(match.hunting()&&now<r.crystalUntil){
+            for(var id:r.crystal){
+                var target=match.seekers().stream().filter(q->q.getUUID().equals(id)&&q.level()==prop.level()&&q.isAlive()).findFirst().orElse(null);
+                if(target==null||target.distanceToSqr(from)>CRYSTAL_RANGE*CRYSTAL_RANGE)continue;
+                if(!ids.isEmpty())ids.append(',');ids.append(target.getId());
+                if(now%2==0){target.invulnerableTime=0;match.credit(target,p.getUUID());target.hurt(p.damageSources().magic(),CRYSTAL_DPS/10);}
+            }
+            if(now%20==0)p.level().playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.BEACON_AMBIENT,net.minecraft.sounds.SoundSource.PLAYERS,1,1.6f);
+        }else r.crystal.clear();
+        if(!prop.text().contentEquals(ids))prop.text(ids.toString());
+    }
+    /** 222: the cart turns to its hider's heading and, while it moves, spills cash nobody can pick up (gone in 3 s). */
+    private void moneyCart(LivingEntity p,PropEntity prop,Runtime r,boolean moving){
+        if(!match.locked(p.getUUID())&&prop.state().hasProperty(HorizontalDirectionalBlock.FACING)){
+            var facing=net.minecraft.core.Direction.fromYRot(p.getYRot());
+            if(prop.state().getValue(HorizontalDirectionalBlock.FACING)!=facing)prop.state(prop.state().setValue(HorizontalDirectionalBlock.FACING,facing));
+        }
+        if(!moving||p.tickCount%5!=0)return;
+        var random=p.getRandom();var money=random.nextInt(3)==0?net.minecraft.world.item.Items.GOLD_NUGGET:net.minecraft.world.item.Items.EMERALD;
+        var drop=new net.minecraft.world.entity.item.ItemEntity(p.level(),prop.getX(),prop.getY()+.8,prop.getZ(),new net.minecraft.world.item.ItemStack(money),(random.nextDouble()-.5)*.15,.2,(random.nextDouble()-.5)*.15);
+        drop.setNeverPickUp();p.level().addFreshEntity(drop);r.discs.add(drop);
+    }
+    /** 209: a dry sponge runs 1.25x; once it touches water, a puddle or any liquid it turns wet for good and slows to normal. */
+    private void sponge(LivingEntity p,PropEntity prop){
+        boolean dry=prop.state().is(Blocks.SPONGE);
+        if(dry&&soaked(p,prop)){
+            dry=false;prop.state(Blocks.WET_SPONGE.defaultBlockState());
+            p.level().playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.BUCKET_FILL,net.minecraft.sounds.SoundSource.BLOCKS,1,1.2f);
+            level(p).sendParticles(ParticleTypes.SPLASH,prop.getX(),prop.getY()+1,prop.getZ(),20,.3,.2,.3,.1);
+        }
+        modifier(p,SPONGE,dry?SPONGE_SPEED:0);
+    }
+    private static boolean soaked(LivingEntity p,PropEntity prop){
+        if(p.isInWater()||p.isInLava()||p.isInFluidType())return true;
+        var level=p.level();var pos=BlockPos.containing(prop.getX(),prop.getY()+.1,prop.getZ());
+        return level.getBlockState(pos).getBlock() instanceof PuddleBlock||!level.getFluidState(pos).isEmpty();
+    }
+    /**
+     * 218/219: E fires the piston the way it faces (R turns it through all six directions; never moving map blocks): seekers and teammates in the two
+     * cells ahead are shoved away. A sticky piston instead grabs the teammates there: they ride its head and are pulled
+     * back with it when it retracts (E again).
+     */
+    private void piston(LivingEntity p,PropEntity prop,Runtime r,int now){
+        var state=prop.state();if(!(state.getBlock() instanceof net.minecraft.world.level.block.piston.PistonBaseBlock))return;
+        boolean sticky=prop.item().equals("minecraft:sticky_piston");var EXTENDED=net.minecraft.world.level.block.piston.PistonBaseBlock.EXTENDED;
+        if(state.getValue(EXTENDED)){
+            prop.state(state.setValue(EXTENDED,false));p.refreshDimensions();
+            p.level().playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.PISTON_CONTRACT,net.minecraft.sounds.SoundSource.BLOCKS,.8f,1);
+            r.stuckUntil=now+10; // pulled in next to the base, then let go
+            return;
+        }
+        var facing=state.getValue(net.minecraft.world.level.block.piston.PistonBaseBlock.FACING);
+        prop.state(state.setValue(EXTENDED,true));p.refreshDimensions();
+        p.level().playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.PISTON_EXTEND,net.minecraft.sounds.SoundSource.BLOCKS,.8f,1);
+        var step=new Vec3(facing.getStepX(),facing.getStepY(),facing.getStepZ());
+        var cell=new net.minecraft.world.phys.AABB(prop.getX()-.5,prop.getY(),prop.getZ()-.5,prop.getX()+.5,prop.getY()+1,prop.getZ()+.5).move(step);
+        var reach=cell.expandTowards(step).inflate(.05);
+        var seekers=match.seekers();r.stuck.clear();
+        for(var body:match.bodies()){
+            if(body==p||body.level()!=p.level())continue;
+            var disguise=match.prop(body.getUUID());boolean hider=match.hider(body.getUUID());
+            if(hider?disguise==null:!seekers.contains(body))continue;
+            if(!(hider?disguise.getBoundingBox():body.getBoundingBox()).intersects(reach))continue;
+            if(hider)match.unlock(body);
+            if(sticky&&hider){r.stuck.add(body.getUUID());continue;}
+            PropHuntMatch.impulse(body,step.scale(PISTON_PUSH).add(0,facing.getAxis().isHorizontal()?.35:0,0));
+        }
+        r.stuckUntil=Integer.MAX_VALUE;
+    }
+    /** 219: holds the stuck teammates against the sticky piston's head (two cells out, or one once retracted). */
+    private void stuck(PropEntity prop,Runtime r,int now){
+        var state=prop.state();
+        if(now>r.stuckUntil||!(state.getBlock() instanceof net.minecraft.world.level.block.piston.PistonBaseBlock)){r.stuck.clear();return;}
+        var facing=state.getValue(net.minecraft.world.level.block.piston.PistonBaseBlock.FACING);
+        int reach=state.getValue(net.minecraft.world.level.block.piston.PistonBaseBlock.EXTENDED)?2:1;
+        var anchor=prop.position().add(facing.getStepX()*reach,facing.getStepY()*reach,facing.getStepZ()*reach);
+        r.stuck.removeIf(id->{
+            var body=match.bodies().stream().filter(q->q.getUUID().equals(id)).findFirst().orElse(null);
+            if(body==null||match.prop(id)==null||body.position().distanceTo(anchor)>4)return true;
+            PropHuntMatch.impulse(body,anchor.subtract(body.position()).scale(.5));body.fallDistance=0;return false;
+        });
+    }
+    /** 214: what the cartography table's map shows its hider, or null when it is not open. */
+    public PropHuntSnapshot.Scout scout(UUID id){
+        var r=states.get(id);int now=match.now();if(r==null||r.scoutUntil<=now)return null;
+        var marks=new ArrayList<BombMatch.Mate>();
+        for(var body:match.bodies()){
+            var disguise=match.prop(body.getUUID());boolean hider=match.hider(body.getUUID());
+            // Seekers still held in their waiting room (hiding time) are shown too.
+            if(hider?disguise==null:!body.isAlive()||body.isSpectator())continue;
+            var at=hider?disguise.position():body.position();
+            marks.add(new BombMatch.Mate(hider?"ALPHA":"BRAVO",body.getUUID().toString(),at.x,at.z,body.getYRot()));
+        }
+        // The block list's test session has no map: no preview image, the minimap just frames everyone.
+        var map=match.map();
+        return new PropHuntSnapshot.Scout(map==null?"":map.id(),map==null?null:map.previewArea(),marks,(r.scoutUntil-now+19)/20);
+    }
     /** 39: the burst stream throws seekers and other hiders' disguises standing in it into the air. */
     private void burst(LivingEntity p,PropEntity prop,Runtime r,int now){
         if(now>=r.burst||!(prop.state().getBlock() instanceof NozzleBlock nozzle))return;
@@ -441,6 +614,11 @@ public final class PropAbilities {
         if(r.stun>now){p.setDeltaMovement(Vec3.ZERO);p.hurtMarked=true;if(r.stunPosition!=null)pin(p,r.stunPosition.x,r.stunPosition.y,r.stunPosition.z);}
         boolean beacon=match.bodies().stream().map(q->match.prop(q.getUUID())).anyMatch(other->other!=null&&other.item().equals("minecraft:beacon")&&other.open());
         modifier(p,BEACON,beacon?.2:0);
+        if(item.equals("minecraft:sponge"))sponge(p,prop);
+        if(item.equals(CLOCK)&&prop.state().hasProperty(DeskBlocks.Clock.ALARM)&&prop.state().getValue(DeskBlocks.Clock.ALARM)&&(now-r.born)%DeskBlocks.ALARM_PERIOD==0)
+            DeskBlocks.beep(p.level(),prop.getX(),prop.getY()+.3,prop.getZ());
+        if(item.equals(MONEY_CART))moneyCart(p,prop,r,moving);
+        if(!r.stuck.isEmpty())stuck(prop,r,now);
         if(item.equals("minecraft:sugar_cane")){int height=Math.min(3,1+(now-r.born)/1200);if(prop.height()!=height){prop.height(height);p.refreshDimensions();}}
         if(item.equals("minecraft:oak_sign")&&!match.locked(p.getUUID()))prop.state(prop.state().setValue(StandingSignBlock.ROTATION,Math.floorMod(Math.round(p.getYRot()*16/360),16)));
         if(Set.of("minecraft:minecart","gungang:mannequin","gungang:dried_ghast",EUNBI,HANBI,"minecraft:armor_stand","minecraft:tnt_minecart").contains(item)&&!match.locked(p.getUUID())){prop.setYRot(p.getYRot());prop.setYHeadRot(p.getYRot());prop.setYBodyRot(p.getYRot());}
@@ -474,7 +652,7 @@ public final class PropAbilities {
             for(int i=0;i<3;i++)level(p).sendParticles(random.nextBoolean()?ParticleTypes.FALLING_OBSIDIAN_TEAR:ParticleTypes.DRIPPING_OBSIDIAN_TEAR,box.minX+random.nextDouble()*box.getXsize(),box.minY+random.nextDouble()*box.getYsize(),box.minZ+random.nextDouble()*box.getZsize(),1,0,0,0,0);
             if((r.cry-now)%16==0)p.level().playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.WOLF_WHINE,net.minecraft.sounds.SoundSource.BLOCKS,1.2f,.7f+random.nextFloat()*.2f);
         }
-        // A brewing stand's invisibility (or a doll's cloak) hides the disguise itself from seekers (PropRenderer); shots still land.
+        // A brewing stand's invisibility (or a doll's cloak) hides the disguise itself from everyone while it lasts (PropRenderer); shots still land.
         boolean invisible=p.hasEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY)||r.cloak;if(prop.isInvisible()!=invisible)prop.setInvisible(invisible);
         if(prop.open()&&(item.equals("minecraft:sculk_sensor")||item.equals("minecraft:sculk_shrieker"))&&now%40==0)scream(level(p),prop);
         thermal(p,prop,r,now);
@@ -485,18 +663,11 @@ public final class PropAbilities {
         }
         song(p,prop,r,now);
         burst(p,prop,r,now);
+        crystal(p,prop,r,now);
         if(!match.hunting())return;
         storm(p,prop,r,now);
         // Hot spring water heals the hider soaking in it (only while hunting; seekers never touch the healing).
         if(item.equals("gungang:hot_spring_water"))HotSpringEffect.touch(p);
-        for(var it=r.bolts.iterator();it.hasNext();){var bolt=it.next();var target=match.seekers().stream().filter(q->q.getUUID().equals(bolt.target)&&q.level()==prop.level()).findFirst().orElse(null);
-            if(target==null||++bolt.age>100){it.remove();continue;}
-            var goal=target.getBoundingBox().getCenter();var step=goal.subtract(bolt.pos);var next=bolt.pos.add(step.normalize().scale(Math.min(.6,step.length())));
-            var hit=p.level().clip(new net.minecraft.world.level.ClipContext(bolt.pos,next,net.minecraft.world.level.ClipContext.Block.COLLIDER,net.minecraft.world.level.ClipContext.Fluid.NONE,p));
-            if(hit.getType()!=HitResult.Type.MISS){it.remove();continue;}
-            level(p).sendParticles(ParticleTypes.DRAGON_BREATH,next.x,next.y,next.z,5,.07,.07,.07,.01);bolt.pos=next;
-            if(next.distanceTo(goal)<.65){match.credit(target,p.getUUID());target.hurt(p.damageSources().magic(),50);level(p).sendParticles(ParticleTypes.EXPLOSION_EMITTER,next.x,next.y,next.z,1,0,0,0,0);p.level().playSound(null,target.blockPosition(),net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,net.minecraft.sounds.SoundSource.PLAYERS,1,1);it.remove();}
-        }
         if(now<r.contact)return;
         for(var target:match.seekers()){
             if(target.level()!=prop.level()||!target.getBoundingBox().inflate(.1).intersects(prop.getBoundingBox()))continue;

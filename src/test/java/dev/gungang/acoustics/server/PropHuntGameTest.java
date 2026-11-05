@@ -42,4 +42,26 @@ class PropHuntGameTest {
         assertEquals(4,changes);assertEquals("ALPHA",g.winner());
         assertEquals(5,PropHuntGame.draws(hunt));assertEquals(3,PropHuntGame.draws(PropHuntGame.HUNT));
     }
+    @Test void customHideTimeAndEvenlySpacedChanges(){
+        // 5 minutes, 4 changes: every (300-60)/4 = 60 s after a 20 s hiding time; the last one as the final minute starts.
+        int hunt=300*20,hide=20*20;var g=new PropHuntGame(IntStream.range(0,96).mapToObj(Integer::toString).toList(),List.of(a,b),new Random(1),hunt,hide,4);
+        assertEquals(hide+60*20,g.nextChange());
+        var at=new ArrayList<Integer>();for(int i=1;i<=hide+hunt;i++){if(g.tick())at.add(i);if(i==hide)assertEquals(PropHuntGame.Phase.HUNTING,g.phase());}
+        assertEquals(List.of(hide+1200,hide+2400,hide+3600,hide+4800),at);assertEquals("ALPHA",g.winner());
+        var none=new PropHuntGame(IntStream.range(0,96).mapToObj(Integer::toString).toList(),List.of(a),new Random(1),hunt,hide,0);
+        for(int i=0;i<hide+hunt;i++)assertFalse(none.tick());assertEquals(0,none.changeInterval());
+        // A hider needs one block per change plus the first: 1 + 4 for two hiders is 10 blocks.
+        assertThrows(IllegalArgumentException.class,()->new PropHuntGame(IntStream.range(0,9).mapToObj(Integer::toString).toList(),List.of(a,b),new Random(),hunt,hide,4));
+    }
+    @Test void firstComeListGoesToWhoeverClaimsFirst(){
+        var g=game();var list=g.openShared(2,new Random(7));assertEquals(2,list.size());
+        assertEquals(list,g.offers(a));assertEquals(list,g.offers(b));
+        assertTrue(g.claim(a,1));assertFalse(g.claim(b,1));assertEquals(List.of(1),g.takenByOthers(b));assertEquals(List.of(),g.takenByOthers(a));
+        // Nobody else draws an entry of the open list.
+        for(int i=0;i<94;i++)assertFalse(list.contains(g.draw()));
+        assertEquals(list.get(1),g.take(a,-1,new Random()));assertTrue(g.offers(a).isEmpty());
+        // Time ran out for b: the one block left on the list.
+        assertEquals(list.get(0),g.take(b,-1,new Random()));assertTrue(g.offers(b).isEmpty());
+        g.closeShared();assertFalse(g.sharing());assertThrows(IllegalStateException.class,g::draw);
+    }
 }

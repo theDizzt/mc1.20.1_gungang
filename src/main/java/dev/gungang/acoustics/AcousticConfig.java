@@ -15,7 +15,7 @@ public final class AcousticConfig {
     public static final ForgeConfigSpec.BooleanValue FONT_SMOOTHING;
     public static final ForgeConfigSpec.BooleanValue HUD_BOLD_TEXT;
     public static final ForgeConfigSpec.IntValue HUD_TEXT_SIZE;
-    public static final ForgeConfigSpec.BooleanValue TEAM_HUD, KILL_LOG, TEAM_SILHOUETTES, COMPASS, AUTO_SPRINT;
+    public static final ForgeConfigSpec.BooleanValue TEAM_HUD, LEGACY_TEAM_HUD, KILL_LOG, TEAM_SILHOUETTES, COMPASS, AUTO_SPRINT;
     public static final ForgeConfigSpec.BooleanValue ENABLED, DIFFRACTION, LOW_PASS, SHOOTER_HUD;
     public static final ForgeConfigSpec.DoubleValue REFERENCE_DISTANCE, ROLLOFF, WALL_STRENGTH, SMOOTHING;
     public static final ForgeConfigSpec.IntValue UPDATE_BUDGET, MAX_TRACE_DISTANCE, DIFFRACTION_RADIUS, HUD_OFFSET_X, HUD_OFFSET_Y, MIN_EFFECT_VOLUME;
@@ -49,6 +49,7 @@ public final class AcousticConfig {
         COMPASS = b.comment("Show heading compass and enemy gunshot bearings above the player health bar.").define("compass", true);
         AUTO_SPRINT = b.comment("Sprint automatically while moving forward; fire and aim input stop the sprint so guns stay usable.").define("autoSprint", true);
         TEAM_HUD = b.define("teamHud", true);
+        LEGACY_TEAM_HUD = b.comment("Draw teammates in the older wide layout (name, long health bar, item slot) instead of the compact one.").define("legacyTeamHud", false);
         KILL_LOG = b.define("killLog", true);
         TEAM_SILHOUETTES = b.define("teamSilhouettes", true);
         SHOOTER_HUD = b.comment("Replace the vanilla hotbar and hearts with a bottom-left shooter HUD. Independent of acoustic processing.")
