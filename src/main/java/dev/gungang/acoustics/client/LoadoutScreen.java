@@ -54,7 +54,15 @@ final class LoadoutScreen extends ArenaScreen {
         return groups.values().stream().flatMap(List::stream).toList();
     }
     private int capacity(){return Math.max(1,(height-140)/27);}
-    private int listWidth(){return Math.max(90,(body()-24)/3);}
+    /**
+     * Grid view (remembered for the session): five smaller tiles a row in a weapon area a little wider than the list's,
+     * leaving the detail panel room for its stat bars.
+     */
+    /** Grid view is the default (u269); the list view is one click away and kept for the rest of the session. */
+    private static boolean grid=true;
+    private int gridScroll,gridMax;
+    private boolean gridView(){return grid&&!presets;}
+    private int listWidth(){return gridView()?Math.max(150,Math.round((body()-24)*.42f)):Math.max(90,(body()-24)/3);}
     private int detailX(){return left()+22+listWidth();}
     /** Detail card: name header, then preview (left) beside stats (right), then description (full width). */
     private static final int PREVIEW_TOP=107,STAT_ROW=14;
@@ -68,11 +76,17 @@ final class LoadoutScreen extends ArenaScreen {
     @Override protected void init(){
         nameBox=null;
         int x=left()+12,w=body()-24,list=listWidth();
-        int tab=(w-16)/3;
-        tabButton("주무기 · 핫바 1",x,57,tab,22,!presets&&primary,()->{presets=false;primary=true;page=0;followRandom=false;select(state.primary());});
-        tabButton("보조무기 · 왼손",x+tab+8,57,tab,22,!presets&&!primary,()->{presets=false;primary=false;page=0;followRandom=false;select(state.secondary());});
-        tabButton("프리셋",x+(tab+8)*2,57,w-(tab+8)*2,22,presets,()->{presets=true;followRandom=false;selectPreset(presetSlot);});
+        // The two view icons (list / grid) sit at the right end of the tab row.
+        int toggles=VIEW_BUTTON*2+4+8,tab=(w-16-toggles)/3;
+        tabButton("주무기 · 핫바 1",x,57,tab,22,!presets&&primary,()->{presets=false;primary=true;page=0;gridScroll=0;followRandom=false;select(state.primary());});
+        tabButton("보조무기 · 왼손",x+tab+8,57,tab,22,!presets&&!primary,()->{presets=false;primary=false;page=0;gridScroll=0;followRandom=false;select(state.secondary());});
+        tabButton("프리셋",x+(tab+8)*2,57,w-toggles-(tab+8)*2,22,presets,()->{presets=true;followRandom=false;selectPreset(presetSlot);});
+        if(!presets){
+            button(Component.empty(),x+w-VIEW_BUTTON*2-4,57,VIEW_BUTTON,22,true,grid?MUTED:ACCENT,()->{grid=false;rebuildWidgets();});
+            button(Component.empty(),x+w-VIEW_BUTTON,57,VIEW_BUTTON,22,true,grid?ACCENT:MUTED,()->{grid=true;rebuildWidgets();});
+        }
         if(presets){initPresets(x,w,list);return;}
+        if(grid){initActions(x,w,list);return;}
         page=Math.min(page,Math.max(0,weapons().size()-capacity()));
         for(int i=page;i<Math.min(weapons().size(),page+capacity());i++){
             var weapon=weapons().get(i);String equipped=primary?state.primary():state.secondary();
@@ -82,8 +96,12 @@ final class LoadoutScreen extends ArenaScreen {
             label.append(Component.literal(weapon.name()).withStyle(worn?net.minecraft.ChatFormatting.GOLD:net.minecraft.ChatFormatting.WHITE));
             // The category is drawn right-aligned over the reserved padding in render().
             listButton(label,x,85+(i-page)*27,list-6,24,true,
-                    weapon.id().equals(selected().id())?ACCENT:MUTED,9,categoryWidth(weapon)+6,()->clickWeapon(weapon.id()));
+                    weapon.id().equals(selected().id())?ACCENT:MUTED,9,categoryWidth(weapon)+6+silhouetteWidth(),()->clickWeapon(weapon.id()));
         }
+        initActions(x,w,list);
+    }
+    private static final int VIEW_BUTTON=22;
+    private void initActions(int x,int w,int list){
         button("랜덤 무기",x,height-48,list-6,22,state.allowed(),TacticalStyle.GOLD,()->{followRandom=true;LobbyClient.action("randomLoadout","","");});
         boolean worn=selected().id().equals(primary?state.primary():state.secondary());
         Runnable equip=()->LobbyClient.action(primary?"primary":"secondary",selected().id(),"");
@@ -208,15 +226,183 @@ final class LoadoutScreen extends ArenaScreen {
             if(scroll>0)g.fillGradient(dx,top,right-2,top+8,0xC0141511,0x00141511);
             if(scroll<maxScroll)g.fillGradient(dx,bottom-8,right-2,bottom,0x00141511,0xC0141511);
         }
-        if(weapons().size()>capacity()){
+        if(grid)renderGrid(g,mouseX,mouseY);
+        else if(weapons().size()>capacity()){
             int track=capacity()*27-3,thumb=Math.max(12,track*capacity()/weapons().size()),ty=85+(track-thumb)*page/(weapons().size()-capacity());
             g.fill(x+listWidth()-3,85,x+listWidth()-2,85+track,TacticalStyle.TRACK);TacticalStyle.round(g,x+listWidth()-4,ty,3,thumb,ACCENT);
         }
         super.render(g,mouseX,mouseY,partial);
-        for(int i=page;i<Math.min(weapons().size(),page+capacity());i++){
-            var item=weapons().get(i);int cw=categoryWidth(item)-6;String category=font.plainSubstrByWidth(item.category(),Math.max(1,cw));
-            g.drawString(font,category,x+listWidth()-12-font.width(category),85+(i-page)*27+8,DIM,false);
+        viewIcons(g,x+w);
+        if(!grid){
+            renderSilhouettes(g,x);
+            for(int i=page;i<Math.min(weapons().size(),page+capacity());i++){
+                var item=weapons().get(i);int cw=categoryWidth(item)-6;String category=font.plainSubstrByWidth(item.category(),Math.max(1,cw));
+                g.drawString(font,category,x+listWidth()-12-font.width(category),85+(i-page)*27+8,DIM,false);
+            }
         }
+    }
+    // ---- list view: each row shows the weapon's side profile as a flat silhouette left of its category ----
+    private static com.mojang.blaze3d.pipeline.TextureTarget silhouettes;
+    private int silhouetteWidth(){int w=listWidth();return w<120?0:Math.min(56,Math.max(26,w/4));}
+    /**
+     * Draws every visible row's model into an offscreen target with the colour pushed far past 1 (each covered pixel
+     * saturates to white, keeping the model's alpha), then lays that mask over the screen once, tinted: a flat shape
+     * whatever the textures. The selected row's silhouette is lit in the accent colour.
+     */
+    private void renderSilhouettes(GuiGraphics g,int x){
+        int sw=silhouetteWidth();if(sw==0)return;
+        var window=minecraft.getWindow();int fw=window.getWidth(),fh=window.getHeight();
+        String chosen=selected().id();
+        for(int pass=0;pass<2;pass++){
+            boolean any=false;
+            for(int i=page;i<Math.min(weapons().size(),page+capacity());i++){
+                var weapon=weapons().get(i);if(weapon.id().equals(chosen)!=(pass==1))continue;
+                var stack=PreviewCache.item(weapon.id(),primary);if(stack==null||stack.isEmpty())continue;
+                if(!any){
+                    g.flush();
+                    if(silhouettes==null)silhouettes=new com.mojang.blaze3d.pipeline.TextureTarget(fw,fh,true,net.minecraft.client.Minecraft.ON_OSX);
+                    else if(silhouettes.width!=fw||silhouettes.height!=fh)silhouettes.resize(fw,fh,net.minecraft.client.Minecraft.ON_OSX);
+                    silhouettes.setClearColor(0,0,0,0);silhouettes.clear(net.minecraft.client.Minecraft.ON_OSX);silhouettes.bindWrite(true);
+                    com.mojang.blaze3d.systems.RenderSystem.setShaderColor(64,64,64,1);any=true;
+                }
+                int right=x+listWidth()-12-(categoryWidth(weapon)-6)-6;
+                silhouette(g,stack,right-sw,85+(i-page)*27+3,sw,18);
+            }
+            if(!any)continue;
+            g.flush();com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1,1,1,1);
+            minecraft.getMainRenderTarget().bindWrite(true);
+            int tint=pass==1?ACCENT:0xFFB8B8A8;float alpha=pass==1?.9f:.55f;
+            com.mojang.blaze3d.systems.RenderSystem.enableBlend();com.mojang.blaze3d.systems.RenderSystem.defaultBlendFunc();
+            com.mojang.blaze3d.systems.RenderSystem.disableDepthTest();
+            com.mojang.blaze3d.systems.RenderSystem.setShader(net.minecraft.client.renderer.GameRenderer::getPositionTexShader);
+            com.mojang.blaze3d.systems.RenderSystem.setShaderTexture(0,silhouettes.getColorTextureId());
+            com.mojang.blaze3d.systems.RenderSystem.setShaderColor((tint>>16&255)/255f,(tint>>8&255)/255f,(tint&255)/255f,alpha);
+            var matrix=g.pose().last().pose();var buffer=com.mojang.blaze3d.vertex.Tesselator.getInstance().getBuilder();
+            float w=width,h=height,z=350;
+            buffer.begin(com.mojang.blaze3d.vertex.VertexFormat.Mode.QUADS,com.mojang.blaze3d.vertex.DefaultVertexFormat.POSITION_TEX);
+            buffer.vertex(matrix,0,h,z).uv(0,0).endVertex();buffer.vertex(matrix,w,h,z).uv(1,0).endVertex();
+            buffer.vertex(matrix,w,0,z).uv(1,1).endVertex();buffer.vertex(matrix,0,0,z).uv(0,1).endVertex();
+            com.mojang.blaze3d.vertex.BufferUploader.drawWithShader(buffer.end());
+            com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1,1,1,1);com.mojang.blaze3d.systems.RenderSystem.enableDepthTest();
+        }
+    }
+    /** The model seen straight from the side, fitted to {@code w}×{@code h}. */
+    private void silhouette(GuiGraphics g,net.minecraft.world.item.ItemStack stack,int x,int y,int w,int h){
+        float[] box=bounds(stack);
+        float dx=box==null?1:Math.max(.05f,box[3]-box[0]),dy=box==null?1:Math.max(.05f,box[4]-box[1]);
+        float size=Math.min(w/dx,h/dy);
+        // Clipped to the row button (its 24px height, the reserved width): a model whose measured bounds miss part of it
+        // (a renderer that draws outside the probe) must not spill over neighbouring rows.
+        g.enableScissor(x,y-2,x+w,y+h+2);
+        g.pose().pushPose();g.pose().translate(x+w/2f,y+h/2f,150);g.pose().scale(size,-size,size);
+        if(box!=null)g.pose().translate(-(box[0]+box[3])/2,-(box[1]+box[4])/2,-(box[2]+box[5])/2);
+        Lighting.setupFor3DItems();
+        minecraft.getItemRenderer().renderStatic(stack,ItemDisplayContext.FIXED,LightTexture.FULL_BRIGHT,OverlayTexture.NO_OVERLAY,g.pose(),g.bufferSource(),minecraft.level,0);
+        g.pose().popPose();
+        g.flush();g.disableScissor();
+    }
+    /** List icon (three bars) and grid icon (2×2 squares) over the two view buttons. */
+    private void viewIcons(GuiGraphics g,int right){
+        int listX=right-VIEW_BUTTON*2-4+6,gridX=right-VIEW_BUTTON+6,top=57+6;
+        int listColor=grid?MUTED:ACCENT,gridColor=grid?ACCENT:MUTED;
+        g.pose().pushPose();g.pose().translate(0,0,400);
+        for(int i=0;i<3;i++){g.fill(listX,top+i*4,listX+2,top+i*4+2,listColor);g.fill(listX+3,top+i*4,listX+10,top+i*4+2,listColor);}
+        for(int i=0;i<2;i++)for(int j=0;j<2;j++)g.fill(gridX+i*6,top+j*6-1,gridX+i*6+4,top+j*6+3,gridColor);
+        g.pose().popPose();
+    }
+    // ---- grid view: grouped by category, five square tiles a row ----
+    private static final int COLUMNS=5,GAP=3,HEADER=14,GRID_TOP=85;
+    /** A category header (weapon null) or a weapon tile, in content coordinates (y before scrolling). */
+    private record Cell(Loadouts.Weapon weapon,String header,int x,int y){}
+    private int gridBottom(){return height-54;}
+    private int tileSize(){return Math.max(16,(listWidth()-10-GAP*(COLUMNS-1))/COLUMNS);}
+    private List<Cell> gridCells(){
+        var cells=new ArrayList<Cell>();int x=left()+12,tile=tileSize(),y=0,column=0;String category=null;
+        for(var weapon:weapons()){
+            if(!weapon.category().equals(category)){
+                if(category!=null&&column>0)y+=tile+GAP;
+                category=weapon.category();cells.add(new Cell(null,category,x,y));y+=HEADER;column=0;
+            }
+            cells.add(new Cell(weapon,null,x+column*(tile+GAP),y));
+            if(++column==COLUMNS){column=0;y+=tile+GAP;}
+        }
+        if(column>0)y+=tile+GAP;
+        gridMax=Math.max(0,y-(gridBottom()-GRID_TOP));gridScroll=Math.max(0,Math.min(gridScroll,gridMax));
+        return cells;
+    }
+    private void renderGrid(GuiGraphics g,int mouseX,int mouseY){
+        int x=left()+12,tile=tileSize(),areaRight=x+listWidth()-6,bottom=gridBottom();
+        var cells=gridCells();String equipped=primary?state.primary():state.secondary(),chosen=selected().id();
+        g.enableScissor(x,GRID_TOP,areaRight,bottom);
+        for(var cell:cells){
+            int y=GRID_TOP+cell.y()-gridScroll;
+            if(y>bottom||y+(cell.weapon()==null?HEADER:tile)<GRID_TOP)continue;
+            if(cell.weapon()==null){
+                g.drawString(font,cell.header(),x,y+3,DIM,false);
+                int line=x+font.width(cell.header())+6;if(line<areaRight-6)g.fill(line,y+7,areaRight-6,y+8,TacticalStyle.HAIRLINE);
+                continue;
+            }
+            var weapon=cell.weapon();int cx=cell.x();
+            boolean hover=mouseX>=cx&&mouseX<cx+tile&&mouseY>=y&&mouseY<y+tile&&mouseY>=GRID_TOP&&mouseY<bottom;
+            boolean worn=weapon.id().equals(equipped),picked=weapon.id().equals(chosen);
+            TacticalStyle.round(g,cx,y,tile,tile,0xFF1A1B15);
+            g.fillGradient(cx+1,y+1,cx+tile-1,y+tile-1,hover?0xFF2E3024:0xFF24261D,0xFF11120E);
+            // Each model stays inside its own tile (a long rifle used to spill over its neighbours); scissors nest,
+            // so this also stays inside the grid area.
+            g.flush();g.enableScissor(cx+1,y+1,cx+tile-1,y+tile-1);
+            tileModel(g,weapon,cx,y,tile);
+            g.flush();g.disableScissor();
+            // Overlays above the 3D model (z 150).
+            g.pose().pushPose();g.pose().translate(0,0,300);
+            int edge=picked?ACCENT:worn?TacticalStyle.GOLD:hover?MUTED:0;
+            if(edge!=0){g.fill(cx,y,cx+tile,y+1,edge);g.fill(cx,y+tile-1,cx+tile,y+tile,edge);g.fill(cx,y,cx+1,y+tile,edge);g.fill(cx+tile-1,y,cx+tile,y+tile,edge);}
+            if(worn)g.fill(cx+3,y+3,cx+6,y+6,TacticalStyle.GOLD);
+            // Id small at the top right; name at the bottom left over a dark strip.
+            float idScale=.55f,nameScale=.65f;
+            String id=font.plainSubstrByWidth(weapon.id(),Math.max(1,(int)((tile-10)/idScale)));
+            small(g,id,cx+tile-3-font.width(id)*idScale,y+3,idScale,0xFFC8B060);
+            g.fill(cx+1,y+tile-9,cx+tile-1,y+tile-1,0x99000000);
+            String name=font.plainSubstrByWidth(weapon.name(),Math.max(1,(int)((tile-5)/nameScale)));
+            small(g,name,cx+3,y+tile-7,nameScale,worn?TacticalStyle.GOLD:INK);
+            g.pose().popPose();
+        }
+        g.flush();g.disableScissor();
+        if(gridMax>0){
+            int track=bottom-GRID_TOP,thumb=Math.max(12,track*track/(track+gridMax)),ty=GRID_TOP+(track-thumb)*gridScroll/gridMax;
+            g.fill(x+listWidth()-3,GRID_TOP,x+listWidth()-2,bottom,TacticalStyle.TRACK);TacticalStyle.round(g,x+listWidth()-4,ty,3,thumb,ACCENT);
+        }
+    }
+    private void small(GuiGraphics g,String text,float x,float y,float scale,int color){
+        g.pose().pushPose();g.pose().translate(x,y,0);g.pose().scale(scale,scale,1);g.drawString(font,text,0,0,color,false);g.pose().popPose();
+    }
+    /** The weapon's model at the detail preview's resting angle, fitted to the tile. */
+    private void tileModel(GuiGraphics g,Loadouts.Weapon weapon,int x,int y,int tile){
+        var stack=PreviewCache.item(weapon.id(),primary);
+        if(stack==null||stack.isEmpty()){String mark=stack==null?"…":"-";g.drawString(font,mark,x+(tile-font.width(mark))/2,y+tile/2-6,DIM,false);return;}
+        float[] box=bounds(stack);
+        float dx=box==null?1:box[3]-box[0],dy=box==null?1:box[4]-box[1],dz=box==null?0:box[5]-box[2];
+        float diagonal=Math.max(.1f,(float)Math.sqrt(dx*dx+dy*dy+dz*dz)),size=tile*.95f/diagonal;
+        g.pose().pushPose();g.pose().translate(x+tile/2f,y+tile/2f-3,150);
+        g.pose().scale(size,-size,size);g.pose().mulPose(Axis.XP.rotationDegrees(12));g.pose().mulPose(Axis.YP.rotationDegrees(-25));
+        if(box!=null)g.pose().translate(-(box[0]+box[3])/2,-(box[1]+box[4])/2,-(box[2]+box[5])/2);
+        Lighting.setupFor3DItems();
+        minecraft.getItemRenderer().renderStatic(stack,ItemDisplayContext.FIXED,LightTexture.FULL_BRIGHT,OverlayTexture.NO_OVERLAY,g.pose(),g.bufferSource(),minecraft.level,0);
+        g.flush();g.pose().popPose();
+    }
+    private boolean inGrid(double x,double y){int left=left()+12;return gridView()&&x>=left&&x<left+listWidth()-6&&y>=GRID_TOP&&y<gridBottom();}
+    @Override public boolean mouseClicked(double x,double y,int button){
+        if(button==0&&inGrid(x,y)){
+            int tile=tileSize();
+            for(var cell:gridCells()){
+                if(cell.weapon()==null)continue;int cy=GRID_TOP+cell.y()-gridScroll;
+                if(x>=cell.x()&&x<cell.x()+tile&&y>=cy&&y<cy+tile){
+                    minecraft.getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK,1));
+                    clickWeapon(cell.weapon().id());return true;
+                }
+            }
+            return true;
+        }
+        return super.mouseClicked(x,y,button);
     }
     private record Row(String label,String value,float fraction,int height,boolean header,boolean note) {
         Row(String label,String value,float fraction,int height){this(label,value,fraction,height,false,false);}
@@ -241,7 +427,6 @@ final class LoadoutScreen extends ArenaScreen {
         return rows;
     }
     /** One line per stat: label, bar, value. Rows without a comparable number show the value text only. */
-    private static final int VALUE_W=46;
     private static final List<String> FIXED_LABELS=List.of("최대 체력","이동 속도","피해량","명중률","안정성","사거리","연사력","재사용 대기시간");
     /** Widest label any weapon can show, so bar length does not depend on the selected weapon's text. */
     private int labelColumn(){
@@ -250,19 +435,28 @@ final class LoadoutScreen extends ArenaScreen {
         for(var weapon:state.catalog().secondary())for(var row:weapon.stats())width=Math.max(width,font.width(row.name()));
         return width;
     }
+    /**
+     * The bar runs the whole width after the label and the value sits over its right end, outlined in black, so the
+     * bar shows however narrow the panel is.
+     */
     private void statPanel(GuiGraphics g,List<Row> rows,int x1,int y1,int x2,int h){
-        int labelW=labelColumn(),valueW=VALUE_W;
-        int barX=x1+labelW+6,barEnd=x2-valueW-4,y=y1+Math.max(0,(h-rows.size()*STAT_ROW)/2)+3;
+        int labelW=labelColumn();
+        int barX=x1+labelW+6,barEnd=x2,y=y1+Math.max(0,(h-rows.size()*STAT_ROW)/2)+3;
         g.enableScissor(x1,y1,x2,y1+h);
         for(var row:rows){
             g.drawString(font,row.label(),x1,y,MUTED,false);
-            String value=font.plainSubstrByWidth(row.value(),Math.max(1,row.fraction()>=0?valueW:x2-barX));
-            if(row.fraction()<0||barEnd-barX<16){g.drawString(font,value,row.fraction()<0?barX:x2-font.width(value),y,ACCENT,false);y+=STAT_ROW;continue;}
-            g.drawString(font,value,x2-font.width(value),y,INK,false);
+            String value=font.plainSubstrByWidth(row.value(),Math.max(1,x2-barX));
+            if(row.fraction()<0||barEnd-barX<8){g.drawString(font,value,row.fraction()<0?barX:x2-font.width(value),y,ACCENT,false);y+=STAT_ROW;continue;}
             TacticalStyle.meter(g,barX,y+2,barEnd-barX,5,row.fraction(),ACCENT);
+            outlined(g,value,x2-font.width(value)-1,y,INK);
             y+=STAT_ROW;
         }
         g.disableScissor();
+    }
+    /** Text with a one-pixel black outline, readable over the bar. */
+    private void outlined(GuiGraphics g,String text,int x,int y,int color){
+        for(int dx=-1;dx<=1;dx++)for(int dy=-1;dy<=1;dy++)if(dx!=0||dy!=0)g.drawString(font,text,x+dx,y+dy,0xFF000000,false);
+        g.drawString(font,text,x,y,color,false);
     }
     private void stat(List<Row> rows,String label,String value,Function<Loadouts.Weapon,String> accessor){rows.add(new Row(label,value,WeaponStatScale.fraction(value,weapons().stream().map(accessor).toList()),STAT_ROW));}
     private void heading(List<Row> rows,String text){rows.add(new Row(text,"",-1,14,true,false));}
@@ -328,7 +522,8 @@ final class LoadoutScreen extends ArenaScreen {
     private boolean inPreview(double x,double y){return x>=detailX()+4&&x<detailX()+4+previewWidth()&&y>=PREVIEW_TOP&&y<PREVIEW_TOP+middleHeight();}
     @Override public boolean mouseScrolled(double x,double y,double delta){
         if(presets)return super.mouseScrolled(x,y,delta);
-        if(x<left()+12+listWidth()){page=Math.max(0,Math.min(Math.max(0,weapons().size()-capacity()),page-(int)Math.signum(delta)*2));rebuildWidgets();}
+        if(inGrid(x,y)){gridCells();gridScroll=Math.max(0,Math.min(gridMax,gridScroll-(int)Math.signum(delta)*24));}
+        else if(x<left()+12+listWidth()){page=Math.max(0,Math.min(Math.max(0,weapons().size()-capacity()),page-(int)Math.signum(delta)*2));rebuildWidgets();}
         else if(inPreview(x,y))zoom=Math.max(.3f,Math.min(3f,zoom+(float)delta*.1f));
         else scroll=Math.max(0,Math.min(maxScroll,scroll-(int)Math.signum(delta)*24));return true;
     }
@@ -336,7 +531,10 @@ final class LoadoutScreen extends ArenaScreen {
         if(presets)return super.mouseDragged(x,y,button,dx,dy);
         if(button==0&&inPreview(x,y)){yaw+=(float)dx*2;pitch=Math.max(-85,Math.min(85,pitch+(float)dy));return true;}
         int edge=left()+12+listWidth();
-        if(button==0&&x>=edge-8&&x<=edge+2&&weapons().size()>capacity()){
+        if(button==0&&gridView()&&x>=edge-8&&x<=edge+2&&y>=GRID_TOP&&y<gridBottom()&&gridMax>0){
+            gridScroll=Math.max(0,Math.min(gridMax,(int)((y-GRID_TOP)/(double)(gridBottom()-GRID_TOP)*gridMax)));return true;
+        }
+        if(button==0&&!gridView()&&x>=edge-8&&x<=edge+2&&weapons().size()>capacity()){
             page=Math.max(0,Math.min(weapons().size()-capacity(),(int)((y-85)/(capacity()*27.0)*(weapons().size()-capacity()))));rebuildWidgets();return true;
         }
         return super.mouseDragged(x,y,button,dx,dy);

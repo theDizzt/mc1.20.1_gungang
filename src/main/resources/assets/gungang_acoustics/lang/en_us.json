@@ -48,6 +48,8 @@
   "gungang.options.teamHud.tip": "Show teammate portraits, health and weapons at the top left, with the same width as your HUD. Only slots and health bars have translucent backgrounds.",
   "gungang.options.legacyTeamHud": "Legacy team HUD",
   "gungang.options.legacyTeamHud.tip": "On: the older teammate layout (name, long health bar, item slot). Off: the compact design with the number badge and item beside the portrait, a short health bar and the health below.",
+  "gungang.options.lcdTimer": "LCD timer",
+  "gungang.options.lcdTimer.tip": "On: the seven-segment LCD match clock. Off: the GUNGANG-font display with a glow and an animation on every digit change.",
   "gungang.options.killLog": "Kill feed",
   "gungang.options.killLog.tip": "Right-aligned face/name KILLED or DIED notices below the large timer. Up to five notices for eight seconds.",
   "gungang.options.teamSilhouettes": "Black teammate silhouettes",

@@ -1,13 +1,18 @@
 package dev.gungang.acoustics.client;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import dev.gungang.acoustics.AcousticConfig;
 import dev.gungang.acoustics.GungangAcoustics;
 import dev.gungang.acoustics.server.MatchReport;
 import dev.gungang.acoustics.server.MatchSnapshot;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 
-/** LCD font baked into optically centered cells; no TTF bearings or scissor clipping. */
+/**
+ * Match clock. Default: GUNGANG-font display with a glow, HUD brackets and a per-digit change animation.
+ * The {@code lcdTimer} HUD option restores the LCD font baked into optically centered cells.
+ */
 final class MatchTimerHud {
     private static final ResourceLocation ATLAS = new ResourceLocation(GungangAcoustics.ID,"textures/gui/timer.png");
     /** Final-countdown pop: each new number starts this much larger and settles over POP_SECONDS. */
@@ -28,7 +33,10 @@ final class MatchTimerHud {
         drawAt(g,state,0,0);g.pose().popPose();
     }
     /** Normal mm:ss clock, or a bare "10, 9, 8 ..." in warm colours with a scale-down pop per second. */
-    static void drawAt(GuiGraphics g,MatchSnapshot state,float centerX,int y) {
+    static void drawAt(GuiGraphics g,MatchSnapshot state,float centerX,int y) {drawAt(g,state,centerX,y,false);}
+    /** {@code brackets}: corner brackets around the GUNGANG-font clock; the LCD clock ignores it. */
+    static void drawAt(GuiGraphics g,MatchSnapshot state,float centerX,int y,boolean brackets) {
+        if(!AcousticConfig.LCD_TIMER.get()){FutureTimer.draw(g,state,centerX,y,brackets);return;}
         int second=state.seconds();long now=System.nanoTime();
         if(second!=lastSecond){lastSecond=second;changedAt=now;}
         float elapsed=(now-changedAt)/1e9f;
@@ -48,6 +56,7 @@ final class MatchTimerHud {
         g.pose().popPose();
     }
     static void drawAt(GuiGraphics g,String text,float centerX,int y) {
+        if(!AcousticConfig.LCD_TIMER.get()){FutureTimer.draw(g,text,centerX,y);return;}
         glyphs(g,text,Math.round(centerX-text.length()*5),y,false,1);
     }
     private static void glyphs(GuiGraphics g,String text,float x,float y,boolean warm,float colon) {

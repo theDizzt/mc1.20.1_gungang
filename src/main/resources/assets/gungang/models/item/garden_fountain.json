@@ -1,0 +1,124 @@
+{
+ "parent": "gungang:block/garden_fountain",
+ "display": {
+  "gui": {
+   "rotation": [
+    30,
+    225,
+    0
+   ],
+   "translation": [
+    4.005,
+    -0.688,
+    0.0
+   ],
+   "scale": [
+    0.354,
+    0.354,
+    0.354
+   ]
+  },
+  "ground": {
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "translation": [
+    -1.584,
+    1.416,
+    -1.584
+   ],
+   "scale": [
+    0.198,
+    0.198,
+    0.198
+   ]
+  },
+  "fixed": {
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "translation": [
+    -2.64,
+    -2.64,
+    -2.64
+   ],
+   "scale": [
+    0.33,
+    0.33,
+    0.33
+   ]
+  },
+  "thirdperson_righthand": {
+   "rotation": [
+    75,
+    45,
+    0
+   ],
+   "translation": [
+    -2.24,
+    2.09,
+    -1.53
+   ],
+   "scale": [
+    0.198,
+    0.198,
+    0.198
+   ]
+  },
+  "firstperson_righthand": {
+   "rotation": [
+    0,
+    45,
+    0
+   ],
+   "translation": [
+    -2.613,
+    -1.848,
+    0.0
+   ],
+   "scale": [
+    0.23099999999999998,
+    0.23099999999999998,
+    0.23099999999999998
+   ]
+  },
+  "firstperson_lefthand": {
+   "rotation": [
+    0,
+    225,
+    0
+   ],
+   "translation": [
+    2.613,
+    -1.848,
+    0.0
+   ],
+   "scale": [
+    0.23099999999999998,
+    0.23099999999999998,
+    0.23099999999999998
+   ]
+  },
+  "thirdperson_lefthand": {
+   "rotation": [
+    75,
+    45,
+    0
+   ],
+   "translation": [
+    -2.24,
+    2.09,
+    -1.53
+   ],
+   "scale": [
+    0.198,
+    0.198,
+    0.198
+   ]
+  }
+ }
+}

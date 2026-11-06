@@ -98,6 +98,30 @@ public final class LobbyManager {
         if(!phase.equals("LOBBY"))throw new IllegalStateException("경기 준비/진행 중에는 맵 영역을 변경할 수 없습니다.");
     }
     static void refreshModifiedSettings() throws Exception {reload(true);}
+    static String phase() {return phase;}
+    /**
+     * Live weapon patch: re-reads the weapon catalog without the lobby-only full reload (ready states and the match
+     * are kept), then re-applies health/speed and the item name for everyone currently using that primary weapon.
+     */
+    static void refreshPatchedWeapon(String id) throws java.io.IOException {
+        var weapons=Loadouts.load();
+        loadouts=weapons;
+        var weapon=weapons.primary().stream().filter(w->w.id().equals(id)).findFirst().orElse(null);
+        if(weapon!=null&&server!=null)for(var p:server.getPlayerList().getPlayers()){
+            String current;
+            if(phase.equals("LOBBY")){var free=FREE_SELECTION.get(p.getUUID());current=free==null?null:free[0];}
+            else{var e=PLAYERS.get(p.getUUID());current=e==null?null:e.primary;}
+            if(!id.equals(current)||!p.isAlive()||!LoadoutAttributes.active(p))continue;
+            LoadoutAttributes.apply(p,weapon);
+            for(int i=0;i<p.getInventory().getContainerSize();i++){
+                var stack=p.getInventory().getItem(i);
+                if(stack.hasTag()&&(stack.getTag().contains(TAG)&&stack.getTag().getInt(TAG)==0||stack.getTag().contains("GunGangFreeSlot")&&stack.getTag().getInt("GunGangFreeSlot")==0))
+                    stack.setHoverName(Component.literal(weapon.name()));
+            }
+            p.inventoryMenu.broadcastChanges();
+        }
+        broadcast(false);
+    }
     static void refreshEditedMaps() throws java.io.IOException {
         requireMapEditing();
         var maps=ServerFiles.loadMaps(ServerFiles.root());
@@ -202,7 +226,7 @@ public final class LobbyManager {
         // fallback for the console and vanilla clients, and "off" for everyone who disguised from the list.
         root.then(Commands.literal("prop").then(Commands.literal("list").executes(c -> {
             if (MatchManager.active()) { c.getSource().sendFailure(Component.literal("경기 준비·진행 중에는 변신 블록 목록을 사용할 수 없습니다.")); return 0; }
-            if (c.getSource().getEntity() instanceof ServerPlayer p && GungangNetwork.installed(p)) { GungangNetwork.send(p, new GungangNetwork.PropList()); return 1; }
+            if (c.getSource().getEntity() instanceof ServerPlayer p) { openPropList(p); return 1; }
             for (var line : PropCatalog.listing()) c.getSource().sendSystemMessage(line);
             return 1;
         })).then(Commands.literal("off").executes(c -> { propMorph(c.getSource().getPlayerOrException(), "off"); return 1; })));
@@ -257,6 +281,12 @@ public final class LobbyManager {
      * Disguise button of the block list: outside matches anyone becomes the chosen block (by catalog number) with the
      * hider controls of the prop hunt test session; "off" restores inventory, game mode and health.
      */
+    /** The prop list screen (/gungang prop list, the capsule machine): lobby only; vanilla clients get the text listing. */
+    static void openPropList(ServerPlayer p) {
+        if (MatchManager.active()) { p.displayClientMessage(Component.literal("경기 준비·진행 중에는 변신 블록 목록을 사용할 수 없습니다.").withStyle(ChatFormatting.RED), true); return; }
+        if (GungangNetwork.installed(p)) { GungangNetwork.send(p, new GungangNetwork.PropList()); return; }
+        for (var line : PropCatalog.listing()) p.sendSystemMessage(line);
+    }
     static void propMorph(ServerPlayer p, String value) {
         if (MatchManager.active()) { p.sendSystemMessage(Component.literal("경기 준비·진행 중에는 변신할 수 없습니다.").withStyle(net.minecraft.ChatFormatting.RED)); return; }
         if (value.equals("off")) {
@@ -290,7 +320,8 @@ public final class LobbyManager {
         int now = server.getTickCount();
         boolean preview=action.action().equals("mapPreview")||action.action().equals("weaponPreview");
         var rate=preview?LAST_PREVIEW:LAST_ACTION;
-        if (now - rate.getOrDefault(sender.getUUID(), -100) < (preview?10:4)) return;
+        // Weapon previews are a cached item stack each (the loadout grid asks for a whole category); map previews are images.
+        if (now - rate.getOrDefault(sender.getUUID(), -100) < (action.action().equals("weaponPreview")?2:preview?10:4)) return;
         rate.put(sender.getUUID(), now);
         try {
             if(action.action().equals("bombSpectate")){
@@ -1034,7 +1065,7 @@ public final class LobbyManager {
     @SubscribeEvent public static void hurt(LivingHurtEvent event) {
         var ffa=MatchManager.freeForAll();
         if(ffa!=null&&((event.getEntity() instanceof ServerPlayer p&&ffa.participant(p.getUUID())&&ffa.opening())
-            ||(event.getSource().getEntity() instanceof ServerPlayer attacker&&attacker!=event.getEntity()&&FreeForAllMatch.blocked(attacker)))){
+            ||(event.getSource().getEntity() instanceof ServerPlayer attacker&&attacker!=event.getEntity()&&FreeForAllMatch.blocked(attacker)&&!Turrets.shot(event.getSource())))){
             event.setCanceled(true);return;
         }
         if(MatchManager.bomb()!=null&&!MatchManager.bomb().activePlay()&&event.getEntity() instanceof ServerPlayer p&&PLAYERS.containsKey(p.getUUID())){event.setCanceled(true);return;}

@@ -15,8 +15,9 @@ final class PropObjectRenderer {
             stand.setYRot(yaw);stand.yRotO=yaw;stand.yBodyRot=yaw;stand.yBodyRotO=yaw;stand.yHeadRot=yaw;stand.yHeadRotO=yaw;
             mc.getEntityRenderDispatcher().render(stand,0,0,0,yaw,partial,pose,buffers,light);return true;
         }
-        if(prop.item().equals("minecraft:minecart")||prop.item().equals("minecraft:tnt_minecart")||prop.item().equals("minecraft:end_crystal")){
-            net.minecraft.world.entity.Entity object=prop.item().equals("minecraft:minecart")?EntityType.MINECART.create(prop.level()):prop.item().equals("minecraft:tnt_minecart")?EntityType.TNT_MINECART.create(prop.level()):EntityType.END_CRYSTAL.create(prop.level());
+        boolean money=prop.item().equals("gungang:money_cart");
+        if(prop.item().equals("minecraft:minecart")||money||prop.item().equals("minecraft:tnt_minecart")||prop.item().equals("minecraft:end_crystal")){
+            net.minecraft.world.entity.Entity object=prop.item().equals("minecraft:minecart")||money?EntityType.MINECART.create(prop.level()):prop.item().equals("minecraft:tnt_minecart")?EntityType.TNT_MINECART.create(prop.level()):EntityType.END_CRYSTAL.create(prop.level());
             object.setPos(prop.position());object.xOld=object.getX();object.yOld=object.getY();object.zOld=object.getZ();object.setId(prop.getId());object.tickCount=prop.tickCount;
             if(object instanceof net.minecraft.world.entity.boss.enderdragon.EndCrystal crystal){crystal.time=prop.tickCount;crystal.setShowBottom(true);}
             // Vanilla crystal origin is one block above its base; props are anchored at floor height.
@@ -24,9 +25,11 @@ final class PropObjectRenderer {
             float yaw=net.minecraft.util.Mth.rotLerp(partial,prop.yRotO,prop.getYRot())+90;
             mc.getEntityRenderDispatcher().render(object,0,crystal?1:0,0,crystal?0:yaw,partial,pose,buffers,crystal?LightTexture.pack(15,LightTexture.sky(light)):light);
             if(object instanceof net.minecraft.world.entity.boss.enderdragon.EndCrystal endCrystal)beams(prop,endCrystal,partial,pose,buffers,light);
+            if(money)cash(pose,buffers,light,yaw);
             return true;
         }
         String item=prop.item();
+        if(item.equals("gungang:eunbi_doll"))laser(prop,partial,pose,buffers);
         if(!item.equals("gungang:mannequin")&&!item.equals("gungang:eunbi_doll")&&!item.equals("gungang:hanbi_doll"))return false;
         // 184 / 191: the dolls wear their own fixed skins; the mannequin a seeker's.
         boolean doll=!item.equals("gungang:mannequin");
@@ -42,8 +45,75 @@ final class PropObjectRenderer {
         // Each outer layer (hat, jacket, sleeves, trousers) is a child of its limb, so it follows the pose.
         root.render(pose,buffers.getBuffer(RenderType.entityTranslucent(texture)),light,OverlayTexture.NO_OVERLAY);pose.popPose();return true;
     }
+    /**
+     * 222: cash bundles (emerald) and gold bars heaped in the minecart, peeking over its rim. Same frame as
+     * MinecartRenderer: 0.375 up, turned 180 - yaw; inside the walls x is -8..8 and z -6..6 pixels, the floor 3/16 up.
+     */
+    private static final float[][] CASH={
+        // x, z, y (pixels from the cart floor), width, depth, height, gold?
+        {-7.5f,-5.5f,0,5,5.5f,3,0},{-2.5f,-5.5f,0,5,5.5f,3,0},{2.5f,-5.5f,0,5,5.5f,3,0},
+        {-7.5f,0,0,5,5.5f,3,0},{-2.5f,0,0,5,5.5f,3,0},{2.5f,0,0,5,5.5f,3,0},
+        {-6,-4.5f,3,5,5,3,0},{-1,-5,3,5,5,3,0},{4,-4,3,3.5f,4.5f,3,1},
+        {-6.5f,.5f,3,4,4,2.5f,1},{-2,.5f,3,5,5,3,0},{3,1,3,4.5f,4.5f,3,0},
+        {-4,-2.5f,6,5,5,3,0},{1,-2,6,4,2,2,1},{1.5f,.5f,6,3.5f,2,2,1},{-3,2.5f,6,3,2,1.5f,1}};
+    private static void cash(PoseStack pose,MultiBufferSource buffers,int light,float yaw){
+        var blocks=Minecraft.getInstance().getBlockRenderer();
+        var emerald=net.minecraft.world.level.block.Blocks.EMERALD_BLOCK.defaultBlockState();
+        var gold=net.minecraft.world.level.block.Blocks.GOLD_BLOCK.defaultBlockState();
+        pose.pushPose();pose.translate(0,.375,0);pose.mulPose(Axis.YP.rotationDegrees(180-yaw));pose.translate(0,-.375+3/16f,0);
+        for(float[] c:CASH){
+            pose.pushPose();pose.translate(c[0]/16,c[2]/16,c[1]/16);pose.scale(c[3]/16,c[5]/16,c[4]/16);
+            blocks.renderSingleBlock(c[6]>0?gold:emerald,pose,buffers,light,OverlayTexture.NO_OVERLAY);
+            pose.popPose();
+        }
+        pose.popPose();
+    }
     /** 139: the crystal's text lists the entity ids of the seekers its beams are burning. */
-    static boolean beaming(PropEntity prop){return prop.item().equals("minecraft:end_crystal")&&!prop.text().isEmpty();}
+    static boolean beaming(PropEntity prop){return (prop.item().equals("minecraft:end_crystal")||prop.item().equals("gungang:eunbi_doll"))&&!prop.text().isEmpty();}
+    /** 184 laser layers, outermost first: half width in blocks, alpha, and white (core) or fluorescent green. */
+    private static final float[][] LASER={{.14f,.16f,0},{.075f,.38f,0},{.035f,.85f,0},{.014f,1,1}};
+    /**
+     * 184: the doll's beam as a solid glowing laser, not particles: camera-facing additive strips (fluorescent green glow around a
+     * white core) from the doll's eyes to what it hits, flickering slightly, with a flare at each end. The server sends
+     * both ends relative to the doll in TEXT while the beam is on.
+     */
+    private static void laser(PropEntity prop,float partial,PoseStack pose,MultiBufferSource buffers){
+        String[] part=prop.text().split(",");if(part.length!=6)return;
+        float[] v=new float[6];
+        try{for(int i=0;i<6;i++)v[i]=Float.parseFloat(part[i]);}catch(NumberFormatException e){return;}
+        var from=new org.joml.Vector3f(v[0],v[1],v[2]);var to=new org.joml.Vector3f(v[3],v[4],v[5]);
+        var dir=new org.joml.Vector3f(to).sub(from);if(dir.lengthSquared()<1e-4f)return;dir.normalize();
+        var origin=prop.getPosition(partial);var camera=Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+        var eye=new org.joml.Vector3f((float)(camera.x-origin.x),(float)(camera.y-origin.y),(float)(camera.z-origin.z));
+        float time=prop.tickCount+partial,flicker=.85f+.15f*net.minecraft.util.Mth.sin(time*2.3f)*net.minecraft.util.Mth.sin(time*.9f+1);
+        var buffer=buffers.getBuffer(RenderType.lightning());var matrix=pose.last().pose();
+        for(float[] layer:LASER){
+            float w=layer[0]*(layer[2]>0?1:flicker),alpha=layer[1]*flicker;
+            float r=layer[2]>0?.86f:.22f,g=1,b=layer[2]>0?.82f:.08f;
+            strip(buffer,matrix,from,to,dir,eye,w,r,g,b,alpha);
+        }
+        // End flares: short wide strips across the beam at the muzzle and the impact.
+        for(var end:new org.joml.Vector3f[]{from,to}){
+            var a=new org.joml.Vector3f(dir).mul(-.12f).add(end);var c=new org.joml.Vector3f(dir).mul(.12f).add(end);
+            strip(buffer,matrix,a,c,dir,eye,.2f*flicker,.4f,1,.25f,.45f);
+            strip(buffer,matrix,a,c,dir,eye,.08f*flicker,1,1,1,.8f);
+        }
+    }
+    /** A flat strip from a to b, half width w, turned to face the eye (relative coordinates); additive. */
+    private static void strip(com.mojang.blaze3d.vertex.VertexConsumer buffer,org.joml.Matrix4f m,org.joml.Vector3f a,org.joml.Vector3f b,
+                              org.joml.Vector3f dir,org.joml.Vector3f eye,float w,float r,float g,float bl,float alpha){
+        var mid=new org.joml.Vector3f(a).add(b).mul(.5f);var toEye=new org.joml.Vector3f(eye).sub(mid);
+        var side=new org.joml.Vector3f(dir).cross(toEye);if(side.lengthSquared()<1e-6f)side.set(0,1,0);side.normalize().mul(w);
+        buffer.vertex(m,a.x-side.x,a.y-side.y,a.z-side.z).color(r,g,bl,alpha).endVertex();
+        buffer.vertex(m,a.x+side.x,a.y+side.y,a.z+side.z).color(r,g,bl,alpha).endVertex();
+        buffer.vertex(m,b.x+side.x,b.y+side.y,b.z+side.z).color(r,g,bl,alpha).endVertex();
+        buffer.vertex(m,b.x-side.x,b.y-side.y,b.z-side.z).color(r,g,bl,alpha).endVertex();
+        // The lightning render type culls back faces: the same quad wound the other way.
+        buffer.vertex(m,b.x-side.x,b.y-side.y,b.z-side.z).color(r,g,bl,alpha).endVertex();
+        buffer.vertex(m,b.x+side.x,b.y+side.y,b.z+side.z).color(r,g,bl,alpha).endVertex();
+        buffer.vertex(m,a.x+side.x,a.y+side.y,a.z+side.z).color(r,g,bl,alpha).endVertex();
+        buffer.vertex(m,a.x-side.x,a.y-side.y,a.z-side.z).color(r,g,bl,alpha).endVertex();
+    }
     /** The vanilla crystal beam from each locked seeker's chest to the bobbing crystal, as EndCrystalRenderer draws it. */
     private static void beams(PropEntity prop,net.minecraft.world.entity.boss.enderdragon.EndCrystal crystal,float partial,PoseStack pose,MultiBufferSource buffers,int light){
         if(!beaming(prop))return;

@@ -669,7 +669,7 @@ final class BotPropHunt {
         boolean done=switch(item){
             case "minecraft:note_block","minecraft:jukebox"->hunt.botCooldown(a.id)==0&&hunt.botUse(bot);
             case "minecraft:sculk_sensor","minecraft:sculk_shrieker"->{if(!prop.open()&&hunt.botUse(bot)){toggledAt=now;yield true;}yield false;}
-            case "minecraft:oak_sign","gungang:shutter","minecraft:bubble_column"->hunt.botUse(bot);
+            case "minecraft:oak_sign","minecraft:oak_hanging_sign","gungang:shutter","minecraft:bubble_column"->hunt.botUse(bot);
             // Crying, hearts and an emoticon, or night falling all at once.
             case "minecraft:crying_obsidian","gungang:prettiest_block","minecraft:daylight_detector"->hunt.botCooldown(a.id)==0&&hunt.botUse(bot);
             // Doors, trapdoors, lids and flames: creak open (or go out) and back a couple of seconds later.

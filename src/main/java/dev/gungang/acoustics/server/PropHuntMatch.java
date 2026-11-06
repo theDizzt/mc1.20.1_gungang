@@ -78,6 +78,12 @@ public final class PropHuntMatch {
         /** Q wall cling: the wall it hangs on, or null. */
         Direction wall;
         UUID watching;
+        /** Locked hider flying a free spectator camera (Q); the disguise stays at the anchor. */
+        boolean free;
+        /** Who was watched before flying free, to return to. */
+        UUID freeFrom;
+        /** Off the disguise's own view: watching someone or flying free. */
+        boolean away(){return watching!=null||free;}
         /** Block choice: server tick the offer closes, the picked offer index (-1: none yet), first disguise or a change. */
         int choiceUntil,picked=-1;boolean initial;
         /** First-come: the tick a bot makes its pick (0: none pending). */
@@ -278,20 +284,42 @@ public final class PropHuntMatch {
             "minecraft:end_crystal","minecraft:spawner","minecraft:bubble_column","gungang:shutter","minecraft:brewing_stand");
     private void noise(Member m){if(m.prop!=null&&NOISY.contains(m.prop.item())&&hunting())BotManager.propNoise(m.prop.position(),m.id);}
     private void change(LivingEntity p,Member m){
-        // A health pack sunk into the floor comes back up first, so the new block never starts inside the ground.
-        boolean sunk=m.prop!=null&&m.prop.sunk();
-        if(m.prop!=null){PropInteraction.remove(m.prop);m.prop.discard();}if(p instanceof ServerPlayer sp)sp.closeContainer();
         // The picked offer, a random one of the offer when time ran out, or (bots) the next free block.
         String item=test?items.get(m.id):PropCatalog.variant(game.take(m.id,m.picked,random),random);
         m.picked=-1;m.initial=false;m.choiceUntil=0;m.botPickAt=0;
+        wear(p,m,item);
+    }
+    /**
+     * 232 capsule machine: every other living, disguised hider of the user's team draws a new random block from the
+     * deck (in a test session, any catalog block). The number of hiders changed.
+     */
+    int reroll(LivingEntity user){
+        int changed=0;
+        for(var m:List.copyOf(members.values())){
+            if(m.id.equals(user.getUUID())||!hider(m.id)||!game.alive(m.id)||m.prop==null)continue;
+            var body=body(m.id);if(body==null)continue;
+            String type;
+            try{type=test?null:game.draw();}catch(IllegalStateException empty){type=null;}
+            if(type==null){var all=PropCatalog.available();type=all.get(random.nextInt(all.size()));}
+            wear(body,m,PropCatalog.variant(type,random));changed++;
+            if(body instanceof ServerPlayer sp)sp.displayClientMessage(Component.literal("캡슐 뽑기로 블록이 바뀌었습니다!"),true);
+        }
+        if(changed>0)sync();
+        return changed;
+    }
+    /** Puts {@code item} on the hider as a new disguise in place of the old one. */
+    private void wear(LivingEntity p,Member m,String item){
+        // A health pack sunk into the floor comes back up first, so the new block never starts inside the ground.
+        boolean sunk=m.prop!=null&&m.prop.sunk();
+        if(m.prop!=null){PropInteraction.remove(m.prop);m.prop.discard();}if(p instanceof ServerPlayer sp)sp.closeContainer();
         var level=(ServerLevel)p.level();
         m.prop=PropEntity.TYPE.get().create(level);m.prop.setup(m.id,item,random.nextInt(26));m.prop.setPos(m.fixed?m.anchor:p.position());
         level.addFreshEntity(m.prop);
         if(p instanceof BotEntity bot)bot.disguise(m.prop);
         abilities.initialize(p,m.prop);
         p.refreshDimensions();
-        if(m.watching==null)unstick(p);
-        if(m.fixed&&m.watching==null)m.anchor=p.position();
+        if(!m.away())unstick(p);
+        if(m.fixed&&!m.away())m.anchor=p.position();
         if(sunk&&p instanceof ServerPlayer sp)sp.sendSystemMessage(Component.literal("블록이 바뀌어 생명력 팩 매설이 풀렸습니다."));
         // The new disguise is announced in the client's control guide (right side), not the action bar.
         m.hazard=server.getTickCount()+80;
@@ -321,9 +349,9 @@ public final class PropHuntMatch {
                 // First disguise: on the pick (see action) or when the 10 s run out.
                 else if(m.prop==null&&(game.offers(m.id).isEmpty()||server.getTickCount()>=m.choiceUntil))change(p,m);
                 if(m.watching!=null){var camera=camera(m.watching);if(camera==null)home(p,m);else if(p.getCamera()!=camera)p.setCamera(camera);}
-                if(m.fixed&&m.watching==null){hold(p,m.anchor,m.yaw,m.pitch);}
+                if(m.fixed&&!m.away()){hold(p,m.anchor,m.yaw,m.pitch);}
                 // Off the wall (moved past its edge, or a new disguise that no longer fits there): fall as usual.
-                if(m.wall!=null&&m.watching==null){if(PropCling.attached(p.level(),p.getBoundingBox(),m.wall,PropCling.SERVER_REACH)){p.setNoGravity(true);p.fallDistance=0;}else release(p,m);}
+                if(m.wall!=null&&!m.away()){if(PropCling.attached(p.level(),p.getBoundingBox(),m.wall,PropCling.SERVER_REACH)){p.setNoGravity(true);p.fallDistance=0;}else release(p,m);}
                 if(m.prop!=null){p.setAirSupply(p.getMaxAirSupply());m.prop.setPos(spot(m,p));if(m.fixed)look(m);submerge(m.prop);hazards(p,m);abilities.tick(p,m.prop);}
             }else{
                 rush(p,rush);
@@ -484,6 +512,8 @@ public final class PropHuntMatch {
         if(abilities.cloaked(prop.owner()))return false;
         // A full volley deals SEEKER_DAMAGE, whatever the gun's own damage: each pellet its share (M1014: 10 pellets, 10 each).
         amount=pelletDamage();
+        // 239: the warhead goes off at the very first hit, before the hit itself counts.
+        if(prop.item().equals(PropAbilities.NUKE))abilities.detonate(p,prop);
         if(p.getHealth()<=amount+1e-3f)eliminate(p,shooter);else {p.setHealth(p.getHealth()-amount);abilities.struck(p,prop);}
         // A bot hider feels the hit (it is found out and runs); a bot seeker learns that this block is a hider.
         BotManager.propShot(p,shooter,prop,!game.alive(prop.owner()));
@@ -611,17 +641,19 @@ public final class PropHuntMatch {
             case "next"->cycle(p,m,1);
             case "previous"->cycle(p,m,-1);
             case "home"->home(p,m);
-            case "rotate"->{if(m.prop!=null&&m.watching==null&&abilities.rotate(p,m.prop)){}else if(!m.fixed&&m.prop!=null){m.prop.rotate();p.refreshDimensions();}}
+            case "free"->free(p,m);
+            case "brightUp","brightDown"->{if(m.prop!=null&&!m.away())abilities.brightness(p,m.prop,action.equals("brightUp")?1:-1);}
+            case "rotate"->{if(m.prop!=null&&!m.away()&&abilities.rotate(p,m.prop)){}else if(!m.fixed&&m.prop!=null){m.prop.rotate();p.refreshDimensions();}}
             case "snap"->{if(!m.fixed&&m.wall==null)snap(p);}
             case "cling"->cling(p,m);
-            case "interact"->{noise(m);if(m.prop!=null&&m.watching==null&&abilities.use(p,m.prop)){m.prop.setPos(spot(m,p));p.refreshDimensions();}else if(m.prop!=null&&m.watching==null&&m.prop.item().equals("minecraft:dispenser"))fire(p,m);else if(m.prop!=null&&m.watching==null&&explosive(m.prop.item()))blast(p,m);else if(m.prop!=null&&m.watching==null){PropInteraction.use(p,m.prop);if(m.prop.sinkable()){m.prop.setPos(spot(m,p));p.displayClientMessage(Component.literal(m.prop.sunk()?"생명력 팩: 바닥 아래로 들어갔습니다 · E로 나오기":"생명력 팩: 바닥 위로 나왔습니다 · E로 들어가기"),true);}p.refreshDimensions();}}
+            case "interact"->{noise(m);if(m.prop!=null&&!m.away()&&abilities.use(p,m.prop)){m.prop.setPos(spot(m,p));p.refreshDimensions();}else if(m.prop!=null&&!m.away()&&m.prop.item().equals("minecraft:dispenser"))fire(p,m);else if(m.prop!=null&&!m.away()&&explosive(m.prop.item()))blast(p,m);else if(m.prop!=null&&!m.away()){PropInteraction.use(p,m.prop);if(m.prop.sinkable()){m.prop.setPos(spot(m,p));p.displayClientMessage(Component.literal(m.prop.sunk()?"생명력 팩: 바닥 아래로 들어갔습니다 · E로 나오기":"생명력 팩: 바닥 위로 나왔습니다 · E로 들어가기"),true);}p.refreshDimensions();}}
             // On a jump pad the jump key launches at once, as for everyone else; elsewhere it starts the charge.
             // 95 / 190 slime and honey disguises climb instead of jumping.
             case "charge"->{if(!m.fixed&&m.wall==null&&p.onGround()&&(m.prop==null||!PropSticky.sticky(m.prop.item()))){if(PropSurfacePhysics.pad(p)!=null){p.setDeltaMovement(p.getDeltaMovement().x,PropSurfacePhysics.jump(p,0),p.getDeltaMovement().z);p.hurtMarked=true;m.charge=-1;}else m.charge=server.getTickCount();}}
             case "cancelCharge"->m.charge=-1;
             case "horn"->horn(m);
             // Dolls (184, 191): the attack key held down and let go.
-            case "primaryDown","primaryUp"->{if(m.prop!=null&&m.watching==null)abilities.primary(p,m.prop,action.equals("primaryDown"));}
+            case "primaryDown","primaryUp"->{if(m.prop!=null&&!m.away())abilities.primary(p,m.prop,action.equals("primaryDown"));}
             case "jump"->{if(!m.fixed&&m.wall==null&&p.onGround()&&m.charge>=0&&(m.prop==null||!PropSticky.sticky(m.prop.item()))){p.setDeltaMovement(p.getDeltaMovement().x,PropSurfacePhysics.jump(p,PropHuntGame.jumpVelocity(p,server.getTickCount()-m.charge)),p.getDeltaMovement().z);p.hurtMarked=true;}m.charge=-1;}
         }
         sync();
@@ -630,7 +662,7 @@ public final class PropHuntMatch {
     private void cling(ServerPlayer p,Member m){
         if(m.wall!=null){release(p,m);return;}
         if(!cling){p.displayClientMessage(Component.literal("이번 경기에서는 벽에 붙기가 꺼져 있습니다"),true);return;}
-        if(m.fixed||m.watching!=null)return;
+        if(m.fixed||m.away())return;
         var wall=PropCling.find(p.level(),p.getBoundingBox(),p.getYRot());
         if(wall==null){p.displayClientMessage(Component.literal("붙을 벽이 없습니다 · 몸보다 0.6블록 이상 높은 벽 옆에서 사용하세요"),true);return;}
         m.wall=wall;m.charge=-1;p.setNoGravity(true);p.setDeltaMovement(Vec3.ZERO);p.hurtMarked=true;p.fallDistance=0;
@@ -665,13 +697,32 @@ public final class PropHuntMatch {
         var owner=server.getPlayerList().getPlayer(prop.owner());if(owner!=null)owner.refreshDimensions();
         return true;
     }
+    /**
+     * Q while locked: fly a free spectator camera from wherever the view is now; Q again goes back to the player that was
+     * being watched (else the own view). The body is a spectator meanwhile and the disguise stays at the anchor.
+     */
+    private void free(ServerPlayer p,Member m){
+        if(!m.fixed)return;
+        if(m.free){
+            var back=m.freeFrom;var camera=back==null?null:camera(back);
+            if(camera==null){home(p,m);return;}
+            m.free=false;m.freeFrom=null;m.watching=back;p.setCamera(camera);
+            return;
+        }
+        var from=p.getCamera();double x=from.getX(),y=from.getEyeY()-p.getEyeHeight(),z=from.getZ();float yaw=from.getYRot(),pitch=from.getXRot();
+        if(m.watching==null){x=m.anchor.x;y=m.anchor.y;z=m.anchor.z;yaw=m.yaw;pitch=m.pitch;}
+        m.freeFrom=m.watching;m.watching=null;m.free=true;
+        p.closeContainer();p.stopUsingItem();p.setGameMode(GameType.SPECTATOR);p.setCamera(p);
+        p.teleportTo(p.serverLevel(),x,y,z,yaw,pitch);
+    }
     private void home(ServerPlayer p,Member m){
-        if(m.watching==null)return;m.watching=null;p.setCamera(p);
+        if(!m.away())return;m.watching=null;m.free=false;m.freeFrom=null;p.setCamera(p);
         var level=test?p.serverLevel():server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,PropCatalog.id(map.dimension())));
         p.teleportTo(level,m.anchor.x,m.anchor.y,m.anchor.z,m.yaw,m.pitch);p.setGameMode(GameType.ADVENTURE);
     }
     private void cycle(ServerPlayer p,Member m,int direction){
         if(!m.fixed)return;
+        m.free=false;m.freeFrom=null;
         var targets=members.values().stream().map(t->t.id).filter(id->!id.equals(m.id)&&camera(id)!=null).toList();
         if(targets.isEmpty()){home(p,m);return;}
         int current=targets.indexOf(m.watching);
@@ -687,7 +738,7 @@ public final class PropHuntMatch {
         // A bot is watched through its own body: a seeker's eyes, or a hider's view from inside its block.
         if(t.bot){var body=body(id);return body==null||!body.isAlive()||hider(id)&&!game.alive(id)?null:body;}
         var player=server.getPlayerList().getPlayer(id);if(player==null)return null;
-        if(hider(id))return !game.alive(id)?null:t.watching!=null&&t.prop!=null?t.prop:player;
+        if(hider(id))return !game.alive(id)?null:t.away()&&t.prop!=null?t.prop:player;
         return player.isSpectator()||!player.isAlive()?null:player;
     }
     /**
@@ -723,9 +774,14 @@ public final class PropHuntMatch {
         else{PropInteraction.use(bot,m.prop);if(m.prop.sinkable())m.prop.setPos(spot(m,bot));bot.refreshDimensions();}
         sync();return true;
     }
+    /** Text a hider's client sends for its own disguise: 178 the lectern's book, 241 the easel's canvas. */
+    public void propText(ServerPlayer p,String text){
+        var m=members.get(p.getUUID());if(m==null||!hider(m.id)||!game.alive(m.id)||reviewing||m.prop==null)return;
+        if(m.prop.item().equals("gungang:easel")){m.prop.text(ToyBlocks.canvas(text));p.level().playSound(null,m.prop.blockPosition(),net.minecraft.sounds.SoundEvents.BOOK_PAGE_TURN,net.minecraft.sounds.SoundSource.BLOCKS,.8f,1.3f);return;}
+        if(m.prop.item().equals("minecraft:lectern"))lecternText(p,m,text);
+    }
     /** 178: the owner's text for their lectern's book (from the client's editor). */
-    public void lecternText(ServerPlayer p,String text){
-        var m=members.get(p.getUUID());if(m==null||!hider(m.id)||!game.alive(m.id)||reviewing||m.prop==null||!m.prop.item().equals("minecraft:lectern"))return;
+    private void lecternText(ServerPlayer p,Member m,String text){
         var clean=new StringBuilder();for(char c:text.toCharArray())if(c=='\n'||c>=' '&&c!='\u00a7')clean.append(c);
         String value=clean.length()>LECTERN_LIMIT?clean.substring(0,LECTERN_LIMIT):clean.toString();
         m.prop.text(value);p.level().playSound(null,m.prop.blockPosition(),net.minecraft.sounds.SoundEvents.BOOK_PAGE_TURN,net.minecraft.sounds.SoundSource.BLOCKS,1,1);

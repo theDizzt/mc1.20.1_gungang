@@ -35,7 +35,7 @@ public final class EscortHud {
             overtime(g,String.format(Locale.ROOT,"%.1f",v.overtimeTicks()/20.0),17,1.6f,v.overtimeTicks()<=40?0xFFFF6B6B:AMBER);
             DeathmatchHud.small(g,"추가시간",0,32,.8f,AMBER,true);
         }else {
-            MatchTimerHud.drawAt(g,snapshot,0,16);
+            MatchTimerHud.drawAt(g,snapshot,0,16,true);
             if("PREPARING".equals(snapshot.phase()))DeathmatchHud.small(g,"준비 중",0,32,.8f,LIGHT,true);
         }
         g.pose().popPose();return top+Math.round(55*scale);

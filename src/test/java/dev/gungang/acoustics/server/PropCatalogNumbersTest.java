@@ -13,6 +13,12 @@ class PropCatalogNumbersTest {
         assertEquals("214",PropCatalog.number("minecraft:cartography_table"));assertEquals("218",PropCatalog.number("minecraft:piston"));
         assertEquals("220",PropCatalog.number("minecraft:red_mushroom"));
         assertEquals("221",PropCatalog.number("gungang:desk_clock"));assertEquals("222",PropCatalog.number("gungang:money_cart"));
+        assertEquals("223",PropCatalog.number("minecraft:mycelium"));assertEquals("224",PropCatalog.number("gungang:aquarium"));
+        assertEquals("230",PropCatalog.number("minecraft:oak_hanging_sign"));assertEquals("232",PropCatalog.number("gungang:capsule_machine"));
+        assertEquals("239",PropCatalog.number("gungang:nuke_warhead"));assertEquals("241",PropCatalog.number("gungang:easel"));
+        assertEquals("242",PropCatalog.number("minecraft:light"));
+        assertEquals(java.util.List.of("minecraft:stone","minecraft:granite","minecraft:diorite","minecraft:andesite"),PropCatalog.kinds("minecraft:stone"));
+        assertEquals(255,PropAbilities.maxHealth("gungang:easel"));assertEquals(100,PropAbilities.maxHealth("gungang:capsule_machine"));assertEquals(100,PropAbilities.maxHealth("gungang:nuke_warhead"));
         // Removed types are gone from the list.
         for(String gone:new String[]{"minecraft:dark_oak_door","minecraft:cherry_planks","minecraft:chiseled_sandstone","minecraft:crimson_planks","minecraft:warped_planks","minecraft:mossy_stone_bricks","minecraft:bamboo_planks"})
             assertEquals("??",PropCatalog.number(gone),gone);

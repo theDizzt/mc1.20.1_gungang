@@ -16,6 +16,11 @@ public final class LoadoutAttributes {
         speed.addTransientModifier(new AttributeModifier(SPEED,"GunGang primary speed",weapon.movementSpeed()/100-1,AttributeModifier.Operation.MULTIPLY_TOTAL));
         player.setHealth(needsRecovery?SurvivalRules.LIFE_HEALTH:Math.max(1,Math.min(player.getMaxHealth(),ratio*player.getMaxHealth())));
     }
+    /** Whether the player currently carries a primary weapon's health/speed bonus. */
+    public static boolean active(ServerPlayer player) {
+        var speed=player.getAttribute(Attributes.MOVEMENT_SPEED);
+        return speed!=null&&speed.getModifier(SPEED)!=null;
+    }
     public static void clear(ServerPlayer player) {
         player.getAttribute(Attributes.MAX_HEALTH).removeModifier(HEALTH);
         player.getAttribute(Attributes.MOVEMENT_SPEED).removeModifier(SPEED);

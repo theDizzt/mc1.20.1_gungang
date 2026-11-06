@@ -13,7 +13,7 @@ public final class AcousticConfig {
     public static final ForgeConfigSpec.BooleanValue FOOTSTEP_OCCLUSION, WATER_EFFECTS;
     public static final ForgeConfigSpec.DoubleValue FONT_OFFSET_X, FONT_OFFSET_Y;
     public static final ForgeConfigSpec.BooleanValue FONT_SMOOTHING;
-    public static final ForgeConfigSpec.BooleanValue HUD_BOLD_TEXT;
+    public static final ForgeConfigSpec.BooleanValue HUD_BOLD_TEXT, LCD_TIMER;
     public static final ForgeConfigSpec.IntValue HUD_TEXT_SIZE;
     public static final ForgeConfigSpec.BooleanValue TEAM_HUD, LEGACY_TEAM_HUD, KILL_LOG, TEAM_SILHOUETTES, COMPASS, AUTO_SPRINT;
     public static final ForgeConfigSpec.BooleanValue ENABLED, DIFFRACTION, LOW_PASS, SHOOTER_HUD;
@@ -32,6 +32,7 @@ public final class AcousticConfig {
                 .defineInRange("weaponVolume", 100, 0, 300);
         HUD_TEXT_SIZE = b.comment("HUD name/health text size in percent. Independent of GUI scale.").defineInRange("hudTextSize", 150, 100, 150);
         HUD_BOLD_TEXT = b.define("hudBoldText", true);
+        LCD_TIMER = b.comment("Draw the match timer as the seven-segment LCD clock instead of the GUNGANG-font display.").define("lcdTimerClock", false);
         CUSTOM_FONT = b.comment("Use the selected font preset. Disable to restore the normal game/resource-pack font.")
                 .define("customFont", true);
         FONT_PRESET = b.comment("MARU_MINYA, GALMURI_LEGACY (default), or EXTERNAL. Bundled sizes are normalized to the legacy Hangul height.")
@@ -49,7 +50,7 @@ public final class AcousticConfig {
         COMPASS = b.comment("Show heading compass and enemy gunshot bearings above the player health bar.").define("compass", true);
         AUTO_SPRINT = b.comment("Sprint automatically while moving forward; fire and aim input stop the sprint so guns stay usable.").define("autoSprint", true);
         TEAM_HUD = b.define("teamHud", true);
-        LEGACY_TEAM_HUD = b.comment("Draw teammates in the older wide layout (name, long health bar, item slot) instead of the compact one.").define("legacyTeamHud", false);
+        LEGACY_TEAM_HUD = b.comment("Draw teammates in the older wide layout (name, long health bar, item slot) instead of the compact one.").define("legacyTeamLayout", false);
         KILL_LOG = b.define("killLog", true);
         TEAM_SILHOUETTES = b.define("teamSilhouettes", true);
         SHOOTER_HUD = b.comment("Replace the vanilla hotbar and hearts with a bottom-left shooter HUD. Independent of acoustic processing.")

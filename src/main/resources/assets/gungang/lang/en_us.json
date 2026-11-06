@@ -32,5 +32,12 @@
     "block.gungang.desk_clock":  "Desk Clock",
     "block.gungang.money_cart":  "Money Cart",
     "subtitles.gungang.clock_alarm":  "Clock alarm rings",
-    "subtitles.gungang.cash_machine":  "Cash machine whirs"
+    "subtitles.gungang.cash_machine":  "Cash machine whirs",
+    "block.gungang.aquarium":  "Aquarium",
+    "block.gungang.chameleon_block":  "Chameleon Block",
+    "block.gungang.capsule_machine":  "Capsule Machine",
+    "block.gungang.error_block":  "Error Block",
+    "block.gungang.garden_fountain":  "Garden Fountain",
+    "block.gungang.nuke_warhead":  "Nuclear Warhead",
+    "block.gungang.easel":  "Easel"
 }

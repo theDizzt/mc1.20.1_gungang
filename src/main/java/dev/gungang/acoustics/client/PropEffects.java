@@ -79,6 +79,9 @@ public final class PropEffects {
             // to them it is as invisible as a barrier.
             if(prop.item().equals("gungang:death_zone")&&level.getGameTime()%20==0&&!PropRenderer.concealed(prop)&&!PropHuntClient.seeker())
                 level.addParticle(new net.minecraft.core.particles.BlockParticleOption(net.minecraft.core.particles.ParticleTypes.BLOCK_MARKER,prop.state()),prop.getX(),prop.getY()+.5,prop.getZ(),0,0,0);
+            // 242: the light disguise is invisible; its own team (never seekers) sees the light marker, as with a held light.
+            if(prop.item().equals("minecraft:light")&&level.getGameTime()%20==0&&!PropRenderer.concealed(prop)&&!PropHuntClient.seeker())
+                level.addParticle(new net.minecraft.core.particles.BlockParticleOption(net.minecraft.core.particles.ParticleTypes.BLOCK_MARKER,prop.state()),prop.getX(),prop.getY()+.5,prop.getZ(),0,0,0);
             // 105: soul sand gives off drifting souls and soul fire flecks, as it does under someone with Soul Speed.
             if(prop.item().equals("minecraft:soul_sand")&&!PropRenderer.concealed(prop)){
                 var random=level.random;

@@ -43,9 +43,9 @@ final class ControlPointHud {
     /** ALPHA: yellow with a black outline. BRAVO: purple with a white outline. Neutral or contested: white on black. */
     static final int ALPHA_TEXT=0xFFFFD43B,BRAVO_TEXT=0xFFA35BFF;
     private static void status(GuiGraphics g,String text,float side){
-        if(side>0)MatchRibbonHud.outlined(g,text,0,22,.85f,ALPHA_TEXT,0xFF000000);
-        else if(side<0)MatchRibbonHud.outlined(g,text,0,22,.85f,BRAVO_TEXT,0xFFFFFFFF);
-        else MatchRibbonHud.outlined(g,text,0,22,.85f,0xFFFFFFFF,0xFF000000);
+        if(side>0)MatchRibbonHud.outlined(g,text,0,23,.85f,ALPHA_TEXT,0xFF000000);
+        else if(side<0)MatchRibbonHud.outlined(g,text,0,23,.85f,BRAVO_TEXT,0xFFFFFFFF);
+        else MatchRibbonHud.outlined(g,text,0,23,.85f,0xFFFFFFFF,0xFF000000);
     }
     private static final int HALF=30,GY=34,GH=5;
     private static final BarTween GAUGE=new BarTween(.45,.3);

@@ -12,7 +12,9 @@ public final class PropCatalog {
     private static final String EXTRA="spawner anvil gravel hay_block flower_pot soul_sand fire soul_fire nether_portal ice packed_ice bee_nest oak_sign infested_stone lodestone gungang:blue_jump_pad gungang:lime_jump_pad rail hopper minecraft:minecart gungang:conveyor_belt command_block dragon_egg gungang:mannequin redstone_lamp purpur_block clay netherrack soul_soil gungang:dried_ghast gungang:wildflowers pink_petals torchflower pitcher_plant sugar_cane beacon ochre_froglight verdant_froglight pearlescent_froglight minecraft:end_crystal target sculk_sensor gungang:hologram_projector gilded_blackstone sculk_shrieker polished_blackstone @shulker_box gungang:geyser gungang:hot_spring_nozzle gungang:bath_toad gungang:shutter sea_pickle lightning_rod bamboo_mosaic_stairs crimson_hyphae note_block jukebox bamboo_mosaic turtle_egg brewing_stand gungang:big_grass_block structure_void bell end_rod deepslate bubble_column water gungang:hot_spring_water lava gungang:acid dried_kelp_block lily_pad #coral #coral_block respawn_anchor scaffolding minecraft:armor_stand daylight_detector lectern end_portal_frame shroomlight nether_wart_block warped_wart_block tinted_glass gungang:eunbi_doll spore_blossom frogspawn gungang:prettiest_block crying_obsidian minecraft:tnt_minecart honey_block gungang:hanbi_doll repeater ladder @candle_cake redstone_torch gungang:death_zone torch soul_torch conduit"
             +" blackstone oak_leaves warped_hyphae coal_ore deepslate_coal_ore polished_blackstone_bricks reinforced_deepslate sculk sculk_vein sponge"
             +" cobblestone_wall nether_bricks red_nether_bricks fletching_table cartography_table farmland oak_sapling prismarine piston sticky_piston red_mushroom"
-            +" gungang:desk_clock gungang:money_cart";
+            +" gungang:desk_clock gungang:money_cart mycelium gungang:aquarium bone_block quartz_pillar raw_iron_block raw_copper_block raw_gold_block"
+            +" oak_hanging_sign gungang:chameleon_block gungang:capsule_machine smooth_stone gungang:error_block gungang:garden_fountain mossy_cobblestone"
+            +" prismarine_bricks dark_prismarine gungang:nuke_warhead cocoa gungang:easel light";
     private static final Set<String> OBJECTS=Set.of("minecraft:painting","minecraft:minecart","minecraft:end_crystal","minecraft:armor_stand","minecraft:tnt_minecart");
     /** "#" types draw one of the five coral kinds at random (172 coral, 173 coral block). */
     private static final String[] CORALS="tube brain bubble fire horn".split(" ");
@@ -29,6 +31,9 @@ public final class PropCatalog {
      */
     private static final Map<String,List<String>> KINDS=Map.ofEntries(
             Map.entry("minecraft:oak_planks",wood("_planks")),
+            Map.entry("minecraft:stone",ids("stone granite diorite andesite")),
+            Map.entry("minecraft:smooth_stone",ids("smooth_stone polished_granite polished_diorite polished_andesite polished_deepslate smooth_basalt")),
+            Map.entry("minecraft:oak_hanging_sign",wood("_hanging_sign")),
             Map.entry("minecraft:oak_log",ids("oak_log spruce_log birch_log jungle_log acacia_log dark_oak_log mangrove_log cherry_log crimson_stem warped_stem bamboo_block")),
             Map.entry("minecraft:oak_stairs",wood("_stairs")),
             Map.entry("minecraft:oak_slab",wood("_slab")),
@@ -112,6 +117,9 @@ public final class PropCatalog {
         if(state.getBlock() instanceof MultifaceBlock)state=state.setValue(MultifaceBlock.getFaceProperty(net.minecraft.core.Direction.DOWN),true);
         if(state.hasProperty(BlockStateProperties.PERSISTENT))state=state.setValue(BlockStateProperties.PERSISTENT,true);
         if(state.getBlock() instanceof FarmBlock)state=state.setValue(FarmBlock.MOISTURE,7);
+        // 240: ripe cocoa. 224: a furnished aquarium (PropAbilities picks its fish).
+        if(state.getBlock() instanceof CocoaBlock)state=state.setValue(CocoaBlock.AGE,2);
+        if(state.getBlock() instanceof ToyBlocks.Aquarium)state=state.setValue(ToyBlocks.Aquarium.SUBSTRATE,1).setValue(ToyBlocks.Aquarium.ROCK,true).setValue(ToyBlocks.Aquarium.PLANT,true).setValue(ToyBlocks.Aquarium.FISH,1);
         // A piston starts facing up; R turns it through all six directions.
         if(state.getBlock() instanceof net.minecraft.world.level.block.piston.PistonBaseBlock)state=state.setValue(net.minecraft.world.level.block.piston.PistonBaseBlock.FACING,net.minecraft.core.Direction.UP);
         // Bubble columns start rising (soul sand), not as a magma whirlpool.

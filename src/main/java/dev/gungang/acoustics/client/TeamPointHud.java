@@ -75,7 +75,8 @@ public final class TeamPointHud {
         int width=Math.max(size,font.width(text)+4);
         g.fill(x-1,y-1,x+width+1,y+size+1,0xFF101820);
         g.fill(x,y,x+width,y+size,view.color()|0xFF000000);
-        g.drawString(font,text,x+(width-font.width(text)+1)/2,y+(size-7)/2-1,numberColor(),false);
+        // Measured in game: the 7-row digits start at the draw y, so this leaves equal gaps above and below.
+        g.drawString(font,text,x+(width-font.width(text)+1)/2,y+(size-7)/2,numberColor(),false);
     }
     private static List<TeamPointState.Point> points() {
         if(!active())return List.of();

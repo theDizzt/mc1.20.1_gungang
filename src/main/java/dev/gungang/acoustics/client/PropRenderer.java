@@ -93,6 +93,8 @@ public final class PropRenderer extends EntityRenderer<PropEntity> {
                 if(partState.getBlock() instanceof EntityBlock block){
                     // Ticked by PropEffects (book pages, chest lid); the chest lid opens while the prop is open.
                     var be=PropEffects.blockEntity(entity,part.offset(),partState,block);
+                    // 241: the easel disguise's canvas lives in the prop's text.
+                    if(be instanceof dev.gungang.acoustics.server.ToyBlocks.EaselEntity easel)easel.pixels=dev.gungang.acoustics.server.ToyBlocks.canvas(entity.text());
                     if(be!=null){if(be instanceof net.minecraft.world.level.block.entity.ChestBlockEntity chest)chest.triggerEvent(1,entity.open()?1:0);mc.getBlockEntityRenderDispatcher().renderItem(be,pose,buffers,partLight,OverlayTexture.NO_OVERLAY);}
                 }
                 if(partState.getRenderShape()==RenderShape.MODEL){animate(partState);mc.getBlockRenderer().renderSingleBlock(partState,pose,buffers,partLight,OverlayTexture.NO_OVERLAY);}

@@ -35,6 +35,8 @@ public final class RespawnPortrait {
         }
     }
     public static boolean waiting(UUID id) { return SERVER.containsKey(id); }
+    /** True while the portrait shows a respawn countdown for {@code id}. */
+    static boolean active(UUID id) { return STARTED.containsKey(id) || SERVER.containsKey(id); }
 
     @SubscribeEvent public static void overlay(net.minecraftforge.client.event.RenderGuiEvent.Post event) {
         var mc=Minecraft.getInstance();

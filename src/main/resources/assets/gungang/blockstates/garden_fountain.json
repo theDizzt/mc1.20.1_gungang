@@ -1,0 +1,28 @@
+{
+  "variants": {
+    "part=0": {
+      "model": "gungang:block/garden_fountain"
+    },
+    "part=1": {
+      "model": "gungang:block/garden_fountain_part"
+    },
+    "part=2": {
+      "model": "gungang:block/garden_fountain_part"
+    },
+    "part=3": {
+      "model": "gungang:block/garden_fountain_part"
+    },
+    "part=4": {
+      "model": "gungang:block/garden_fountain_part"
+    },
+    "part=5": {
+      "model": "gungang:block/garden_fountain_part"
+    },
+    "part=6": {
+      "model": "gungang:block/garden_fountain_part"
+    },
+    "part=7": {
+      "model": "gungang:block/garden_fountain_part"
+    }
+  }
+}

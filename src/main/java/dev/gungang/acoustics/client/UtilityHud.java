@@ -47,11 +47,20 @@ public final class UtilityHud {
             gauge(g,center,y,width,height,protection.protectionTicks(),protection.protectionTotal(),"무적 "+(protection.protectionTicks()+19)/20+"초",partial);
             y-=height+4;
         }
+        CombatGadgets.Gauge turretAmmo=null;
+        for(var gauge:state.gauges())if(gauge.kind().equals("turret_ammo"))turretAmmo=gauge;
         for(var gauge:state.gauges()) {
+            if(gauge.kind().equals("turret_ammo"))continue;
+            if(gauge.kind().equals("turret_health")) {
+                // Turret: its health on the bar, its magazine as a line above.
+                gauge(g,center,y,width,height,gauge.remaining(),gauge.maximum(),"터렛 체력 "+HudHealth.number(gauge.remaining())+"/"+HudHealth.number(gauge.maximum()),partial);
+                if(turretAmmo!=null)y=turretAmmo(g,center,y,turretAmmo);
+                y-=height+4;continue;
+            }
             float remaining=gauge.remaining();if(gauge.timed())remaining-=Math.max(0,mc.level.getGameTime()-received+partial);
-            if(remaining<=0&&!gauge.kind().equals("turret_ammo"))continue;
+            if(remaining<=0)continue;
             if(gauge.kind().equals("shield")&&!CombatGadgets.holdingShield(mc.player))continue;
-            String name=switch(gauge.kind()){case "turret_ammo"->"터렛 탄약";case "bomb_plant"->"폭탄 설치";case "bomb_defuse"->"폭탄 해체";case "shield"->"방패";case "infrared_scanner"->"스캐너";case "jetpack"->"제트팩";case "bear_trap_recall"->"베어트랩 회수";case "bear_trap_root"->"베어트랩 속박";default->"아드레날린";};
+            String name=switch(gauge.kind()){case "bomb_plant"->"폭탄 설치";case "bomb_defuse"->"폭탄 해체";case "shield"->"방패";case "infrared_scanner"->"스캐너";case "jetpack"->"제트팩";case "bear_trap_recall"->"베어트랩 회수";case "bear_trap_root"->"베어트랩 속박";default->"아드레날린";};
             String value=gauge.timed()?String.format(java.util.Locale.ROOT,"%.1fs",remaining/20f):HudHealth.number(remaining)+"/"+HudHealth.number(gauge.maximum());
             gauge(g,center,y,width,height,remaining,gauge.maximum(),name+" "+value,partial);
             y-=height+4;
@@ -63,7 +72,19 @@ public final class UtilityHud {
         HudHealthBars.fill(g,x+1,y+1,width-2,height-2,fraction,0xFF65D9FF);
         HudHealthBars.stripes(g,x+1,y+1,width-2,height-2,fraction,((Minecraft.getInstance().player==null?0:Minecraft.getInstance().player.tickCount)+partial)/20.0);
         ShooterHud.finish(g,x+1,y+1,width-2,height-2,fraction);
-        HudText.health(g,label,x+3,y+1,width-6,height-2,0xFFFFFFFF);
+        HudText.healthOutlined(g,label,x+3,y+1,width-6,height-2,0xFFFFFFFF);
+    }
+    /** "탄약: 120/120 (100%)" centred just above the turret bar at {@code barY}, digits in the GUNGANG number font; returns the new top. */
+    private static int turretAmmo(GuiGraphics g,int center,int barY,CombatGadgets.Gauge ammo) {
+        int count=Math.round(ammo.remaining()),capacity=Math.max(1,Math.round(ammo.maximum()));
+        int percent=Math.round(100f*count/capacity);
+        var text=net.minecraft.network.chat.Component.literal("탄약: ").append(HudText.numbers(count+"/"+capacity+" ("+percent+"%)").copy());
+        // The number font's glyphs fill the whole 9-pixel line; the Hangul label keeps the regular font.
+        var font=Minecraft.getInstance().font;int width=font.width(text),y=barY-11;
+        int color=count<=0?0xFFFF5555:count<=capacity*.25?0xFFFFFF55:0xFFFFFFFF;
+        g.drawString(font,text,center-width/2+1,y+1,0x80000000,false);
+        g.drawString(font,text,center-width/2,y,color,false);
+        return y;
     }
     static void placements(GuiGraphics g,int x,int y) {
         var font=Minecraft.getInstance().font;
