@@ -12,7 +12,7 @@ public final class FreeForAllMatch {
     public static void attack(net.minecraftforge.event.entity.living.LivingAttackEvent e){
         var match=MatchManager.freeForAll();if(match==null)return;
         if((match.participant(e.getEntity().getUUID())&&match.remaining(e.getEntity().getUUID())>0)
-            ||(e.getSource().getEntity() instanceof net.minecraft.world.entity.LivingEntity attacker&&attacker!=e.getEntity()&&blocked(attacker)))
+            ||(e.getSource().getEntity() instanceof net.minecraft.world.entity.LivingEntity attacker&&attacker!=e.getEntity()&&blocked(attacker)&&!Turrets.shot(e.getSource())))
             e.setCanceled(true);
     }
     @net.minecraftforge.eventbus.api.SubscribeEvent(priority=net.minecraftforge.eventbus.api.EventPriority.HIGHEST)

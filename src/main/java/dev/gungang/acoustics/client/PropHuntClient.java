@@ -55,7 +55,11 @@ public final class PropHuntClient {
         var level=Minecraft.getInstance().level;if(!charging||!hider()||level==null)return -1;
         return Math.min(1,Math.max(0,level.getGameTime()-chargeStart+partial)/20f);
     }
-    public static boolean lockLook(){return fixed();}
+    public static boolean lockLook(){return fixed()&&!free();}
+    /** Locked and flying the free spectator camera (Q): the own body is a spectator that is its own camera. */
+    static boolean free(){var mc=Minecraft.getInstance();return fixed()&&mc.player!=null&&mc.player.isSpectator()&&mc.getCameraEntity()==mc.player;}
+    /** A hider the seekers have found: out for the rest of the round. */
+    static boolean found(UUID id){return active()&&state.players().stream().anyMatch(r->r.id().equals(id.toString())&&r.team().equals("ALPHA")&&r.found());}
     public static boolean hidden(UUID id){return active()&&state.players().stream().anyMatch(r->r.id().equals(id.toString())&&r.team().equals("ALPHA")&&!r.found());}
     public static PropEntity prop(net.minecraft.world.entity.player.Player player){
         if(!active()||review()||player.level()==null)return null;
@@ -88,7 +92,9 @@ public final class PropHuntClient {
         if(!active()||review()||watched==null||mc.player==null)return null;
         var row=state.players().stream().filter(r->r.id().equals(watched.toString())).findFirst().orElse(null);
         if(row==null)return null;
-        if(!row.team().equals("ALPHA"))return watched.equals(mc.player.getUUID())?null:"술래";
+        // Only while spectating someone else: the own disguise is already in the control guide.
+        if(watched.equals(mc.player.getUUID()))return null;
+        if(!row.team().equals("ALPHA"))return "술래";
         return row.found()||row.block().isEmpty()?null:PropCatalog.name(row.block(),net.minecraft.world.level.block.Block.stateById(row.state())).getString()+" ["+PropCatalog.number(row.block())+"]";
     }
     /** Player behind the camera: a watched player, or the owner when the camera follows a disguise. */
@@ -111,8 +117,15 @@ public final class PropHuntClient {
         // 178: E on one's own lectern opens the book to write in (the server only stores the text).
         // 95 / 190: E lets go of the wall or ceiling (the blocks have no other E effect).
         if(key==GLFW.GLFW_KEY_E&&sticky()&&stuck){if(action==GLFW.GLFW_PRESS)letGo=true;return true;}
-        if(key==GLFW.GLFW_KEY_E){if(action==GLFW.GLFW_PRESS){var own=mc.player==null?null:prop(mc.player);if(own!=null&&own.item().equals("minecraft:lectern")&&!fixed())PropBook.edit(own);else action("interact");}return true;}
+        if(key==GLFW.GLFW_KEY_E){if(action==GLFW.GLFW_PRESS){var own=mc.player==null?null:prop(mc.player);if(own!=null&&own.item().equals("minecraft:lectern")&&!fixed())PropBook.edit(own);
+            // 241: E on one's own easel opens the canvas to paint (the server only stores it).
+            else if(own!=null&&own.item().equals("gungang:easel")&&!fixed())EaselRenderer.paint(own.text(),value->dev.gungang.acoustics.server.GungangNetwork.CHANNEL.sendToServer(new dev.gungang.acoustics.server.GungangNetwork.PropText(value)));
+            else action("interact");}return true;}
         if(key==GLFW.GLFW_KEY_G){if(action==GLFW.GLFW_PRESS)action("horn");return true;}
+        // Locked: Q flies a free spectator camera, and Q again leaves it.
+        if(TeamPointHud.POINT.matches(key,scan)&&fixed()){if(action==GLFW.GLFW_PRESS)action("free");return true;}
+        // Flying free: movement, jump and sneak are the spectator's own flight.
+        if(free())return false;
         // Q (the team point key) hangs the disguise on a wall or lets go; hiders do not mark team points.
         if(TeamPointHud.POINT.matches(key,scan)){if(action==GLFW.GLFW_PRESS){if(charging){charging=false;action("cancelCharge");}action("cling");}return true;}
         if(mc.options.keyJump.matches(key,scan)){
@@ -153,7 +166,7 @@ public final class PropHuntClient {
         if(e.phase!=net.minecraftforge.event.TickEvent.Phase.END)return;
         var mc=Minecraft.getInstance();if(!hider()){restore();return;}
         if(previous==null)previous=mc.options.getCameraType();
-        mc.options.setCameraType(mc.getCameraEntity()==mc.player?CameraType.THIRD_PERSON_BACK:CameraType.FIRST_PERSON);
+        mc.options.setCameraType(mc.getCameraEntity()==mc.player&&!free()?CameraType.THIRD_PERSON_BACK:CameraType.FIRST_PERSON);
         if(mc.screen!=null&&charging){charging=false;action("cancelCharge");}
         if(primary&&(mc.screen!=null||!doll()))primary(false);
         if(mc.screen!=null)jumpHeld=false;
@@ -184,6 +197,12 @@ public final class PropHuntClient {
             case "minecraft:piston","minecraft:sticky_piston"->"피스톤 작동";
             case "gungang:desk_clock"->"알람 켜기/끄기";
             case "gungang:money_cart"->"현금 인출기 소리";
+            case "gungang:chameleon_block"->"맞닿은 블록으로 위장";
+            case "gungang:capsule_machine"->"팀원 블록 뽑기 (1회)";
+            case "gungang:garden_fountain"->"물 분사";
+            case "gungang:easel"->"그림 그리기";
+            case "minecraft:light"->"밝기 조절";
+            case "minecraft:lightning_rod"->"충전 켜기/끄기";
             case "minecraft:jukebox"->"CD 발사";
             case "minecraft:brewing_stand"->"팀 물약 효과";
             case "minecraft:bell"->"타종";
@@ -205,8 +224,10 @@ public final class PropHuntClient {
             default->block.endsWith("candle_cake")?"촛불 켜기/끄기":PropInteraction.special(block)?"특수 효과":"상호작용";
         };
         String q=TeamPointHud.POINT.getTranslatedKeyMessage().getString().toUpperCase(Locale.ROOT);
-        if(fixed()){
-            lines.add("T  고정 해제");lines.add("휠  다른 시점");lines.add("R  내 시점");lines.add("G  경적");
+        if(free()){
+            lines.add("자유 관전 중");lines.add("이동 키·점프·Shift  비행");lines.add(q+"  자유 관전 해제");lines.add("휠  다른 시점");lines.add("R  내 시점");lines.add("T  고정 해제");
+        }else if(fixed()){
+            lines.add("T  고정 해제");lines.add("휠  다른 시점");lines.add(q+"  자유 관전");lines.add("R  내 시점");lines.add("G  경적");
             if(blast||shoot)lines.add("E  "+use);
         }else if(clinging()!=null){
             lines.add("이동 키  벽에서 위치 조정");lines.add(q+"  벽에서 떨어지기");if(interactive)lines.add("E  "+use);lines.add("G  경적");lines.add("T  고정");
@@ -216,6 +237,7 @@ public final class PropHuntClient {
             else lines.add(liquid()?"점프  헤엄쳐 오르기":"점프 길게  높이 충전");
             lines.add("Shift  정렬");if(interactive)lines.add("E  "+use);lines.add("G  경적");lines.add("T  고정");
             lines.add("R  "+(shoot||block.endsWith("piston")?"방향 전환":hologram?"회전 속도":block.equals("minecraft:note_block")?"곡 바꾸기":"90° 회전"));if(!state.clingOff())lines.add(q+"  벽에 붙기");
+            if(block.equals("minecraft:light"))lines.add("휠  밝기 ±1");
             if(block.equals("gungang:eunbi_doll"))lines.add("좌클릭 (꾹)  광선");
             if(block.equals("gungang:hanbi_doll"))lines.add("좌클릭 (꾹)  투명화·무적");
         }
@@ -224,12 +246,14 @@ public final class PropHuntClient {
     @SubscribeEvent(priority=EventPriority.HIGHEST) public static void scroll(InputEvent.MouseScrollingEvent e){
         var mc=Minecraft.getInstance();
         if(active()&&mc.screen==null&&mc.options.keyPlayerList.isDown()){page=Math.max(0,page+(e.getScrollDelta()<0?1:-1));e.setCanceled(true);return;}
+        // 242: the wheel steps the light disguise's brightness instead of the hotbar.
+        if(hider()&&!fixed()&&mc.screen==null&&e.getScrollDelta()!=0&&self().block().equals("minecraft:light")){e.setCanceled(true);action(e.getScrollDelta()>0?"brightUp":"brightDown");return;}
         if(!fixed()||mc.screen!=null||e.getScrollDelta()==0)return;
         e.setCanceled(true);
         action(e.getScrollDelta()>0?"previous":"next");
     }
     @SubscribeEvent public static void movement(MovementInputUpdateEvent e){
-        if(!hider())return;var input=e.getInput();
+        if(!hider()||free())return;var input=e.getInput();
         // Jump is a charged leap on land, but swims up in water, lava and other liquids like a normal player.
         input.jumping=jumpHeld&&liquid()&&!fixed()&&clinging()==null;
         var player=e.getEntity();var wall=clinging();

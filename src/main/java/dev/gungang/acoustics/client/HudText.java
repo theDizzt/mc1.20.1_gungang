@@ -28,6 +28,14 @@ public final class HudText {
         g.drawString(font, text, x + 1, y + 1, shadow, false);
         g.drawString(font, text, x, y, color, false);
     }
+    /** Small number-font label (e.g. a prop catalog id) scaled by {@code size} and right-aligned to {@code right}. */
+    public static void smallNumber(GuiGraphics g, String value, int right, int y, float size, int color) {
+        g.pose().pushPose();
+        g.pose().translate(right - numberWidth(value) * size, y, 0);
+        g.pose().scale(size, size, 1);
+        drawNumber(g, number(value), 0, 0, color);
+        g.pose().popPose();
+    }
     /** Number font on digit runs only, so units such as "3명" keep the regular font. */
     public static Component numbers(String value) {
         MutableComponent text = Component.empty();
@@ -72,6 +80,18 @@ public final class HudText {
     }
     public static void health(GuiGraphics g, String value, int x, int y, int width, int height, int color, float sizeMultiplier) {
         centered(g, value, x, y, width, height, color, sizeMultiplier, 8, HudText::styled);
+    }
+    /** {@link #health} with a black outline one font pixel thick, for labels over bright bars. */
+    public static void healthOutlined(GuiGraphics g, String value, int x, int y, int width, int height, int color) {
+        float px = healthSize(height, 1f);
+        for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++) {
+            if (dx == 0 && dy == 0) continue;
+            g.pose().pushPose();
+            g.pose().translate(dx * px, dy * px, 0);
+            health(g, value, x, y, width, height, 0xFF000000);
+            g.pose().popPose();
+        }
+        health(g, value, x, y, width, height, color);
     }
     /**
      * Same placement as {@link #health}, drawn in the number font and centred on its 7-row digits. A "123/125" label

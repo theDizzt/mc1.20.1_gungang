@@ -50,7 +50,7 @@ public final class SafeZones {
     public static boolean blocked(Entity target,DamageSource source){
         boolean combat=source.getEntity()!=null||source.getDirectEntity()!=null||source.is(net.minecraft.tags.DamageTypeTags.IS_PROJECTILE)
                 ||source.is(net.minecraft.tags.DamageTypeTags.IS_EXPLOSION)||source.is(DamageTypes.MAGIC)||source.is(DamageTypes.INDIRECT_MAGIC);
-        return contains(source.getEntity())||contains(source.getDirectEntity())||combat&&contains(target);
+        return !Turrets.shot(source)&&contains(source.getEntity())||contains(source.getDirectEntity())||combat&&contains(target);
     }
     @SubscribeEvent(priority=EventPriority.HIGHEST) public static void attack(AttackEntityEvent event){if(contains(event.getEntity())||contains(event.getTarget()))event.setCanceled(true);}
     @SubscribeEvent(priority=EventPriority.HIGHEST) public static void hurt(LivingAttackEvent event){if(blocked(event.getEntity(),event.getSource()))event.setCanceled(true);}

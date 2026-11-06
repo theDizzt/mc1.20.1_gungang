@@ -30,13 +30,14 @@ public final class PropInteraction {
     }
     /** Disguises whose E does something of its own (an ability, arrows, a blast, sinking), shown as "특수" by the name. */
     private static final Set<String> SPECIAL=Set.of("minecraft:anvil","minecraft:flower_pot","minecraft:spawner","minecraft:nether_portal","minecraft:lodestone",
-            "gungang:blue_jump_pad","gungang:lime_jump_pad","gungang:conveyor_belt","minecraft:command_block","minecraft:oak_sign","minecraft:infested_stone",
+            "gungang:blue_jump_pad","gungang:lime_jump_pad","gungang:conveyor_belt","minecraft:command_block","minecraft:oak_sign","minecraft:oak_hanging_sign","minecraft:infested_stone",
             "gungang:mannequin","minecraft:beacon","minecraft:end_crystal","minecraft:sculk_sensor","minecraft:sculk_shrieker","gungang:hologram_projector",
             "gungang:shutter","minecraft:sea_pickle","minecraft:turtle_egg","minecraft:note_block","minecraft:jukebox","minecraft:brewing_stand","minecraft:bell",
             "minecraft:bubble_column","minecraft:dispenser","minecraft:tnt","gungang:gas_barrel","gungang:small_health_pack","gungang:large_health_pack",
             "minecraft:respawn_anchor","minecraft:armor_stand","minecraft:daylight_detector","minecraft:lectern","minecraft:end_portal_frame","gungang:eunbi_doll",
             "gungang:prettiest_block","minecraft:crying_obsidian","minecraft:tnt_minecart","gungang:hanbi_doll","minecraft:conduit","gungang:nozzle",
-            "minecraft:cartography_table","minecraft:farmland","minecraft:piston","minecraft:sticky_piston","gungang:desk_clock","gungang:money_cart");
+            "minecraft:cartography_table","minecraft:farmland","minecraft:piston","minecraft:sticky_piston","gungang:desk_clock","gungang:money_cart",
+            "gungang:chameleon_block","gungang:capsule_machine","gungang:garden_fountain","gungang:easel","minecraft:light");
     private static final Set<String> MENUS=Set.of("minecraft:crafting_table","minecraft:loom","minecraft:grindstone","minecraft:smithing_table","minecraft:enchanting_table",
             "minecraft:cauldron","gungang:war_table","gungang:armory");
     public static boolean special(String item){return SPECIAL.contains(item);}
@@ -45,17 +46,17 @@ public final class PropInteraction {
             "minecraft:soul_campfire","minecraft:magma_block","minecraft:pointed_dripstone","minecraft:stonecutter","gungang:acid_puddle","gungang:acid_nozzle",
             "gungang:uxo","minecraft:spawner","minecraft:fire","minecraft:soul_fire","minecraft:bee_nest","minecraft:infested_stone","minecraft:minecart",
             "minecraft:end_crystal","minecraft:torchflower","gungang:geyser","minecraft:lava","gungang:acid","gungang:eunbi_doll","minecraft:tnt_minecart",
-            "gungang:death_zone","minecraft:conduit");
+            "gungang:death_zone","minecraft:conduit","gungang:nuke_warhead","minecraft:lightning_rod");
     public static boolean attack(String item){return ATTACK.contains(item);}
     /** Disguises that put a status effect on seekers (poison, burning, slowness, glowing), tagged "디버프" in purple. */
     private static final Set<String> DEBUFF=Set.of("gungang:acid_puddle","gungang:acid_nozzle","gungang:acid","minecraft:spawner","minecraft:cobweb",
             "minecraft:fire","minecraft:soul_fire","minecraft:torchflower","gungang:geyser","minecraft:lava","minecraft:bell","minecraft:soul_sand");
     public static boolean debuff(String item){return DEBUFF.contains(item);}
     /** Disguises that move faster or speed up hiders (minecarts, hanbi doll's cloak, beacon, brewing stand's swiftness), tagged "신속" in blue. */
-    private static final Set<String> SWIFT=Set.of("minecraft:minecart","minecraft:tnt_minecart","gungang:hanbi_doll","minecraft:beacon","minecraft:brewing_stand","minecraft:sponge","gungang:money_cart");
+    private static final Set<String> SWIFT=Set.of("minecraft:minecart","minecraft:tnt_minecart","gungang:hanbi_doll","minecraft:beacon","minecraft:brewing_stand","minecraft:sponge","gungang:money_cart","minecraft:light");
     public static boolean swift(String item){return SWIFT.contains(item);}
     /** Disguises seekers cannot see (barrier, structure void, death zone), tagged "은신" in black. */
-    private static final Set<String> STEALTH=Set.of("minecraft:barrier","minecraft:structure_void","gungang:death_zone");
+    private static final Set<String> STEALTH=Set.of("minecraft:barrier","minecraft:structure_void","gungang:death_zone","minecraft:light");
     public static boolean stealth(String item){return STEALTH.contains(item);}
     /** A liquid disguise (water, lava, acid, hot spring water, bubble column): no block model, drawn as its fluid. */
     public static boolean liquid(net.minecraft.world.level.block.state.BlockState state){

@@ -23,14 +23,15 @@ class RapierMotionTest {
         assertTrue(beat.bodyYaw()>0);assertTrue(beat.armYaw()<-.8f);
     }
     @Test void extendedThrustTurnsTheBladeAlongTheForearm(){
-        assertEquals(0,RapierMotion.wrist(false,0),.001f);
+        float guardWrist=RapierMotion.wrist(false,0);
+        assertTrue(guardWrist<0,"The ready stance angles the wrist toward the forward guard");
         var blade=new org.joml.Matrix4f().rotateX(RapierMotion.sample(false,.36f).armPitch())
                 .rotateX(-(float)Math.PI/2).rotateY((float)Math.PI)
                 .rotateX((float)Math.toRadians(RapierMotion.wrist(false,.36f)))
                 .transformDirection(new org.joml.Vector3f(0,1,0));
         assertTrue(blade.z<-.99f,"The blade must point forward, not back through the player's torso");
         assertTrue(Math.abs(blade.y)<.01f);
-        assertEquals(0,RapierMotion.wrist(false,1),.001f);
+        assertEquals(guardWrist,RapierMotion.wrist(false,1),.001f);
     }
     @Test void samplingIsContinuousAtEveryFrame(){
         for(boolean sweep:new boolean[]{false,true})for(int i=1;i<=1000;i++){

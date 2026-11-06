@@ -13,8 +13,11 @@ public final class PreviewCache {
     private static final Map<String,MapImage> MAPS=new LinkedHashMap<>();
     private static final Map<String,ItemStack> WEAPONS=new HashMap<>();
     private static final Map<String,Long> REQUESTS=new HashMap<>();
+    /** Weapon previews go out one at a time, ~9 a second, within the server's rate limit (the loadout grid wants many). */
+    private static long lastWeapon;
     private static void request(String key,String action,String id,String group){
         long now=System.nanoTime();if(now-REQUESTS.getOrDefault(key,0L)<1_000_000_000L)return;
+        if(action.equals("weaponPreview")){if(now-lastWeapon<110_000_000L)return;lastWeapon=now;}
         REQUESTS.put(key,now);LobbyClient.action(action,id,group);
     }
     public static MapImage image(LobbySnapshot.MapView map){

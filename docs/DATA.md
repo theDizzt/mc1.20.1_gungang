@@ -37,7 +37,7 @@
 | 서버 음향 | `config/gungang/acoustics.json` | 서버가 접속·reload 때 클라이언트에 전송 |
 | Minecraft 데이터팩 | `<월드>/datapacks/<팩>/data/<namespace>/functions/*.mcfunction` | 맵의 `onPrepare`·`onStart`·`onEnd`에 `namespace:function` 등록. Minecraft `/reload` 후 `/gungang reload` |
 
-`player-db.json`(전적·XP·무기 프리셋), `result/`, `editor-undo/`, `server/maps/data/`는 자동 저장 데이터입니다. 새 설정을 등록하는 곳이 아닙니다. `exports/<id>.json`은 `/gungang exportitem` 출력이므로 필요한 무기 폴더로 옮기고 정보를 채워야 선택 목록에 등록됩니다.
+`player-db.json`(전적·XP·무기 프리셋), `result/`, `editor-undo/`, `server/maps/data/`는 자동 저장 데이터입니다. 새 설정을 등록하는 곳이 아닙니다. `backups/tacz/`는 무기 실시간 패치가 TaCZ 총기 데이터 파일을 처음 고칠 때 남기는 원본 백업입니다. `exports/<id>.json`은 `/gungang exportitem` 출력이므로 필요한 무기 폴더로 옮기고 정보를 채워야 선택 목록에 등록됩니다.
 
 폴더별 등록 안내를 이 문서로 통합했습니다. 예제 생성 스크립트가 `preview/README.txt`에 쓰던 PNG 파일명·용량·해상도·reload 안내도 아래 미리보기 절에 포함합니다. 프로젝트의 `font/`와 실제 클라이언트의 `config/gungang/fonts/`를 혼동하지 마세요.
 
@@ -201,6 +201,10 @@
 ```
 
 생략하면 최대 체력 100, 기본 이동 속도의 100%입니다. 최대 체력은 Minecraft 체력 수치(하트 수가 아님), 이동 속도는 퍼센트입니다. 무기 선택·경기 지급·리스폰 시 적용합니다. 변경 시 현재 체력 비율을 유지하며, 경기 참여 해제 시 모드가 추가한 능력치만 제거합니다. 자극제의 이동 속도 증가는 주무기 이동 속도에 추가로 곱해집니다.
+
+TaCZ 총기는 총기팩 데이터의 `weight`(kg)마다 이동속도를 서버 TaCZ 설정 `WeightSpeedMultiplier`(기본 1.5%)만큼 따로 깎으며, 이 감속은 `movementSpeed`에 곱해집니다(예: 무게 30이면 -45%, 여기에 `movementSpeed: 80`이면 최종 약 44%). 이 서버는 주무기의 이동 속도를 `movementSpeed`로 관리하므로 총기팩의 `weight`는 0으로 둡니다. FN M2HB 중기관총(`rfp:m2hb`)도 무게 30을 0으로 바꿔 GunGang 80%만 적용합니다(원본은 `config/gungang/backups/tacz/`에 보관). 각 무기의 무게와 최종 이동속도는 [무기 실시간 패치 화면](COMMANDS.md#weapon-patch)에서 확인하고 고칠 수 있습니다.
+
+주무기 설정은 `/gungang modify weapon ...` 또는 `/gungang modify ui`로 경기 중에도 바꿀 수 있으며, 장착 중인 플레이어에게 바로 적용됩니다.
 
 ### 보조무기 JSON과 수량
 

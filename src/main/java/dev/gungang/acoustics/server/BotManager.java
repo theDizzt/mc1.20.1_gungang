@@ -318,11 +318,11 @@ public final class BotManager {
         if(!botVictim&&!botAttack)return;
         if(arena==null||!settings.enabled()||!MatchManager.botRunning()){event.setCanceled(true);return;}
         if(botAttack&&botVictim&&attacker.getUUID().equals(victim.getUUID()))return;
-        var ffa=MatchManager.freeForAll();
+        var ffa=MatchManager.freeForAll();boolean turret=Turrets.shot(event.getSource());
         if(ffa!=null) {
             // Everyone fights everyone; FreeForAllMatch itself blocks attacks to and from protected participants.
             if(victim instanceof ServerPlayer p&&!botVictim&&(!ffa.participant(p.getUUID())||LobbyManager.respawning(p.getUUID())))event.setCanceled(true);
-            if(botVictim&&!botAttack&&attacker instanceof ServerPlayer p&&(!ffa.participant(p.getUUID())||p.isSpectator()))event.setCanceled(true);
+            if(botVictim&&!botAttack&&attacker instanceof ServerPlayer p&&(!ffa.participant(p.getUUID())||p.isSpectator()&&!turret))event.setCanceled(true);
             return;
         }
         // A bot's fake player (thrown items) carries the bot's UUID: its side is the bot's, not a lobby entry.
@@ -331,7 +331,7 @@ public final class BotManager {
         boolean teams=Set.of("ALPHA","BRAVO").contains(attackerSide)&&Set.of("ALPHA","BRAVO").contains(victimSide);
         if(botAttack&&victim instanceof ServerPlayer p&&!botVictim&&(!teams||attackerSide.equals(victimSide)||LobbyManager.respawning(p.getUUID())))event.setCanceled(true);
         if(botAttack&&botVictim&&(!teams||attackerSide.equals(victimSide)))event.setCanceled(true);
-        if(botVictim&&!botAttack&&attacker instanceof ServerPlayer p&&(!teams||attackerSide.equals(victimSide)||p.isSpectator()))event.setCanceled(true);
+        if(botVictim&&!botAttack&&attacker instanceof ServerPlayer p&&(!teams||attackerSide.equals(victimSide)||p.isSpectator()&&!turret))event.setCanceled(true);
     }
 
     // ---- commands ----

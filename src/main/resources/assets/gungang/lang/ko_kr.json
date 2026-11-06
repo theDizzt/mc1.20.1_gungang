@@ -32,5 +32,12 @@
     "block.gungang.desk_clock":  "탁상 시계",
     "block.gungang.money_cart":  "돈을 실은 수레",
     "subtitles.gungang.clock_alarm":  "시계 알람이 울림",
-    "subtitles.gungang.cash_machine":  "현금 인출기 작동"
+    "subtitles.gungang.cash_machine":  "현금 인출기 작동",
+    "block.gungang.aquarium":  "어항",
+    "block.gungang.chameleon_block":  "카멜레온 블록",
+    "block.gungang.capsule_machine":  "캡슐 뽑기 기계",
+    "block.gungang.error_block":  "에러 블록",
+    "block.gungang.garden_fountain":  "작은 정원 분수",
+    "block.gungang.nuke_warhead":  "핵탄두",
+    "block.gungang.easel":  "이젤"
 }

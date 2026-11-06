@@ -85,7 +85,7 @@ final class PropHuntHud {
                 PropAbilityHud.icon(g,row.block(),state,x+1,ty+1,16);
                 // Catalog number at the bottom right, above the item (z 150) and below the found overlay (z 200).
                 g.pose().pushPose();g.pose().translate(0,0,180);
-                DeathmatchHud.small(g,PropCatalog.number(row.block()),x+TILE-1,ty+TILE-8,.62f,0xFFFFFFFF,false,false);
+                HudText.smallNumber(g,PropCatalog.number(row.block()),x+TILE-1,ty+TILE-8,.62f,0xFFFFFFFF);
                 g.pose().popPose();
             }
             if(row.found()) {

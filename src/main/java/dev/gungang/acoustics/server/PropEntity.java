@@ -91,9 +91,11 @@ public final class PropEntity extends LivingEntity {
     @Override public void tick(){super.tick();setDeltaMovement(0,0,0);setBoundingBox(makeBoundingBox());if(!level().isClientSide&&MatchManager.propHunt()==null)discard();}
     @Override protected AABB makeBoundingBox(){
         if(entityData==null)return super.makeBoundingBox();
-        if(item().equals("minecraft:minecart")||item().equals("minecraft:tnt_minecart"))return new AABB(getX()-.49,getY(),getZ()-.49,getX()+.49,getY()+.7,getZ()+.49);
+        if(item().equals("minecraft:minecart")||item().equals("minecraft:tnt_minecart")||item().equals("gungang:money_cart"))return new AABB(getX()-.49,getY(),getZ()-.49,getX()+.49,getY()+.7,getZ()+.49);
         if(item().equals("minecraft:armor_stand"))return new AABB(getX()-.25,getY(),getZ()-.25,getX()+.25,getY()+1.975,getZ()+.25);
         if(item().equals("minecraft:end_crystal"))return new AABB(getX()-.875,getY(),getZ()-.875,getX()+.875,getY()+3.3,getZ()+.875);
+        // 239: the 2x3x2 warhead.
+        if(item().equals("gungang:nuke_warhead"))return new AABB(getX()-1,getY(),getZ()-1,getX()+1,getY()+3,getZ()+1);
         if(item().equals("minecraft:painting")){
             var list=level().registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.PAINTING_VARIANT).holders().toList();
             var variant=list.get(Math.floorMod(painting(),list.size())).value();double w=variant.getWidth()/16d,h=variant.getHeight()/16d;
@@ -120,6 +122,7 @@ public final class PropEntity extends LivingEntity {
         if(entity instanceof PropEntity||entity.isSpectator()||entity.noPhysics)return List.of();
         var result=new ArrayList<net.minecraft.world.phys.shapes.VoxelShape>();
         for(var prop:level.getEntitiesOfClass(PropEntity.class,box.inflate(1),p->!p.isRemoved()&&!entity.getUUID().equals(p.owner()))){
+            if(prop.item().equals("gungang:nuke_warhead")){result.add(net.minecraft.world.phys.shapes.Shapes.create(prop.getBoundingBox()));continue;}
             for(var part:PropGeometry.parts(prop)){
                 var state=part.state();
                 // An open shutter disguise keeps only its side rails and header; the world has no shutter tile to ask.
