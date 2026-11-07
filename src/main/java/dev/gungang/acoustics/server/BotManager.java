@@ -222,7 +222,7 @@ public final class BotManager {
     /** Every reserved slot joins on the team it has now; off/on during a match never changes sides or resets scores. */
     private static void activate()throws Exception{
         if(arena==null||!added())return;
-        var loadouts=Loadouts.load();fault="";
+        var loadouts=LobbyManager.catalog(Loadouts.load());fault="";
         for(int slot:lobby.keySet()){
             if(agent(BotDatabase.id(slot))!=null)continue;
             var agent=new BotAgent(slot,lobbyTeam(slot));agents.add(agent);agent.activate(loadouts);

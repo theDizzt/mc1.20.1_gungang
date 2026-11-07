@@ -62,11 +62,18 @@ public final class PartyRenderer implements BlockEntityRenderer<PartyEntity> {
     }
     /** Text centred on (x, y) on a plane at z facing -z (the front), {@code size} pixels tall. */
     private static void text(PoseStack pose,MultiBufferSource buffers,String text,double x,double y,double z,float size,int color,int light){
+        text(pose,buffers,net.minecraft.network.chat.Component.literal(text),x,y,z,size,color,light);
+    }
+    private static void text(PoseStack pose,MultiBufferSource buffers,net.minecraft.network.chat.Component text,double x,double y,double z,float size,int color,int light){
         var font=Minecraft.getInstance().font;
         pose.pushPose();pose.translate(x/16,y/16,z/16);pose.mulPose(Axis.YP.rotationDegrees(180));
         float s=size/16f/8f;pose.scale(s,-s,s);
         font.drawInBatch(text,-font.width(text)/2f,-3.5f,color,false,pose.last().pose(),buffers,net.minecraft.client.gui.Font.DisplayMode.POLYGON_OFFSET,0,light);
         pose.popPose();
+    }
+    /** The largest text size up to {@code size} whose width fits {@code width} pixels. */
+    private static float fit(String text,float size,double width){
+        int w=Minecraft.getInstance().font.width(text);return w<=0?size:(float)Math.min(size,width*8/w);
     }
     /** A flat coloured quad (pixels) on the white texture; c are corners in order, normal n. */
     private static void quad(PoseStack pose,com.mojang.blaze3d.vertex.VertexConsumer c,int light,float[][] p,int[] colors,float nx,float ny,float nz){
@@ -120,14 +127,23 @@ public final class PartyRenderer implements BlockEntityRenderer<PartyEntity> {
 
     // ---- 244 mirror -----------------------------------------------------------------------------------------------
 
-    /** A full-length mirror on little feet: dark wooden frame, silvery glass with light streaks. */
+    /** A full-length mirror on little feet: dark wooden frame, glass showing a real reflection (silvery with light streaks when none is ready). */
     private static void mirror(PoseStack pose,MultiBufferSource buffers,int light){
         b(pose,buffers,light,Blocks.DARK_OAK_PLANKS,-7,0,-3,-5,2,8);b(pose,buffers,light,Blocks.DARK_OAK_PLANKS,5,0,-3,7,2,8);
         b(pose,buffers,light,Blocks.DARK_OAK_PLANKS,-8,2,5,8,32,8);
         b(pose,buffers,light,Blocks.GOLD_BLOCK,-7,3,4.6,7,31,5);
         int lit=LightTexture.pack(Math.max(9,LightTexture.block(light)),LightTexture.sky(light));
-        var c=buffers.getBuffer(RenderType.entityCutoutNoCull(WHITE));float z=4.5f;
-        quad(pose,c,lit,new float[][]{{6.4f,3.6f,z},{-6.4f,3.6f,z},{-6.4f,30.4f,z},{6.4f,30.4f,z}},new int[]{0x8E9CAB,0x8E9CAB,0xDDE6EF,0xDDE6EF},0,0,-1);
+        float z=4.5f;float[][] glass={{6.4f,3.6f,z},{-6.4f,3.6f,z},{-6.4f,30.4f,z},{6.4f,30.4f,z}};
+        // A real reflection when one is ready for this glass (MirrorReflection); otherwise plain silvery glass.
+        var reflection=MirrorReflection.glass(pose,glass);
+        if(reflection!=null){
+            var t=buffers.getBuffer(RenderType.text(MirrorReflection.texture(reflection)));var m=pose.last().pose();var uv=MirrorReflection.uv(reflection);
+            for(int pass=0;pass<2;pass++)for(int k=0;k<4;k++){int i=pass==0?k:3-k; // both windings: whichever faces the viewer is kept
+                t.vertex(m,glass[i][0]/16,glass[i][1]/16,(glass[i][2]-.01f)/16).color(0xEA,0xF0,0xF5,0xFF).uv(uv[i][0],uv[i][1]).uv2(BRIGHT).endVertex();}
+            return;
+        }
+        var c=buffers.getBuffer(RenderType.entityCutoutNoCull(WHITE));
+        quad(pose,c,lit,glass,new int[]{0x8E9CAB,0x8E9CAB,0xDDE6EF,0xDDE6EF},0,0,-1);
         float zs=z-.05f;int s=0xF4F8FC;
         quad(pose,c,lit,new float[][]{{5.5f,18,zs},{3.5f,18,zs},{-2.5f,30.4f,zs},{-.5f,30.4f,zs}},new int[]{s,s,s,s},0,0,-1);
         quad(pose,c,lit,new float[][]{{6.4f,8,zs},{5.6f,8,zs},{-.4f,20,zs},{.4f,20,zs}},new int[]{s,s,s,s},0,0,-1);
@@ -180,13 +196,20 @@ public final class PartyRenderer implements BlockEntityRenderer<PartyEntity> {
             float stop=PartyBlocks.SPIN_TICKS/2f+i*PartyBlocks.SPIN_TICKS/6f;int symbol;double shift=0;
             if(t>=0&&t<stop){float roll=t*.9f+i*2.3f;symbol=Math.floorMod((int)roll,PartyBlocks.SYMBOLS.length);shift=(roll-Math.floor(roll))*-2.5;}
             else symbol=be.reels[i];
-            text(pose,buffers,PartyBlocks.SYMBOLS[symbol],x,22+shift,-3.65,5,SYMBOL_COLORS[symbol],BRIGHT);
+            // Sized to the reel window (4 x 8 px) so wide symbols (the star) stay inside, rolling ones included.
+            String glyph=PartyBlocks.SYMBOLS[symbol];
+            text(pose,buffers,glyph,x,22+shift,-3.65,fit(glyph,4f,3.2),SYMBOL_COLORS[symbol],BRIGHT);
         }
     }
 
     // ---- 248 billiard ball ----------------------------------------------------------------------------------------
 
     private static final int[] BALL_COLORS={0xF2C12E,0x1F4FBF,0xD02828,0x5B2C8F,0xF07D1A,0x167A3C,0x7A1F1F,0x141414};
+    /**
+     * A sphere six pixels round. A stripe ball's band is cut on latitude lines (so its edges are straight); every
+     * numbered ball wears a round white spot front and back with its number in the Gungang font; the cue ball and the
+     * carom yellow and red carry three dots on three perpendicular axes.
+     */
     private static void ball(PartyEntity be,PoseStack pose,MultiBufferSource buffers,int light){
         var state=be.getBlockState();int ball=state.hasProperty(PartyBlocks.Ball.BALL)?state.getValue(PartyBlocks.Ball.BALL):0;
         boolean numbered=ball<15,stripe=ball>=8&&ball<15;
@@ -196,22 +219,53 @@ public final class PartyRenderer implements BlockEntityRenderer<PartyEntity> {
         pose.pushPose();pose.translate(0,r/16,0);
         if(be.disguise)pose.mulPose(be.roll);
         var c=buffers.getBuffer(RenderType.entityCutoutNoCull(WHITE));
-        int rings=12,segments=20;
-        for(int i=0;i<rings;i++)for(int j=0;j<segments;j++){
-            double t0=Math.PI*i/rings,t1=Math.PI*(i+1)/rings,p0=2*Math.PI*j/segments,p1=2*Math.PI*(j+1)/segments;
-            double tm=(t0+t1)/2,pm=(p0+p1)/2;double dz=Math.cos(tm),dy=Math.sin(tm)*Math.sin(pm);
-            int col=numbered&&Math.abs(dz)>.9?white:stripe?(Math.abs(dy)<.42?color:white):color;
-            float[][] p=new float[4][];double[][] at={{t0,p0},{t1,p0},{t1,p1},{t0,p1}};
-            for(int k=0;k<4;k++){double th=at[k][0],ph=at[k][1];p[k]=new float[]{(float)(Math.sin(th)*Math.cos(ph)*r),(float)(Math.sin(th)*Math.sin(ph)*r),(float)(Math.cos(th)*r)};}
-            float nx=(float)(Math.sin(tm)*Math.cos(pm)),ny=(float)dy,nz=(float)dz;
-            quad(pose,c,light,p,new int[]{col,col,col,col},nx,ny,nz);
+        // Latitudes from the top pole (0) to the bottom (pi); a stripe's band edges are latitudes of their own.
+        double band=Math.acos(.45);
+        var lat=new java.util.TreeSet<Double>();
+        for(int i=0;i<=16;i++)lat.add(Math.PI*i/16);
+        if(stripe){lat.add(band);lat.add(Math.PI-band);}
+        Double[] rows=lat.toArray(Double[]::new);int segments=28;
+        for(int i=0;i+1<rows.length;i++)for(int j=0;j<segments;j++){
+            double t0=rows[i],t1=rows[i+1],tm=(t0+t1)/2;
+            int col=stripe?(tm>band&&tm<Math.PI-band?color:white):color;
+            sphereQuad(pose,c,light,r,t0,t1,2*Math.PI*j/segments,2*Math.PI*(j+1)/segments,col);
         }
         if(numbered){
-            String n=String.valueOf(ball+1);
-            text(pose,buffers,n,0,0,-r-.06,2.6f,0x111111,light);
-            pose.mulPose(Axis.YP.rotationDegrees(180));text(pose,buffers,n,0,0,-r-.06,2.6f,0x111111,light);
+            var n=net.minecraft.network.chat.Component.literal(String.valueOf(ball+1)).withStyle(st->st.withFont(HudText.NUMBER_FONT));
+            for(int side=0;side<2;side++){
+                pose.pushPose();if(side==1)pose.mulPose(Axis.YP.rotationDegrees(180));
+                pose.pushPose();pose.mulPose(Axis.XP.rotationDegrees(-90)); // the cap's pole to -z, the front
+                cap(pose,c,light,r+.04f,Math.toRadians(stripe?30:27),white);
+                pose.popPose();
+                text(pose,buffers,n,0,.15,-r-.12,ball+1>=10?2.6f:3f,0x111111,light);
+                pose.popPose();
+            }
+        }else{
+            // Three dots: on the white and yellow balls red, on the red ball white.
+            int dot=ball==17?white:0xD02828;
+            for(var turn:new com.mojang.math.Axis[]{null,Axis.ZP,Axis.XP}){
+                pose.pushPose();
+                if(turn==Axis.ZP)pose.mulPose(Axis.ZP.rotationDegrees(-90));else if(turn==Axis.XP)pose.mulPose(Axis.XP.rotationDegrees(-90));
+                cap(pose,c,light,r+.04f,Math.toRadians(11),dot);
+                pose.popPose();
+            }
         }
         pose.popPose();
+    }
+    /** A round cap of the given half-angle about the +y pole, radius r (pixels). */
+    private static void cap(PoseStack pose,com.mojang.blaze3d.vertex.VertexConsumer c,int light,float r,double angle,int col){
+        for(int i=0;i<4;i++)for(int j=0;j<20;j++)
+            sphereQuad(pose,c,light,r,angle*i/4,angle*(i+1)/4,2*Math.PI*j/20,2*Math.PI*(j+1)/20,col);
+    }
+    /** One patch of a sphere of radius r (pixels) between polar angles t0..t1 from +y and azimuths p0..p1. */
+    private static void sphereQuad(PoseStack pose,com.mojang.blaze3d.vertex.VertexConsumer c,int light,float r,double t0,double t1,double p0,double p1,int col){
+        double[][] at={{t0,p0},{t1,p0},{t1,p1},{t0,p1}};float[][] p=new float[4][];
+        for(int k=0;k<4;k++){
+            double th=at[k][0],ph=at[k][1];
+            p[k]=new float[]{(float)(Math.sin(th)*Math.cos(ph)*r),(float)(Math.cos(th)*r),(float)(Math.sin(th)*Math.sin(ph)*r)};
+        }
+        double tm=(t0+t1)/2,pm=(p0+p1)/2;
+        quad(pose,c,light,p,new int[]{col,col,col,col},(float)(Math.sin(tm)*Math.cos(pm)),(float)Math.cos(tm),(float)(Math.sin(tm)*Math.sin(pm)));
     }
 
     // ---- 249 wishing well -----------------------------------------------------------------------------------------
@@ -389,13 +443,28 @@ public final class PartyRenderer implements BlockEntityRenderer<PartyEntity> {
     // ---- 256 shadow -----------------------------------------------------------------------------------------------
 
     private static final ResourceLocation SHADOW=new ResourceLocation("minecraft","textures/misc/shadow.png");
-    /** Only a soft black shadow on the floor. */
+    /**
+     * Only a shadow on the floor: darkest in the middle and fading smoothly to nothing at the rim (a gaussian falloff),
+     * drawn as rings so there is no hard edge.
+     */
     private static void shadow(PoseStack pose,MultiBufferSource buffers,int light){
-        var c=buffers.getBuffer(RenderType.entityShadow(SHADOW));var m=pose.last().pose();var n=pose.last().normal();
-        float r=.62f,y=.016f;int a=230;
-        c.vertex(m,-r,y,-r).color(0,0,0,a).uv(0,0).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(light).normal(n,0,1,0).endVertex();
-        c.vertex(m,-r,y,r).color(0,0,0,a).uv(0,1).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(light).normal(n,0,1,0).endVertex();
-        c.vertex(m,r,y,r).color(0,0,0,a).uv(1,1).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(light).normal(n,0,1,0).endVertex();
-        c.vertex(m,r,y,-r).color(0,0,0,a).uv(1,0).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(light).normal(n,0,1,0).endVertex();
+        var c=buffers.getBuffer(RenderType.entityShadow(WHITE));var m=pose.last().pose();var n=pose.last().normal();
+        float radius=.78f,y=.016f;int rings=10,segments=40;
+        for(int i=0;i<rings;i++){
+            float r0=radius*i/rings,r1=radius*(i+1)/rings;int a0=shade(r0/radius),a1=shade(r1/radius);
+            for(int j=0;j<segments;j++){
+                double p0=2*Math.PI*j/segments,p1=2*Math.PI*(j+1)/segments;
+                float c0=(float)Math.cos(p0),s0=(float)Math.sin(p0),c1=(float)Math.cos(p1),s1=(float)Math.sin(p1);
+                c.vertex(m,c0*r0,y,s0*r0).color(0,0,0,a0).uv(.5f,.5f).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(light).normal(n,0,1,0).endVertex();
+                c.vertex(m,c1*r0,y,s1*r0).color(0,0,0,a0).uv(.5f,.5f).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(light).normal(n,0,1,0).endVertex();
+                c.vertex(m,c1*r1,y,s1*r1).color(0,0,0,a1).uv(.5f,.5f).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(light).normal(n,0,1,0).endVertex();
+                c.vertex(m,c0*r1,y,s0*r1).color(0,0,0,a1).uv(.5f,.5f).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(light).normal(n,0,1,0).endVertex();
+            }
+        }
+    }
+    /** Shadow opacity at a fraction of the radius: a soft core (about 60 %) easing to zero at the rim. */
+    private static int shade(float f){
+        double g=Math.exp(-3.2*f*f),edge=Math.exp(-3.2);
+        return (int)Math.round(150*Math.max(0,(g-edge)/(1-edge)));
     }
 }

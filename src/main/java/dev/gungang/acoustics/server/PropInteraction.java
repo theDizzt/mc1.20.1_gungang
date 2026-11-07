@@ -84,6 +84,7 @@ public final class PropInteraction {
         if(debuff(item))tags.add(new Tag("디버프",0xFFC77DFF,'5'));
         if(PropAbilities.maxHealth(item)>50)tags.add(new Tag("견고",0xFF9DFF5A,'a'));
         if(PropSticky.sticky(item))tags.add(new Tag("접착",0xFFFF8030,'6'));
+        if(PropSkate.skater(item))tags.add(new Tag("벽 타기",0xFF40D0A0,'3'));
         if(swift(item))tags.add(new Tag("신속",0xFF4D8BFF,'9'));
         if(liquid(state))tags.add(new Tag("액체",0xFF6CD8FF,'b'));
         if(glows(state))tags.add(new Tag("광원",0xFFE6B422,'6'));

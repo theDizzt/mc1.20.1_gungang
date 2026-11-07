@@ -17,8 +17,8 @@ public final class PropAbilities {
     private static final UUID CART=UUID.fromString("ca3ad028-bc47-4995-9a62-d91fdc065319"),BEACON=UUID.fromString("bcbd5028-bc47-4995-9a62-d91fdc065319"),
             CLOAK=UUID.fromString("c10a6028-bc47-4995-9a62-d91fdc065319"),LIGHT=UUID.fromString("119b6028-bc47-4995-9a62-d91fdc065319"),SPONGE=UUID.fromString("5b0e6028-bc47-4995-9a62-d91fdc065319"),
             ROLL=UUID.fromString("b1a1d028-bc47-4995-9a62-d91fdc065319");
-    /** 248 billiard ball 1.8x, 252 Sanga skateboard 1.6x; 250 statue money rain; 247 jackpot; 245 dice roll. */
-    static final double BALL_SPEED=.8,SKATE_SPEED=.6,RAIN_RADIUS=8,AUTO_SPEED=.2,AUTO_RANGE=28,PHOTO_RANGE=32;static final float AUTO_DAMAGE=3.5f;static final float RAIN_DAMAGE=80;static final int RAIN_TICKS=400,JACKPOT_TICKS=100,DICE_TICKS=20;
+    /** 248 billiard ball 1.8x, 252 Sanga skateboard 2.4x; 250 statue money rain; 247 jackpot; 245 dice roll. */
+    static final double BALL_SPEED=.8,SKATE_SPEED=1.4,RAIN_RADIUS=8,AUTO_SPEED=.2,AUTO_RANGE=28,PHOTO_RANGE=32;static final float AUTO_DAMAGE=3.5f;static final float RAIN_DAMAGE=80;static final int RAIN_TICKS=400,JACKPOT_TICKS=100,DICE_TICKS=20;
     /** 209 dry sponge speed bonus; 214 cartography table map time; 218/219 piston push speed. */
     /** 242 light 3x speed; 239 warhead blast radius; 152 lightning rod charge time and strike radius; 235 fountain jet height. */
     static final double LIGHT_SPEED=2,NUKE_RADIUS=64,ROD_RADIUS=8,FOUNTAIN_TALL=3;static final int ROD_TICKS=60*20,NUKE_CLOUD=80;
@@ -65,7 +65,7 @@ public final class PropAbilities {
     PropAbilities(PropHuntMatch match){this.match=match;}
     private Runtime data(UUID id){return states.computeIfAbsent(id,k->{var r=new Runtime();r.born=match.now();return r;});}
     public static int cooldown(String item){return switch(item){case "minecraft:spawner"->84*20;
-        case "minecraft:respawn_anchor"->30*20;case "minecraft:end_portal_frame","minecraft:tnt_minecart"->5*20;case "minecraft:crying_obsidian","gungang:prettiest_block"->3*20;case "minecraft:daylight_detector"->2*20;case "minecraft:command_block","minecraft:end_crystal","minecraft:tnt","gungang:gas_barrel"->30*20;case "minecraft:dispenser","minecraft:jukebox"->20;case "minecraft:brewing_stand"->50*20;case "minecraft:conduit"->90*20;case "minecraft:cartography_table"->30*20;case "minecraft:piston","minecraft:sticky_piston"->10;case "gungang:money_cart"->60;case "minecraft:bell"->15*20;case "gungang:garden_fountain"->BURST_COOLDOWN;case PartyBlocks.DICE_ID->30;case PartyBlocks.SLOT->200;case PartyBlocks.STATUE_ID->600;case "gungang:nozzle"->BURST_COOLDOWN;case "gungang:small_health_pack"->ExtraGadgetConfig.ticks(GadgetConfig.smallHealthPack.cooldownSeconds());case "gungang:large_health_pack"->ExtraGadgetConfig.ticks(GadgetConfig.largeHealthPack.cooldownSeconds());default->0;};}
+        case "minecraft:respawn_anchor"->30*20;case "minecraft:end_portal_frame","minecraft:tnt_minecart"->5*20;case "minecraft:crying_obsidian","gungang:prettiest_block"->3*20;case "minecraft:daylight_detector"->2*20;case "minecraft:command_block","minecraft:end_crystal","minecraft:tnt","gungang:gas_barrel"->30*20;case "minecraft:dispenser","minecraft:jukebox"->20;case "minecraft:brewing_stand"->50*20;case "minecraft:conduit"->90*20;case "minecraft:cartography_table"->30*20;case "minecraft:piston","minecraft:sticky_piston"->10;case "gungang:money_cart"->60;case "minecraft:bell"->15*20;case "gungang:garden_fountain"->BURST_COOLDOWN;case PartyBlocks.DICE_ID->30;case PartyBlocks.STATUE_ID->600;case "gungang:nozzle"->BURST_COOLDOWN;case "gungang:small_health_pack"->ExtraGadgetConfig.ticks(GadgetConfig.smallHealthPack.cooldownSeconds());case "gungang:large_health_pack"->ExtraGadgetConfig.ticks(GadgetConfig.largeHealthPack.cooldownSeconds());default->0;};}
     public int remaining(UUID id){var r=data(id);return Math.max(0,r.cooldown-match.now());}
     public int active(UUID id){return Math.max(0,data(id).active-match.now());}
     public boolean stunned(UUID id){return data(id).stun>match.now();}
@@ -112,10 +112,10 @@ public final class PropAbilities {
         if(item.equals(PartyBlocks.BALL)&&prop.state().hasProperty(PartyBlocks.Ball.BALL))prop.state(prop.state().setValue(PartyBlocks.Ball.BALL,p.getRandom().nextInt(PartyBlocks.Ball.KINDS)));
         if(item.equals(PartyBlocks.DICE_ID)&&prop.state().hasProperty(PartyBlocks.Dice.VALUE))prop.state(prop.state().setValue(PartyBlocks.Dice.VALUE,1+p.getRandom().nextInt(6)));
     }
-    /** Sturdy disguises (tagged "견고"): mannequins and dolls, (crying) obsidian, end crystal, geyser, war table, armory 255; big grass block 400; bedrock 999; every other block 50. */
+    /** Sturdy disguises (tagged "견고"): mannequins and dolls, (crying) obsidian, end crystal, geyser, war table, armory, 243 wall clock, 244 mirror 255; big grass block 400; bedrock 999; every other block 50. */
     public static double maxHealth(String item){
         return Set.of("gungang:mannequin",EUNBI,HANBI,"minecraft:obsidian","minecraft:crying_obsidian","minecraft:end_crystal","gungang:geyser","gungang:war_table","gungang:armory").contains(item)?255
-                :Set.of("gungang:easel","gungang:garden_fountain",PartyBlocks.CHANDELIER_ID,PartyBlocks.WELL,PartyBlocks.TREE_ID,PartyBlocks.SANGA).contains(item)?255
+                :Set.of("gungang:easel","gungang:garden_fountain",PartyBlocks.CLOCK,PartyBlocks.MIRROR_ID,PartyBlocks.CHANDELIER_ID,PartyBlocks.WELL,PartyBlocks.TREE_ID,PartyBlocks.SANGA).contains(item)?255
                 :item.equals(PartyBlocks.STATUE_ID)?999:item.equals(PartyBlocks.AUTO)?255:item.equals(NUKE)||item.equals("gungang:capsule_machine")?100
                 :item.equals("gungang:big_grass_block")?400:item.equals("minecraft:bedrock")?999:50;
     }
@@ -258,7 +258,7 @@ public final class PropAbilities {
                 p.level().playSound(null,BlockPos.containing(at),net.minecraft.sounds.SoundEvents.CHAIN_PLACE,net.minecraft.sounds.SoundSource.BLOCKS,1,.8f);
                 PropHuntMatch.say(p,Component.literal("샹들리에: 천장에 매달렸습니다 (E: 떨어지기)"),true);
             }
-            // 247: three reels; 777 (1 in 64) is the jackpot, paid out when they stop (tick).
+            // 247: three reels, no cooldown (only one spin at a time); 777 (1 in 64) is the jackpot, paid out when they stop (tick).
             case PartyBlocks.SLOT->{
                 if(r.slotAt>now)return true;
                 var random=p.getRandom();int a=PartyBlocks.reel(random),b=PartyBlocks.reel(random),c=PartyBlocks.reel(random);
