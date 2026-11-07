@@ -94,6 +94,11 @@ class GameOptionsTest {
         assertThrows(IllegalArgumentException.class,()->new GameOptions.Deathmatch(null,null,10001));
         assertThrows(IllegalArgumentException.class,()->new GameOptions.Common(null,null,0,null,null));
         assertThrows(IllegalArgumentException.class,()->new GameOptions.Common(null,null,null,null,.9));
+        // The bigger team's health: 50~100 percent.
+        assertThrows(IllegalArgumentException.class,()->new GameOptions.Common(null,null,null,null,null,49));
+        assertThrows(IllegalArgumentException.class,()->new GameOptions.Common(null,null,null,null,null,101));
+        assertDoesNotThrow(()->new GameOptions.Common(null,null,null,null,null,50));
+        assertEquals(75,new com.google.gson.Gson().fromJson("{\"handicapLargeHealth\":75}",GameOptions.Common.class).handicapLargeHealth());
         assertThrows(IllegalArgumentException.class,()->new GameOptions.Escort(null,null,null,null,null,.99,null,null));
         assertThrows(IllegalArgumentException.class,()->new GameOptions.Escort(null,null,null,null,null,null,null,61));
     }

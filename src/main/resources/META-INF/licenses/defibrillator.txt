@@ -1,0 +1,2 @@
+"AED / defibrillator (low poly)" by theappxr, from the supplied archive defibrillator-low-poly.zip.
+Modifications: glTF (GLB) converted to OBJ; scale normalized; base-colour texture converted to PNG; flat-coloured materials baked to solid textures.

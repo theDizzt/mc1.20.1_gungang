@@ -27,9 +27,16 @@ public final class PropExtraBlocks {
     public static final RegistryObject<Block> DEATH_ZONE=block("death_zone",DeathZoneBlock::new);
     private static RegistryObject<Block> block(String id,java.util.function.Supplier<Block> supplier){var result=BLOCKS.register(id,supplier);ITEMS.register(id,()->new BlockItem(result.get(),new Item.Properties()));return result;}
     public static void register(net.minecraftforge.eventbus.api.IEventBus bus){BLOCKS.register(bus);ITEMS.register(bus);}
+    /**
+     * Figures and decorations with a front (mannequin, dolls, dried ghast ...) face whoever places them. rotate() is left
+     * as vanilla's no-op on purpose: a prop hunt disguise turns by its own rotation, not by this state.
+     */
     private static final class ShapeBlock extends Block {
+        static final net.minecraft.world.level.block.state.properties.DirectionProperty FACING=net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING;
         private final VoxelShape shape;
-        ShapeBlock(Properties properties,VoxelShape shape){super(properties);this.shape=shape;}
+        ShapeBlock(Properties properties,VoxelShape shape){super(properties);this.shape=shape;registerDefaultState(stateDefinition.any().setValue(FACING,net.minecraft.core.Direction.NORTH));}
+        @Override protected void createBlockStateDefinition(net.minecraft.world.level.block.state.StateDefinition.Builder<Block,BlockState> b){b.add(FACING);}
+        @Override public BlockState getStateForPlacement(net.minecraft.world.item.context.BlockPlaceContext c){return defaultBlockState().setValue(FACING,c.getHorizontalDirection().getOpposite());}
         @Override public VoxelShape getShape(BlockState s,BlockGetter l,BlockPos p,CollisionContext c){return shape;}
         @Override public void animateTick(BlockState s,net.minecraft.world.level.Level l,BlockPos p,net.minecraft.util.RandomSource r){
             if(this==DRIED_GHAST.get()){l.addParticle(net.minecraft.core.particles.ParticleTypes.DRIPPING_WATER,p.getX()+.2+r.nextDouble()*.6,p.getY()+.55,p.getZ()+.2+r.nextDouble()*.6,0,0,0);if(r.nextInt(3)==0)l.addParticle(net.minecraft.core.particles.ParticleTypes.HAPPY_VILLAGER,p.getX()+.2+r.nextDouble()*.6,p.getY()+.6,p.getZ()+.2+r.nextDouble()*.6,0,0,0);}

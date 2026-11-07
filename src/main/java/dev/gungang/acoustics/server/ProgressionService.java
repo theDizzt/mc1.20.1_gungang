@@ -59,9 +59,33 @@ public final class ProgressionService {
     }
     /** Preset applied at match start, or null when none is set or the database is unavailable. */
     static PlayerRecord.Preset defaultPreset(ServerPlayer player) {return database==null?null:record(player).defaultLoadout();}
+    public static String name(ServerPlayer player) {return database==null?player.getGameProfile().getName():record(player).displayName();}
+    public static void nickname(ServerPlayer player,String value) {
+        if(player==null)return;
+        try {
+            open();
+            if(record(player).nickname().isEmpty())store(record(player).withNickname(value));
+            player.refreshDisplayName();player.refreshTabListName();
+            GungangNetwork.send(player,new GungangNetwork.Nickname(false,""));
+        } catch(IllegalArgumentException e) {
+            GungangNetwork.send(player,new GungangNetwork.Nickname(true,e.getMessage()));
+        } catch(Exception e) {
+            com.mojang.logging.LogUtils.getLogger().error("[GunGang] Nickname save failed",e);
+            GungangNetwork.send(player,new GungangNetwork.Nickname(true,"저장에 실패했습니다. 다시 시도해 주세요."));
+        }
+    }
+    @SubscribeEvent public static void displayName(PlayerEvent.NameFormat event) {
+        if(event.getEntity() instanceof ServerPlayer p&&database!=null)event.setDisplayname(Component.literal(name(p)));
+    }
+    @SubscribeEvent public static void tabName(PlayerEvent.TabListNameFormat event) {
+        if(event.getEntity() instanceof ServerPlayer p&&database!=null)event.setDisplayName(Component.literal(name(p)));
+    }
     @SubscribeEvent public static void login(PlayerEvent.PlayerLoggedInEvent event) {
         if(!(event.getEntity() instanceof ServerPlayer p)||database==null)return;
-        try {database.update(database.get(p.getUUID().toString(),p.getGameProfile().getName()).named(p.getGameProfile().getName()));sync(p);broadcastLevels(p.server);}
+        try {database.update(database.get(p.getUUID().toString(),p.getGameProfile().getName()).named(p.getGameProfile().getName()));sync(p);broadcastLevels(p.server);
+            p.refreshDisplayName();p.refreshTabListName();
+            GungangNetwork.send(p,new GungangNetwork.Nickname(record(p).nickname().isEmpty(),""));
+        }
         catch(Exception e) {com.mojang.logging.LogUtils.getLogger().error("[GunGang] Player database login failed",e);}
     }
     @SubscribeEvent public static void stopped(ServerStoppedEvent event) {database=null;table=XpTable.defaults();}
@@ -90,7 +114,7 @@ public final class ProgressionService {
         String stats=full?String.format(Locale.ROOT,"\n통산 %d경기 · %d승 · %d킬 / %d데스 · 딜량 %.1f · 경기 플레이 %d시간 %d분 %d초",
                 row.matches(),row.wins(),row.kills(),row.deaths(),row.damage(),row.playSeconds()/3600,row.playSeconds()/60%60,row.playSeconds()%60):"";
         // Explicit queries must remain visible even when sendCommandFeedback is disabled.
-        var message=Component.literal(row.name()+" · "+xp+stats);
+        var message=Component.literal(row.displayName()+" · "+xp+stats);
         if(source.getEntity() instanceof ServerPlayer player)player.sendSystemMessage(message);
         else source.sendSystemMessage(message);
     }
@@ -116,6 +140,27 @@ public final class ProgressionService {
     }
     @SubscribeEvent public static void commands(RegisterCommandsEvent event) {
         var root=Commands.literal("gungang");
+        root.then(Commands.literal("nickname")
+                .executes(c->{
+                    c.getSource().sendSystemMessage(Component.literal("사용법: /gungang nickname <새 닉네임> (한글·영문 등 최대 8글자)"));
+                    return 1;
+                })
+                .then(Commands.argument("nickname",StringArgumentType.greedyString()).executes(c->{
+                    try {
+                        var player=c.getSource().getPlayerOrException();
+                        open();
+                        var updated=record(player).withNickname(StringArgumentType.getString(c,"nickname"));
+                        store(updated);
+                        player.refreshDisplayName();player.refreshTabListName();
+                        MatchManager.participant(player);
+                        GungangNetwork.send(player,new GungangNetwork.Nickname(false,""));
+                        player.sendSystemMessage(Component.literal("닉네임을 '"+updated.nickname()+"'(으)로 변경했습니다."));
+                        return 1;
+                    } catch(Exception e) {
+                        c.getSource().sendFailure(Component.literal("닉네임 변경 실패: "+e.getMessage()));
+                        return 0;
+                    }
+                })));
         var stats=Commands.literal("stats").executes(c->run(c.getSource(),()->show(c.getSource(),null,true)))
                 .then(playerArgument().executes(c->run(c.getSource(),()->show(c.getSource(),StringArgumentType.getString(c,"player"),true))));
         stats.then(Commands.literal("set").requires(s->s.hasPermission(2)).then(playerArgument().then(

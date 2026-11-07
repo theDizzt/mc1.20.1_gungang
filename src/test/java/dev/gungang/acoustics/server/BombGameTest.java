@@ -23,6 +23,11 @@ class BombGameTest {
         assertEquals(BombGame.Phase.RUNNING,g.phase());g.tick(0,1);
         assertEquals("ALPHA",g.roundWinner());assertEquals("EXPLODED",g.reason());
     }
+    @Test void defenderWipeAfterPlantEndsRound(){
+        var g=game();start(g);assertTrue(g.plant(900));g.tick(1,1);
+        assertEquals(BombGame.Phase.RUNNING,g.phase());g.tick(0,0);
+        assertEquals("ALPHA",g.roundWinner());assertEquals("ELIMINATED",g.reason());
+    }
     @Test void defuseAndNoSecondResolution(){
         var g=game();assertFalse(g.plant(900));assertFalse(g.defuse());start(g);assertTrue(g.plant(900));
         assertTrue(g.defuse());assertFalse(g.defuse());assertFalse(g.plant(900));assertEquals(1,g.bravoScore());

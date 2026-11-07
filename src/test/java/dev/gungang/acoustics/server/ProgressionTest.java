@@ -8,6 +8,26 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ProgressionTest {
     @TempDir Path directory;
+    @Test void nicknamePersistsThroughAllRecordUpdates() throws Exception {
+        String id=UUID.randomUUID().toString();Path file=directory.resolve("nicknames.json");
+        var db=new PlayerDatabase(file);
+        var record=PlayerRecord.empty(id,"account").withNickname("한글Ab1234").set("xp","100")
+                .withPreset(new PlayerRecord.Preset(1,"test","ak","shield")).withDefault(1)
+                .withoutPreset(1).named("newAccount");
+        db.update(record);db.match(List.of(row(id,"ALPHA",1,0,10,10)),"ALPHA",ExperienceRules.defaults());
+        var saved=new PlayerDatabase(file).get(id,"ignored");
+        assertEquals("한글Ab1234",saved.nickname());assertEquals("한글Ab1234",saved.displayName());
+        assertEquals("newAccount",saved.name());assertTrue(saved.experience()>100);
+        assertTrue(Files.readString(file).contains("\"nickname\""));
+    }
+    @Test void nicknameValidatesUnicodeAndLimits() {
+        assertEquals("가나다라마바사아",PlayerRecord.validateNickname("가나다라마바사아"));
+        assertEquals("가",PlayerRecord.validateNickname("가"));
+        for(String invalid:List.of("","   ","가나다라마바사아자","123456789","a\nb","§c이름","a\u200Bb"))
+            assertThrows(IllegalArgumentException.class,()->PlayerRecord.validateNickname(invalid));
+        var legacy=PlayerRecord.empty(UUID.randomUUID().toString(),"oldAccount");
+        assertEquals("",legacy.nickname());assertEquals("oldAccount",legacy.displayName());
+    }
     private static MatchSnapshot.Row row(String id,String team,int kills,int deaths,double damage,int seconds) {
         return new MatchSnapshot.Row(id,"player"+id.substring(0,4),team,kills,deaths,0,damage,seconds);
     }

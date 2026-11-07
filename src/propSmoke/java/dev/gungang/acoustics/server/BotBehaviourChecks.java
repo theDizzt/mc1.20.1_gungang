@@ -87,7 +87,7 @@ final class BotBehaviourChecks {
             for(var w:loadouts.secondary())if(!(w.stack().getItem() instanceof BombItem)&&!w.commandOnly())
                 check(BotManager.supportedSecondary(w),"Secondary is usable: "+w.id());
             float absorption=seeker.getAbsorptionAmount();
-            MercyBullet.grant(bot,seeker);check(seeker.getAbsorptionAmount()>=MercyBullet.BONUS,"Bot mercy support grants bonus health");
+            Defibrillator.grant(bot,seeker);check(seeker.getAbsorptionAmount()>=Defibrillator.BONUS,"Bot mercy support grants bonus health");
             seeker.setAbsorptionAmount(absorption);
             var turretWeapon=new Loadouts.Weapon("turret_test","{id:\"gungang:turret\",Count:1b}","Turret","",null,"");
             agent.gadgets.equip(bot,turretWeapon,new ItemStack(GadgetItems.TURRET.get()),false);

@@ -72,8 +72,7 @@ public class SpawnGateBlock extends Block {
         return team.equals("ALPHA")?rule:rule.equals("ALPHA")?"BRAVO":"ALPHA";
     }
     @Override public VoxelShape getCollisionShape(BlockState state,BlockGetter level,BlockPos pos,CollisionContext context){
-        // A mercy bullet only heals teammates, so no gate hologram stops it (its cooldown was already spent on firing).
-        return !barrier(state)||context instanceof EntityCollisionContext entity&&(allows(entity.getEntity())||MercyBullet.bullet(entity.getEntity()))?Shapes.empty():Shapes.block();
+        return !barrier(state)||context instanceof EntityCollisionContext entity&&allows(entity.getEntity())?Shapes.empty():Shapes.block();
     }
     /** The outline is what melee and block picking ray-trace against, so a hologram gate has none. */
     @Override public VoxelShape getShape(BlockState state,BlockGetter level,BlockPos pos,CollisionContext context){return barrier(state)?Shapes.block():Shapes.empty();}

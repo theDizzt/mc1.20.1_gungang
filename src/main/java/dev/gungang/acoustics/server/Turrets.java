@@ -18,7 +18,7 @@ import net.minecraftforge.fml.common.Mod;
 public final class Turrets {
     public record Config(double damage,double detectionRange,double cooldownSeconds,double health,int capacity,
                          int fireIntervalTicks,double reloadPerSecond,double reloadRange,double placementRange) { }
-    public static Config config=new Config(7,16,120,200,120,4,20,3,5);
+    public static Config config=new Config(7,24,120,200,120,4,20,3,5);
     private static final ThreadLocal<net.minecraft.world.entity.LivingEntity> BULLET_VICTIM=new ThreadLocal<>();
     static void bullet(net.minecraft.world.entity.LivingEntity target,net.minecraft.world.damagesource.DamageSource source,float damage) {
         var previous=BULLET_VICTIM.get();BULLET_VICTIM.set(target);
@@ -33,10 +33,10 @@ public final class Turrets {
     public static boolean shot(net.minecraft.world.damagesource.DamageSource source){return source.getDirectEntity() instanceof TurretEntity;}
     private static final Map<UUID,TurretEntity> OWNED=new HashMap<>();
     static void load(Map<String,com.google.gson.JsonObject> overrides,boolean apply)throws java.io.IOException {
-        var c=GadgetConfig.read("turret",Config.class,new Config(7,16,120,200,120,4,20,3,5),overrides,apply);
-        // Upgrade earlier shipped configurations (1.0, then 1 damage every tick, then 6 damage / 150 health); preserve deliberately customized server settings.
-        if(!overrides.containsKey("turret")&&(c.equals(new Config(4,16,210,150,120,4,20,3,5))||c.equals(new Config(10,16,210,100,250,5,20,3,5))||c.equals(new Config(1,16,210,150,250,1,20,3,5))||c.equals(new Config(6,16,120,150,120,4,20,3,5)))) {
-            c=new Config(7,16,120,200,120,4,20,3,5);
+        var c=GadgetConfig.read("turret",Config.class,new Config(7,24,120,200,120,4,20,3,5),overrides,apply);
+        // Upgrade earlier shipped configurations (1.0, then 1 damage every tick, then 6 damage / 150 health, then the 16-block radius); preserve deliberately customized server settings.
+        if(!overrides.containsKey("turret")&&(c.equals(new Config(4,16,210,150,120,4,20,3,5))||c.equals(new Config(10,16,210,100,250,5,20,3,5))||c.equals(new Config(1,16,210,150,250,1,20,3,5))||c.equals(new Config(6,16,120,150,120,4,20,3,5))||c.equals(new Config(7,16,120,200,120,4,20,3,5)))) {
+            c=new Config(7,24,120,200,120,4,20,3,5);
             if(apply)java.nio.file.Files.writeString(ServerFiles.root().resolve("item/turret.json"),ServerFiles.GSON.toJson(c));
         }
         GadgetConfig.bounded(c.damage(),0,10000);GadgetConfig.bounded(c.detectionRange(),1,64);
