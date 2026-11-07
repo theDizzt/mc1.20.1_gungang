@@ -31,6 +31,7 @@ public final class GadgetItems {
     public static final RegistryObject<Item> HAND_AXE=ITEMS.register("hand_axe",HandAxeItem::new);
     public static final RegistryObject<Item> RAPIER=ITEMS.register("rapier",RapierItem::new);
     public static final RegistryObject<Item> JETPACK=ITEMS.register("jetpack",()->new GadgetItem("jetpack"));
+    public static final RegistryObject<Item> AIR_ASSAULT=ITEMS.register("air_assault",()->new GadgetItem("air_assault"));
     public static final RegistryObject<EntityType<MolotovEntity>> MOLOTOV_PROJECTILE=ENTITIES.register("molotov",()->EntityType.Builder.<MolotovEntity>of(MolotovEntity::new,MobCategory.MISC).sized(.25f,.25f).clientTrackingRange(10).updateInterval(1).build("gungang_acoustics:molotov"));
     public static final RegistryObject<EntityType<HandAxeEntity>> HAND_AXE_PROJECTILE=ENTITIES.register("hand_axe",()->EntityType.Builder.<HandAxeEntity>of(HandAxeEntity::new,MobCategory.MISC).sized(.4f,.4f).clientTrackingRange(10).updateInterval(1).build("gungang_acoustics:hand_axe"));
     public static final RegistryObject<EntityType<OrdnanceEntity>> ORDNANCE=ENTITIES.register("ordnance",()->EntityType.Builder.<OrdnanceEntity>of(OrdnanceEntity::new,MobCategory.MISC).sized(.1f,.1f).clientTrackingRange(16).updateInterval(1).build("gungang_acoustics:ordnance"));

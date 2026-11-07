@@ -1,0 +1,144 @@
+{
+  "id": "escort_bases_fixture",
+  "name": "Escort base regression fixture",
+  "description": "Synthetic test data; not a deployed map.",
+  "enabled": true,
+  "timeLimitSeconds": 300,
+  "gameMode": "adventure",
+  "dimension": "minecraft:overworld",
+  "alphaSpawn": {
+    "x": 200,
+    "y": 5,
+    "z": -190,
+    "yaw": 0,
+    "pitch": 0
+  },
+  "bravoSpawn": {
+    "x": 216.5,
+    "y": 5,
+    "z": -412.5,
+    "yaw": 0,
+    "pitch": 0
+  },
+  "spectatorSpawn": {
+    "x": 30.5,
+    "y": 80,
+    "z": 0.5,
+    "yaw": 0,
+    "pitch": 30
+  },
+  "alphaArea": {
+    "minX": 198,
+    "minY": 4,
+    "minZ": -192,
+    "maxX": 202,
+    "maxY": 8,
+    "maxZ": -188
+  },
+  "bravoArea": {
+    "minX": 214.5,
+    "minY": 4,
+    "minZ": -414.5,
+    "maxX": 218.5,
+    "maxY": 8,
+    "maxZ": -410.5
+  },
+  "weather": "clear",
+  "timeOfDay": "day",
+  "onPrepare": [],
+  "onStart": [],
+  "onEnd": [],
+  "escort": {
+    "scanArea": {
+      "minX": 190,
+      "minY": 4,
+      "minZ": -420,
+      "maxX": 315,
+      "maxY": 10,
+      "maxZ": -180
+    },
+    "linkDistance": 16,
+    "speed": 1.5,
+    "extraPlayerMultiplier": 0.25,
+    "maxMultiplier": 2.0,
+    "radius": 5.0,
+    "checkpointStopSeconds": 5,
+    "checkpointBonusSeconds": 120,
+    "rollbackDelaySeconds": 10,
+    "rollbackSpeed": 0.5,
+    "rollbackSections": [
+      0,
+      1
+    ],
+    "healIntervalTicks": 40,
+    "healAmount": 1.0,
+    "respawns": [
+      {
+        "checkpoint": 1,
+        "alpha": {
+          "x": 292,
+          "y": 5,
+          "z": -195,
+          "yaw": 0,
+          "pitch": 0
+        },
+        "alphaArea": {
+          "minX": 290,
+          "minY": 4,
+          "minZ": -197,
+          "maxX": 294,
+          "maxY": 8,
+          "maxZ": -193
+        }
+      },
+      {
+        "checkpoint": 2,
+        "alpha": {
+          "x": 230,
+          "y": 5,
+          "z": -283,
+          "yaw": 0,
+          "pitch": 0
+        },
+        "alphaArea": {
+          "minX": 228,
+          "minY": 4,
+          "minZ": -285,
+          "maxX": 232,
+          "maxY": 8,
+          "maxZ": -281
+        }
+      }
+    ],
+    "alphaSpawn": {
+      "x": 200,
+      "y": 5,
+      "z": -190,
+      "yaw": 0,
+      "pitch": 0
+    },
+    "alphaArea": {
+      "minX": 198,
+      "minY": 4,
+      "minZ": -192,
+      "maxX": 202,
+      "maxY": 8,
+      "maxZ": -188
+    },
+    "bravoSpawn": {
+      "x": 305,
+      "y": 5,
+      "z": -278,
+      "yaw": 0,
+      "pitch": 0
+    },
+    "bravoArea": {
+      "minX": 303,
+      "minY": 4,
+      "minZ": -280,
+      "maxX": 307,
+      "maxY": 8,
+      "maxZ": -276
+    }
+  }
+}

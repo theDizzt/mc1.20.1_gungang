@@ -32,7 +32,7 @@
     "minY": 16,
     "minZ": 367,
     "maxX": 248,
-    "maxY": 19,
+    "maxY": 20,
     "maxZ": 375
   },
   "bravoArea": {
@@ -40,7 +40,7 @@
     "minY": 18,
     "minZ": 392,
     "maxX": 405,
-    "maxY": 21,
+    "maxY": 22,
     "maxZ": 401
   },
   "onPrepare": [],

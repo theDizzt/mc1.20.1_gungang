@@ -6,6 +6,9 @@ final class OrdnanceLoadouts {
     private static final String ARROW_USAGE="왼손 아이템 우클릭 후 복귀 매크로 키(기본 H)로 투척합니다. 주손에 든 경우 우클릭으로 던질 수 있습니다.";
     static List<Loadouts.Weapon> defaults() {
         return List.of(
+                new Loadouts.Weapon("77","{id:'gungang:air_assault',Count:1b}","공중강습",
+                        "5블록 위로 상승하고 2초 뒤 바라보는 방향으로 최대 7블록까지 급강하합니다. 착지 지점 중심 4×4 범위의 적에게 피해 60, 10×10 범위의 적을 10블록 위로 띄웁니다. 착지 전 사망하면 취소됩니다.",null,
+                        "우클릭으로 사용합니다. 공중 대기 중 시점을 돌려 급강하 방향을 정합니다. 쿨타임 40초.","이동",100d,100d,40d,"",false,"2026-11-07"),
                 new Loadouts.Weapon("81","{id:'gungang:molotov',Count:1b}","몰로토프 칵테일",
                         "착탄 즉시 반지름 5블록의 불장판이 8초간 유지됩니다. 범위 안의 대상에게 화상 3초. 자신과 아군도 피해를 받습니다.",null,
                         "보조무기 사용 키로 투척합니다. 블록에 닿으면 즉시 터집니다.","투척형",100d,100d,36d),
