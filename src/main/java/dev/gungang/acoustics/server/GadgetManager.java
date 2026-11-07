@@ -22,7 +22,7 @@ public final class GadgetManager {
         int count=CompoundBow.clearArrows(server);
         for(var level:server.getAllLevels()) {
             var attacks=new ArrayList<net.minecraft.world.entity.Entity>();
-            for(var entity:level.getAllEntities())if(entity instanceof OrdnanceEntity||entity instanceof MolotovEntity||entity instanceof ArrowGrenadeEntity||entity instanceof ArrowFragmentEntity)attacks.add(entity);
+            for(var entity:level.getAllEntities())if(entity instanceof VoidAnchorEntity||entity instanceof OrdnanceEntity||entity instanceof MolotovEntity||entity instanceof ArrowGrenadeEntity||entity instanceof ArrowFragmentEntity)attacks.add(entity);
             attacks.forEach(net.minecraft.world.entity.Entity::discard);
             var entities=new ArrayList<DeployableEntity>();
             for(var entity:level.getAllEntities())if(entity instanceof DeployableEntity placed)entities.add(placed);
@@ -46,9 +46,17 @@ public final class GadgetManager {
         PLACED.put(entity.getUUID(),entity);
     }
     public static void use(ServerPlayer p,ItemStack stack,String kind) {
+        if(p.getPersistentData().hasUUID("VoidAnchorTether")&&(kind.equals("air_assault")||kind.equals("jetpack")))return;
         if(SurvivalGadgets.jetting(p))return;
         if((kind.equals("landmine")||kind.equals("molotov")||kind.equals("arrow_grenade")||kind.equals("orbital_strike")||kind.equals("bear_trap")||kind.equals("turret"))&&SafeZones.contains(p))return;
         if(!p.isAlive()||p.isSpectator()||LobbyManager.respawning(p.getUUID())||!SecondaryRuntime.ready(p,stack))return;
+        if(kind.equals("void_anchor")) {
+            if(SafeZones.contains(p))return;
+            var spear=GadgetItems.VOID_ANCHOR_ENTITY.get().create(p.serverLevel());if(spear==null)return;
+            spear.launch(p);if(!p.serverLevel().addFreshEntity(spear))return;
+            SecondaryRuntime.commit(p,stack);
+            p.level().playSound(null,p.blockPosition(),net.minecraft.sounds.SoundEvents.TRIDENT_THROW,net.minecraft.sounds.SoundSource.PLAYERS,1,.7f);return;
+        }
         if(kind.equals("air_assault")) {AirAssault.start(p,stack);return;}
         if(kind.equals("jetpack")) {
             // Prop hunt seekers fly only while hunting, never from the waiting room.

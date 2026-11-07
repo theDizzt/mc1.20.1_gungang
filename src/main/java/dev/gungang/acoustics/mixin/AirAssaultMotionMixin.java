@@ -13,10 +13,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class AirAssaultMotionMixin {
     @Inject(method="travel",at=@At("HEAD"),cancellable=true)
     private void gungang$airAssaultTravel(Vec3 input,CallbackInfo ci) {
-        if((Object)this instanceof Player p&&AirAssaultMotion.travel(p))ci.cancel();
+        var entity=(LivingEntity)(Object)this;
+        // The spear moves tethered mobs through collision resolution; AI must not add a second movement.
+        if(!(entity instanceof Player)&&!entity.level().isClientSide&&entity.getPersistentData().hasUUID("VoidAnchorTether")) {
+            entity.setDeltaMovement(Vec3.ZERO);ci.cancel();return;
+        }
+        if((Object)this instanceof Player p&&(dev.gungang.acoustics.server.VoidAnchorPull.travel(p)||AirAssaultMotion.travel(p)))ci.cancel();
     }
     @Inject(method="jumpFromGround",at=@At("HEAD"),cancellable=true)
     private void gungang$airAssaultJump(CallbackInfo ci) {
-        if((Object)this instanceof Player p&&AirAssaultMotion.active(p))ci.cancel();
+        if((Object)this instanceof Player p&&(dev.gungang.acoustics.server.VoidAnchorPull.active(p)||AirAssaultMotion.active(p)))ci.cancel();
     }
 }
