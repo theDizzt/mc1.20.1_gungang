@@ -1,7 +1,19 @@
 {
   "variants": {
-    "": {
+    "facing=north": {
       "model": "gungang:block/big_grass_block"
+    },
+    "facing=east": {
+      "model": "gungang:block/big_grass_block",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "gungang:block/big_grass_block",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "gungang:block/big_grass_block",
+      "y": 270
     }
   }
 }

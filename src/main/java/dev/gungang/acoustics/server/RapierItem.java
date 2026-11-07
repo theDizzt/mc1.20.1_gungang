@@ -15,6 +15,11 @@ import net.minecraft.world.level.Level;
 public final class RapierItem extends Item {
     public static final double RANGE=6;
     public static final int DASH_TICKS=6;
+    /** Thrust pacing: the client thrusts at most once per THRUST_TICKS; the server allows a little network jitter on top. */
+    public static final int THRUST_TICKS=6;
+    private static final int THRUST_SERVER_TICKS=4;
+    /** Hit tolerance around a target's box, for the movement the server sees that the shooter's screen had not yet. */
+    private static final double HIT_MARGIN=.3;
     public static final String SWEEP_ANIMATION="RapierSweepTick";
     public static final int SWEEP_ANIMATION_TICKS=10;
     private static final String DASH="RapierDashUntil";
@@ -110,7 +115,9 @@ public final class RapierItem extends Item {
         if(!p.level().isClientSide)thrust(p);
     }
     /** One authoritative ray for every click, including clicks that the client considers empty space. */
-    public static void thrust(Player p){
+    public static void thrust(Player p){thrust(p,-1);}
+    /** {@code aimed}: the entity id under the client's crosshair (-1: none), used when the server's own ray misses by lag. */
+    public static void thrust(Player p,int aimed){
         if(p.level().isClientSide||!(p.getMainHandItem().getItem() instanceof RapierItem)||p.isSpectator()||!p.isAlive()
                 ||LobbyManager.respawning(p.getUUID())||FreeForAllMatch.blocked(p)||SafeZones.contains(p)
                 ||CombatGadgets.holdingShield(p)||SurvivalGadgets.jetting(p)||GadgetManager.placing(p))return;
@@ -126,9 +133,16 @@ public final class RapierItem extends Item {
         net.minecraft.world.entity.Entity hit=null;
         double nearest=eye.distanceToSqr(end);
         for(var candidate:p.level().getEntities(p,p.getBoundingBox().expandTowards(end.subtract(eye)).inflate(1),e->e.isPickable()&&!e.isSpectator())){
-            var box=candidate.getBoundingBox();
+            var box=candidate.getBoundingBox().inflate(candidate instanceof net.minecraft.world.entity.LivingEntity?HIT_MARGIN:0);
             var point=box.contains(eye)?java.util.Optional.of(eye):box.clip(eye,end);
             if(point.isPresent()&&eye.distanceToSqr(point.get())<nearest){nearest=eye.distanceToSqr(point.get());hit=candidate;}
+        }
+        if(hit==null&&aimed>=0&&p.level().getEntity(aimed) instanceof net.minecraft.world.entity.LivingEntity claimed&&claimed!=p&&claimed.isAlive()&&!claimed.isSpectator()){
+            // Trust the client's crosshair only for a target near the thrust line, within reach and in plain sight.
+            var box=claimed.getBoundingBox().inflate(.9);var centre=claimed.getBoundingBox().getCenter();
+            double along=centre.subtract(eye).dot(p.getLookAngle());
+            if(along>0&&along<=RANGE+1&&(box.contains(eye)||box.clip(eye,eye.add(p.getLookAngle().scale(RANGE+1))).isPresent())&&p.hasLineOfSight(claimed)
+                    &&(block.getType()==net.minecraft.world.phys.HitResult.Type.MISS||eye.distanceToSqr(block.getLocation())+1>=eye.distanceToSqr(centre)))hit=claimed;
         }
         p.resetAttackStrengthTicker();
         if(hit==null){
@@ -182,7 +196,7 @@ public final class RapierItem extends Item {
     @net.minecraftforge.eventbus.api.SubscribeEvent public static void stopped(net.minecraftforge.event.server.ServerStoppedEvent event){DASHES.clear();}
     static boolean beginAttack(Player p){
         long now=p.level().getGameTime();var tag=p.getPersistentData();
-        if(tag.contains(ATTACK)&&now-tag.getLong(ATTACK)>=0&&now-tag.getLong(ATTACK)<6)return false;
+        if(tag.contains(ATTACK)&&now-tag.getLong(ATTACK)>=0&&now-tag.getLong(ATTACK)<THRUST_SERVER_TICKS)return false;
         tag.putLong(ATTACK,now);return true;
     }
     @Override public void initializeClient(java.util.function.Consumer<net.minecraftforge.client.extensions.common.IClientItemExtensions> consumer){

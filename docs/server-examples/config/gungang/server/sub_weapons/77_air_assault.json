@@ -1,0 +1,12 @@
+{
+  "id": "77",
+  "itemNbt": "{id:'gungang:air_assault',Count:1b}",
+  "name": "공중강습",
+  "description": "5블록 상승하고 2초 뒤 시점 방향으로 최대 7블록까지 급강하. 착지 중심 4×4 적에게 피해 60, 10×10 적을 10블록 위로 띄웁니다. 착지 전 사망 시 취소됩니다.",
+  "usage": "우클릭 사용. 쿨타임 40초.",
+  "category": "지원·방어",
+  "maxHealth": 100,
+  "movementSpeed": 100,
+  "cooldownSeconds": 40,
+  "releaseDate": "2026-11-21"
+}

@@ -114,8 +114,9 @@ public final class PropHuntClient {
             if(key==GLFW.GLFW_KEY_1+i||EmoteClient.KEYS[i].matches(key,scan)){if(action==GLFW.GLFW_PRESS)action("pick"+(i+1));return true;}
         // No disguise yet (the first choice is open): nothing else to control.
         if(self().block().isEmpty())return false;
-        // 255 drives itself: none of the disguise keys do anything (the horn still sounds).
-        if(auto()&&(key==GLFW.GLFW_KEY_T||key==GLFW.GLFW_KEY_R||key==GLFW.GLFW_KEY_E||key==GLFW.GLFW_KEY_Q||key==GLFW.GLFW_KEY_SPACE||key==GLFW.GLFW_KEY_LEFT_SHIFT))return true;
+        // 255 drives itself: none of the disguise keys do anything (the horn still sounds); R comes back from watching others.
+        if(auto()&&key==GLFW.GLFW_KEY_R){if(action==GLFW.GLFW_PRESS)action("home");return true;}
+        if(auto()&&(key==GLFW.GLFW_KEY_T||key==GLFW.GLFW_KEY_E||key==GLFW.GLFW_KEY_Q||key==GLFW.GLFW_KEY_SPACE||key==GLFW.GLFW_KEY_LEFT_SHIFT))return true;
         if(key==GLFW.GLFW_KEY_T){if(action==GLFW.GLFW_PRESS)action("lock");return true;}
         if(key==GLFW.GLFW_KEY_R){if(action==GLFW.GLFW_PRESS){if(fixed())action("home");else action("rotate");}return true;}
         // 178: E on one's own lectern opens the book to write in (the server only stores the text).
@@ -246,7 +247,7 @@ public final class PropHuntClient {
         if(free()){
             lines.add("자유 관전 중");lines.add("이동 키·점프·Shift  비행");lines.add(q+"  자유 관전 해제");lines.add("휠  다른 시점");lines.add("R  내 시점");lines.add("T  고정 해제");
         }else if(auto()){
-            lines.add("자율 전투 중 · 조작 불가");lines.add("찾는 시간에 술래를 찾아가 미니건 사격");lines.add("G  경적");
+            lines.add("자율 전투 중 · 조작 불가");lines.add("찾는 시간에 술래를 찾아가 미니건 사격");lines.add("휠  다른 시점");lines.add("R  내 시점");lines.add("G  경적");
         }else if(fixed()){
             lines.add("T  고정 해제");lines.add("휠  다른 시점");lines.add(q+"  자유 관전");lines.add("R  내 시점");lines.add("G  경적");
             if(blast||shoot)lines.add("E  "+use);
@@ -270,7 +271,7 @@ public final class PropHuntClient {
         if(active()&&mc.screen==null&&mc.options.keyPlayerList.isDown()){page=Math.max(0,page+(e.getScrollDelta()<0?1:-1));e.setCanceled(true);return;}
         // 242: the wheel steps the light disguise's brightness instead of the hotbar.
         if(hider()&&!fixed()&&mc.screen==null&&e.getScrollDelta()!=0&&self().block().equals("minecraft:light")){e.setCanceled(true);action(e.getScrollDelta()>0?"brightUp":"brightDown");return;}
-        if(!fixed()||mc.screen!=null||e.getScrollDelta()==0)return;
+        if(!fixed()&&!(hider()&&auto())||mc.screen!=null||e.getScrollDelta()==0)return;
         e.setCanceled(true);
         action(e.getScrollDelta()>0?"previous":"next");
     }

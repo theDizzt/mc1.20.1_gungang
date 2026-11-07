@@ -18,6 +18,7 @@ def releaseName = "u${nextUpdate}_${releaseDate}"
 version = "${nextUpdate}.${releaseDate}"
 base { archivesName = 'gungang-realistic_1.20.1' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+if (project.hasProperty('gungangAssaultSmoke')) sourceSets.main.java.srcDir('src/assaultSmoke/java')
 if (project.hasProperty('gungangShutterSmoke')) sourceSets.main.java.srcDir('src/shutterSmoke/java')
 if (project.hasProperty('gungangShutterClientSmoke')) sourceSets.main.java.srcDir('src/shutterClientSmoke/java')
 if (project.hasProperty('gungangHotSpringClientSmoke')) sourceSets.main.java.srcDir('src/hotSpringClientSmoke/java')
@@ -36,6 +37,7 @@ if (project.hasProperty('gungangPropSmoke')) sourceSets.main.java.srcDir('src/pr
 if (project.hasProperty('gungangBotSmoke')) sourceSets.main.java.srcDir('src/botSmoke/java')
 if (project.hasProperty('gungangAxeSmoke')) sourceSets.main.java.srcDir('src/axeSmoke/java')
 if (project.hasProperty('gungangBowSmoke')) sourceSets.main.java.srcDir('src/bowSmoke/java')
+if (project.hasProperty('gungangIconExport')) sourceSets.main.java.srcDir('src/iconExport/java')
 if (project.hasProperty('gungangTurretSmoke')) sourceSets.main.java.srcDir('src/turretSmoke/java')
 if (project.hasProperty('gungangLasSmoke')) sourceSets.main.java.srcDir('src/lasSmoke/java')
 if (project.hasProperty('gungangOutlineSmoke')) sourceSets.main.java.srcDir('src/outlineSmoke/java')
@@ -64,6 +66,7 @@ minecraft {
             mods { gungang_acoustics { source sourceSets.main } }
             if (project.hasProperty('gungangOutlineSmoke')) workingDirectory project.file('build/outline-client-smoke')
             if (project.hasProperty('gungangLobbySmoke')) workingDirectory project.file('build/lobby-client-smoke')
+            if (project.hasProperty('gungangIconExport')) workingDirectory project.file('build/icon-export')
         }
         server {
             if (project.hasProperty('gungangMotionSmoke')) property 'gungang.motionSmoke', 'true'
@@ -72,6 +75,7 @@ minecraft {
             args '--nogui'
             if (project.hasProperty('gungangShutterSmoke')) workingDirectory project.file('build/shutter-smoke-run')
             if (project.hasProperty('gungangMotionSmoke')) workingDirectory project.file('build/motion-smoke-run')
+            if (project.hasProperty('gungangAssaultSmoke')) workingDirectory project.file('build/assault-smoke-run')
             if (project.hasProperty('gungangArrowSmoke')) workingDirectory project.file('build/arrow-smoke-run')
             if (project.hasProperty('gungangAcidSmoke')) workingDirectory project.file('build/acid-smoke-run')
             if (project.hasProperty('gungangOutlineSmoke')) workingDirectory project.file('build/outline-server-smoke')
@@ -83,7 +87,7 @@ minecraft {
 }
 
 repositories { maven { url = 'https://repo.spongepowered.org/repository/maven-public/' } }
-if (project.hasProperty('gungangBowSmoke')) repositories { flatDir { dirs 'server_resource/mods' } }
+if (project.hasProperty('gungangBowSmoke') || project.hasProperty('gungangIconExport')) repositories { flatDir { dirs 'server_resource/mods' } }
 // Optional local compatibility test dependency; no TaCZ binaries are bundled or required by this mod.
 if (project.hasProperty('taczVersion')) {
     repositories { flatDir { dirs '.cache/compat' } }
@@ -92,7 +96,7 @@ dependencies {
     minecraft 'net.minecraftforge:forge:1.20.1-47.4.0'
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
-    if (project.hasProperty('gungangBowSmoke')) {
+    if (project.hasProperty('gungangBowSmoke') || project.hasProperty('gungangIconExport')) {
         ['tactical-military-bow-forge-1.20.1:1.0.4','tacz-1.20.1:1.1.8-hotfix2',
          'lrtactical-1.20.1:0.4.3','geckolib-forge-1.20.1:4.8.4','curios-forge:5.14.1+1.20.1'].each {
             runtimeOnly fg.deobf("local.bow:${it}")
@@ -116,6 +120,8 @@ tasks.named('jar', Jar).configure {
     exclude 'dev/gungang/acoustics/server/HotSpringChecks*.class'
     exclude 'dev/gungang/acoustics/server/HologramChecks*.class'
     exclude 'dev/gungang/acoustics/server/MotionSmokeChecks*.class'
+    exclude 'dev/gungang/acoustics/server/AirAssaultSmokeChecks*.class'
+    exclude 'dev/gungang/acoustics/client/WeaponIconExport*.class'
     exclude 'dev/gungang/acoustics/client/MotionModelChecks*.class'
     exclude 'dev/gungang/acoustics/client/PropCatalogModelChecks*.class'
     exclude 'dev/gungang/acoustics/server/ArrowGrenadeSmokeChecks*.class'

@@ -1,10 +1,34 @@
 {
   "variants": {
-    "active=true,top=false": {
+    "active=true,facing=north,top=false": {
       "model": "gungang:block/gas_barrel"
     },
-    "active=true,top=true": {
+    "active=true,facing=north,top=true": {
       "model": "gungang:block/gas_barrel_top"
+    },
+    "active=true,facing=east,top=false": {
+      "model": "gungang:block/gas_barrel",
+      "y": 90
+    },
+    "active=true,facing=east,top=true": {
+      "model": "gungang:block/gas_barrel_top",
+      "y": 90
+    },
+    "active=true,facing=south,top=false": {
+      "model": "gungang:block/gas_barrel",
+      "y": 180
+    },
+    "active=true,facing=south,top=true": {
+      "model": "gungang:block/gas_barrel_top",
+      "y": 180
+    },
+    "active=true,facing=west,top=false": {
+      "model": "gungang:block/gas_barrel",
+      "y": 270
+    },
+    "active=true,facing=west,top=true": {
+      "model": "gungang:block/gas_barrel_top",
+      "y": 270
     },
     "active=false": {
       "model": "gungang:block/empty"

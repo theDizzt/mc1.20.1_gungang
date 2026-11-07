@@ -47,6 +47,10 @@ public final class PropHuntMatch {
     boolean bot(UUID id){var m=members.get(id);return m!=null&&m.bot;}
     String name(UUID id){var m=members.get(id);return m==null?"":m.name;}
     boolean locked(UUID id){var m=members.get(id);return m!=null&&m.fixed;}
+    /** 255 (it drives itself, so it never locks): while its owner watches someone else, where the body really is; null otherwise. */
+    Vec3 autoBody(UUID id){var m=members.get(id);return m!=null&&auto(m)&&m.away()?m.anchor:null;}
+    void autoMoved(UUID id,Vec3 to){var m=members.get(id);if(m!=null&&auto(m)&&m.away())m.anchor=to;}
+    private static boolean auto(Member m){return m.prop!=null&&m.prop.item().equals(PartyBlocks.AUTO);}
     void unlock(LivingEntity p){var m=members.get(p.getUUID());if(m!=null){if(p instanceof ServerPlayer sp)home(sp,m);m.fixed=false;m.charge=-1;}}
     void relocate(LivingEntity p,Vec3 to){unlock(p);teleport(p,to);var prop=prop(p.getUUID());if(prop!=null)prop.setPos(to);}
     /** Moves a body at once: players through their connection, bots directly. */
@@ -89,7 +93,7 @@ public final class PropHuntMatch {
         /** First-come: the tick a bot makes its pick (0: none pending). */
         int botPickAt;
         final Map<String,Integer> actions=new HashMap<>();
-        Member(ServerPlayer p,String team){id=p.getUUID();name=p.getGameProfile().getName();this.team=team;invisible=p.isInvisible();health=p.getAttribute(Attributes.MAX_HEALTH).getBaseValue();bot=false;}
+        Member(ServerPlayer p,String team){id=p.getUUID();name=ProgressionService.name(p);this.team=team;invisible=p.isInvisible();health=p.getAttribute(Attributes.MAX_HEALTH).getBaseValue();bot=false;}
         /** An AI bot reserved in the lobby; its body comes and goes with {@link BotAgent}. */
         Member(UUID id,String name,String team){this.id=id;this.name=name;this.team=team;invisible=false;health=100;bot=true;}
     }
@@ -313,13 +317,15 @@ public final class PropHuntMatch {
         boolean sunk=m.prop!=null&&m.prop.sunk();
         if(m.prop!=null){PropInteraction.remove(m.prop);m.prop.discard();}if(p instanceof ServerPlayer sp)sp.closeContainer();
         var level=(ServerLevel)p.level();
-        m.prop=PropEntity.TYPE.get().create(level);m.prop.setup(m.id,item,random.nextInt(26));m.prop.setPos(m.fixed?m.anchor:p.position());
+        m.prop=PropEntity.TYPE.get().create(level);m.prop.setup(m.id,item,random.nextInt(26));m.prop.setPos(m.fixed||m.away()?m.anchor:p.position());
         level.addFreshEntity(m.prop);
         if(p instanceof BotEntity bot)bot.disguise(m.prop);
         abilities.initialize(p,m.prop);
         p.refreshDimensions();
         if(!m.away())unstick(p);
         if(m.fixed&&!m.away())m.anchor=p.position();
+        // Watching others is for locked disguises (and 255): an unlocked new block brings its owner back to the body.
+        if(!m.fixed&&m.away()&&!auto(m)&&p instanceof ServerPlayer sp)home(sp,m);
         if(sunk&&p instanceof ServerPlayer sp)sp.sendSystemMessage(Component.literal("블록이 바뀌어 생명력 팩 매설이 풀렸습니다."));
         // The new disguise is announced in the client's control guide (right side), not the action bar.
         m.hazard=server.getTickCount()+80;
@@ -636,8 +642,8 @@ public final class PropHuntMatch {
             return;
         }
         if(m.prop==null)return;
-        // 255 drives itself: the hider only watches (and may sound the horn).
-        if(m.prop.item().equals(PartyBlocks.AUTO)&&!action.equals("horn"))return;
+        // 255 drives itself: the hider only watches (wheel through the others, R back to the own view) and may sound the horn.
+        if(auto(m)&&!Set.of("horn","next","previous","home").contains(action))return;
         switch(action){
             case "lock"->{home(p,m);m.fixed=!m.fixed;m.anchor=p.position();m.yaw=p.getYRot();m.pitch=p.getXRot();m.charge=-1;}
             case "next"->cycle(p,m,1);
@@ -741,7 +747,9 @@ public final class PropHuntMatch {
         p.teleportTo(level,m.anchor.x,m.anchor.y,m.anchor.z,m.yaw,m.pitch);p.setGameMode(GameType.ADVENTURE);
     }
     private void cycle(ServerPlayer p,Member m,int direction){
-        if(!m.fixed)return;
+        if(!m.fixed&&!auto(m))return;
+        // 255 keeps driving while its owner watches: the body goes on from here (the anchor), as a locked one stays put.
+        if(auto(m)&&!m.away()){m.anchor=p.position();m.yaw=p.getYRot();m.pitch=p.getXRot();}
         m.free=false;m.freeFrom=null;
         var targets=members.values().stream().map(t->t.id).filter(id->!id.equals(m.id)&&camera(id)!=null).toList();
         if(targets.isEmpty()){home(p,m);return;}
@@ -817,7 +825,7 @@ public final class PropHuntMatch {
     /** Ticks until this hider's E is ready again (arrows, blasts, abilities, health packs). */
     int botCooldown(UUID id){var m=members.get(id);return m==null?0:abilityRemaining(m);}
     /** Where the disguise stands: the owner (or the locked anchor), one block lower for a sunk health pack. */
-    private static Vec3 spot(Member m,LivingEntity p){var base=m.fixed?m.anchor:p.position();return m.prop!=null?base.add(0,-m.prop.sinkDepth(),0):base;}
+    private static Vec3 spot(Member m,LivingEntity p){var base=m.fixed||m.away()&&auto(m)?m.anchor:p.position();return m.prop!=null?base.add(0,-m.prop.sinkDepth(),0):base;}
     /** A locked disguise faces the owner's locked view, so a camera on it sees what the owner saw. */
     private static void look(Member m){m.prop.setYRot(m.yaw);m.prop.setYHeadRot(m.yaw);m.prop.setYBodyRot(m.yaw);m.prop.setXRot(m.pitch);}
     private void snap(ServerPlayer p){

@@ -236,7 +236,7 @@ final class BotAgent {
         else if(bot!=null&&weapon!=null)bot.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(
                 Math.sqrt(PLAYER_SPRINT*(usingSecondary?secondary:weapon).movementSpeed()/100*BotManager.settings().movementSpeed()));
     }
-    private boolean heldSecondary(){return secondary!=null&&!secondary.id().equals(MercyBullet.ID)&&secondaryStack!=null&&!secondaryStack.isEmpty()&&BotManager.held(secondaryStack);}
+    private boolean heldSecondary(){return secondary!=null&&!secondary.id().equals(Defibrillator.ID)&&secondaryStack!=null&&!secondaryStack.isEmpty()&&BotManager.held(secondaryStack);}
     private void equip(boolean useSecondary,int now)throws ReflectiveOperationException{
         if(useSecondary==usingSecondary||useSecondary&&!heldSecondary()||now<nextSwitch)return;
         if(gun!=null)gun.unequip();
