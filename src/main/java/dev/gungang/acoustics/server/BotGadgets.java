@@ -41,13 +41,15 @@ final class BotGadgets {
         if(held||stack.isEmpty())return "";
         return stack.getItem() instanceof GadgetItem gadget?gadget.kind:"use";
     }
-    static boolean supported(ItemStack stack) {return !stack.isEmpty()&&!(stack.getItem() instanceof BombItem)&&!CombatGadgets.is(stack,"turret");}
+    static boolean supported(ItemStack stack) {return !stack.isEmpty()&&!(stack.getItem() instanceof BombItem);}
 
     void equip(BotEntity bot,Loadouts.Weapon weapon,ItemStack item,boolean held) {
         reset(bot);
         kind=weapon==null?"":kind(item,held);id=weapon==null?"":weapon.id();stack=item;disabled=false;
+        if(id.equals(MercyBullet.ID))kind="mercy";
         if(kind.isEmpty())return;
         cooldown=switch(kind) {
+            case "turret"->ExtraGadgetConfig.ticks(Turrets.config.cooldownSeconds());
             case "molotov"->ExtraGadgetConfig.ticks(ExtraGadgetConfig.molotov.cooldownSeconds());
             case "arrow_grenade"->ExtraGadgetConfig.ticks(ExtraGadgetConfig.arrowGrenade.cooldownSeconds());
             case "orbital_strike"->ExtraGadgetConfig.ticks(ExtraGadgetConfig.orbital.cooldownSeconds());
@@ -96,8 +98,17 @@ final class BotGadgets {
         var level=(ServerLevel)bot.level();long now=level.getGameTime();
         if(seen)lastSeen=now;
         effects(bot,level,now);
+        if(kind.equals("turret")&&!seen){var turret=Turrets.owned(bot.getUUID());if(turret!=null&&bot.distanceToSqr(turret)<=Turrets.config.reloadRange()*Turrets.config.reloadRange())turret.keepReloading();}
         if(!think||kind.isEmpty()||!ready(now)||!bot.isAlive()||jetting())return;
         if(SafeZones.contains(bot)&&!Set.of("recovery_potion","shield","life_support").contains(kind))return;
+        if(kind.equals("mercy")){
+            var ally=level.getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class,bot.getBoundingBox().inflate(32),
+                    e->e!=bot&&e.isAlive()&&BotEntity.participant(e)&&bot.getTeam()!=null&&bot.isAlliedTo(e)
+                            &&e.getAbsorptionAmount()<MercyBullet.BONUS&&bot.hasLineOfSight(e)).stream()
+                    .min(Comparator.comparingDouble(e->e.getHealth()/e.getMaxHealth())).orElse(null);
+            if(ally!=null){MercyBullet.grant(bot,ally);bot.swing(InteractionHand.OFF_HAND);commit(now);}
+            return;
+        }
         double distance=target==null?Double.MAX_VALUE:bot.distanceTo(target);
         float cost=(float)(bot.getMaxHealth()*GadgetConfig.adrenaline.healthCostPercent()/100);
         var goal=movement.goal();double goalDistance=goal==null?0:Math.sqrt(Math.pow(goal.x-bot.getX(),2)+Math.pow(goal.z-bot.getZ(),2));
@@ -108,6 +119,7 @@ final class BotGadgets {
         if(lastScore+bot.getRandom().nextFloat()*.15f<BotGadgetScore.THRESHOLD)return;
         try {
             boolean used=switch(kind) {
+                case "turret"->placeTurret(bot,level,target);
                 case "molotov","arrow_grenade"->throwGrenade(bot,target,kind.equals("arrow_grenade"));
                 case "landmine","bear_trap"->bot.onGround()&&placeTrap(bot,level,kind.equals("bear_trap"));
                 case "barrier"->placeBarrier(bot,level,target);
@@ -285,6 +297,21 @@ final class BotGadgets {
         jetDirection=null;bot.setNoGravity(false);bot.fallDistance=0;bot.setDeltaMovement(Vec3.ZERO);
         SurvivalGadgets.endTrail(bot.getUUID(),now+ExtraGadgetConfig.ticks(ExtraGadgetConfig.jet.trailSeconds()));
         level.playSound(null,bot.blockPosition(),SoundEvents.FIRE_EXTINGUISH,SoundSource.PLAYERS,.6f,1.4f);
+    }
+
+    /** Uses the item as a player would, through a fake player that shares the bot's UUID and team. */
+    private boolean placeTurret(BotEntity bot,ServerLevel level,net.minecraft.world.entity.LivingEntity target){
+        if(!bot.onGround()||Turrets.owned(bot.getUUID())!=null||target==null)return false;
+        for(var direction:Direction.Plane.HORIZONTAL){
+            var pos=bot.blockPosition().relative(direction,3);
+            if(!Turrets.valid(bot,pos))continue;
+            var turret=GadgetItems.TURRET_ENTITY.get().create(level);if(turret==null)return false;
+            turret.setPos(pos.getX()+1,pos.getY(),pos.getZ()+1);turret.setYRot(bot.getYRot());turret.setup(bot);
+            if(!Turrets.claim(turret)){turret.discard();return false;}
+            if(!level.addFreshEntity(turret)){turret.discard();return false;}
+            turret.deployment(stack);bot.swing(InteractionHand.OFF_HAND);return true;
+        }
+        return false;
     }
 
     /** Uses the item as a player would, through a fake player that shares the bot's UUID and team. */

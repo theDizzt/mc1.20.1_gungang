@@ -4,8 +4,8 @@ package dev.gungang.acoustics.server;
 public final class CaptureGame {
     private double capture;
     private int alphaScore, bravoScore, scoreClock = 20;
-    public void tick(boolean alphaPresent, boolean bravoPresent, int stepTicks, int scoreTicks) {
-        double step = 1.0 / Math.max(1,stepTicks);
+    public void tick(boolean alphaPresent, boolean bravoPresent, double stepTicks, int scoreTicks) {
+        double step = 1.0 / Math.max(.01,stepTicks);
         if (alphaPresent && !bravoPresent) capture = capture < 0 ? Math.min(0,capture+2*step) : capture+step;
         else if (bravoPresent && !alphaPresent) capture = capture > 0 ? Math.max(0,capture-2*step) : capture-step;
         capture = Math.max(-100,Math.min(100,capture));

@@ -16,5 +16,7 @@
         "type": "event"
       }
     ]
-  }
+  },
+  "clock_alarm": {"subtitle": "subtitles.gungang.clock_alarm", "sounds": ["gungang:clock_alarm"]},
+  "cash_machine": {"subtitle": "subtitles.gungang.cash_machine", "sounds": ["gungang:cash_machine"]}
 }

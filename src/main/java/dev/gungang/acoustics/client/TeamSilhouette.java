@@ -34,6 +34,16 @@ public final class TeamSilhouette extends RenderType {
         pose.popPose();
     }
 
+    /** A living teammate in view whose silhouette should draw however far away (see TeamSilhouetteCullMixin). */
+    public static boolean farVisible(net.minecraft.world.entity.Entity entity, net.minecraft.client.renderer.culling.Frustum frustum) {
+        if (!(entity instanceof Player || entity instanceof dev.gungang.acoustics.server.BotEntity)
+                || !(entity instanceof LivingEntity living) || !living.isAlive() || entity.isInvisible()) return false;
+        var mc = Minecraft.getInstance();
+        if (mc.options.hideGui || !AcousticConfig.TEAM_SILHOUETTES.get() || !TeamHud.teammate(living)) return false;
+        if (entity instanceof dev.gungang.acoustics.server.BotEntity bot && bot.disguised()) return false;
+        return frustum.isVisible(entity.getBoundingBoxForCulling().inflate(0.5));
+    }
+
     public static void capture(LivingEntity entity, EntityModel<?> model, PoseStack pose) {
         var mc = Minecraft.getInstance();
         if (!AcousticConfig.TEAM_SILHOUETTES.get() || mc.options.hideGui

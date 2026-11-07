@@ -24,7 +24,7 @@ public record EscortRules(ArenaMap.Area scanArea, Double linkDistance, Double sp
         linkDistance=linkDistance==null?16:linkDistance;
         speed=speed==null?1.5:speed;
         extraPlayerMultiplier=extraPlayerMultiplier==null?.25:extraPlayerMultiplier;
-        maxMultiplier=maxMultiplier==null?2.0:maxMultiplier;
+        maxMultiplier=maxMultiplier==null?1.75:maxMultiplier; // reached with EscortGame.FULL_SPEED_ESCORTS escorts; extraPlayerMultiplier is legacy and unused
         radius=radius==null?5.0:radius;
         checkpointStopSeconds=checkpointStopSeconds==null?5:checkpointStopSeconds;
         checkpointBonusSeconds=checkpointBonusSeconds==null?180:checkpointBonusSeconds;

@@ -18,6 +18,11 @@ final class BotMovement {
     private BotCombatProfile profile=BotCombatProfile.RIFLE;
     void profile(BotCombatProfile value){profile=value;}
     private Vec3 goal,progressPos;
+    private final BotTravelHistory travelHistory=new BotTravelHistory();
+    private Vec3 detour;
+    private int detourUntil;
+    private Vec3 recoveryGoal;
+    private int recoveryUntil;
     private boolean chasing,strafing;
     private int progressAt,strafeDir=1,nextFlip;
     private Vec3 reposition;
@@ -85,6 +90,8 @@ final class BotMovement {
     private int nextExitScan;
     void prepareSpawnExit() {findExit=true;departingSpawn=true;nextExitScan=0;}
     boolean leavingSpawn() {return exit!=null||departingSpawn;}
+    /** An active objective supplies the route out; do not wait indefinitely for a separate patrol exit. */
+    void followObjectiveFromSpawn(){findExit=false;departingSpawn=false;if(exit!=null&&goal==exit)goal=null;exit=null;}
     private record ExitScan(java.util.List<Vec3> points,boolean complete) { }
     /** Resume the spawn route every tick, independently of the normal patrol path interval. */
     boolean exitSpawn(BotEntity bot,ArenaMap arena,String team,int now) {
@@ -179,11 +186,11 @@ final class BotMovement {
         Vec3 eye=bot.getEyePosition();
         bot.getLookControl().setLookAt(eye.x-Math.sin(angle)*8,eye.y,eye.z+Math.cos(angle)*8);
     }
-    void reset() {route.reset();failureReason="없음";failurePoint=null;failureAt=0;failedRoutes.clear();recent.clear();nextExitScan=0;searching=false;exit=null;pendingMove=false;findExit=false;departingSpawn=false;goal=null;progressPos=null;chasing=false;strafing=false;nextFlip=0;reposition=null;nextReposition=0;}
+    void reset() {travelHistory.reset();detour=null;recoveryGoal=null;route.reset();failureReason="없음";failurePoint=null;failureAt=0;failedRoutes.clear();recent.clear();nextExitScan=0;searching=false;exit=null;pendingMove=false;findExit=false;departingSpawn=false;goal=null;progressPos=null;chasing=false;strafing=false;nextFlip=0;reposition=null;nextReposition=0;}
     /** Another system (health packs) is steering; do not count that time as being stuck. */
-    void interrupt() {progressPos=null;strafing=false;}
+    void interrupt() {travelHistory.reset();detour=null;progressPos=null;strafing=false;}
     /** Any other behaviour taking over the legs ends a strafe cleanly. */
-    void halt(BotEntity bot) {stopStrafe(bot);reposition=null;bot.getNavigation().stop();route.clear();progressPos=null;}
+    void halt(BotEntity bot) {travelHistory.reset();detour=null;stopStrafe(bot);reposition=null;bot.getNavigation().stop();route.clear();progressPos=null;}
 
     /** Returns true when the chase point (last seen enemy) was reached or abandoned, so the caller can forget it. */
     boolean travel(BotEntity bot,ArenaMap arena,String team,Vec3 chase,int now) {
@@ -201,6 +208,28 @@ final class BotMovement {
         stopStrafe(bot);searching=false;reposition=null;
         if(findExit)leaveSpawn(bot,arena,team);
         var nav=bot.getNavigation();boolean changed=false,doneChasing=false;
+        if(detour!=null){
+            if(now<detourUntil&&bot.position().distanceToSqr(detour)>1&&!nav.isDone())return false;
+            detour=null;pendingMove=true;progressPos=null;travelHistory.reset();
+        }
+        boolean looping=goal!=null&&!pendingMove&&travelHistory.sample(bot.getX(),bot.getY(),bot.getZ(),now);
+        if(looping||goal!=null&&progressPos!=null&&bot.position().distanceToSqr(progressPos)<=1&&now-progressAt>=STUCK_GIVE_UP&&!pendingMove){
+            diagnose(goal,now,looping?"반복 왕복 감지: 우회 경로 탐색":"정체 감지: 우회 경로 탐색");
+            route.avoidCurrent(now);nav.stop();travelHistory.reset();progressPos=null;
+            boolean retry=recoveryGoal!=null&&now<recoveryUntil&&recoveryGoal.distanceToSqr(goal)<9;
+            recoveryGoal=goal;recoveryUntil=now+200;
+            for(int i=0;!retry&&i<6&&!spent();i++){
+                double angle=bot.getRandom().nextDouble()*Math.PI*2;
+                var cell=ground(bot,arena,bot.position().add(Math.cos(angle)*5,i%3*2-2,Math.sin(angle)*5));
+                if(cell==null)continue;var point=Vec3.atBottomCenterOf(cell);
+                if(point.distanceToSqr(bot.position())<4||rejected(bot.position(),point,now))continue;
+                var leg=path(bot,cell,0);
+                if(leg!=null&&leg.canReach()&&nav.moveTo(leg,1)){detour=point;detourUntil=now+80;pendingMove=true;return false;}
+            }
+            failed(bot.position(),goal,now,"우회 경로 없음: 목적지 재선택");
+            doneChasing=chasing;goal=null;exit=null;chasing=false;
+            if(chase!=null)return true;
+        }
         if(chase!=null&&rejected(bot.position(),chase,now)) {
             nav.stop();goal=null;chasing=false;pendingMove=false;progressPos=null;return true;
         }
@@ -220,6 +249,11 @@ final class BotMovement {
         // Arrival picks the next waypoint in the same call, so there is no idle gap.
         if(goal==null&&patrolAfter) {goal=pick(bot,arena,team,now);changed=true;}
         if(goal==null) {route.clear();if(patrolAfter&&!spent())diagnose(bot.position(),now,"도달 가능한 순찰 후보 없음");nav.stop();pendingMove=false;progressPos=null;return doneChasing;}
+        // Vanilla navigation may finish before the precise plant/defuse location. Finish the last safe step.
+        if(!patrolAfter&&nav.isDone()&&flat(bot.position(),goal)<2.25&&Math.abs(bot.getY()-goal.y)<.5
+                &&safeSegment(bot,arena,bot.position(),goal)){
+            bot.getMoveControl().setWantedPosition(goal.x,goal.y,goal.z,1);pendingMove=false;return doneChasing;
+        }
         if(changed||nav.isDone()||pendingMove||route.active()) {
             if(spent())pendingMove=true;
             else {
@@ -702,7 +736,6 @@ final class BotMovement {
     }
     static boolean danger(ArenaMap arena,BotEntity bot,Vec3 feet) {
         var box=bot.getDimensions(Pose.STANDING).makeBoundingBox(feet);
-        if(arena.deathZones()!=null&&arena.deathZones().stream().anyMatch(z->z.intersects(box.minX,box.minY,box.minZ,box.maxX,box.maxY,box.maxZ)))return true;
         // Include the contact surface and the whole body, not only the centre of the feet.
         for(var pos:BlockPos.betweenClosed(Mth.floor(box.minX),Mth.floor(box.minY-.05),Mth.floor(box.minZ),
                 Mth.floor(box.maxX-1e-6),Mth.floor(box.maxY-1e-6),Mth.floor(box.maxZ-1e-6))) {
@@ -713,9 +746,22 @@ final class BotMovement {
                     ||state.is(net.minecraft.tags.BlockTags.FIRE)||block==net.minecraft.world.level.block.Blocks.MAGMA_BLOCK
                     ||block==net.minecraft.world.level.block.Blocks.CACTUS||block==net.minecraft.world.level.block.Blocks.SWEET_BERRY_BUSH
                     ||block==net.minecraft.world.level.block.Blocks.WITHER_ROSE||block==net.minecraft.world.level.block.Blocks.POWDER_SNOW
-                    ||block instanceof net.minecraft.world.level.block.CampfireBlock&&state.getValue(net.minecraft.world.level.block.CampfireBlock.LIT))return true;
+                    ||block instanceof net.minecraft.world.level.block.CampfireBlock&&state.getValue(net.minecraft.world.level.block.CampfireBlock.LIT)
+                    // An armed UXO goes off as soon as a body overlaps its cell (see GimmickEntity.tick).
+                    ||uxo(state)||block instanceof DeathZoneBlock)return true;
         }
         return false;
+    }
+    static boolean uxo(net.minecraft.world.level.block.state.BlockState state) {
+        return state.getBlock() instanceof GimmickBlock g&&g.id.equals("uxo")&&state.getValue(GimmickBlock.ACTIVE);
+    }
+    /** Route cost for a cell: unusable on an armed UXO, extra beside one, where a wobble or corner clips its cell. */
+    static float uxoCost(net.minecraft.world.level.Level level,int x,int y,int z) {
+        if(level==null)return 0;
+        var at=new BlockPos(x,y,z);
+        if(uxo(level.getBlockState(at))||uxo(level.getBlockState(at.below())))return Float.POSITIVE_INFINITY;
+        for(var direction:Direction.Plane.HORIZONTAL)if(uxo(level.getBlockState(at.relative(direction))))return 6;
+        return 0;
     }
     private static double flat(Vec3 a,Vec3 b) {double x=a.x-b.x,z=a.z-b.z;return x*x+z*z;}
 }

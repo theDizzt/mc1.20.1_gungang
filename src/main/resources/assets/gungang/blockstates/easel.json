@@ -1,0 +1,55 @@
+{
+  "variants": {
+    "facing=north,part=0": {
+      "model": "gungang:block/easel"
+    },
+    "facing=north,part=1": {
+      "model": "gungang:block/easel_part"
+    },
+    "facing=north,part=2": {
+      "model": "gungang:block/easel_part"
+    },
+    "facing=north,part=3": {
+      "model": "gungang:block/easel_part"
+    },
+    "facing=east,part=0": {
+      "model": "gungang:block/easel",
+      "y": 90
+    },
+    "facing=east,part=1": {
+      "model": "gungang:block/easel_part"
+    },
+    "facing=east,part=2": {
+      "model": "gungang:block/easel_part"
+    },
+    "facing=east,part=3": {
+      "model": "gungang:block/easel_part"
+    },
+    "facing=south,part=0": {
+      "model": "gungang:block/easel",
+      "y": 180
+    },
+    "facing=south,part=1": {
+      "model": "gungang:block/easel_part"
+    },
+    "facing=south,part=2": {
+      "model": "gungang:block/easel_part"
+    },
+    "facing=south,part=3": {
+      "model": "gungang:block/easel_part"
+    },
+    "facing=west,part=0": {
+      "model": "gungang:block/easel",
+      "y": 270
+    },
+    "facing=west,part=1": {
+      "model": "gungang:block/easel_part"
+    },
+    "facing=west,part=2": {
+      "model": "gungang:block/easel_part"
+    },
+    "facing=west,part=3": {
+      "model": "gungang:block/easel_part"
+    }
+  }
+}

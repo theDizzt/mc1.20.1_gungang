@@ -33,6 +33,8 @@ public final class PropSurfacePhysics {
         var prop=support(e);if(prop==null)return;
         var s=prop.state();var v=e.getDeltaMovement();
         if(s.is(Blocks.ICE)||s.is(Blocks.PACKED_ICE)){var pos=net.minecraft.core.BlockPos.containing(e.getX(),e.getY()-.500001,e.getZ());double friction=e.level().getBlockState(pos).getFriction(e.level(),pos,e);e.setDeltaMovement(v.x*.98/friction,v.y,v.z*.98/friction);}
+        // 105: soul sand slows whoever walks on it like the real block (speed factor 0.4).
+        if(s.is(Blocks.SOUL_SAND))e.setDeltaMovement(v.x*Blocks.SOUL_SAND.getSpeedFactor(),v.y,v.z*Blocks.SOUL_SAND.getSpeedFactor());
         if(s.getBlock() instanceof ConveyorBlock){var d=ConveyorBlock.output(s);e.move(MoverType.SELF,new Vec3(d.getStepX()*.1,0,d.getStepZ()*.1));e.setOnGround(true);}
     }
     private PropSurfacePhysics(){}

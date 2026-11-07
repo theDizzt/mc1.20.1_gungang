@@ -47,6 +47,7 @@ public final class PropSummons {
         if(target!=null&&mob.distanceToSqr(target)<2.4&&now>=mob.getPersistentData().getInt("PropAttack")){
             mob.getPersistentData().putInt("PropAttack",now+20);
             var source=new net.minecraft.world.damagesource.DamageSource(mob.level().registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.DAMAGE_TYPE).getHolderOrThrow(DAMAGE),mob);
+            if(mob.getPersistentData().hasUUID("PropOwner"))match.credit(target,mob.getPersistentData().getUUID("PropOwner"));
             if(target.hurt(source,mob.getPersistentData().getFloat("PropDamage"))&&mob.kind()==PropSummonEntity.Kind.SPIDER)
                 target.addEffect(new MobEffectInstance(MobEffects.POISON,100,0));
         }

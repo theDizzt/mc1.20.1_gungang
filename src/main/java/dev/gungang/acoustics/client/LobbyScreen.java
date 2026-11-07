@@ -102,7 +102,7 @@ final class LobbyScreen extends ArenaScreen {
     }
     private static String status(LobbySnapshot.Member m){return m.ready()?"준비":m.team().equals("UNASSIGNED")?"미배정":m.team().equals("SPECTATOR")?"관전":"대기";}
     private static int statusColor(LobbySnapshot.Member m){return m.ready()?READY:m.team().equals("ALPHA")||m.team().equals("BRAVO")?WAITING:MUTED;}
-    private static String modeName(String mode){return switch(mode){case "PROP_HUNT"->"숨바꼭질";case "FREE_FOR_ALL"->"개인전";case "ESCORT"->"호위";case "BOMB"->"폭탄전";case "DEATHMATCH"->"팀 데스매치";case "NORMANDY"->"이동점령";default->"쟁탈전";};}
+    static String modeName(String mode){return switch(mode){case "PROP_HUNT"->"숨바꼭질";case "FREE_FOR_ALL"->"개인전";case "ESCORT"->"호위";case "BOMB"->"폭탄전";case "DEATHMATCH"->"팀 데스매치";case "NORMANDY"->"이동점령";default->"쟁탈전";};}
     private void modeButtons(int x,int y,int w){
         var selected=map(state.selectedMap());var modes=new ArrayList<String>();
         if(selected!=null){
@@ -165,7 +165,7 @@ final class LobbyScreen extends ArenaScreen {
         g.fillGradient(0,0,width,height,0xF00C0D0A,0xF01B1D16);TacticalStyle.grid(g,0,0,width,height,24,0x07FFFFFF);
         var head=new Box(8,8,leftWidth(),34);panel(g,head,ACCENT,0);
         g.fill(head.x+7,head.y+7,head.x+9,head.y+27,ACCENT);
-        text(g,"GUNGANG / MATCH LOBBY",head.x+14,head.y+7,leftWidth()-24,INK);text(g,"이름을 끌어 팀 이동 · 명단 위에서 휠 스크롤",head.x+14,head.y+20,leftWidth()-24,MUTED);
+        text(g,"GUNGANG / MATCH LOBBY",head.x+14,head.y+7,leftWidth()-24,INK);text(g,"이름을 끌어 팀 이동 · 다른 팀 이름 위에 놓으면 교체 · 휠 스크롤",head.x+14,head.y+20,leftWidth()-24,MUTED);
         teamPanel(g,alpha(),"알파",team("ALPHA"),LobbyClient.options.color("ALPHA"));teamPanel(g,bravo(),"브라보",team("BRAVO"),LobbyClient.options.color("BRAVO"));
         var b=spectators();panel(g,b,MUTED,18);panelTitle(g,b,"관전 / 미배정",neutral().size()+"명",null,0,MUTED);
         if(neutral().isEmpty())text(g,"관전자 없음",b.x+12,b.y+29,b.w-18,DIM);
@@ -218,7 +218,8 @@ final class LobbyScreen extends ArenaScreen {
     }
     @Override public boolean mouseClicked(double x,double y,int button){
         if(button==0)for(String zone:List.of("ALPHA","BRAVO","SPECTATOR"))if(maxMemberScroll(zone)>0&&scrollTrack(zone).contains(x,y)){draggingScroll=zone;dragId=null;seekScroll(zone,y);return true;}
-        if(button==0)for(var row:rows())if(x>=row.x&&x<row.x+row.w&&y>=row.y&&y<row.y+17&&(admin()||row.member.id().equals(state.you()))){dragId=row.member.id();dragX=x;dragY=y;draggingMember=false;target=dragId;break;}
+        // A name is handled here, not by its row button: pressing only arms the drag; releasing without moving selects it.
+        if(button==0){var row=rowAt(x,y);if(row!=null&&(admin()||row.member().id().equals(state.you()))){dragId=row.member().id();dragX=x;dragY=y;draggingMember=false;return true;}}
         if(button==0&&overPreview(x,y)){draggingPreview=true;return true;}return super.mouseClicked(x,y,button);
     }
     @Override public boolean mouseDragged(double x,double y,int button,double dx,double dy){
@@ -228,9 +229,11 @@ final class LobbyScreen extends ArenaScreen {
     }
     @Override public boolean mouseReleased(double x,double y,int button){
         if(button==0&&draggingScroll!=null){draggingScroll=null;return true;}
-        if(button==0&&dragId!=null){var moved=member(dragId);String zone=zoneAt(x,y);boolean dropped=draggingMember;
-            if(dropped&&moved!=null&&zone!=null&&!zone.equals(moved.team())&&!(moved.bot()&&zone.equals("SPECTATOR")))LobbyClient.action("team",zone,moved.id());
-            dragId=null;draggingMember=false;rebuildWidgets();if(dropped)return true;
+        if(button==0&&dragId!=null){
+            var moved=member(dragId);
+            if(!draggingMember)target=dragId;
+            else if(moved!=null){var drop=drop(moved,x,y);if(drop!=null)drop.run();}
+            dragId=null;draggingMember=false;setDragging(false);rebuildWidgets();return true;
         }
         if(button==0&&draggingPreview){draggingPreview=false;return true;}return super.mouseReleased(x,y,button);
     }
@@ -242,11 +245,34 @@ final class LobbyScreen extends ArenaScreen {
         var b=scrollTrack(zone);int thumb=thumbSize(zone),top=b.y+(b.h-thumb)*offset(zone)/maxMemberScroll(zone);
         g.fill(b.x,b.y,b.right(),b.bottom(),TacticalStyle.TRACK);g.fill(b.x,top,b.right(),top+thumb,zone.equals(draggingScroll)?ACCENT:MUTED);
     }
+    /** The name row under the cursor, or null. */
+    private Row rowAt(double x,double y){for(var row:rows())if(x>=row.x()&&x<row.x()+row.w()&&y>=row.y()&&y<row.y()+17)return row;return null;}
+    /** The panel a member is listed in: its team, or the spectator/unassigned panel. */
+    private static String zoneOf(LobbySnapshot.Member m){return m.team().equals("ALPHA")||m.team().equals("BRAVO")?m.team():"SPECTATOR";}
+    /**
+     * What dropping {@code moved} here does, or null when nothing: onto a member of another panel (administrators)
+     * the two trade places; onto empty space of another panel it moves. Bots never go to the spectator panel.
+     */
+    private Runnable drop(LobbySnapshot.Member moved,double x,double y){
+        String zone=zoneAt(x,y);if(zone==null||zone.equals(zoneOf(moved)))return null;
+        var row=rowAt(x,y);var other=row==null||row.member().id().equals(moved.id())?null:row.member();
+        if(other!=null&&admin()&&zoneOf(other).equals(zone)){
+            String back=zoneOf(moved);
+            if(other.bot()&&back.equals("SPECTATOR"))return null; // the bot would land among the spectators
+            if(moved.bot()&&zone.equals("SPECTATOR"))return null;
+            return ()->LobbyClient.action("swap",moved.id(),other.id());
+        }
+        if(moved.bot()&&zone.equals("SPECTATOR"))return null;
+        return ()->LobbyClient.action("team",zone,moved.id());
+    }
     private void renderDrag(GuiGraphics g,int mx,int my){
         var moved=member(dragId);if(moved==null)return;String zone=zoneAt(mx,my);
         if(zone!=null){
-            var b=zone.equals("ALPHA")?alpha():zone.equals("BRAVO")?bravo():spectators();boolean allowed=!zone.equals(moved.team())&&!(moved.bot()&&zone.equals("SPECTATOR"));
+            var b=zoneBox(zone);boolean allowed=drop(moved,mx,my)!=null;
             int color=allowed?READY:0xFFE05050;TacticalStyle.round(g,b.x,b.y,b.w,b.h,color&0xFFFFFF|0x26000000);TacticalStyle.roundFrame(g,b.x,b.y,b.w,b.h,color);
+            // Trading places: outline the member it swaps with.
+            var row=rowAt(mx,my);
+            if(allowed&&row!=null&&!row.member().id().equals(moved.id())&&admin())TacticalStyle.roundFrame(g,row.x(),row.y(),row.w(),17,ACCENT);
         }
         int w=font.width(moved.name())+NAME-1,x=mx+6,y=my-3;var skin=moved.bot()?BotRenderer.texture(moved.skin()):MatchHud.skin(moved.id());
         g.pose().pushPose();g.pose().translate(0,0,400);

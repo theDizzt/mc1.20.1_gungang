@@ -38,6 +38,8 @@ final class BotAgent {
     private BotLoadoutChoice.Outcome lastLife;
     private final Map<String,List<BotLoadoutChoice.Outcome>> primaryHistory=new HashMap<>(),secondaryHistory=new HashMap<>();
     private boolean chooseOnSpawn=true;
+    /** 랜덤 무기: the rotation issued this loadout; deaths keep it instead of choosing again. */
+    private boolean rotationLocked;
     private int bornAt;
     private double lifeDamage,encounterDistance;
     String choiceReason="첫 출전";
@@ -64,9 +66,9 @@ final class BotAgent {
     }
 
     void activate(Loadouts loadouts)throws Exception{
-        movement.routeMemory.clear();
+        movement.routeMemory.clear();rotationLocked=false;
         weapon=BotManager.selectWeapon(loadouts);secondary=BotManager.selectSecondary(loadouts);
-        primaryChoices=loadouts.primary().stream().filter(w->{var stack=w.stack();return stack.is(Items.BOW)||BotGun.supports(stack);}).toList();
+        primaryChoices=loadouts.primary().stream().filter(BotManager::supportedPrimary).toList();
         secondaryChoices=loadouts.secondary().stream().filter(BotManager::supportedSecondary).toList();
         chooseOnSpawn=true;respawnAt=BotManager.server().getTickCount();
         MatchManager.botParticipant(id,name(),team);
@@ -86,6 +88,7 @@ final class BotAgent {
             chooseOnSpawn=false;
             LogUtils.getLogger().info("[GunGang] Bot {} loadout primary={} secondary={} reason={}",slot+1,weapon.id(),secondary==null?"none":secondary.id(),choiceReason);
         }
+        if(LobbyManager.secondaryBanned(team))secondary=null; // head-count handicap: the bigger team plays without secondaries
         bot=BotEntity.TYPE.get().create(level);if(bot==null)throw new IllegalStateException("Bot creation failed");
         bot.setUUID(id);
         // Free-for-all: the free-for-all spawn farthest from everyone, like a player's respawn.
@@ -98,7 +101,7 @@ final class BotAgent {
         // Free-for-all hides every name tag; the bot's must not give it away either.
         bot.setCustomName(Component.literal(name()).withStyle(LobbyManager.options().formatting(team)));bot.setCustomNameVisible(ffa==null);
         bot.skin(BotManager.skin(slot));
-        bot.getAttribute(Attributes.MAX_HEALTH).setBaseValue(weapon.maxHealth());
+        bot.getAttribute(Attributes.MAX_HEALTH).setBaseValue(weapon.maxHealth()*LobbyManager.healthScale(team));
         usingSecondary=false;secondarySupplied=false;nextSwitch=switchedAt=0;health.reset();movement.reset();
         primaryStack=weapon.stack();secondaryStack=secondary==null?ItemStack.EMPTY:secondary.stack();
         updateSpeed();
@@ -119,7 +122,7 @@ final class BotAgent {
         // 이동점령 attack spawns have no spawn room (the attackers' respawn protection is a short resistance instead).
         if(ffa==null&&!assault)movement.prepareSpawnExit();
         if(assault)bot.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.DAMAGE_RESISTANCE,60,5,false,false));
-        gun=bot.getMainHandItem().is(Items.BOW)?null:new BotGun(bot);
+        gun=BotGun.supports(bot.getMainHandItem())?new BotGun(bot):null;
         bornAt=server.getTickCount();lifeDamage=0;encounterDistance=0;
         // Each bot thinks and paths on its own offset, so several bots never pile their work onto the same tick.
         int now=server.getTickCount();target=null;nextShot=now;
@@ -164,7 +167,7 @@ final class BotAgent {
         if(bot.isRemoved()){bot=null;respawnAt=now+20;return;}
         if(!running){bot.getNavigation().stop();return;}
         var bounds=bot.getBoundingBox();
-        if(bot.getY()<bot.level().getMinBuildHeight()||arena.deathZones().stream().anyMatch(z->z.intersects(bounds.minX,bounds.minY,bounds.minZ,bounds.maxX,bounds.maxY,bounds.maxZ))){
+        if(bot.getY()<bot.level().getMinBuildHeight()||DeathZoneBlock.touching(bot)){
             hunt.eliminate(bot,null);return;
         }
         if(bot.parkour.active())return;
@@ -210,7 +213,7 @@ final class BotAgent {
         if(choices.isEmpty()&&!secondarySlot)throw new IllegalStateException("중복 제한으로 봇이 사용할 주무기가 없습니다.");
         var options=choices.stream().map(w->{
             var stack=w.stack();boolean melee=BotManager.melee(stack),held=BotManager.held(stack);
-            var data=stack.is(Items.BOW)?BotWeaponData.BOW:BotWeaponData.read(stack);
+            var data=BotRanged.supports(stack)?BotRanged.data(stack):BotWeaponData.read(stack);
             var profile=BotCombatProfile.of(data.type(),w.category());
             String role=BotGadgets.kind(stack,held);
             return new BotLoadoutChoice.Option(w.id(),w.maxHealth(),w.movementSpeed(),melee,
@@ -233,7 +236,7 @@ final class BotAgent {
         else if(bot!=null&&weapon!=null)bot.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(
                 Math.sqrt(PLAYER_SPRINT*(usingSecondary?secondary:weapon).movementSpeed()/100*BotManager.settings().movementSpeed()));
     }
-    private boolean heldSecondary(){return secondaryStack!=null&&!secondaryStack.isEmpty()&&BotManager.held(secondaryStack);}
+    private boolean heldSecondary(){return secondary!=null&&!secondary.id().equals(MercyBullet.ID)&&secondaryStack!=null&&!secondaryStack.isEmpty()&&BotManager.held(secondaryStack);}
     private void equip(boolean useSecondary,int now)throws ReflectiveOperationException{
         if(useSecondary==usingSecondary||useSecondary&&!heldSecondary()||now<nextSwitch)return;
         if(gun!=null)gun.unequip();
@@ -249,8 +252,26 @@ final class BotAgent {
                 Math.max(0,server.getTickCount()-bornAt),encounterDistance>0?encounterDistance:12);
         remember(primaryHistory,weapon.id(),lastLife);
         if(secondary!=null)remember(secondaryHistory,secondary.id(),lastLife);
-        chooseOnSpawn=true;
-        remove();respawnAt=server.getTickCount()+LobbyManager.options().respawnSeconds()*20;
+        chooseOnSpawn=!rotationLocked;
+        remove();respawnAt=server.getTickCount()+LobbyManager.respawnTicks();
+    }
+    /**
+     * 랜덤 무기: the rotation's weapons replace the loadout at once (a dead bot takes them on respawn) and stay through
+     * deaths until the next change. A secondary the bot cannot use is left out.
+     */
+    void rotate(Loadouts.Weapon primary,Loadouts.Weapon second){
+        weapon=primary;secondary=second!=null&&BotManager.supportedSecondary(second)&&!LobbyManager.secondaryBanned(team)?second:null;
+        rotationLocked=true;chooseOnSpawn=false;choiceReason="랜덤 무기";
+        if(bot==null||bot.isRemoved())return;
+        try{if(gun!=null)gun.unequip();}catch(ReflectiveOperationException ignored){}
+        usingSecondary=false;secondarySupplied=false;nextSwitch=switchedAt=0;
+        primaryStack=weapon.stack();secondaryStack=secondary==null?ItemStack.EMPTY:secondary.stack();
+        bot.getAttribute(Attributes.MAX_HEALTH).setBaseValue(weapon.maxHealth()*LobbyManager.healthScale(team));
+        if(bot.getHealth()>bot.getMaxHealth())bot.setHealth(bot.getMaxHealth());
+        gadgets.equip(bot,secondary,secondaryStack,heldSecondary());
+        bot.setItemSlot(EquipmentSlot.MAINHAND,primaryStack);
+        try{gun=BotGun.supports(primaryStack)?new BotGun(bot):null;}catch(ReflectiveOperationException error){gun=null;}
+        updateSpeed();
     }
     private static void remember(Map<String,List<BotLoadoutChoice.Outcome>> history,String id,BotLoadoutChoice.Outcome outcome) {
         var entries=history.computeIfAbsent(id,key->new ArrayList<>());entries.add(outcome);
@@ -273,7 +294,7 @@ final class BotAgent {
         if(bot==null){if(server.getTickCount()>=respawnAt)spawn();return;}
         if(bot.isRemoved()){remove();respawnAt=server.getTickCount()+20;return;}
         var bounds=bot.getBoundingBox();
-        if(bot.getY()<bot.level().getMinBuildHeight()||arena.deathZones().stream().anyMatch(z->z.intersects(bounds.minX,bounds.minY,bounds.minZ,bounds.maxX,bounds.maxY,bounds.maxZ))){
+        if(bot.getY()<bot.level().getMinBuildHeight()||DeathZoneBlock.touching(bot)){
             MatchManager.botDeath(id,null);return;
         }
         int now=server.getTickCount();
@@ -284,6 +305,7 @@ final class BotAgent {
         if(target!=null&&!eligible(target))target=null;
         if(usingSecondary&&(target==null||BotManager.melee(secondaryStack)&&bot.distanceToSqr(target)>25||!BotManager.melee(secondaryStack)&&now-switchedAt>200))equip(false,now);
         else if(!usingSecondary&&target!=null&&BotManager.melee(secondaryStack)&&bot.distanceToSqr(target)<9)equip(true,now);
+        else if(!usingSecondary&&target!=null&&BotManager.melee(primaryStack)&&heldSecondary()&&!BotManager.melee(secondaryStack)&&bot.distanceToSqr(target)>25)equip(true,now);
         // Free-for-all spawn protection also stops the protected one from attacking: use it to move, not to fight.
         var ffa=MatchManager.freeForAll();
         boolean shielded=ffa!=null&&FreeForAllMatch.blocked(bot);
@@ -295,7 +317,9 @@ final class BotAgent {
         long time=bot.level().getGameTime();
         if(gadgets.jetting()){aim.idle(bot);return;} // The jetpack steers the body.
         // A known spawn exit outranks wandering toward sounds or regrouping, but never an immediate threat.
-        if(!seen&&!perception.underFire(now)&&perception.danger(bot.position())==null&&bot.getHealth()>=bot.getMaxHealth()*.6f) {
+        boolean bombObjective=bombMatch!=null&&bombMatch.objective(team,slot)!=null;
+        if(bombObjective)movement.followObjectiveFromSpawn();
+        if(!bombObjective&&!seen&&!perception.underFire(now)&&perception.danger(bot.position())==null&&bot.getHealth()>=bot.getMaxHealth()*.6f) {
             boolean leaving=movement.leavingSpawn();
             if(movement.exitSpawn(bot,arena,team,now)) {aim.idle(bot);return;}
             if(leaving)nextPath=now; // Continue out into the map without waiting for the patrol interval.
@@ -326,6 +350,13 @@ final class BotAgent {
         action=tactics.choose(situation,now,
                 actions.holdingCover()&&!melee&&bot.getHealth()>bot.getMaxHealth()*.2f&&(!seen||bot.distanceToSqr(target)>16),
                 gadgets.shielding(time)&&seen,point!=null,missionScore);
+        if(bombMatch!=null&&mission!=null&&mission.act()!=BotObjective.Act.NONE&&!situation.hazard()){
+            boolean defusing=mission.act()==BotObjective.Act.DEFUSE;
+            int duration=defusing?bombMatch.timing().defuseTicks():bombMatch.timing().plantTicks();
+            int timer=defusing?bombMatch.game.fuseTicks():bombMatch.game.remainingTicks();
+            boolean safe=!seen&&!perception.underFire(now)&&(lead==null||now-lead.updated>60);
+            if(BotBombDecision.commit(defusing,timer,duration,bombMatch.botProgress(id),safe))action=BotTactics.Action.OBJECTIVE;
+        }
         // Act: the chosen behaviour's tree.
         var ctx=actions.ctx();
         ctx.bot=bot;ctx.arena=arena;ctx.team=team;ctx.settings=settings;ctx.now=now;ctx.pathTurn=pathTurn;ctx.melee=melee;
@@ -345,8 +376,8 @@ final class BotAgent {
         // Aim and fire: a visible target always gets the crosshair, whatever the legs are doing.
         if(seen){
             var contact=perception.contact(target.getUUID());
-            boolean bow=bot.getMainHandItem().is(Items.BOW);
-            var flight=bow?BotWeaponData.BOW:gun==null?BotWeaponData.UNKNOWN:gun.ballistics();
+            boolean bow=BotRanged.supports(bot.getMainHandItem());
+            var flight=bow?BotRanged.data(bot.getMainHandItem()):gun==null?BotWeaponData.UNKNOWN:gun.ballistics();
             aim.track(bot,target,contact==null?null:contact.velocity,settings,now,melee?0:flight.speed(),flight.gravity(),flight.drag());
             if(ctx.allowFire&&(melee||bot.distanceTo(target)<=ctx.profile.engage())&&now>=nextShot&&(gun==null||!gun.reloading())&&!gadgets.blocksAttack(time)&&aim.ready(bot,target,now,melee)){
                 nextShot=now+1;
@@ -380,7 +411,7 @@ final class BotAgent {
         if(ffa!=null&&ffa.remaining(e.getUUID())>0)return false; // protected: invulnerable and invisible
         return BotManager.combatant(side)&&!side.equals(BotManager.side(bot));
     }
-    private boolean visible(LivingEntity e){return eligible(e)&&bot.hasLineOfSight(e)&&!SpawnGateProtection.separates(bot,e);}
+    private boolean visible(LivingEntity e){return eligible(e)&&bot.hasLineOfSight(e)&&!SpawnGateProtection.separates(bot,e)&&!SmokeScreen.blocks(bot,e);}
     private void think(int now)throws ReflectiveOperationException{
         perception.update(bot,team,BotManager.settings(),now);
         movement.allies(perception.allies().stream().map(Entity::position).toList());
@@ -407,12 +438,7 @@ final class BotAgent {
             if(bot.distanceToSqr(enemy)<=7.84){bot.doHurtTarget(enemy);bot.swing(net.minecraft.world.InteractionHand.MAIN_HAND);nextShot=server.getTickCount()+12;}
             return;
         }
-        var arrow=new Arrow(bot.level(),bot);arrow.setBaseDamage(6);arrow.pickup=AbstractArrow.Pickup.DISALLOWED;
-        Vec3 direction=Vec3.directionFromRotation(pitch,yaw);
-        arrow.shoot(direction.x,direction.y,direction.z,1.8f,.5f);
-        bot.level().addFreshEntity(arrow);bot.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
-        bot.playSound(net.minecraft.sounds.SoundEvents.SKELETON_SHOOT,1,1);nextShot=server.getTickCount()+30;
-        BotManager.heard(bot);
+        if(BotRanged.supports(bot.getMainHandItem()))nextShot=server.getTickCount()+BotRanged.fire(bot,yaw,pitch);
     }
     /** Enemy gunfire within earshot sends an idle bot to investigate, the way players react to shots. */
     void heard(LivingEntity shooter){

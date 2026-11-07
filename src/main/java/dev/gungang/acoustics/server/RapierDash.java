@@ -5,7 +5,7 @@ import net.minecraft.world.phys.Vec3;
 
 /** Fixed six-step dash: input, gravity, friction and jump impulses cannot extend it. */
 public final class RapierDash {
-    public static final double SPEED=.65;
+    public static final double SPEED=2.0; // 12 blocks over the 6-tick dash
     private static final String LEFT="RapierDashSteps",X="RapierDashX",Z="RapierDashZ";
     public static void start(Player p,float yaw){
         var tag=p.getPersistentData();double angle=Math.toRadians(yaw);

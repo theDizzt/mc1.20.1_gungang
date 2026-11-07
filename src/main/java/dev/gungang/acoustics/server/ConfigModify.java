@@ -22,7 +22,7 @@ public final class ConfigModify {
         try{work.run();return 1;}catch(Exception ex){source.sendFailure(Component.literal("설정 편집 실패: "+ex.getMessage()));return 0;}
     }
     public static void register(LiteralArgumentBuilder<CommandSourceStack> root){
-        var modify=Commands.literal("modify").requires(s->s.hasPermission(2)).executes(c->{say(c.getSource(),"/gungang modify <map|weapon|secondary|item|block> [ID] [항목] [값] · 생략하면 목록/현재값 조회");return 1;});
+        var modify=Commands.literal("modify").requires(s->s.hasPermission(2)).executes(c->{say(c.getSource(),"/gungang modify <map|weapon|secondary|item|block> [ID] [항목] [값] · 생략하면 목록/현재값 조회 · /gungang modify ui [무기ID] 무기 실시간 패치 화면");return 1;});
         for(String kind:KINDS)modify.then(Commands.literal(kind)
                 .executes(c->run(c.getSource(),()->list(c.getSource(),kind)))
                 .then(Commands.argument("id",StringArgumentType.word()).suggests((c,b)->suggestIds(kind,b))
@@ -31,6 +31,9 @@ public final class ConfigModify {
                                 .executes(c->run(c.getSource(),()->get(c.getSource(),target(kind,StringArgumentType.getString(c,"id")),StringArgumentType.getString(c,"field"))))
                                 .then(Commands.argument("value",StringArgumentType.greedyString()).suggests((c,b)->suggestValue(kind,c,b))
                                         .executes(c->run(c.getSource(),()->edit(c.getSource(),kind,StringArgumentType.getString(c,"id"),StringArgumentType.getString(c,"field"),StringArgumentType.getString(c,"value"))))))));
+        modify.then(Commands.literal("ui").executes(c->run(c.getSource(),()->WeaponPatch.open(c.getSource().getPlayerOrException(),"")))
+                .then(Commands.argument("id",StringArgumentType.word()).suggests((c,b)->suggestIds("weapon",b))
+                        .executes(c->run(c.getSource(),()->WeaponPatch.open(c.getSource().getPlayerOrException(),StringArgumentType.getString(c,"id"))))));
         root.then(modify);
     }
     private static void say(CommandSourceStack source,String text){source.sendSuccess(()->Component.literal(text),false);}
@@ -151,21 +154,47 @@ public final class ConfigModify {
         }else GadgetConfig.validate(target.id,json);
     }
     static void edit(CommandSourceStack source,String kind,String id,String field,String text)throws Exception{
-        LobbyManager.requireMapEditing();var target=target(kind,id);var parsed=parse(text,fieldType(target,field));var candidate=target.original.deepCopy();set(candidate,target.effective,field,parsed);validate(target,candidate);
+        var target=target(kind,id);fieldType(target,field);
+        if(value(target.effective,field).equals(parse(text,fieldType(target,field)))){say(source,"이미 같은 값입니다.");return;}
+        var parsed=apply(kind,id,Map.of(field,text)).get(field);
+        say(source,"저장 완료: "+kind+" "+id+" · "+field+" = "+parsed+" ("+target.path.getFileName()+")");
+        if(field.startsWith("specs."))say(source,"specs는 무기 선택 화면의 표시용 정보입니다. 실제 총기 성능은 /gungang modify ui 의 TaCZ 항목에서 수정합니다.");
+        if(kind.equals("weapon"))say(source,"실시간 패치: 이 무기를 장착 중인 플레이어에게 바로 적용했습니다.");
+        else if(kind.equals("secondary"))say(source,"변경된 장비 설정은 다음 장비 지급/재선택부터 적용됩니다. 내장 아이템 효과·쿨타임은 modify item 설정이 우선합니다.");
+    }
+    /**
+     * Validates and saves several fields of one setting in a single write. Primary weapons are patched live, even
+     * during a match; every other kind keeps the lobby-only full reload. The file is restored when the refresh fails.
+     */
+    static Map<String,JsonPrimitive> apply(String kind,String id,Map<String,String> changes)throws Exception{
+        boolean live=kind.equals("weapon");
+        if(!live)LobbyManager.requireMapEditing();
+        var target=target(kind,id);var candidate=target.original.deepCopy();var parsed=new LinkedHashMap<String,JsonPrimitive>();
+        for(var change:changes.entrySet()){var value=parse(change.getValue(),fieldType(target,change.getKey()));set(candidate,target.effective,change.getKey(),value);parsed.put(change.getKey(),value);}
+        validate(target,candidate);
         String after=ServerFiles.GSON.toJson(candidate)+"\n";if(after.getBytes(StandardCharsets.UTF_8).length>65536)throw new IllegalArgumentException("설정 파일은 64 KiB 이하여야 합니다.");
-        if(value(target.effective,field).equals(parsed)){say(source,"이미 같은 값입니다.");return;}
         String before=Files.exists(target.path)?Files.readString(target.path,StandardCharsets.UTF_8):null;
         AreaEditor.atomicWrite(target.path,after);
-        try{if(kind.equals("map"))LobbyManager.refreshEditedMaps();else LobbyManager.refreshModifiedSettings();}
+        try{refresh(kind,id);}
         catch(Exception failure){
             if(before==null)Files.deleteIfExists(target.path);else AreaEditor.atomicWrite(target.path,before);
-            try{if(kind.equals("map"))LobbyManager.refreshEditedMaps();else LobbyManager.refreshModifiedSettings();}catch(Exception rollback){failure.addSuppressed(rollback);}
+            try{refresh(kind,id);}catch(Exception rollback){failure.addSuppressed(rollback);}
             throw failure;
         }
-        say(source,"저장 완료: "+kind+" "+id+" · "+field+" = "+parsed+" ("+target.path.getFileName()+")");
-        if(field.startsWith("specs."))say(source,"specs는 무기 선택 화면의 표시용 정보입니다. 실제 총기 성능은 총기팩에서 설정합니다.");
-        if(kind.equals("weapon")||kind.equals("secondary"))say(source,"변경된 장비 설정은 다음 장비 지급/재선택부터 적용됩니다. 내장 아이템 효과·쿨타임은 modify item 설정이 우선합니다.");
+        return parsed;
     }
+    private static void refresh(String kind,String id)throws Exception{
+        if(kind.equals("map"))LobbyManager.refreshEditedMaps();else if(kind.equals("weapon"))LobbyManager.refreshPatchedWeapon(id);else LobbyManager.refreshModifiedSettings();
+    }
+    /** Weapon fields the patch screen edits, in display order, with their current effective values. */
+    static Map<String,JsonElement> weaponFields(String id)throws Exception{
+        var target=target("weapon",id);var result=new LinkedHashMap<String,JsonElement>();
+        for(String key:List.of("name","category","maxHealth","movementSpeed","specs.damage","specs.accuracy","specs.stability","specs.range","specs.fireRate"))
+            if(target.fields.containsKey(key))result.put(key,value(target.effective,key));
+        return result;
+    }
+    static boolean numeric(String kind,String id,String field)throws Exception{var type=fieldType(target(kind,id),field);return type!=String.class&&type!=boolean.class&&type!=Boolean.class;}
+    static List<String> weaponIds()throws Exception{return new ArrayList<>(ids("weapon").keySet());}
     private static CompletableFuture<Suggestions> suggestIds(String kind,SuggestionsBuilder b){try{return SharedSuggestionProvider.suggest(ids(kind).keySet(),b);}catch(Exception ignored){return b.buildFuture();}}
     private static CompletableFuture<Suggestions> suggestFields(String kind,CommandContext<CommandSourceStack> c,SuggestionsBuilder b){try{return SharedSuggestionProvider.suggest(target(kind,StringArgumentType.getString(c,"id")).fields.keySet(),b);}catch(Exception ignored){return b.buildFuture();}}
     private static CompletableFuture<Suggestions> suggestValue(String kind,CommandContext<CommandSourceStack> c,SuggestionsBuilder b){
