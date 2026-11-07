@@ -49,6 +49,7 @@ public final class GungangNetwork {
     public record ConveyorSet(net.minecraft.core.BlockPos pos,int speed,boolean reverse) { }
     public record SecretBlockSync(boolean full,long[] positions,byte[] modes) { }
     public record RapierStep(int entity,float yaw) { }
+    public record AssaultMotion(boolean active,double x,double y,double z) { }
     public record Emote(int entity,int slot,boolean prop) { }
     public record PropList() { }
     /** 247+: the live weapon patch screen (server view as JSON) and its requests ({@code open}/{@code apply}). */
@@ -57,6 +58,10 @@ public final class GungangNetwork {
     /** Longest lobby action value: the game options JSON, with room for every mode's section and a long excluded-block list. */
     static final int ACTION_VALUE=8192;
     public static void register() {
+        CHANNEL.registerMessage(33,AssaultMotion.class,(p,b)->{b.writeBoolean(p.active);b.writeDouble(p.x);b.writeDouble(p.y);b.writeDouble(p.z);},
+                b->new AssaultMotion(b.readBoolean(),b.readDouble(),b.readDouble(),b.readDouble()),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.AirAssaultClient.receive(p)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(32,WeaponRoll.class,(p,b)->b.writeUtf(p.json,262144),b->new WeaponRoll(b.readUtf(262144)),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.WeaponRollClient.receive(p.json)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));

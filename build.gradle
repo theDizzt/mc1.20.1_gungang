@@ -18,6 +18,7 @@ def releaseName = "u${nextUpdate}_${releaseDate}"
 version = "${nextUpdate}.${releaseDate}"
 base { archivesName = 'gungang-realistic_1.20.1' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+if (project.hasProperty('gungangAssaultSmoke')) sourceSets.main.java.srcDir('src/assaultSmoke/java')
 if (project.hasProperty('gungangShutterSmoke')) sourceSets.main.java.srcDir('src/shutterSmoke/java')
 if (project.hasProperty('gungangShutterClientSmoke')) sourceSets.main.java.srcDir('src/shutterClientSmoke/java')
 if (project.hasProperty('gungangHotSpringClientSmoke')) sourceSets.main.java.srcDir('src/hotSpringClientSmoke/java')
@@ -72,6 +73,7 @@ minecraft {
             args '--nogui'
             if (project.hasProperty('gungangShutterSmoke')) workingDirectory project.file('build/shutter-smoke-run')
             if (project.hasProperty('gungangMotionSmoke')) workingDirectory project.file('build/motion-smoke-run')
+            if (project.hasProperty('gungangAssaultSmoke')) workingDirectory project.file('build/assault-smoke-run')
             if (project.hasProperty('gungangArrowSmoke')) workingDirectory project.file('build/arrow-smoke-run')
             if (project.hasProperty('gungangAcidSmoke')) workingDirectory project.file('build/acid-smoke-run')
             if (project.hasProperty('gungangOutlineSmoke')) workingDirectory project.file('build/outline-server-smoke')
@@ -116,6 +118,7 @@ tasks.named('jar', Jar).configure {
     exclude 'dev/gungang/acoustics/server/HotSpringChecks*.class'
     exclude 'dev/gungang/acoustics/server/HologramChecks*.class'
     exclude 'dev/gungang/acoustics/server/MotionSmokeChecks*.class'
+    exclude 'dev/gungang/acoustics/server/AirAssaultSmokeChecks*.class'
     exclude 'dev/gungang/acoustics/client/MotionModelChecks*.class'
     exclude 'dev/gungang/acoustics/client/PropCatalogModelChecks*.class'
     exclude 'dev/gungang/acoustics/server/ArrowGrenadeSmokeChecks*.class'

@@ -36,8 +36,12 @@ class OrdnanceRulesTest {
         var definitions=OrdnanceLoadouts.defaults();
         var grenade=definitions.stream().filter(w->w.id().equals("79")).findFirst().orElseThrow();
         assertEquals(30d,grenade.cooldownSeconds());assertTrue(grenade.itemNbt().contains("gungang:arrow_grenade"));
-        assertEquals("81",definitions.get(0).id());assertEquals(36d,definitions.get(0).cooldownSeconds());
-        assertEquals("87",definitions.get(1).id());assertEquals(240d,definitions.get(1).cooldownSeconds());
+        var molotov=definitions.stream().filter(w->w.id().equals("81")).findFirst().orElseThrow();
+        assertEquals(36d,molotov.cooldownSeconds());
+        var orbital=definitions.stream().filter(w->w.id().equals("87")).findFirst().orElseThrow();
+        assertEquals(240d,orbital.cooldownSeconds());
+        var assault=definitions.stream().filter(w->w.id().equals("77")).findFirst().orElseThrow();
+        assertEquals(40d,assault.cooldownSeconds());assertTrue(assault.itemNbt().contains("gungang:air_assault"));
         var trap=definitions.stream().filter(w->w.id().equals("89")).findFirst().orElseThrow();
         assertEquals(36d,trap.cooldownSeconds());assertEquals("2026-10-21",trap.releaseDate());
         var axe=definitions.stream().filter(w->w.id().equals("80")).findFirst().orElseThrow();

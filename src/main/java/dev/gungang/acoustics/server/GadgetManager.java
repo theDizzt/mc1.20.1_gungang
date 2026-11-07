@@ -29,7 +29,7 @@ public final class GadgetManager {
             for(var entity:entities) {entity.discard();count++;}
         }
         PLACED.clear();count+=BearTraps.clearAll(server);count+=Turrets.clearAll(server);
-        for(var player:server.getPlayerList().getPlayers())cancel(player);
+        for(var player:server.getPlayerList().getPlayers()) {cancel(player);AirAssault.clear(player);}
         PREVIEW.clear();return count;
     }
     private record Healing(int remaining,float perTick) { }
@@ -49,6 +49,7 @@ public final class GadgetManager {
         if(SurvivalGadgets.jetting(p))return;
         if((kind.equals("landmine")||kind.equals("molotov")||kind.equals("arrow_grenade")||kind.equals("orbital_strike")||kind.equals("bear_trap")||kind.equals("turret"))&&SafeZones.contains(p))return;
         if(!p.isAlive()||p.isSpectator()||LobbyManager.respawning(p.getUUID())||!SecondaryRuntime.ready(p,stack))return;
+        if(kind.equals("air_assault")) {AirAssault.start(p,stack);return;}
         if(kind.equals("jetpack")) {
             // Prop hunt seekers fly only while hunting, never from the waiting room.
             var hunt=MatchManager.propHunt();
@@ -179,6 +180,7 @@ public final class GadgetManager {
         p.getAttribute(Attributes.MOVEMENT_SPEED).removeModifier(SPEED);p.getAttribute(Attributes.ATTACK_SPEED).removeModifier(ATTACK);
     }
     public static void clearDeployables(ServerPlayer p) {
+        AirAssault.clear(p);
         cancel(p);BearTraps.clear(p);clearOwned(p.server,p.getUUID());
     }
     /** Mines and barriers of one owner, player or bot. */
