@@ -52,7 +52,7 @@ public final class MatchManager {
         if(bomb!=null){
             if(bomb.dead(player.getUUID())||bomb.game.phase()==BombGame.Phase.ROUND_END)return;
             bomb.eliminate(player);died=true;
-            for(var p:server.getPlayerList().getPlayers())p.sendSystemMessage(net.minecraft.network.chat.Component.literal(player.getGameProfile().getName()+" 님이 데스존에서 자살했습니다."));
+            for(var p:server.getPlayerList().getPlayers())p.sendSystemMessage(deathZoneMessage(player));
         }else died=LobbyManager.beginRespawn(player,null,true);
         if(died&&freeForAll!=null)freeForAll.death(player,null);
         if(died)ledger.death(player.getUUID(),player.getUUID(),server.getTickCount(),deathmatch!=null);
@@ -305,8 +305,11 @@ public final class MatchManager {
     }
     static Component deathMessage(net.minecraft.world.entity.LivingEntity victim,net.minecraft.world.entity.Entity killer){
         if(killer==null||killer.getUUID().equals(victim.getUUID()))return victim.getCombatTracker().getDeathMessage();
-        return Component.empty().append(victim.getDisplayName()).append(" 님이 ").append(killer.getDisplayName()).append(" 님에게 처치당했습니다.");
+        // A death.* translation (not plain text), so the client's kill log recognizes it like a vanilla death message.
+        return Component.translatable("death.gungang.kill",victim.getDisplayName(),killer.getDisplayName());
     }
+    /** Suicide in a death zone, as a death.* message for the kill log. */
+    static Component deathZoneMessage(net.minecraft.world.entity.LivingEntity victim){return Component.translatable("death.gungang.death_zone",victim.getDisplayName());}
     /** The mission bots of {@code team} work toward in the running mode, or null (team deathmatch). */
     static BotObjective botObjective(String team,int slot){
         if(map==null||!bots||deathmatch!=null||freeForAll!=null)return null;

@@ -156,7 +156,7 @@ public final class TeamHud {
             UUID id = info.getProfile().getId();
             if (id.equals(mc.player.getUUID()) || !team.isAlliedTo(info.getTeam())
                     || (info.getGameMode() == net.minecraft.world.level.GameType.SPECTATOR && !RespawnPortrait.waiting(id))) continue;
-            members.add(new Member(id, info.getProfile().getName(), info.getSkinLocation(), mc.level.getPlayerByUUID(id)));
+            members.add(new Member(id, ClientNames.of(id), info.getSkinLocation(), mc.level.getPlayerByUUID(id)));
         }
         var state = MatchHud.state();
         String side = team.getName().equals("Red") ? "ALPHA" : team.getName().equals("Blue") ? "BRAVO" : "";
@@ -315,7 +315,9 @@ public final class TeamHud {
             if (entity != null) { id = entity.id; info = mc.getConnection().getPlayerInfo(entity.id); }
         }
         if (info == null) info = mc.getConnection().getPlayerInfo(name.getString());
-        String label = mc.font.plainSubstrByWidth(name.getString(), 62);
+        // A player's nickname from the Tab list, whatever name the server's death message carried.
+        String shown = info != null ? ClientNames.of(info.getProfile().getId()) : name.getString();
+        String label = mc.font.plainSubstrByWidth(shown, 62);
         int left = right - mc.font.width(label) - 20;
         // Bots have no PlayerInfo: take their profile skin from the match rows, else from the loaded entity.
         String botSkin = info == null && id != null ? botSkin(mc, id) : null;

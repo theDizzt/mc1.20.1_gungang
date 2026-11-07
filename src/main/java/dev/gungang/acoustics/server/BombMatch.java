@@ -201,7 +201,7 @@ public final class BombMatch {
         uses.values().removeIf(other->!other.defuser);BombDrops.clear(server);
         for(var mate:alive(game.attacker())){
             removeObjectives(mate);
-            if(mate!=who)mate.displayClientMessage(Component.literal(who.getName().getString()+" 님이 "+use.site+" 지점에 폭탄을 설치했습니다 · 더 이상 설치할 수 없습니다"),true);
+            if(mate!=who)mate.displayClientMessage(Component.literal(ProgressionService.name(who)+" 님이 "+use.site+" 지점에 폭탄을 설치했습니다 · 더 이상 설치할 수 없습니다"),true);
         }
         for(var player:server.getPlayerList().getPlayers())player.sendSystemMessage(Component.literal(use.site+" 지점 폭탄 설치 · "+timing.fuseSeconds()+"초"));
         return true;

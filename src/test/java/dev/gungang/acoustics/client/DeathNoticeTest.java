@@ -28,4 +28,14 @@ class DeathNoticeTest {
                 Component.literal("Victim"), Component.literal("Killer"), Component.literal("Rifle")));
         assertEquals("Killer", kill.killer().getString());
     }
+
+    @Test void gungangKillAndDeathZoneMessagesReachTheKillLog() {
+        DeathNotice kill = DeathNotice.parse(Component.translatable("death.gungang.kill",
+                Component.literal("Victim"), Component.literal("Killer")));
+        assertEquals("Victim", kill.victim().getString());
+        assertEquals("Killer", kill.killer().getString());
+        DeathNotice zone = DeathNotice.parse(Component.translatable("death.gungang.death_zone", Component.literal("Victim")));
+        assertEquals("Victim", zone.victim().getString());
+        assertNull(zone.killer());
+    }
 }
