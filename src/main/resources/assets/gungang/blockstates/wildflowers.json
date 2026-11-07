@@ -1,7 +1,19 @@
 {
-    "variants":  {
-                     "":  {
-                              "model":  "gungang:block/wildflowers"
-                          }
-                 }
+  "variants": {
+    "facing=north": {
+      "model": "gungang:block/wildflowers"
+    },
+    "facing=east": {
+      "model": "gungang:block/wildflowers",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "gungang:block/wildflowers",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "gungang:block/wildflowers",
+      "y": 270
+    }
+  }
 }

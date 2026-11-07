@@ -1,0 +1,9 @@
+newmtl material_0
+Kd 1 1 1
+map_Kd gungang:item/defibrillator_0
+newmtl material_1
+Kd 1 1 1
+map_Kd gungang:item/defibrillator_1
+newmtl material_2
+Kd 1 1 1
+map_Kd gungang:item/defibrillator_2

@@ -73,7 +73,7 @@ public final class SurvivalGadgets {
         p.setDeltaMovement(velocity);p.hasImpulse=true;
         if(p.connection!=null)p.connection.send(new net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket(p));
     }
-    private static void stopJet(ServerPlayer p) {
+    static void stopJet(ServerPlayer p) {
         var jet=JETS.remove(p.getUUID());if(jet==null)return;
         p.setNoGravity(jet.originalNoGravity());p.fallDistance=0;
         // Burner cut-off.

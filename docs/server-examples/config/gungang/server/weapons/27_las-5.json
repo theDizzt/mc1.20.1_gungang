@@ -3,7 +3,7 @@
   "category": "소총",
   "itemNbt": "{Count:1b,id:\"tacz:modern_kinetic_gun\",tag:{GunCurrentAmmoCount:389306385,GunFireMode:\"AUTO\",GunId:\"zeta:las_5\",HasBulletInBarrel:1b,HeatAmount:0.0f,OverHeated:0b}}",
   "name": "LAS-5",
-  "description": "과열 비율에 따라 발당 피해가 2~4로 증가합니다. 피해 = 2 × (1 + 과열 비율). 초당 20발 기준 40~80 DPS이며 과열 59%에서는 63.6 DPS입니다. 헤드샷·방어·강화 효과 적용 전 수치입니다.",
+  "description": "과열 비율에 따라 발당 피해가 2~4로 증가합니다. 피해 = 2 × (1 + 과열 비율). 초당 20발 기준 40~80 DPS이며 과열 59%에서는 63.6 DPS입니다. 헤드샷·방어·강화 효과 적용 전 수치입니다. 3인칭 시점과 다른 플레이어 화면에는 발사 시 노란색 광선이 표시됩니다.",
   "releaseDate": "2026-11-01",
   "specs": {
     "damage": "2~4 (과열 비례)",

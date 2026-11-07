@@ -56,6 +56,8 @@ public final class PropAbilities {
         /** 246 hanging from the ceiling at {@code hangAt}; 245 dice rolling until; 247 reels stopping at / jackpot until and its seekers; 250 rain until. */
         /** 255: vertical speed, next shot, stuck since / sidestep until and its side. */
         double autoVy;int autoShot,autoStuck,autoDetour,autoSide=1;Vec3 autoLast;
+        /** 255 driving its virtual body (owner watching others): on the ground / against a wall after the last step. */
+        boolean autoGround,autoWall;
         boolean hang,jackpotWon;Vec3 hangAt;int diceUntil,slotAt=-1,jackpotUntil,rainUntil;List<UUID> jackpot=new ArrayList<>();
         final List<net.minecraft.world.entity.item.ItemEntity> rain=new ArrayList<>();final Map<UUID,Integer> rainHit=new HashMap<>();
         void clearDiscs(){discs.forEach(Entity::discard);discs.clear();}
@@ -203,7 +205,11 @@ public final class PropAbilities {
     private static void unhang(LivingEntity p,Runtime r){if(!r.hang)return;r.hang=false;r.hangAt=null;p.setNoGravity(false);p.fallDistance=0;}
     private static ServerLevel level(LivingEntity p){return (ServerLevel)p.level();}
     /** Holds a body in place: a player's client is corrected at once, a bot is simply put back. */
-    private static void pin(LivingEntity p,double x,double y,double z){if(p instanceof ServerPlayer sp)sp.connection.teleport(x,y,z,p.getYRot(),p.getXRot());else p.setPos(x,y,z);}
+    /** Holds the body in place without touching the look: an absolute rotation every tick fought the client's mouse and third-person camera. */
+    private static void pin(LivingEntity p,double x,double y,double z){
+        if(p instanceof ServerPlayer sp)sp.connection.teleport(x,y,z,0,0,EnumSet.of(net.minecraft.world.entity.RelativeMovement.X_ROT,net.minecraft.world.entity.RelativeMovement.Y_ROT));
+        else p.setPos(x,y,z);
+    }
     public boolean use(LivingEntity p,PropEntity prop){
         String item=prop.item();var r=data(p.getUUID());int now=match.now();
         if(Set.of("minecraft:nether_portal","minecraft:lodestone","minecraft:command_block","minecraft:end_crystal","minecraft:tnt_minecart","minecraft:conduit").contains(item)&&!match.hunting()){
@@ -905,32 +911,45 @@ public final class PropAbilities {
     private void auto(LivingEntity p,PropEntity prop,Runtime r,int now){
         if(!match.hunting()){r.autoVy=0;return;}
         var level=level(p);
-        var target=match.seekers().stream().filter(q->q.level()==level&&q.isAlive()).min(Comparator.comparingDouble(q->q.distanceToSqr(p))).orElse(null);
+        // While its owner watches someone else the player's body follows that camera, so the unit drives a virtual body (the anchor).
+        var away=match.autoBody(p.getUUID());var at=away!=null?away:p.position();
+        var target=match.seekers().stream().filter(q->q.level()==level&&q.isAlive()).min(Comparator.comparingDouble(q->q.distanceToSqr(at))).orElse(null);
         if(target==null)return;
-        var eye=p.position().add(0,1.3,0);var aim=target.getBoundingBox().getCenter();
+        var eye=at.add(0,1.3,0);var aim=target.getBoundingBox().getCenter();
         boolean sight=eye.distanceTo(aim)<=AUTO_RANGE&&level.clip(new ClipContext(eye,aim,ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,p)).getType()==HitResult.Type.MISS;
-        var flat=new Vec3(target.getX()-p.getX(),0,target.getZ()-p.getZ());double distance=flat.length();
+        var flat=new Vec3(target.getX()-at.x,0,target.getZ()-at.z);double distance=flat.length();
         var dir=distance<1e-4?Vec3.ZERO:flat.scale(1/distance);
         if(now<r.autoDetour)dir=new Vec3(-dir.z*r.autoSide,0,dir.x*r.autoSide).add(dir.scale(.3)).normalize();
         double speed=sight&&distance<8?0:AUTO_SPEED;
-        if(p.onGround())r.autoVy=p.horizontalCollision&&speed>0?.42:0;else r.autoVy=Math.max(-1,r.autoVy-.08);
-        p.move(MoverType.SELF,new Vec3(dir.x*speed,r.autoVy,dir.z*speed));p.setDeltaMovement(Vec3.ZERO);p.fallDistance=0;
+        boolean ground=away!=null?r.autoGround:p.onGround(),wall=away!=null?r.autoWall:p.horizontalCollision;
+        if(ground)r.autoVy=wall&&speed>0?.42:0;else r.autoVy=Math.max(-1,r.autoVy-.08);
+        var step=new Vec3(dir.x*speed,r.autoVy,dir.z*speed);Vec3 now2;
+        if(away==null){p.move(MoverType.SELF,step);p.setDeltaMovement(Vec3.ZERO);p.fallDistance=0;now2=p.position();}
+        else{
+            double half=p.getBbWidth()/2;var box=new AABB(at.x-half,at.y,at.z-half,at.x+half,at.y+p.getBbHeight(),at.z+half);
+            // Always press down a little, so standing still on the floor still reads as on the ground.
+            if(step.y<=0)step=new Vec3(step.x,Math.min(step.y,-.08),step.z);
+            var moved=Entity.collideBoundingBox(p,step,box,level,List.of());
+            r.autoGround=step.y<0&&moved.y>step.y+1e-7;r.autoWall=Math.abs(moved.x-step.x)>1e-7||Math.abs(moved.z-step.z)>1e-7;
+            if(moved.y!=step.y)r.autoVy=0;
+            now2=at.add(moved);match.autoMoved(p.getUUID(),now2);
+        }
         // Stalled against something for a second: sidestep for a moment.
-        if(speed>0&&r.autoLast!=null&&p.position().subtract(r.autoLast).horizontalDistanceSqr()<.0004){if(++r.autoStuck>20){r.autoStuck=0;r.autoDetour=now+30;r.autoSide=p.getRandom().nextBoolean()?1:-1;}}else r.autoStuck=0;
-        r.autoLast=p.position();
-        float heading=(float)Math.toDegrees(Math.atan2(-(aim.x-p.getX()),aim.z-p.getZ()));
+        if(speed>0&&r.autoLast!=null&&now2.subtract(r.autoLast).horizontalDistanceSqr()<.0004){if(++r.autoStuck>20){r.autoStuck=0;r.autoDetour=now+30;r.autoSide=p.getRandom().nextBoolean()?1:-1;}}else r.autoStuck=0;
+        r.autoLast=now2;
+        float heading=(float)Math.toDegrees(Math.atan2(-(aim.x-now2.x),aim.z-now2.z));
         prop.setYRot(heading);prop.setYHeadRot(heading);prop.setYBodyRot(heading);
-        pin(p,p.getX(),p.getY(),p.getZ());prop.setPos(p.position());
+        if(away==null)pin(p,p.getX(),p.getY(),p.getZ());prop.setPos(now2);
         if(!sight||now<r.autoShot)return;
         r.autoShot=now+2;
-        var random=p.getRandom();var muzzle=p.position().add(0,1.2,0).add(dir.scale(.8));
+        var random=p.getRandom();var muzzle=now2.add(0,1.2,0).add(dir.scale(.8));
         var shot=aim.subtract(muzzle).normalize().add((random.nextDouble()-.5)*.06,(random.nextDouble()-.5)*.06,(random.nextDouble()-.5)*.06).normalize();
         var end=muzzle.add(shot.scale(AUTO_RANGE));
         var block=level.clip(new ClipContext(muzzle,end,ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,p));if(block.getType()!=HitResult.Type.MISS)end=block.getLocation();
         var hit=target.getBoundingBox().inflate(.1).clip(muzzle,end);
         if(hit.isPresent()){end=hit.get();target.invulnerableTime=0;match.credit(target,p.getUUID());target.hurt(p.damageSources().generic(),AUTO_DAMAGE);}
         double length=muzzle.distanceTo(end);
-        for(double t=.8;t<length;t+=1.6){var at=muzzle.add(shot.scale(t));level.sendParticles(ParticleTypes.CRIT,at.x,at.y,at.z,1,0,0,0,0);}
+        for(double t=.8;t<length;t+=1.6){var dot=muzzle.add(shot.scale(t));level.sendParticles(ParticleTypes.CRIT,dot.x,dot.y,dot.z,1,0,0,0,0);}
         level.sendParticles(ParticleTypes.SMOKE,muzzle.x,muzzle.y,muzzle.z,1,.05,.05,.05,.01);
         if(now%4==0)level.playSound(null,BlockPos.containing(muzzle),TurretSounds.SHOT.get(),net.minecraft.sounds.SoundSource.PLAYERS,1.2f,1.25f);
     }

@@ -46,7 +46,7 @@ final class BotGadgets {
     void equip(BotEntity bot,Loadouts.Weapon weapon,ItemStack item,boolean held) {
         reset(bot);
         kind=weapon==null?"":kind(item,held);id=weapon==null?"":weapon.id();stack=item;disabled=false;
-        if(id.equals(MercyBullet.ID))kind="mercy";
+        if(id.equals(Defibrillator.ID))kind="mercy";
         if(kind.isEmpty())return;
         cooldown=switch(kind) {
             case "turret"->ExtraGadgetConfig.ticks(Turrets.config.cooldownSeconds());
@@ -102,11 +102,11 @@ final class BotGadgets {
         if(!think||kind.isEmpty()||!ready(now)||!bot.isAlive()||jetting())return;
         if(SafeZones.contains(bot)&&!Set.of("recovery_potion","shield","life_support").contains(kind))return;
         if(kind.equals("mercy")){
-            var ally=level.getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class,bot.getBoundingBox().inflate(32),
+            var ally=level.getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class,bot.getBoundingBox().inflate(Defibrillator.RANGE),
                     e->e!=bot&&e.isAlive()&&BotEntity.participant(e)&&bot.getTeam()!=null&&bot.isAlliedTo(e)
-                            &&e.getAbsorptionAmount()<MercyBullet.BONUS&&bot.hasLineOfSight(e)).stream()
+                            &&e.getAbsorptionAmount()<Defibrillator.BONUS&&bot.distanceTo(e)<=Defibrillator.RANGE&&bot.hasLineOfSight(e)).stream()
                     .min(Comparator.comparingDouble(e->e.getHealth()/e.getMaxHealth())).orElse(null);
-            if(ally!=null){MercyBullet.grant(bot,ally);bot.swing(InteractionHand.OFF_HAND);commit(now);}
+            if(ally!=null){Defibrillator.grant(bot,ally);bot.swing(InteractionHand.OFF_HAND);commit(now);}
             return;
         }
         double distance=target==null?Double.MAX_VALUE:bot.distanceTo(target);

@@ -311,7 +311,8 @@ public final class LobbyManager {
         if (server == null) return;
         if(action.action().equals("turretReload")){Turrets.key(sender,action.value());return;}
         if(action.action().equals("gimmickAttack")){GimmickEvents.request(sender);return;}
-        if(action.action().equals("rapierAttack")){RapierItem.thrust(sender);return;}
+        if(action.action().equals("defibTarget")){Defibrillator.choose(sender,action.value());return;}
+        if(action.action().equals("rapierAttack")){int aimed;try{aimed=action.value().isEmpty()?-1:Integer.parseInt(action.value());}catch(NumberFormatException e){aimed=-1;}RapierItem.thrust(sender,aimed);return;}
         // Plant/defuse key: press and release must both arrive, so it bypasses the action rate limit.
         if(action.action().equals("bomb")){var bomb=MatchManager.bomb();if(bomb!=null)bomb.key(sender,action.value().equals("down"));return;}
         if(action.action().equals("emote")){Emotes.request(sender,action.value());return;}
@@ -686,19 +687,21 @@ public final class LobbyManager {
         if(mode.equals("FREE_FOR_ALL")&&arena.bomb()!=null)arena=arena.withoutBomb();
         return arena;
     }
-    /** Head-count handicap of the current match: the bigger team (no secondaries) and the smaller one (more health); "" when even or off. */
+    /** Head-count handicap of the current match: the bigger team (no secondaries, less health) and the smaller one (more health); "" when even or off. */
     private static String handicapLarge="",handicapSmall="";
     private static void handicap(){
         handicapLarge=handicapSmall="";
         var common=options().game().common();
         boolean health=common.handicapHealth()!=null&&common.handicapHealth()>1;
-        if(!GameOptions.teamMode(activeMode)||!common.handicapSecondary()&&!health)return;
+        boolean largeHealth=common.handicapLargeHealth()!=null&&common.handicapLargeHealth()<100;
+        if(!GameOptions.teamMode(activeMode)||!common.handicapSecondary()&&!health&&!largeHealth)return;
         long alpha=PLAYERS.values().stream().filter(e->e.team.equals("ALPHA")).count(),bravo=PLAYERS.values().stream().filter(e->e.team.equals("BRAVO")).count();
         if(LobbyRules.bots(activeMode))for(var bot:BotManager.lobbyIds()){String t=BotManager.team(bot);if(t.equals("ALPHA"))alpha++;else if(t.equals("BRAVO"))bravo++;}
         if(alpha==bravo)return;
         handicapLarge=alpha>bravo?"ALPHA":"BRAVO";handicapSmall=alpha>bravo?"BRAVO":"ALPHA";
         var parts=new ArrayList<String>();
         if(common.handicapSecondary())parts.add(handicapLarge+" 보조무기 금지");
+        if(largeHealth)parts.add(handicapLarge+" 체력 "+common.handicapLargeHealth()+"%");
         if(health)parts.add(handicapSmall+" 체력 x"+String.format(java.util.Locale.ROOT,"%.2f",common.handicapHealth()));
         for(var p:server.getPlayerList().getPlayers())if(PLAYERS.containsKey(p.getUUID()))
             p.sendSystemMessage(Component.literal("인원 핸디캡 (ALPHA "+alpha+" : BRAVO "+bravo+") · "+String.join(" · ",parts)).withStyle(net.minecraft.ChatFormatting.YELLOW));
@@ -707,8 +710,11 @@ public final class LobbyManager {
     static boolean secondaryBanned(String team){return activeMap!=null&&!handicapLarge.isEmpty()&&team.equals(handicapLarge)&&options().game().common().handicapSecondary();}
     /** Max-health multiplier for this team in the current match (1 outside a match or without a handicap). */
     static double healthScale(String team){
-        var scale=options().game().common().handicapHealth();
-        return activeMap!=null&&!handicapSmall.isEmpty()&&team.equals(handicapSmall)&&scale!=null?scale:1;
+        if(activeMap==null||handicapSmall.isEmpty())return 1;
+        var common=options().game().common();
+        if(team.equals(handicapSmall))return common.handicapHealth()!=null?common.handicapHealth():1;
+        if(team.equals(handicapLarge))return common.handicapLargeHealth()!=null?common.handicapLargeHealth()/100.0:1;
+        return 1;
     }
     static double healthScale(UUID player){var e=PLAYERS.get(player);return e==null?1:healthScale(e.team);}
     /** Free-for-all respawn wait unless the lobby sets one. */
@@ -1107,7 +1113,7 @@ public final class LobbyManager {
                 m.id().equals(selected)?selectedSeconds(m):selectedMode.equals("DEATHMATCH")&&DeathmatchRules.supported(m)?options().deathmatch().timeLimitSeconds():m.timeLimitSeconds(),
                 m.propHunt()!=null?"숨바꼭질":m.freeForAll()!=null&&(m.bomb()==null||m.id().equals(selected)&&selectedMode.equals("FREE_FOR_ALL"))?"개인전":m.escort()!=null?"호위":m.normandy()!=null?"이동점령":(DeathmatchRules.exclusive(m)||selectedMode.equals("DEATHMATCH")&&DeathmatchRules.supported(m))?"팀 데스매치":m.bomb()!=null?"폭탄전":"쟁탈전",DeathmatchRules.supported(m),m.previewArea()!=null?"@generated":m.previewImage(),m.bomb()!=null,DeathmatchRules.exclusive(m),m.weather(),m.timeOfDay(),m.releaseDate(),modes(m))).toList();
         List<LobbySnapshot.Member> members = new ArrayList<>();
-        for (var entry : PLAYERS.entrySet()) { var player = server.getPlayerList().getPlayer(entry.getKey()); if (player != null) members.add(new LobbySnapshot.Member(entry.getKey().toString(),player.getGameProfile().getName(),entry.getValue().team,entry.getValue().ready)); }
+        for (var entry : PLAYERS.entrySet()) { var player = server.getPlayerList().getPlayer(entry.getKey()); if (player != null) members.add(new LobbySnapshot.Member(entry.getKey().toString(),ProgressionService.name(player),entry.getValue().team,entry.getValue().ready)); }
         if(LobbyRules.bots(selectedMode))for(var bot:BotManager.lobbyIds())members.add(new LobbySnapshot.Member(bot.toString(),BotManager.name(bot),BotManager.team(bot),true,BotManager.skin(bot)));
         var snapshot = new LobbySnapshot(enabled, show, p.hasPermissions(2), p.getUUID().toString(), selected, phase,
                 phase.equals("LOBBY") ? 0 : Math.max(0,(deadline - server.getTickCount() + 19)/20), mapViews, members, options(),selectedMode,BotManager.settings().enabled(),BotManager.added(),BotManager.lobbyCount(),BotManager.MAX,
@@ -1143,7 +1149,7 @@ public final class LobbyManager {
     static boolean beginRespawn(ServerPlayer victim, net.minecraft.world.entity.LivingEntity killer,boolean suicide) {
         var entry=PLAYERS.get(victim.getUUID());
         if((!phase.equals("RUNNING")&&!(suicide&&phase.equals("PREPARING")))||entry==null||(!entry.team.equals("ALPHA")&&!entry.team.equals("BRAVO"))||RESPAWNING.containsKey(victim.getUUID())) return false;
-        var message=suicide?Component.literal(victim.getGameProfile().getName()+" 님이 데스존에서 자살했습니다."):victim.getCombatTracker().getDeathMessage();
+        var message=suicide?Component.literal(ProgressionService.name(victim)+" 님이 데스존에서 자살했습니다."):MatchManager.deathMessage(victim,killer);
         int duration=respawnTicks();
         boolean self=suicide||killer==null||killer==victim;
         // Void deaths would otherwise leave the camera below the world.

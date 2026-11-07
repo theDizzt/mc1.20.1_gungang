@@ -32,13 +32,19 @@ public record GameOptions(Common common,Control control,Normandy normandy,PropHu
 
     public record Common(Boolean duplicatePrimary,Boolean duplicateSecondary,Integer respawnSeconds,
                          /* Head-count handicap: the bigger team plays without secondaries, the smaller one gets more health. */
-                         Boolean handicapSecondary,Double handicapHealth) {
+                         Boolean handicapSecondary,Double handicapHealth,
+                         /* ... and the bigger team's maximum health, in percent (50~100; null or 100: unchanged). */
+                         Integer handicapLargeHealth) {
+        public Common(Boolean duplicatePrimary,Boolean duplicateSecondary,Integer respawnSeconds,Boolean handicapSecondary,Double handicapHealth){
+            this(duplicatePrimary,duplicateSecondary,respawnSeconds,handicapSecondary,handicapHealth,null);
+        }
         public Common {
             if(duplicatePrimary==null)duplicatePrimary=false;
             if(duplicateSecondary==null)duplicateSecondary=true;
             if(handicapSecondary==null)handicapSecondary=false;
             range(respawnSeconds,1,300,"리스폰 시간은 1~300초입니다.");
             range(handicapHealth,1,5,"인원 적은 팀 체력 배수는 1.00~5.00입니다.");
+            range(handicapLargeHealth,50,100,"인원 많은 팀 체력은 50~100%입니다.");
         }
     }
     /** 점령전 (쟁탈전). captureSeconds: neutral to fully held. */
@@ -239,7 +245,7 @@ public record GameOptions(Common common,Control control,Normandy normandy,PropHu
      * {@code arena} is already reduced to the mode; null when no map is selected.
      */
     public static GameOptions effectiveDefaults(ArenaMap arena,String mode,TeamOptions team){
-        var common=new Common(false,true,"FREE_FOR_ALL".equals(mode)?LobbyManager.FFA_RESPAWN_TICKS/20:team.respawnSeconds(),false,1.0);
+        var common=new Common(false,true,"FREE_FOR_ALL".equals(mode)?LobbyManager.FFA_RESPAWN_TICKS/20:team.respawnSeconds(),false,1.0,100);
         if(arena==null)return new GameOptions(common,null,null,null,null,null,null,null);
         int time=Math.max(30,arena.timeLimitSeconds());
         Control control=null;Normandy normandy=null;PropHunt prop=null;Escort escort=null;Bomb bomb=null;Deathmatch tdm=null;FreeForAll ffa=null;

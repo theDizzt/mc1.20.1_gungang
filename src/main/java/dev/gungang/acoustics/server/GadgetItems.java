@@ -29,8 +29,12 @@ public final class GadgetItems {
     public static final RegistryObject<Item> TURRET=ITEMS.register("turret",()->new GadgetItem("turret"));
     public static final RegistryObject<EntityType<TurretEntity>> TURRET_ENTITY=ENTITIES.register("turret",()->EntityType.Builder.<TurretEntity>of(TurretEntity::new,MobCategory.MISC).sized(2,2).clientTrackingRange(12).updateInterval(1).build("gungang_acoustics:turret"));
     public static final RegistryObject<Item> HAND_AXE=ITEMS.register("hand_axe",HandAxeItem::new);
+    public static final RegistryObject<Item> DEFIBRILLATOR=ITEMS.register("defibrillator",DefibrillatorItem::new);
     public static final RegistryObject<Item> RAPIER=ITEMS.register("rapier",RapierItem::new);
     public static final RegistryObject<Item> JETPACK=ITEMS.register("jetpack",()->new GadgetItem("jetpack"));
+    public static final RegistryObject<Item> AIR_ASSAULT=ITEMS.register("air_assault",()->new GadgetItem("air_assault"));
+    public static final RegistryObject<Item> VOID_ANCHOR=ITEMS.register("void_anchor",()->new GadgetItem("void_anchor"));
+    public static final RegistryObject<EntityType<VoidAnchorEntity>> VOID_ANCHOR_ENTITY=ENTITIES.register("void_anchor",()->EntityType.Builder.<VoidAnchorEntity>of(VoidAnchorEntity::new,MobCategory.MISC).sized(.45f,2f).clientTrackingRange(12).updateInterval(1).build("gungang_acoustics:void_anchor"));
     public static final RegistryObject<EntityType<MolotovEntity>> MOLOTOV_PROJECTILE=ENTITIES.register("molotov",()->EntityType.Builder.<MolotovEntity>of(MolotovEntity::new,MobCategory.MISC).sized(.25f,.25f).clientTrackingRange(10).updateInterval(1).build("gungang_acoustics:molotov"));
     public static final RegistryObject<EntityType<HandAxeEntity>> HAND_AXE_PROJECTILE=ENTITIES.register("hand_axe",()->EntityType.Builder.<HandAxeEntity>of(HandAxeEntity::new,MobCategory.MISC).sized(.4f,.4f).clientTrackingRange(10).updateInterval(1).build("gungang_acoustics:hand_axe"));
     public static final RegistryObject<EntityType<OrdnanceEntity>> ORDNANCE=ENTITIES.register("ordnance",()->EntityType.Builder.<OrdnanceEntity>of(OrdnanceEntity::new,MobCategory.MISC).sized(.1f,.1f).clientTrackingRange(16).updateInterval(1).build("gungang_acoustics:ordnance"));
@@ -38,6 +42,7 @@ public final class GadgetItems {
     public static final RegistryObject<EntityType<BearTrapEntity>> BEAR_TRAP_ENTITY=ENTITIES.register("bear_trap",()->EntityType.Builder.<BearTrapEntity>of(BearTrapEntity::new,MobCategory.MISC).sized(.9f,.2f).clientTrackingRange(10).updateInterval(1).build("gungang_acoustics:bear_trap"));
     public static void register(IEventBus bus) { ITEMS.register(bus);ENTITIES.register(bus);TurretSounds.register(bus);bus.addListener(GadgetItems::attributes); }
     private static void attributes(EntityAttributeCreationEvent e) {
+        e.put(VOID_ANCHOR_ENTITY.get(),LivingEntity.createLivingAttributes().add(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH,60).add(net.minecraft.world.entity.ai.attributes.Attributes.KNOCKBACK_RESISTANCE,1).build());
         e.put(DEPLOYABLE.get(),LivingEntity.createLivingAttributes().add(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH,200).build());
         e.put(TURRET_ENTITY.get(),LivingEntity.createLivingAttributes().add(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH,150).build());
     }

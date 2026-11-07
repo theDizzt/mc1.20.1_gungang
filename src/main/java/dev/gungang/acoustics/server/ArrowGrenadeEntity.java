@@ -10,7 +10,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.*;
 
-/** A lobbed grenade becomes a stationary, six-second random arrow emitter on impact. */
+/** A lobbed grenade becomes a stationary, twelve-second random arrow emitter on impact. */
 public final class ArrowGrenadeEntity extends ThrowableItemProjectile {
     private static final EntityDataAccessor<Boolean> ACTIVE=SynchedEntityData.defineId(ArrowGrenadeEntity.class,EntityDataSerializers.BOOLEAN);
     private Vec3 anchor=Vec3.ZERO;
