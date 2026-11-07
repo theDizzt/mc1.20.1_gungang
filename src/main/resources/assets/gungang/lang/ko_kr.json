@@ -24,6 +24,8 @@
     "item.gungang.defibrillator":  "제세동기",
     "death.attack.gungang.arrow_fragment":  "%1$s이(가) 수류탄 화살에 맞았습니다",
     "death.attack.gungang.arrow_fragment.player":  "%1$s이(가) %2$s의 수류탄 화살에 맞았습니다",
+    "death.gungang.kill":  "%1$s 님이 %2$s 님에게 처치당했습니다.",
+    "death.gungang.death_zone":  "%1$s 님이 데스존에서 자살했습니다.",
     "death.gungang.prop_found":  "%1$s님이 %2$s님에게 발견되었습니다",
     "block.gungang.shutter":  "셔터",
     "block.gungang.hot_spring_water":  "온천수",

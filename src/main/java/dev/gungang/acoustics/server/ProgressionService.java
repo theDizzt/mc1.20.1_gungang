@@ -59,6 +59,8 @@ public final class ProgressionService {
     }
     /** Preset applied at match start, or null when none is set or the database is unavailable. */
     static PlayerRecord.Preset defaultPreset(ServerPlayer player) {return database==null?null:record(player).defaultLoadout();}
+    /** A player's nickname (see {@link #name(ServerPlayer)}); any other entity's own name. */
+    public static String name(net.minecraft.world.entity.Entity entity) {return entity instanceof ServerPlayer player?name(player):entity.getName().getString();}
     public static String name(ServerPlayer player) {return database==null?player.getGameProfile().getName():record(player).displayName();}
     public static void nickname(ServerPlayer player,String value) {
         if(player==null)return;

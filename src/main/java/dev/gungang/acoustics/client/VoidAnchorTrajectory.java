@@ -20,8 +20,10 @@ public final class VoidAnchorTrajectory {
         if(event.getStage()!=RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS)return;
         var mc=Minecraft.getInstance();var p=mc.player;
         if(p==null||mc.level==null||mc.screen!=null||!p.isAlive()||p.isSpectator()||mc.options.hideGui)return;
+        // Only while aiming it: held in the main hand, or in the off-hand with its use key (H) down. The secondary always
+        // sits in the off-hand, so checking that hand alone left the marker up while the primary was in use.
         var stack=p.getMainHandItem();
-        if(!stack.is(GadgetItems.VOID_ANCHOR.get()))stack=p.getOffhandItem();
+        if(!stack.is(GadgetItems.VOID_ANCHOR.get())&&OffhandMacro.USE.isDown())stack=p.getOffhandItem();
         if(!stack.is(GadgetItems.VOID_ANCHOR.get())||SecondaryRuntime.remaining(p,stack)>0)return;
         if(probe==null||probe.level()!=mc.level)probe=GadgetItems.VOID_ANCHOR_ENTITY.get().create(mc.level);
         if(probe==null)return;

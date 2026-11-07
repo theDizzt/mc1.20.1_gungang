@@ -19,6 +19,7 @@ public record DeathNotice(Component victim, Component killer, boolean found) {
                     // Do not mistake a bed link, location or weapon for a killer.
                     if (hover != null && hover.getValue(HoverEvent.Action.SHOW_ENTITY) != null) killer = candidate;
                     else if (translated.getKey().endsWith(".player") || translated.getKey().endsWith(".item")
+                            || translated.getKey().equals("death.gungang.kill")
                             || translated.getKey().equals("death.attack.player")
                             || translated.getKey().equals("death.attack.mob")
                             || translated.getKey().equals("death.attack.arrow")
