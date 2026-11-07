@@ -117,7 +117,7 @@ public final class PropEntity extends LivingEntity {
         // The bottle hologram above a health pack is part of the target, as is the sunk block below it,
         // so a shot at the hologram or at the floor cell it sank into still lands.
         if(healthPack())box=box.minmax(new AABB(.3,1.35,.3,.7,1.95,.7));
-        return box.move(getX()-.5,getY(),getZ()-.5);
+        return box.move(PropGeometry.thinOffset(this)).move(getX()-.5,getY(),getZ()-.5);
     }
     /** Real collision shapes of nearby disguises for this mover; the owner walks through its own. */
     public static List<net.minecraft.world.phys.shapes.VoxelShape> collisions(Level level,Entity entity,AABB box){

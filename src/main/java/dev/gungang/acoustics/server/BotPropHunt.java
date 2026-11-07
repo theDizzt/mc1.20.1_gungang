@@ -501,8 +501,10 @@ final class BotPropHunt {
         if(bot.getNavigation().isDone()){
             // A spot a ledge up and close by: a charged leap, as a hiding player would.
             // 95 / 190 cannot jump: they climb the wall up to it instead.
-            if(PropSticky.sticky(prop.item())&&flat<9&&target.y-bot.getY()>=.9&&target.y-bot.getY()<=6){
-                var dir=new Vec3(target.x-bot.getX(),0,target.z-bot.getZ()).normalize().scale(PropSticky.SPEED);
+            // 252 rides the wall up on her board, faster than 95 / 190 climb.
+            boolean skate=PropSkate.skater(prop.item());
+            if((PropSticky.sticky(prop.item())||skate)&&flat<9&&target.y-bot.getY()>=.9&&target.y-bot.getY()<=(skate?4:6)){
+                var dir=new Vec3(target.x-bot.getX(),0,target.z-bot.getZ()).normalize().scale(skate?.3:PropSticky.SPEED);
                 bot.setDeltaMovement(dir.x,bot.horizontalCollision||target.y>bot.getY()?.2:0,dir.z);bot.fallDistance=0;bot.hurtMarked=true;return;
             }
             if(bot.onGround()&&flat<9&&target.y-bot.getY()>=.9&&target.y-bot.getY()<=3.2){

@@ -173,7 +173,7 @@ final class GameOptionsScreen extends ArenaScreen {
         rows.add(new Row("common.dupSecondary","같은 팀 보조무기 중복",Kind.TOGGLE,"true"));
         rows.add(new Row("common.respawn","리스폰 시간 (초)",Kind.SECONDS,text(c.respawnSeconds()),()->!mode().equals("PROP_HUNT"),s->mode().equals("PROP_HUNT")?"숨바꼭질 미사용":null));
     }
-    /** 무기 방식: 클래식 (each picks a loadout) or 랜덤 무기. */
+    /** 무기 방식: 클래식 (each picks a loadout), 랜덤 무기, or 근접전 (melee primaries only). */
     private void weapons(String prefix){rows.add(new Row(prefix+"weapons","무기 방식",Kind.WEAPONS,"CLASSIC"));}
     /** 랜덤 무기 timing, editable only while the section plays 랜덤 무기. */
     private void rotation(String prefix){
@@ -270,7 +270,7 @@ final class GameOptionsScreen extends ArenaScreen {
                 }
                 case WEAPONS->{
                     String v=value(row.key());var current=GameOptions.WeaponMode.valueOf(v.isEmpty()?row.placeholder():v);
-                    String label=switch(current){case CLASSIC->"클래식 (직접 선택)";case RANDOM->"랜덤 무기 (주기마다 교체)";}+(v.isEmpty()?" · 기본":"");
+                    String label=switch(current){case CLASSIC->"클래식 (직접 선택)";case RANDOM->"랜덤 무기 (주기마다 교체)";case MELEE->"근접전 (근접 주무기만)";}+(v.isEmpty()?" · 기본":"");
                     button(label,boxX(),y,BOX+NOTE+6,18,enabled,ACCENT,()->{var next=GameOptions.WeaponMode.values()[(current.ordinal()+1)%GameOptions.WeaponMode.values().length];values.put(row.key(),next.name());rebuildWidgets();});
                 }
                 case CHOICE->{

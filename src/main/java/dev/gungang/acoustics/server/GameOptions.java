@@ -108,9 +108,10 @@ public record GameOptions(Common common,Control control,Normandy normandy,PropHu
      * Weapons in team deathmatch and free-for-all. CLASSIC: everyone picks their own loadout. RANDOM: nobody picks;
      * every {@code rotationSeconds} the primary and secondary change at random, chosen first-come from as many
      * offers as the team has members (free-for-all: as many as there are players), opened {@code choiceSeconds}
-     * before each change and right as the match begins.
+     * before each change and right as the match begins. MELEE (근접전): picked like CLASSIC, but the only primaries are
+     * 16 sledgehammer, 28 rapier, 29 katana and 88 karambit ({@link Loadouts#melee()}).
      */
-    public enum WeaponMode { CLASSIC, RANDOM }
+    public enum WeaponMode { CLASSIC, RANDOM, MELEE }
     /** 랜덤 무기 defaults: a 15-minute match, a change every 3 minutes, the choice opening 15 seconds before. */
     public static final int RANDOM_TIME_SECONDS=900,ROTATION_SECONDS=180,CHOICE_SECONDS=15;
     public record Deathmatch(Integer timeSeconds,Integer preparationSeconds,Integer targetScore,WeaponMode weaponMode,Integer rotationSeconds,Integer choiceSeconds) {
@@ -140,6 +141,10 @@ public record GameOptions(Common common,Control control,Normandy normandy,PropHu
     /** Whether this mode plays with 랜덤 무기 under these options. */
     public boolean randomWeapons(String mode){
         return switch(mode){case "DEATHMATCH"->deathmatch.randomWeapons();case "FREE_FOR_ALL"->freeForAll.randomWeapons();default->false;};
+    }
+    /** Whether this mode plays 근접전 under these options. */
+    public boolean meleeWeapons(String mode){
+        return switch(mode){case "DEATHMATCH"->deathmatch.weaponMode()==WeaponMode.MELEE;case "FREE_FOR_ALL"->freeForAll.weaponMode()==WeaponMode.MELEE;default->false;};
     }
     /** {rotation, choice} seconds of 랜덤 무기 in this mode. */
     public int[] weaponRotation(String mode){

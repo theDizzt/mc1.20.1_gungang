@@ -48,5 +48,17 @@ public final class PropGeometry {
         }
         return result;
     }
+    /**
+     * 243 wall clock, 244 mirror: their shape sits at the back of the cell (to hang on a wall), but the disguise's thin
+     * body is centred on the hider, so the model and hitbox are shifted by this much (blocks) to centre them on the
+     * body too; otherwise the clock sank into whatever wall the hider stood against. Zero for every other prop.
+     */
+    public static net.minecraft.world.phys.Vec3 thinOffset(PropEntity prop){
+        if(!PartyBlocks.thin(prop.item()))return net.minecraft.world.phys.Vec3.ZERO;
+        var shape=prop.state().getShape(net.minecraft.world.level.EmptyBlockGetter.INSTANCE,net.minecraft.core.BlockPos.ZERO);
+        if(shape.isEmpty())return net.minecraft.world.phys.Vec3.ZERO;
+        var b=shape.bounds();
+        return new net.minecraft.world.phys.Vec3(.5-(b.minX+b.maxX)/2,0,.5-(b.minZ+b.maxZ)/2);
+    }
     private PropGeometry(){}
 }

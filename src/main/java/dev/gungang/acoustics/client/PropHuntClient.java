@@ -37,6 +37,8 @@ public final class PropHuntClient {
     public static boolean active(){return state!=null&&state.active();}
     public static boolean review(){return active()&&state.phase().equals("REVIEW");}
     private static PropHuntSnapshot.Row self(){var p=Minecraft.getInstance().player;return !active()||p==null?null:state.players().stream().filter(r->r.id().equals(p.getUUID().toString())).findFirst().orElse(null);}
+    /** The living hider's own disguise id ("minecraft:minecart"...), or null. */
+    static String disguise(){var s=self();return hider()&&s!=null&&!s.block().isEmpty()?dev.gungang.acoustics.server.PropCatalog.id(s.block()).toString():null;}
     public static boolean hider(){var s=self();return s!=null&&s.team().equals("ALPHA")&&!s.found()&&!review();}
     public static boolean outline(PropEntity prop){
         if(prop.marker())return true;
@@ -149,6 +151,11 @@ public final class PropHuntClient {
     private static boolean primary;
     /** 95 / 190: stuck to a wall or ceiling this tick; let go with E until the disguise lands. */
     private static boolean stuck,letGo;
+    /** 252: the wall ride in progress, the wall last ridden (no second ride on it until landing or a kick), last tick's jump key. */
+    private static dev.gungang.acoustics.server.PropSkate.Ride ride;
+    private static net.minecraft.core.Direction rode;
+    private static boolean jumpBefore;
+    private static boolean skater(){var s=self();return s!=null&&dev.gungang.acoustics.server.PropSkate.skater(s.block());}
     /** 255 autonomous combat unit: the server moves the body; the keys are locked. */
     private static boolean auto(){var s=self();return s!=null&&s.block().equals("gungang:combat_unit");}
     private static boolean sticky(){var s=self();return s!=null&&dev.gungang.acoustics.server.PropSticky.sticky(s.block());}
@@ -163,7 +170,7 @@ public final class PropHuntClient {
     private static void restore(){
         if(primary&&Minecraft.getInstance().getConnection()!=null)primary(false);
         var mc=Minecraft.getInstance();if(previous!=null){mc.options.setCameraType(previous);previous=null;}charging=false;jumpHeld=false;
-        if((clung||stuck)&&mc.player!=null)mc.player.setNoGravity(false);clung=false;stuck=false;letGo=false;
+        if((clung||stuck||ride!=null)&&mc.player!=null)mc.player.setNoGravity(false);clung=false;stuck=false;letGo=false;ride=null;rode=null;
     }
     @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut e){restore();state=null;lastBlock="";noticeUntil=0;page=0;}
     @SubscribeEvent public static void tick(net.minecraftforge.event.TickEvent.ClientTickEvent e){
@@ -248,6 +255,7 @@ public final class PropHuntClient {
             lines.add("벽에서는 점프·정렬 불가");
         }else{
             if(sticky()&&!liquid()){lines.add("벽·천장에 닿으면 붙어서 이동");if(stuck)lines.add("E  떨어지기");lines.add("점프 불가");}
+            else if(skater()&&!liquid()){lines.add(ride!=null?"벽 타는 중 · 시선으로 방향":"앞으로 달려 벽에 닿으면 벽 타기");lines.add(ride!=null?"점프  벽 차고 뛰기":"점프 길게  높이 충전");}
             else lines.add(liquid()?"점프  헤엄쳐 오르기":"점프 길게  높이 충전");
             lines.add("Shift  정렬");if(interactive)lines.add("E  "+use);lines.add("G  경적");lines.add("T  고정");
             lines.add("R  "+(shoot||block.endsWith("piston")?"방향 전환":hologram?"회전 속도":block.equals("minecraft:note_block")?"곡 바꾸기":"90° 회전"));if(!state.clingOff())lines.add(q+"  벽에 붙기");
@@ -296,9 +304,44 @@ public final class PropHuntClient {
             }
         }
         if(stick)stuck=true;else if(stuck){stuck=false;player.setNoGravity(false);}
+        skate(player,input,wall==null&&!fixed()&&!self().stunned()&&skater()&&!liquid());
         if(sticky()&&!liquid())input.jumping=false;
         if(self().active()>elapsed(0)&&self().block().equals("minecraft:command_block")){input.shiftKeyDown=false;e.getEntity().setDeltaMovement(e.getEntity().getDeltaMovement().multiply(1,0,1));}
         if(fixed()||self().stunned()||auto()){input.forwardImpulse=0;input.leftImpulse=0;input.jumping=false;input.shiftKeyDown=false;input.up=false;input.down=false;input.left=false;input.right=false;}
+    }
+    /**
+     * 252: skating into a wall with forward held carves up it; the ride follows the look along the wall and jump kicks
+     * off. The entry speed is the skating pace (the collision has already stopped the motion into the wall).
+     */
+    private static void skate(net.minecraft.world.entity.player.Player player,net.minecraft.client.player.Input input,boolean allowed){
+        boolean jump=jumpHeld&&!jumpBefore;jumpBefore=jumpHeld;
+        if(!allowed){if(ride!=null){ride=null;player.setNoGravity(false);}rode=null;return;}
+        if(player.onGround())rode=null;
+        float yaw=player.getYRot();
+        if(ride==null){
+            if(input.forwardImpulse<=0)return;
+            var side=dev.gungang.acoustics.server.PropSticky.wall(player.level(),player.getBoundingBox(),yaw);
+            if(side==null||side==rode)return;
+            double r=Math.toRadians(yaw),into=-Math.sin(r)*side.getStepX()+Math.cos(r)*side.getStepZ();
+            // From the ground only when skating toward the wall; in the air any wall alongside catches the board.
+            if(player.onGround()&&into<.2)return;
+            var flat=player.getDeltaMovement().horizontalDistance();
+            double pace=Math.max(flat,player.getSpeed()*2.16*Math.min(1,input.forwardImpulse));
+            ride=dev.gungang.acoustics.server.PropSkate.start(side,pace,yaw);
+            if(ride==null)return;
+            rode=side;
+        }
+        if(jump){
+            player.setDeltaMovement(dev.gungang.acoustics.server.PropSkate.kick(ride));
+            ride=null;rode=null;player.setNoGravity(false);clearInput(input);return;
+        }
+        var touching=dev.gungang.acoustics.server.PropSticky.wall(player.level(),player.getBoundingBox(),yaw)==ride.wall;
+        var motion=touching?dev.gungang.acoustics.server.PropSkate.step(ride,input.forwardImpulse,yaw):null;
+        if(motion==null){ride=null;player.setNoGravity(false);return;}
+        player.setDeltaMovement(motion);player.setNoGravity(true);clearInput(input);
+    }
+    private static void clearInput(net.minecraft.client.player.Input input){
+        input.forwardImpulse=0;input.leftImpulse=0;input.jumping=false;input.shiftKeyDown=false;input.up=false;input.down=false;input.left=false;input.right=false;
     }
     @SubscribeEvent public static void hide(RenderPlayerEvent.Pre e){if(hidden(e.getEntity().getUUID()))e.setCanceled(true);}
     @SubscribeEvent public static void opening(ScreenEvent.Opening e){if(active()&&(e.getNewScreen() instanceof LoadoutScreen))e.setCanceled(true);}

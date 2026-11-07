@@ -452,7 +452,7 @@ final class LoadoutScreen extends ArenaScreen {
             // The XP bar's gold gauge; each bar eases to the newly selected weapon's value.
             float target=row.fraction(),shown=STAT_SHOWN.getOrDefault(row.label(),target);
             shown+=(target-shown)*.25f;if(Math.abs(target-shown)<.002f)shown=target;STAT_SHOWN.put(row.label(),shown);
-            TacticalStyle.goldGauge(g,barX,y+2,barEnd-barX,5,shown,shown,false);
+            TacticalStyle.goldGauge(g,barX,y-1,barEnd-barX,10,shown,shown,false);
             outlined(g,value,x2-font.width(value)-1,y,INK);
             y+=STAT_ROW;
         }

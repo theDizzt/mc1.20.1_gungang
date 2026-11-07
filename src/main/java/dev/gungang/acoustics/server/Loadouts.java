@@ -77,6 +77,20 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
         }
         public Weapon view() { return new Weapon(id, "", name, description, specs, usage, category,maxHealth,movementSpeed,cooldownSeconds,"",false,releaseDate,stats); }
     }
+    /** 근접전 primaries, in this order; 88 karambit comes over from the secondaries. */
+    static final List<String> MELEE_PRIMARY=List.of("16","28","29"),MELEE_FROM_SECONDARY=List.of("88");
+    /**
+     * The catalog for 근접전: primaries 16 sledgehammer, 28 rapier, 29 katana and 88 karambit, which only here is a
+     * primary (health 85, speed 135%) and so leaves the secondaries. Unchanged when none of them is configured.
+     */
+    public Loadouts melee(){
+        var list=new ArrayList<Weapon>();
+        for(String id:MELEE_PRIMARY)primary.stream().filter(w->w.id().equals(id)).findFirst().ifPresent(list::add);
+        for(String id:MELEE_FROM_SECONDARY)secondary.stream().filter(w->w.id().equals(id)).findFirst().ifPresent(k->list.add(new Weapon(k.id(),k.itemNbt(),k.name(),k.description(),k.specs(),
+                "좌클릭 또는 우클릭으로 사용합니다.",k.category(),85d,135d,0d,"",false,k.releaseDate(),k.stats())));
+        if(list.isEmpty())return this;
+        return new Loadouts(List.copyOf(list),secondary.stream().filter(w->!MELEE_FROM_SECONDARY.contains(w.id())).toList(),slot9);
+    }
     public Loadouts view() { return new Loadouts(primary.stream().map(Weapon::view).toList(), secondary.stream().map(Weapon::view).toList(), slot9 == null ? null : slot9.view()); }
     public static Loadouts load() throws java.io.IOException {
         Path root = ServerFiles.root(), directory = root.resolve("server");
