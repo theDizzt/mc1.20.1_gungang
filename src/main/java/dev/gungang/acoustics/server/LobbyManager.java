@@ -1149,7 +1149,7 @@ public final class LobbyManager {
     static boolean beginRespawn(ServerPlayer victim, net.minecraft.world.entity.LivingEntity killer,boolean suicide) {
         var entry=PLAYERS.get(victim.getUUID());
         if((!phase.equals("RUNNING")&&!(suicide&&phase.equals("PREPARING")))||entry==null||(!entry.team.equals("ALPHA")&&!entry.team.equals("BRAVO"))||RESPAWNING.containsKey(victim.getUUID())) return false;
-        var message=suicide?Component.literal(ProgressionService.name(victim)+" 님이 데스존에서 자살했습니다."):MatchManager.deathMessage(victim,killer);
+        var message=suicide?MatchManager.deathZoneMessage(victim):MatchManager.deathMessage(victim,killer);
         int duration=respawnTicks();
         boolean self=suicide||killer==null||killer==victim;
         // Void deaths would otherwise leave the camera below the world.
