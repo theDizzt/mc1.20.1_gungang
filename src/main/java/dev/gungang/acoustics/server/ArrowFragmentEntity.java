@@ -27,7 +27,7 @@ public final class ArrowFragmentEntity extends AbstractArrow {
         // inside a body has no entry face, so resolve that overlap before moving.
         // These are detached grenade fragments, not arrows leaving a shooter's bow.
         var owner=getOwner();
-        for(var target:level().getEntities(this,getBoundingBox().inflate(HIT_MARGIN),entity->entity.canBeHitByProjectile()&&entity.getBoundingBox().inflate(HIT_MARGIN).contains(position()))){
+        for(var target:level().getEntities(this,getBoundingBox().inflate(HIT_MARGIN),entity->entity.canBeHitByProjectile()&&(entity instanceof EscortCart cart?cart.modelContains(position()):entity.getBoundingBox().inflate(HIT_MARGIN).contains(position())))){
             if(target!=owner&&owner instanceof net.minecraft.world.entity.player.Player shooter
                     &&target instanceof net.minecraft.world.entity.player.Player player&&!shooter.canHarmPlayer(player))continue;
             var hit=new EntityHitResult(target,position());

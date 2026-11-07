@@ -95,7 +95,13 @@ public final class PropRenderer extends EntityRenderer<PropEntity> {
                     var be=PropEffects.blockEntity(entity,part.offset(),partState,block);
                     // 241: the easel disguise's canvas lives in the prop's text.
                     if(be instanceof dev.gungang.acoustics.server.ToyBlocks.EaselEntity easel)easel.pixels=dev.gungang.acoustics.server.ToyBlocks.canvas(entity.text());
-                    if(be!=null){if(be instanceof net.minecraft.world.level.block.entity.ChestBlockEntity chest)chest.triggerEvent(1,entity.open()?1:0);mc.getBlockEntityRenderDispatcher().renderItem(be,pose,buffers,partLight,OverlayTexture.NO_OVERLAY);}
+                    // 243~252: the slot reels, bucket, lights, doll pose and ball roll come from the prop.
+                    if(be instanceof dev.gungang.acoustics.server.PartyBlocks.PartyEntity party)party.fromProp(entity,partial);
+                    if(be!=null){
+                        if(be instanceof net.minecraft.world.level.block.entity.ChestBlockEntity chest)chest.triggerEvent(1,entity.open()?1:0);
+                        // A modded renderer may expect a placed block entity's world data (231 chameleon copies any block); skip a draw it cannot make.
+                        try{mc.getBlockEntityRenderDispatcher().renderItem(be,pose,buffers,partLight,OverlayTexture.NO_OVERLAY);}catch(RuntimeException unsupported){}
+                    }
                 }
                 if(partState.getRenderShape()==RenderShape.MODEL){animate(partState);mc.getBlockRenderer().renderSingleBlock(partState,pose,buffers,partLight,OverlayTexture.NO_OVERLAY);}
                 // A bubble column disguise is the bubbles alone (PropEffects), without the water block around them.

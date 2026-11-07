@@ -15,7 +15,10 @@ import net.minecraft.world.phys.*;
 /** Per-match state for the extended disguise deck. No ability edits the map. */
 public final class PropAbilities {
     private static final UUID CART=UUID.fromString("ca3ad028-bc47-4995-9a62-d91fdc065319"),BEACON=UUID.fromString("bcbd5028-bc47-4995-9a62-d91fdc065319"),
-            CLOAK=UUID.fromString("c10a6028-bc47-4995-9a62-d91fdc065319"),LIGHT=UUID.fromString("119b6028-bc47-4995-9a62-d91fdc065319"),SPONGE=UUID.fromString("5b0e6028-bc47-4995-9a62-d91fdc065319");
+            CLOAK=UUID.fromString("c10a6028-bc47-4995-9a62-d91fdc065319"),LIGHT=UUID.fromString("119b6028-bc47-4995-9a62-d91fdc065319"),SPONGE=UUID.fromString("5b0e6028-bc47-4995-9a62-d91fdc065319"),
+            ROLL=UUID.fromString("b1a1d028-bc47-4995-9a62-d91fdc065319");
+    /** 248 billiard ball 1.8x, 252 Sanga skateboard 1.6x; 250 statue money rain; 247 jackpot; 245 dice roll. */
+    static final double BALL_SPEED=.8,SKATE_SPEED=.6,RAIN_RADIUS=8,AUTO_SPEED=.2,AUTO_RANGE=28,PHOTO_RANGE=32;static final float AUTO_DAMAGE=3.5f;static final float RAIN_DAMAGE=80;static final int RAIN_TICKS=400,JACKPOT_TICKS=100,DICE_TICKS=20;
     /** 209 dry sponge speed bonus; 214 cartography table map time; 218/219 piston push speed. */
     /** 242 light 3x speed; 239 warhead blast radius; 152 lightning rod charge time and strike radius; 235 fountain jet height. */
     static final double LIGHT_SPEED=2,NUKE_RADIUS=64,ROD_RADIUS=8,FOUNTAIN_TALL=3;static final int ROD_TICKS=60*20,NUKE_CLOUD=80;
@@ -50,6 +53,11 @@ public final class PropAbilities {
         /** 139: seekers the crystal beams are on, until {@code crystalUntil}. */
         List<UUID> crystal=new ArrayList<>();int crystalUntil;
         final List<net.minecraft.world.entity.item.ItemEntity> discs=new ArrayList<>();
+        /** 246 hanging from the ceiling at {@code hangAt}; 245 dice rolling until; 247 reels stopping at / jackpot until and its seekers; 250 rain until. */
+        /** 255: vertical speed, next shot, stuck since / sidestep until and its side. */
+        double autoVy;int autoShot,autoStuck,autoDetour,autoSide=1;Vec3 autoLast;
+        boolean hang,jackpotWon;Vec3 hangAt;int diceUntil,slotAt=-1,jackpotUntil,rainUntil;List<UUID> jackpot=new ArrayList<>();
+        final List<net.minecraft.world.entity.item.ItemEntity> rain=new ArrayList<>();final Map<UUID,Integer> rainHit=new HashMap<>();
         void clearDiscs(){discs.forEach(Entity::discard);discs.clear();}
     }
     private final PropHuntMatch match;
@@ -57,7 +65,7 @@ public final class PropAbilities {
     PropAbilities(PropHuntMatch match){this.match=match;}
     private Runtime data(UUID id){return states.computeIfAbsent(id,k->{var r=new Runtime();r.born=match.now();return r;});}
     public static int cooldown(String item){return switch(item){case "minecraft:spawner"->84*20;
-        case "minecraft:respawn_anchor"->30*20;case "minecraft:end_portal_frame","minecraft:tnt_minecart"->5*20;case "minecraft:crying_obsidian","gungang:prettiest_block"->3*20;case "minecraft:daylight_detector"->2*20;case "minecraft:command_block","minecraft:end_crystal","minecraft:tnt","gungang:gas_barrel"->30*20;case "minecraft:dispenser","minecraft:jukebox"->20;case "minecraft:brewing_stand"->50*20;case "minecraft:conduit"->90*20;case "minecraft:cartography_table"->30*20;case "minecraft:piston","minecraft:sticky_piston"->10;case "gungang:money_cart"->60;case "minecraft:bell"->15*20;case "gungang:garden_fountain"->BURST_COOLDOWN;case "gungang:nozzle"->BURST_COOLDOWN;case "gungang:small_health_pack"->ExtraGadgetConfig.ticks(GadgetConfig.smallHealthPack.cooldownSeconds());case "gungang:large_health_pack"->ExtraGadgetConfig.ticks(GadgetConfig.largeHealthPack.cooldownSeconds());default->0;};}
+        case "minecraft:respawn_anchor"->30*20;case "minecraft:end_portal_frame","minecraft:tnt_minecart"->5*20;case "minecraft:crying_obsidian","gungang:prettiest_block"->3*20;case "minecraft:daylight_detector"->2*20;case "minecraft:command_block","minecraft:end_crystal","minecraft:tnt","gungang:gas_barrel"->30*20;case "minecraft:dispenser","minecraft:jukebox"->20;case "minecraft:brewing_stand"->50*20;case "minecraft:conduit"->90*20;case "minecraft:cartography_table"->30*20;case "minecraft:piston","minecraft:sticky_piston"->10;case "gungang:money_cart"->60;case "minecraft:bell"->15*20;case "gungang:garden_fountain"->BURST_COOLDOWN;case PartyBlocks.DICE_ID->30;case PartyBlocks.SLOT->200;case PartyBlocks.STATUE_ID->600;case "gungang:nozzle"->BURST_COOLDOWN;case "gungang:small_health_pack"->ExtraGadgetConfig.ticks(GadgetConfig.smallHealthPack.cooldownSeconds());case "gungang:large_health_pack"->ExtraGadgetConfig.ticks(GadgetConfig.largeHealthPack.cooldownSeconds());default->0;};}
     public int remaining(UUID id){var r=data(id);return Math.max(0,r.cooldown-match.now());}
     public int active(UUID id){return Math.max(0,data(id).active-match.now());}
     public boolean stunned(UUID id){return data(id).stun>match.now();}
@@ -91,17 +99,24 @@ public final class PropAbilities {
         if(item.equals(AQUARIUM)&&prop.state().hasProperty(ToyBlocks.Aquarium.FISH))prop.state(prop.state().setValue(ToyBlocks.Aquarium.FISH,1+p.getRandom().nextInt(5)));
         if(item.equals("minecraft:armor_stand")){prop.text(armor(p.getRandom()));prop.mode(p.getRandom().nextInt(ARMOR_POSES));}
         if(doll(item)){r.gaugeMax=item.equals(EUNBI)?BEAM_TICKS:CLOAK_TICKS;r.gauge=r.gaugeMax;}
+        // 255: wears a seeker's skin like the mannequin; it drives itself, so a held lock is let go.
+        if(item.equals(PartyBlocks.AUTO)){match.unlock(p);var seekers=match.players().stream().filter(q->!match.hider(q.getUUID())).toList();prop.skin(seekers.isEmpty()?p.getUUID():seekers.get(p.getRandom().nextInt(seekers.size())).getUUID());}
         if(item.equals("gungang:mannequin")){var seekers=match.players().stream().filter(q->!match.hider(q.getUUID())).toList();prop.skin(seekers.isEmpty()?p.getUUID():seekers.get(p.getRandom().nextInt(seekers.size())).getUUID());}
         double maximum=maxHealth(item);float health=p.getHealth();boolean resized=p.getMaxHealth()!=maximum;
         p.getAttribute(Attributes.MAX_HEALTH).setBaseValue(maximum);p.setHealth(resized?p.getMaxHealth():Math.min(health,p.getMaxHealth()));
         modifier(p,CART,item.equals("minecraft:minecart")||item.equals("minecraft:tnt_minecart")?1.5:item.equals(MONEY_CART)?MONEY_SPEED:0);
         modifier(p,SPONGE,item.equals("minecraft:sponge")?SPONGE_SPEED:0);
         modifier(p,LIGHT,item.equals(LIGHT_BLOCK)?LIGHT_SPEED:0);
+        modifier(p,ROLL,item.equals(PartyBlocks.BALL)?BALL_SPEED:item.equals(PartyBlocks.SANGA)?SKATE_SPEED:0);
+        // 248: a random ball to start with; 245: a random face up.
+        if(item.equals(PartyBlocks.BALL)&&prop.state().hasProperty(PartyBlocks.Ball.BALL))prop.state(prop.state().setValue(PartyBlocks.Ball.BALL,p.getRandom().nextInt(PartyBlocks.Ball.KINDS)));
+        if(item.equals(PartyBlocks.DICE_ID)&&prop.state().hasProperty(PartyBlocks.Dice.VALUE))prop.state(prop.state().setValue(PartyBlocks.Dice.VALUE,1+p.getRandom().nextInt(6)));
     }
     /** Sturdy disguises (tagged "견고"): mannequins and dolls, (crying) obsidian, end crystal, geyser, war table, armory 255; big grass block 400; bedrock 999; every other block 50. */
     public static double maxHealth(String item){
         return Set.of("gungang:mannequin",EUNBI,HANBI,"minecraft:obsidian","minecraft:crying_obsidian","minecraft:end_crystal","gungang:geyser","gungang:war_table","gungang:armory").contains(item)?255
-                :item.equals("gungang:easel")||item.equals("gungang:garden_fountain")?255:item.equals(NUKE)||item.equals("gungang:capsule_machine")?100
+                :Set.of("gungang:easel","gungang:garden_fountain",PartyBlocks.CHANDELIER_ID,PartyBlocks.WELL,PartyBlocks.TREE_ID,PartyBlocks.SANGA).contains(item)?255
+                :item.equals(PartyBlocks.STATUE_ID)?999:item.equals(PartyBlocks.AUTO)?255:item.equals(NUKE)||item.equals("gungang:capsule_machine")?100
                 :item.equals("gungang:big_grass_block")?400:item.equals("minecraft:bedrock")?999:50;
     }
     /** 176: four random armour pieces (or none in a slot), as item ids "head,chest,legs,feet". */
@@ -129,35 +144,36 @@ public final class PropAbilities {
     /**
      * 155: each E press plays the next note of the chosen piece at its written pitch; R picks the next piece.
      * Pitches are semitones from the harp's own F#4 (C5 = 6). The wide-range gungang:prop_note plays six octaves
-     * (F#1 to F#7, see SoundEngineMixin), so no piece is folded into the vanilla note block's two.
+     * (F#1 to F#7, see SoundEngineMixin), so no piece is folded into the vanilla note block's two, and the disguise's
+     * block state follows the widened note block (NoteRange's octave), so its state matches the note played.
      */
     record Song(String name,int[] notes){}
     static final List<Song> SONGS=List.of(
-            // Mozart, Piano Sonata No. 16 (K. 545), first movement opening.
-            new Song("모차르트 피아노 소나타 16번",new int[]{6,10,13,5,6,8,6,15,13,18,13,13,11,10,11,10,
-                    3,5,6,8,10,11,13,15,1,3,5,6,8,10,11,13,-1,1,3,5,6,8,10,11,-2,-1,1,3,5,6,8,10,
-                    -4,-2,-1,1,3,5,6,8,-6,-4,-2,-1,1,3,5,6,-7,-6,-4,-2,-1,1,3,5,-9,-7,-6,-4,-2,-1,1,3,8,6,5,6,1,6}),
+            // Mozart, Piano Sonata No. 16 (K. 545), first movement: the theme, then the rising-and-falling scales.
+            new Song("모차르트 피아노 소나타 16번",notes("C5 E5 G5 B4 C5 D5 C5 A5 G5 C6 G5 F5 E5 F5 E5 "
+                    +"A4 B4 C5 D5 E5 F5 G5 A5 G5 F5 E5 D5 C5 B4 A4 G4 A4 B4 C5 D5 E5 F5 G5 F5 E5 D5 C5 B4 A4 G4 "
+                    +"F4 G4 A4 B4 C5 D5 E5 F5 E5 D5 C5 B4 A4 G4 F4 E4 F4 G4 A4 B4 C5 D5 E5 D5 C5 B4 A4 G4 F4 E4")),
             new Song("엘리제를 위하여",notes("E5 D#5 E5 D#5 E5 B4 D5 C5 A4 C4 E4 A4 B4 E4 G#4 B4 C5 E4 "
                     +"E5 D#5 E5 D#5 E5 B4 D5 C5 A4 C4 E4 A4 B4 E4 C5 B4 A4 "
                     +"B4 C5 D5 E5 G4 F5 E5 D5 F4 E5 D5 C5 E4 D5 C5 B4 E4 E5 E5 E6 D#5 E5 D#5 E5 D#5 E5 "
                     +"D#5 E5 D#5 E5 B4 D5 C5 A4 C4 E4 A4 B4 E4 C5 B4 A4")),
+            // Pachelbel, Canon in D: the first violin's quarter-note and eighth-note lines.
             new Song("파헬벨 카논",notes("F#5 E5 D5 C#5 B4 A4 B4 C#5 D5 C#5 B4 A4 G4 F#4 G4 E4 "
                     +"D4 F#4 A4 G4 F#4 D4 F#4 E4 D4 B3 D4 A4 G4 B4 A4 G4 "
-                    +"F#5 D5 E5 F#5 D5 E5 F#5 F#4 G4 A4 B4 C#5 D5 E5 D5 B4 C#5 D5 D4 E4 F#4 G4 F#4 E4 F#4 D4 E4 F#4 "
-                    +"G4 B4 A4 G4 F#4 E4 F#4 E4 D4 E4 F#4 G4 A4 B4 G4 B4 A4 B4 C#5 D5 A4 B4 C#5 D5 E5 F#5 G5 A5")),
-            // Chopin, Etude Op. 25 No. 9 "Butterfly" in G-flat major: the fluttering octave figure, top line simplified.
-            new Song("쇼팽 나비 에튀드",notes("Ab5 Ab4 Bb5 Bb4 Cb6 Cb5 Bb5 Bb4 Ab5 Ab4 Gb5 Gb4 F5 F4 Gb5 Gb4 "
-                    +"Ab5 Ab4 Bb5 Bb4 Db6 Db5 Cb6 Cb5 Bb5 Bb4 Ab5 Ab4 Gb5 Gb4 F5 F4 "
-                    +"Eb5 Eb4 F5 F4 Gb5 Gb4 Ab5 Ab4 Bb5 Bb4 Db6 Db5 Gb6 Gb5 F6 F5 Eb6 Eb5 Db6 Db5 Bb5 Bb4 Gb5 Gb4")),
+                    +"F#4 D4 E4 C#5 D5 F#5 A5 A4 B4 G4 A4 F#4 D4 D5 D5 C#5")),
+            // Chopin, Etude Op. 25 No. 9 "Butterfly" in G-flat major: the opening octave figure.
+            new Song("쇼팽 나비 에튀드",notes("Bb4 Bb5 Cb6 C6 Db5 Db6 Eb6 Db6 Gb4 Gb5 Ab5 A5 Bb4 Bb5 Cb6 Bb5 "
+                    +"Eb4 Eb5 E5 F5 Gb4 Gb5 F5 Gb5 Ab4 Ab5 Bb5 Ab5 Ab4 Ab5 Bb5 Cb6")),
             // Beethoven, "Moonlight" Sonata, first movement: the bass and triplets of bars 1-4, then the melody.
             new Song("베토벤 월광 소나타",notes("C#3 G#3 C#4 E4 G#3 C#4 E4 G#3 C#4 E4 G#3 C#4 E4 "
                     +"B2 G#3 C#4 E4 G#3 C#4 E4 A2 A3 C#4 E4 F#2 A3 D4 F#4 "
                     +"G#2 G#3 C4 F#4 G#3 C#4 E4 G#3 C#4 D#4 F#3 C4 D#4 C#3 E3 G#3 C#4 "
                     +"G#4 G#4 G#4 G#4 G#4 G#4 A4 G#4 F#4 B4 E4 G#4 G#4 G#4 G#4 G#4 G#4 A4 G#4 F#4 B4 E4")),
-            // Chopin, Etude Op. 10 No. 5 "Black Key": the right hand's black-key triplets, simplified.
-            new Song("쇼팽 흑건",notes("Db6 Bb5 Gb5 Eb6 Db6 Bb5 Gb6 Eb6 Db6 Bb5 Ab5 Gb5 Eb5 Db5 Bb4 "
-                    +"Ab4 Bb4 Db5 Eb5 Gb5 Ab5 Bb5 Db6 Eb6 Gb6 Eb6 Db6 Bb5 Ab5 Gb5 "
-                    +"Db6 Bb5 Gb5 Eb6 Db6 Bb5 Gb6 Eb6 Db6 Bb5 Ab5 Gb5 Ab5 Gb5 Eb5 Db5 Gb5")),
+            // Chopin, Etude Op. 10 No. 5 "Black Key": the right hand's opening black-key figure.
+            new Song("쇼팽 흑건",notes("Gb6 Bb6 Db6 Gb6 Eb6 Gb6 Db6 Gb6 Bb5 Db6 Gb5 Bb5 "
+                    +"Gb5 Bb5 Db5 Gb5 Eb5 Gb5 Db5 Gb5 Bb4 Db5 Gb4 Bb4 "
+                    +"Db4 Db5 Ab4 Db5 Ab4 Ab5 Ab4 Ab5 Eb5 Ab5 Eb5 Eb6 "
+                    +"Eb5 Eb6 Ab5 Eb6 Ab5 Ab6 Ab5 Ab6 Db6 Ab6 Db6 Db7")),
             new Song("작은 별",notes("C5 C5 G5 G5 A5 A5 G5 F5 F5 E5 E5 D5 D5 C5 G5 G5 F5 F5 E5 E5 D5 "
                     +"G5 G5 F5 F5 E5 E5 D5 C5 C5 G5 G5 A5 A5 G5 F5 F5 E5 E5 D5 D5 C5")));
     /** Space-separated note names (C4, F#5, Bb3, Cb6 ...) as semitones from F#4. */
@@ -174,16 +190,17 @@ public final class PropAbilities {
     private static void modifier(LivingEntity p,UUID id,double value){if(p instanceof Mob&&value!=0)value=Math.sqrt(1+value)-1; // path-walking bots move attribute²
         var attr=p.getAttribute(Attributes.MOVEMENT_SPEED);if(attr==null)return;var old=attr.getModifier(id);if(old!=null&&old.getAmount()==value)return;if(old!=null)attr.removeModifier(id);if(value!=0)attr.addTransientModifier(new AttributeModifier(id,"prop_ability",value,AttributeModifier.Operation.MULTIPLY_TOTAL));}
     public void remove(LivingEntity p){
-        var r=states.remove(p.getUUID());if(r!=null){r.mobs.forEach(Entity::discard);r.clearDiscs();stopFlight(p,r);}
-        modifier(p,CART,0);modifier(p,BEACON,0);modifier(p,CLOAK,0);modifier(p,SPONGE,0);modifier(p,LIGHT,0);
+        var r=states.remove(p.getUUID());if(r!=null){r.mobs.forEach(Entity::discard);r.clearDiscs();stopFlight(p,r);unhang(p,r);}
+        modifier(p,ROLL,0);modifier(p,CART,0);modifier(p,BEACON,0);modifier(p,CLOAK,0);modifier(p,SPONGE,0);modifier(p,LIGHT,0);
         // A new block, leaving the match or being found puts the map's time back.
         if(p.getUUID().equals(dayOwner))restoreDay();
     }
     public void clear(){for(var p:match.bodies())remove(p);states.values().forEach(r->{r.mobs.forEach(Entity::discard);r.clearDiscs();});states.clear();clearTemps();restoreDay();}
-    public void resetTransient(){for(var p:match.bodies()){var r=states.get(p.getUUID());if(r!=null){r.mobs.forEach(Entity::discard);r.mobs.clear();r.crystal.clear();r.crystalUntil=0;var prop=match.prop(p.getUUID());if(prop!=null&&(prop.item().equals("minecraft:end_crystal")||prop.item().equals(EUNBI)))prop.text("");r.clearDiscs();r.active=0;r.stun=0;r.erupt=0;r.eyeLand=null;r.cry=0;r.storm=0;r.burst=0;r.primary=false;r.cloak=false;modifier(p,CLOAK,0);stopFlight(p,r);}}clearTemps();}
+    public void resetTransient(){for(var p:match.bodies()){var r=states.get(p.getUUID());if(r!=null){r.mobs.forEach(Entity::discard);r.mobs.clear();r.crystal.clear();r.crystalUntil=0;var prop=match.prop(p.getUUID());if(prop!=null&&(prop.item().equals("minecraft:end_crystal")||prop.item().equals(EUNBI)))prop.text("");r.clearDiscs();r.active=0;r.stun=0;r.erupt=0;r.eyeLand=null;r.cry=0;r.storm=0;r.burst=0;r.primary=false;r.cloak=false;modifier(p,CLOAK,0);stopFlight(p,r);unhang(p,r);r.rainUntil=0;r.rain.clear();r.jackpotUntil=0;r.jackpot.clear();r.slotAt=-1;r.diceUntil=0;}}clearTemps();}
     private void clearTemps(){temps.forEach(t->t.entity().discard());temps.clear();}
     private void restoreDay(){if(dayOwner!=null){dayOwner=null;MapEnvironment.override(null);}}
     private static void stopFlight(LivingEntity p,Runtime r){if(!r.flight)return;r.flight=false;p.setNoGravity(false);p.fallDistance=0;if(p instanceof ServerPlayer sp){sp.getAbilities().mayfly=r.mayfly;sp.getAbilities().flying=r.flying;sp.onUpdateAbilities();}}
+    private static void unhang(LivingEntity p,Runtime r){if(!r.hang)return;r.hang=false;r.hangAt=null;p.setNoGravity(false);p.fallDistance=0;}
     private static ServerLevel level(LivingEntity p){return (ServerLevel)p.level();}
     /** Holds a body in place: a player's client is corrected at once, a bot is simply put back. */
     private static void pin(LivingEntity p,double x,double y,double z){if(p instanceof ServerPlayer sp)sp.connection.teleport(x,y,z,p.getYRot(),p.getXRot());else p.setPos(x,y,z);}
@@ -222,7 +239,50 @@ public final class PropAbilities {
             case "minecraft:infested_stone"->{
                 if((match.hunting()||match.hiding())&&match.seekers().isEmpty()&&r.mobs.stream().noneMatch(m->m.isAlive()&&!m.isRemoved()))found(p,prop);
             }
-            case "gungang:mannequin",EUNBI,HANBI->prop.mode((prop.mode()+1)%6);
+            case "gungang:mannequin",EUNBI,HANBI,PartyBlocks.SANGA->prop.mode((prop.mode()+1)%6);
+            // 245: the die tumbles for a second (a little hop), then its top face pops up as text.
+            case PartyBlocks.DICE_ID->{
+                r.diceUntil=now+DICE_TICKS;r.cooldown=now+cooldown(item);
+                if(p.onGround())PropHuntMatch.impulse(p,new Vec3(p.getDeltaMovement().x,.32,p.getDeltaMovement().z));
+                p.level().playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.BONE_BLOCK_HIT,net.minecraft.sounds.SoundSource.BLOCKS,1,1.5f);
+            }
+            // 246: up to the nearest ceiling within 12 blocks and held there; E again lets go.
+            case PartyBlocks.CHANDELIER_ID->{
+                if(r.hang){unhang(p,r);PropHuntMatch.say(p,Component.literal("샹들리에: 떨어집니다"),true);return true;}
+                var box=p.getBoundingBox();var from=new Vec3(p.getX(),box.maxY+.01,p.getZ());
+                var hit=p.level().clip(new ClipContext(from,from.add(0,12,0),ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,p));
+                if(hit.getType()==HitResult.Type.MISS){PropHuntMatch.say(p,Component.literal("샹들리에: 12블록 안에 천장이 없습니다"),true);return true;}
+                var at=new Vec3(p.getX(),hit.getLocation().y-p.getBbHeight()-.001,p.getZ());
+                if(!p.level().noCollision(p,box.move(at.subtract(p.position())))){PropHuntMatch.say(p,Component.literal("샹들리에: 매달릴 자리가 없습니다"),true);return true;}
+                match.unlock(p);r.hang=true;r.hangAt=at;p.setNoGravity(true);p.setDeltaMovement(Vec3.ZERO);pin(p,at.x,at.y,at.z);prop.setPos(at);
+                p.level().playSound(null,BlockPos.containing(at),net.minecraft.sounds.SoundEvents.CHAIN_PLACE,net.minecraft.sounds.SoundSource.BLOCKS,1,.8f);
+                PropHuntMatch.say(p,Component.literal("샹들리에: 천장에 매달렸습니다 (E: 떨어지기)"),true);
+            }
+            // 247: three reels; 777 (1 in 64) is the jackpot, paid out when they stop (tick).
+            case PartyBlocks.SLOT->{
+                if(r.slotAt>now)return true;
+                var random=p.getRandom();int a=PartyBlocks.reel(random),b=PartyBlocks.reel(random),c=PartyBlocks.reel(random);
+                prop.text(a+","+b+","+c+","+p.level().getGameTime());r.slotAt=now+PartyBlocks.SPIN_TICKS;r.jackpotWon=a==0&&b==0&&c==0;r.cooldown=now+cooldown(item);
+                p.level().playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.LEVER_CLICK,net.minecraft.sounds.SoundSource.BLOCKS,1,.7f);
+            }
+            // 248: another ball.
+            case PartyBlocks.BALL->{if(prop.state().hasProperty(PartyBlocks.Ball.BALL)){
+                int next=(prop.state().getValue(PartyBlocks.Ball.BALL)+1+p.getRandom().nextInt(PartyBlocks.Ball.KINDS-1))%PartyBlocks.Ball.KINDS;
+                prop.state(prop.state().setValue(PartyBlocks.Ball.BALL,next));
+                p.level().playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.STONE_BUTTON_CLICK_ON,net.minecraft.sounds.SoundSource.BLOCKS,1,1.9f);
+                PropHuntMatch.say(p,Component.literal("당구공: "+PartyBlocks.Ball.name(next)),true);}}
+            // 249: the bucket goes down the well or comes back up.
+            case PartyBlocks.WELL->{prop.toggle();p.level().playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.CHAIN_PLACE,net.minecraft.sounds.SoundSource.BLOCKS,1,prop.open()?.7f:1f);}
+            // 250: twenty seconds of money raining around the statue (80 to each seeker it hits, while hunting).
+            case PartyBlocks.STATUE_ID->{
+                r.rainUntil=now+RAIN_TICKS;r.cooldown=now+cooldown(item);
+                p.level().playSound(null,prop.blockPosition(),DeskBlocks.CASH.get(),net.minecraft.sounds.SoundSource.BLOCKS,3,.8f);
+                p.level().playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.PLAYER_LEVELUP,net.minecraft.sounds.SoundSource.BLOCKS,2,.6f);
+                PropHuntMatch.say(p,Component.literal("명예횡령상: 돈벼락 20초"),true);
+            }
+            // 251: the fairy lights on the disguise off and on (a placed tree always shines).
+            case PartyBlocks.TREE_ID->{prop.toggle();p.level().playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.STONE_BUTTON_CLICK_ON,net.minecraft.sounds.SoundSource.BLOCKS,.8f,prop.open()?.9f:1.4f);
+                PropHuntMatch.say(p,Component.literal(prop.open()?"크리스마스 트리: 장식등 꺼짐":"크리스마스 트리: 장식등 켜짐"),true);}
             // 174: every other hider still hiding is pulled in around this anchor.
             case "minecraft:respawn_anchor"->{
                 int moved=0;
@@ -315,8 +375,11 @@ public final class PropAbilities {
             case "minecraft:note_block"->{
                 var song=SONGS.get(Math.floorMod(r.song,SONGS.size()));
                 int note=song.notes()[r.note%song.notes().length];r.note=(r.note+1)%song.notes().length;
-                // The block state and particle colour only cover the vanilla range; the pitch does not.
-                int shown=net.minecraft.util.Mth.clamp(note+12,0,24);prop.state(prop.state().setValue(BlockStateProperties.NOTE,shown));
+                // The disguise's state takes the written note over the widened six octaves (NoteRange: semitone 0 is the
+                // harp's F#3, the song's 0 is F#4); the particle colour follows the note within its octave, as vanilla.
+                var tuned=prop.state().hasProperty(NoteRange.OCTAVE)?NoteRange.withSemitone(prop.state(),note+12)
+                        :prop.state().setValue(BlockStateProperties.NOTE,net.minecraft.util.Mth.clamp(note+12,0,24));
+                prop.state(tuned);int shown=tuned.getValue(BlockStateProperties.NOTE);
                 p.level().playSound(null,prop.getX(),prop.getY()+.5,prop.getZ(),GimmickBlocks.PROP_NOTE.get(),net.minecraft.sounds.SoundSource.RECORDS,3,(float)Math.pow(2,note/12d));
                 level(p).sendParticles(ParticleTypes.NOTE,prop.getX(),prop.getY()+1.2,prop.getZ(),0,shown/24d,0,0,1);
             }
@@ -593,16 +656,18 @@ public final class PropAbilities {
             level.sendParticles(ParticleTypes.FLAME,x,top,z,10,1.5,.5,1.5,.02);
         }
     }
-    /** 231: one of the blocks touching the disguise (its six faces) becomes its look, a different one each press where possible. */
+    /**
+     * 231: one of the blocks touching the disguise becomes its look, a different one each press where possible. Touching
+     * is measured against the disguise's real box, so a prop standing on a slab or a modded half block, or pressed
+     * against a thin wall panel, still finds it; modded blocks with a block entity or a waterlogged state count too.
+     */
     private static void chameleon(LivingEntity p,PropEntity prop){
-        var level=p.level();var center=prop.blockPosition();var touching=new ArrayList<net.minecraft.world.level.block.state.BlockState>();
-        for(var side:net.minecraft.core.Direction.values()){
-            var pos=center.relative(side);var s=level.getBlockState(pos);
-            // A single-cell block with a model and something to stand on or bump into (no fluids, block entities or multi-block pieces).
-            if(s.isAir()||!s.getFluidState().isEmpty()||s.getRenderShape()!=net.minecraft.world.level.block.RenderShape.MODEL||s.getBlock() instanceof EntityBlock
-                    ||s.getCollisionShape(level,pos).isEmpty()||s.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.DOUBLE_BLOCK_HALF)||s.getBlock() instanceof net.minecraft.world.level.block.BedBlock
-                    ||s.getBlock() instanceof FurnitureBlock||s.getBlock() instanceof MultiPartBlock||touching.contains(s))continue;
-            touching.add(s);
+        var level=p.level();var touching=new ArrayList<net.minecraft.world.level.block.state.BlockState>();
+        var box=prop.getBoundingBox().inflate(.05);
+        for(var pos:net.minecraft.core.BlockPos.betweenClosed(net.minecraft.util.Mth.floor(box.minX),net.minecraft.util.Mth.floor(box.minY),net.minecraft.util.Mth.floor(box.minZ),
+                net.minecraft.util.Mth.floor(box.maxX),net.minecraft.util.Mth.floor(box.maxY),net.minecraft.util.Mth.floor(box.maxZ))){
+            var s=chameleonLook(level,pos.immutable(),prop.getBoundingBox());
+            if(s!=null&&!touching.contains(s))touching.add(s);
         }
         if(touching.size()>1)touching.remove(prop.state());
         var best=touching.isEmpty()?null:touching.get(p.getRandom().nextInt(touching.size()));
@@ -610,6 +675,28 @@ public final class PropAbilities {
         prop.state(best);p.refreshDimensions();
         level.playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.SLIME_SQUISH_SMALL,net.minecraft.sounds.SoundSource.BLOCKS,.8f,1.4f);
         PropHuntMatch.say(p,Component.literal("카멜레온: ").append(best.getBlock().getName()),true);
+    }
+    /**
+     * The look a block lends the chameleon, or null: a single-cell block with something to stand on or bump into that
+     * meets one of the disguise's faces (an edge or a corner alone does not count). Its model or its block entity's renderer draws it; a waterlogged block comes dry.
+     * Liquids, double blocks, beds and the mod's own multi-cell pieces are left out.
+     */
+    private static net.minecraft.world.level.block.state.BlockState chameleonLook(net.minecraft.world.level.Level level,net.minecraft.core.BlockPos pos,net.minecraft.world.phys.AABB box){
+        if(!level.isLoaded(pos))return null;
+        var s=level.getBlockState(pos);var block=s.getBlock();
+        if(s.isAir()||block instanceof net.minecraft.world.level.block.LiquidBlock||block instanceof net.minecraft.world.level.block.BedBlock
+                ||block instanceof FurnitureBlock||block instanceof MultiPartBlock||s.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.DOUBLE_BLOCK_HALF))return null;
+        var shape=s.getRenderShape();
+        if(shape!=net.minecraft.world.level.block.RenderShape.MODEL&&!(block instanceof EntityBlock))return null;
+        net.minecraft.world.phys.shapes.VoxelShape collision;
+        try{collision=s.getCollisionShape(level,pos);}catch(RuntimeException error){return null;}
+        // Grown out through one face at a time and pulled in a hair on the others, so a diagonal neighbour never touches.
+        double reach=.05,in=-1e-3;
+        var faces=java.util.List.of(box.inflate(reach,in,in),box.inflate(in,reach,in),box.inflate(in,in,reach));
+        if(collision.isEmpty()||collision.toAabbs().stream().map(part->part.move(pos)).noneMatch(part->faces.stream().anyMatch(part::intersects)))return null;
+        var waterlogged=net.minecraft.world.level.block.state.properties.BlockStateProperties.WATERLOGGED;
+        if(s.hasProperty(waterlogged))s=s.setValue(waterlogged,false);
+        return s.getFluidState().isEmpty()?s:null;
     }
     /** 242: the mouse wheel steps the light's brightness by one (0..15). */
     public void brightness(LivingEntity p,PropEntity prop,int delta){
@@ -722,6 +809,10 @@ public final class PropAbilities {
         boolean moving=r.lastPosition!=null&&p.position().subtract(r.lastPosition).horizontalDistanceSqr()>.0001;r.lastPosition=p.position();
         if(r.flight&&now>=r.active)stopFlight(p,r);
         if(r.flight){p.setDeltaMovement(p.getDeltaMovement().multiply(1,0,1));p.fallDistance=0;if(Math.abs(p.getY()-r.flightY)>.001){p.setPos(p.getX(),r.flightY,p.getZ());pin(p,p.getX(),r.flightY,p.getZ());prop.setPos(p.position());}}
+        if(r.hang&&r.hangAt!=null){p.setNoGravity(true);p.setDeltaMovement(Vec3.ZERO);p.fallDistance=0;if(p.position().distanceToSqr(r.hangAt)>1e-4){pin(p,r.hangAt.x,r.hangAt.y,r.hangAt.z);prop.setPos(r.hangAt);}}
+        party(p,prop,r,now);
+        if(item.equals(PartyBlocks.AUTO))auto(p,prop,r,now);
+        if(item.equals(PartyBlocks.PHOTO_ID))photo(p,prop,now);
         if(r.stun>now){p.setDeltaMovement(Vec3.ZERO);p.hurtMarked=true;if(r.stunPosition!=null)pin(p,r.stunPosition.x,r.stunPosition.y,r.stunPosition.z);}
         boolean beacon=match.bodies().stream().map(q->match.prop(q.getUUID())).anyMatch(other->other!=null&&other.item().equals("minecraft:beacon")&&other.open());
         modifier(p,BEACON,beacon?.2:0);
@@ -735,7 +826,7 @@ public final class PropAbilities {
         if(!r.stuck.isEmpty())stuck(prop,r,now);
         if(item.equals("minecraft:sugar_cane")){int height=Math.min(3,1+(now-r.born)/1200);if(prop.height()!=height){prop.height(height);p.refreshDimensions();}}
         if(item.equals("minecraft:oak_sign")&&!match.locked(p.getUUID()))prop.state(prop.state().setValue(StandingSignBlock.ROTATION,Math.floorMod(Math.round(p.getYRot()*16/360),16)));
-        if(Set.of("minecraft:minecart",MONEY_CART,"gungang:mannequin","gungang:dried_ghast",EUNBI,HANBI,"minecraft:armor_stand","minecraft:tnt_minecart").contains(item)&&!match.locked(p.getUUID())){prop.setYRot(p.getYRot());prop.setYHeadRot(p.getYRot());prop.setYBodyRot(p.getYRot());}
+        if(Set.of("minecraft:minecart",MONEY_CART,"gungang:mannequin","gungang:dried_ghast",EUNBI,HANBI,"minecraft:armor_stand","minecraft:tnt_minecart",PartyBlocks.SANGA,PartyBlocks.PHOTO_ID).contains(item)&&!match.locked(p.getUUID())){prop.setYRot(p.getYRot());prop.setYHeadRot(p.getYRot());prop.setYBodyRot(p.getYRot());}
         if(item.equals("minecraft:bee_nest")&&!r.bees){r.bees=true;for(int i=0;i<3;i++){var mob=PropSummons.spawn(level(p),PropSummonEntity.Kind.BEE,p.getUUID(),prop.position().add(Math.cos(i*2.1),1,Math.sin(i*2.1)),100,36,true);if(mob!=null)r.mobs.add(mob);}}
         r.mobs.removeIf(Entity::isRemoved);for(int i=0;i<r.mobs.size();i++)PropSummons.tick(match,r.mobs.get(i),prop.position(),i);
         r.discs.removeIf(disc->{if(disc.isRemoved()||disc.tickCount>60){disc.discard();return true;}return false;});
@@ -806,6 +897,126 @@ public final class PropAbilities {
             }
             if(item.equals("minecraft:minecart")&&moving){match.credit(target,p.getUUID());target.hurt(p.damageSources().generic(),50);var away=target.position().subtract(prop.position()).normalize();PropHuntMatch.impulse(target,target.getDeltaMovement().add(away.x*1.4,.5,away.z*1.4));r.stun=now+20;r.stunPosition=p.position();r.contact=now+20;}
         }
+    }
+    /**
+     * 255: while hunting, the body walks itself at the nearest seeker (hopping up steps, sidestepping when it stalls),
+     * stops at 8 blocks in sight and fires the minigun: ten shots a second without reloading, 3.5 each, slight spread.
+     */
+    private void auto(LivingEntity p,PropEntity prop,Runtime r,int now){
+        if(!match.hunting()){r.autoVy=0;return;}
+        var level=level(p);
+        var target=match.seekers().stream().filter(q->q.level()==level&&q.isAlive()).min(Comparator.comparingDouble(q->q.distanceToSqr(p))).orElse(null);
+        if(target==null)return;
+        var eye=p.position().add(0,1.3,0);var aim=target.getBoundingBox().getCenter();
+        boolean sight=eye.distanceTo(aim)<=AUTO_RANGE&&level.clip(new ClipContext(eye,aim,ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,p)).getType()==HitResult.Type.MISS;
+        var flat=new Vec3(target.getX()-p.getX(),0,target.getZ()-p.getZ());double distance=flat.length();
+        var dir=distance<1e-4?Vec3.ZERO:flat.scale(1/distance);
+        if(now<r.autoDetour)dir=new Vec3(-dir.z*r.autoSide,0,dir.x*r.autoSide).add(dir.scale(.3)).normalize();
+        double speed=sight&&distance<8?0:AUTO_SPEED;
+        if(p.onGround())r.autoVy=p.horizontalCollision&&speed>0?.42:0;else r.autoVy=Math.max(-1,r.autoVy-.08);
+        p.move(MoverType.SELF,new Vec3(dir.x*speed,r.autoVy,dir.z*speed));p.setDeltaMovement(Vec3.ZERO);p.fallDistance=0;
+        // Stalled against something for a second: sidestep for a moment.
+        if(speed>0&&r.autoLast!=null&&p.position().subtract(r.autoLast).horizontalDistanceSqr()<.0004){if(++r.autoStuck>20){r.autoStuck=0;r.autoDetour=now+30;r.autoSide=p.getRandom().nextBoolean()?1:-1;}}else r.autoStuck=0;
+        r.autoLast=p.position();
+        float heading=(float)Math.toDegrees(Math.atan2(-(aim.x-p.getX()),aim.z-p.getZ()));
+        prop.setYRot(heading);prop.setYHeadRot(heading);prop.setYBodyRot(heading);
+        pin(p,p.getX(),p.getY(),p.getZ());prop.setPos(p.position());
+        if(!sight||now<r.autoShot)return;
+        r.autoShot=now+2;
+        var random=p.getRandom();var muzzle=p.position().add(0,1.2,0).add(dir.scale(.8));
+        var shot=aim.subtract(muzzle).normalize().add((random.nextDouble()-.5)*.06,(random.nextDouble()-.5)*.06,(random.nextDouble()-.5)*.06).normalize();
+        var end=muzzle.add(shot.scale(AUTO_RANGE));
+        var block=level.clip(new ClipContext(muzzle,end,ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,p));if(block.getType()!=HitResult.Type.MISS)end=block.getLocation();
+        var hit=target.getBoundingBox().inflate(.1).clip(muzzle,end);
+        if(hit.isPresent()){end=hit.get();target.invulnerableTime=0;match.credit(target,p.getUUID());target.hurt(p.damageSources().generic(),AUTO_DAMAGE);}
+        double length=muzzle.distanceTo(end);
+        for(double t=.8;t<length;t+=1.6){var at=muzzle.add(shot.scale(t));level.sendParticles(ParticleTypes.CRIT,at.x,at.y,at.z,1,0,0,0,0);}
+        level.sendParticles(ParticleTypes.SMOKE,muzzle.x,muzzle.y,muzzle.z,1,.05,.05,.05,.01);
+        if(now%4==0)level.playSound(null,BlockPos.containing(muzzle),TurretSounds.SHOT.get(),net.minecraft.sounds.SoundSource.PLAYERS,1.2f,1.25f);
+    }
+    /** 254: whoever else looks at the photo's face (in sight, within 32 blocks) gets nauseous for ten seconds. */
+    private void photo(LivingEntity p,PropEntity prop,int now){
+        if(now%10!=0||!match.hunting()&&!match.hiding())return;
+        double yaw=Math.toRadians(prop.getYRot());var front=new Vec3(-Math.sin(yaw),0,Math.cos(yaw));var centre=prop.position().add(0,.7,0);var level=level(p);
+        for(var q:match.bodies()){
+            if(q==p||!q.isAlive()||q.isSpectator()||q.level()!=level||q.distanceToSqr(centre)>PHOTO_RANGE*PHOTO_RANGE)continue;
+            var eye=q.getEyePosition();var to=centre.subtract(eye);
+            if(to.dot(front)>=0||q.getLookAngle().dot(to.normalize())<.9)continue;
+            if(level.clip(new ClipContext(eye,centre,ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,q)).getType()!=HitResult.Type.MISS)continue;
+            q.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.CONFUSION,200,0,false,false,true));
+        }
+    }
+    /** 245 dice, 247 slot machine and its jackpot, 250 money rain. */
+    private void party(LivingEntity p,PropEntity prop,Runtime r,int now){
+        var level=level(p);var random=p.getRandom();
+        if(r.diceUntil>0){
+            if(now<r.diceUntil){
+                if((r.diceUntil-now)%3==0&&prop.state().hasProperty(PartyBlocks.Dice.VALUE)){
+                    prop.state(prop.state().setValue(PartyBlocks.Dice.VALUE,1+random.nextInt(6)));
+                    level.playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.BONE_BLOCK_HIT,net.minecraft.sounds.SoundSource.BLOCKS,.7f,1.6f+random.nextFloat()*.3f);
+                }
+            }else{
+                r.diceUntil=0;int value=prop.state().hasProperty(PartyBlocks.Dice.VALUE)?prop.state().getValue(PartyBlocks.Dice.VALUE):1;
+                level.playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.AMETHYST_BLOCK_CHIME,net.minecraft.sounds.SoundSource.BLOCKS,1,1.2f);
+                popup(level,prop.getBoundingBox().getCenter().add(0,prop.getBoundingBox().getYsize()/2+.6,0),"주사위 "+value,now+40);
+                PropHuntMatch.say(p,Component.literal("주사위: "+value),true);
+            }
+        }
+        if(r.slotAt>=0){
+            if(now<r.slotAt){if((r.slotAt-now)%4==0)level.playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.NOTE_BLOCK_HAT.value(),net.minecraft.sounds.SoundSource.BLOCKS,.6f,1.6f);}
+            else{
+                r.slotAt=-1;
+                if(!r.jackpotWon)level.playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.NOTE_BLOCK_BASS.value(),net.minecraft.sounds.SoundSource.BLOCKS,1,.6f);
+                else{
+                    r.jackpotWon=false;r.jackpotUntil=now+JACKPOT_TICKS;
+                    r.jackpot=match.seekers().stream().filter(q->q.isAlive()&&q.level()==level).map(Entity::getUUID).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+                    level.playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.UI_TOAST_CHALLENGE_COMPLETE,net.minecraft.sounds.SoundSource.BLOCKS,4,1);
+                    for(var q:match.players()){
+                        q.playNotifySound(net.minecraft.sounds.SoundEvents.NOTE_BLOCK_DIDGERIDOO.value(),net.minecraft.sounds.SoundSource.MASTER,1,1.2f);
+                        q.playNotifySound(net.minecraft.sounds.SoundEvents.NOTE_BLOCK_BELL.value(),net.minecraft.sounds.SoundSource.MASTER,1,1.5f);
+                        PropHuntMatch.say(q,Component.literal("777 잭팟! 술래에게 돈벼락이 쏟아집니다").withStyle(net.minecraft.ChatFormatting.GOLD,net.minecraft.ChatFormatting.BOLD),true);
+                    }
+                    popup(level,prop.getBoundingBox().getCenter().add(0,1.6,0),"JACKPOT 777",now+60);
+                }
+            }
+        }
+        // The jackpot: money pours on every seeker for 5 s, who takes a tenth of their health every half second and dies at the end.
+        if(r.jackpotUntil>0){
+            boolean end=now>=r.jackpotUntil;
+            for(var id:r.jackpot){
+                var target=match.seekers().stream().filter(q->q.getUUID().equals(id)).findFirst().orElse(null);
+                if(target==null||!target.isAlive())continue;
+                if(!end&&now%2==0)money(target.level(),target.position().add((random.nextDouble()-.5)*1.6,target.getBbHeight()+2.5+random.nextDouble(),(random.nextDouble()-.5)*1.6),r);
+                if(!match.hunting())continue;
+                if(end){match.credit(target,p.getUUID());target.hurt(p.damageSources().genericKill(),Float.MAX_VALUE);}
+                else if((r.jackpotUntil-now)%10==0){match.credit(target,p.getUUID());target.hurt(p.damageSources().generic(),target.getMaxHealth()/10);}
+            }
+            if(end){r.jackpotUntil=0;r.jackpot.clear();}
+        }
+        // The statue's rain: falling cash around it; a seeker hit takes 80 (at most every half second each).
+        if(now<r.rainUntil){
+            for(int i=0;i<3;i++){
+                double a=random.nextDouble()*Math.PI*2,d=Math.sqrt(random.nextDouble())*RAIN_RADIUS;
+                var drop=money(level,prop.position().add(Math.cos(a)*d,8+random.nextDouble()*4,Math.sin(a)*d),r);if(drop!=null)r.rain.add(drop);
+            }
+            if(now%20==0)level.playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.CHAIN_FALL,net.minecraft.sounds.SoundSource.BLOCKS,1.5f,1.6f);
+        }
+        r.rain.removeIf(drop->drop.isRemoved()||drop.onGround());
+        if(!r.rain.isEmpty()&&match.hunting())for(var seeker:match.seekers()){
+            if(seeker.level()!=level||!seeker.isAlive()||r.rainHit.getOrDefault(seeker.getUUID(),0)>now)continue;
+            var body=seeker.getBoundingBox().inflate(.2);
+            for(var drop:r.rain)if(!drop.isRemoved()&&body.intersects(drop.getBoundingBox())){
+                match.credit(seeker,p.getUUID());seeker.hurt(p.damageSources().generic(),RAIN_DAMAGE);r.rainHit.put(seeker.getUUID(),now+10);
+                level.playSound(null,seeker.blockPosition(),DeskBlocks.CASH.get(),net.minecraft.sounds.SoundSource.PLAYERS,.8f,1.3f);
+                drop.discard();break;
+            }
+        }
+    }
+    /** A falling note or coin nobody can pick up (cleared with the discs after 3 s). */
+    private static net.minecraft.world.entity.item.ItemEntity money(net.minecraft.world.level.Level level,Vec3 at,Runtime r){
+        var random=level.random;var item=random.nextInt(3)==0?net.minecraft.world.item.Items.GOLD_NUGGET:random.nextBoolean()?net.minecraft.world.item.Items.EMERALD:net.minecraft.world.item.Items.PAPER;
+        var drop=new net.minecraft.world.entity.item.ItemEntity(level,at.x,at.y,at.z,new net.minecraft.world.item.ItemStack(item),(random.nextDouble()-.5)*.05,-.25,(random.nextDouble()-.5)*.05);
+        drop.setNeverPickUp();if(!level.addFreshEntity(drop))return null;r.discs.add(drop);return drop;
     }
     public void struck(LivingEntity owner,PropEntity prop){
         if(!prop.item().equals("minecraft:dragon_egg"))return;

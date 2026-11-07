@@ -439,6 +439,8 @@ final class LoadoutScreen extends ArenaScreen {
      * The bar runs the whole width after the label and the value sits over its right end, outlined in black, so the
      * bar shows however narrow the panel is.
      */
+    /** Each stat bar's displayed fill by label, eased toward the selected weapon's value. */
+    private static final java.util.Map<String,Float> STAT_SHOWN=new java.util.HashMap<>();
     private void statPanel(GuiGraphics g,List<Row> rows,int x1,int y1,int x2,int h){
         int labelW=labelColumn();
         int barX=x1+labelW+6,barEnd=x2,y=y1+Math.max(0,(h-rows.size()*STAT_ROW)/2)+3;
@@ -447,7 +449,10 @@ final class LoadoutScreen extends ArenaScreen {
             g.drawString(font,row.label(),x1,y,MUTED,false);
             String value=font.plainSubstrByWidth(row.value(),Math.max(1,x2-barX));
             if(row.fraction()<0||barEnd-barX<8){g.drawString(font,value,row.fraction()<0?barX:x2-font.width(value),y,ACCENT,false);y+=STAT_ROW;continue;}
-            TacticalStyle.meter(g,barX,y+2,barEnd-barX,5,row.fraction(),ACCENT);
+            // The XP bar's gold gauge; each bar eases to the newly selected weapon's value.
+            float target=row.fraction(),shown=STAT_SHOWN.getOrDefault(row.label(),target);
+            shown+=(target-shown)*.25f;if(Math.abs(target-shown)<.002f)shown=target;STAT_SHOWN.put(row.label(),shown);
+            TacticalStyle.goldGauge(g,barX,y+2,barEnd-barX,5,shown,shown,false);
             outlined(g,value,x2-font.width(value)-1,y,INK);
             y+=STAT_ROW;
         }

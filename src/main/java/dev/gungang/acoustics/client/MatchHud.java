@@ -90,7 +90,7 @@ public final class MatchHud {
         lastGateRule=rule;var mc=Minecraft.getInstance();
         if(mc.level!=null)mc.levelRenderer.allChanged();
     }
-    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut e) { state=null;lastGateRule=null; page=0;ScorePop.reset();pendingResult=null;resultDelay=0;MapEnvironmentClient.receive(null);BombWorldHud.receive(null);BombSpectator.receive(null); }
+    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut e) { state=null;lastGateRule=null; page=0;ScorePop.reset();pendingResult=null;resultDelay=0;MapEnvironmentClient.receive(null);BombWorldHud.receive(null);BombSpectator.receive(null);WeaponRollClient.receive(null); }
     @SubscribeEvent public static void hide(RenderGuiOverlayEvent.Pre e) {
         if(HudVisibility.enabled()&&state!=null&&state.active()&&e.getOverlay().id().equals(VanillaGuiOverlay.PLAYER_LIST.id())) e.setCanceled(true);
     }
@@ -108,6 +108,7 @@ public final class MatchHud {
         if(state.escort()!=null)y=EscortHud.draw(g,state);
         else if(deathmatch)y=DeathmatchHud.draw(g,state);
         else {y=ControlPointHud.draw(g,state)+4;if(state.point()==null)MatchTimerHud.draw(g,state,y);}
+        WeaponRollClient.draw(g,y);
         if(mc.screen==null&&mc.options.keyPlayerList.isDown()) {
             String label="경과 시간",time=MatchReport.time(state.elapsedSeconds());
             int w=mc.font.width(label)+HudText.timeWidth(time)+20,cx=g.guiWidth()/2-w/2;

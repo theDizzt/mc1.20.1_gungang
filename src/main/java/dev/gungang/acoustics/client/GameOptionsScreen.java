@@ -13,7 +13,7 @@ import net.minecraft.network.chat.Component;
  * as the placeholder; seconds fields show their minutes and seconds beside the box.
  */
 final class GameOptionsScreen extends ArenaScreen {
-    private enum Kind { HEADER, SECONDS, DECIMAL_SECONDS, INTEGER, DECIMAL, TEXT, TOGGLE, CHOICE }
+    private enum Kind { HEADER, SECONDS, DECIMAL_SECONDS, INTEGER, DECIMAL, TEXT, TOGGLE, CHOICE, WEAPONS }
     /** One line of the form: its value lives in {@link #values} under {@code key}. */
     private record Row(String key,String label,Kind kind,String placeholder,Supplier<Boolean> enabled,Function<String,String> note){
         Row(String key,String label,Kind kind,String placeholder){this(key,label,kind,placeholder,()->true,null);}
@@ -57,7 +57,9 @@ final class GameOptionsScreen extends ArenaScreen {
         var b=o.bomb();put("bomb.time",b.timeSeconds());put("bomb.prep",b.preparationSeconds());put("bomb.rounds",b.rounds());put("bomb.swap",b.swapEveryRounds());
         put("bomb.plant",b.plantSeconds());put("bomb.fuse",b.fuseSeconds());put("bomb.defuse",b.defuseSeconds());
         var d=o.deathmatch();put("tdm.time",d.timeSeconds());put("tdm.prep",d.preparationSeconds());put("tdm.score",d.targetScore());
+        put("tdm.weapons",d.weaponMode()==null?null:d.weaponMode().name());put("tdm.rotation",d.rotationSeconds());put("tdm.choice",d.choiceSeconds());
         var f=o.freeForAll();put("ffa.time",f.timeSeconds());put("ffa.prep",f.preparationSeconds());put("ffa.protection",f.protectionSeconds());put("ffa.score",f.targetScore());
+        put("ffa.weapons",f.weaponMode()==null?null:f.weaponMode().name());put("ffa.rotation",f.rotationSeconds());put("ffa.choice",f.choiceSeconds());
     }
     private void put(String key,Object value){values.put(key,value==null?"":value instanceof Double v?number(v):value.toString());}
     private String value(String key){return values.getOrDefault(key,"");}
@@ -69,6 +71,9 @@ final class GameOptionsScreen extends ArenaScreen {
         while(!list.isEmpty()&&list.get(list.size()-1)==null)list.remove(list.size()-1);
         return list;
     }
+    private GameOptions.WeaponMode weaponMode(String key){String v=value(key);return v.isEmpty()?null:GameOptions.WeaponMode.valueOf(v);}
+    /** Whether the section under {@code prefix} ("tdm." / "ffa.") is set to 랜덤 무기. */
+    private boolean randomWeapons(String prefix){return weaponMode(prefix+"weapons")==GameOptions.WeaponMode.RANDOM;}
     /** The edited sections over the saved options, so other modes' settings are kept. */
     private GameOptions collect(){
         var saved=state.options().game();
@@ -80,8 +85,8 @@ final class GameOptionsScreen extends ArenaScreen {
         var prop=new GameOptions.PropHunt(integer("prop.time"),integer("prop.prep"),excluded,integer("prop.changes"),choice.isEmpty()?null:GameOptions.Choice.valueOf(choice),bool("prop.cling"));
         var escort=new GameOptions.Escort(integer("escort.time"),integer("escort.prep"),integers("escort.bonus.",3),integer("escort.overtime"),decimal("escort.speed"),decimal("escort.max"),decimal("escort.reverse"),integer("escort.stop"));
         var bomb=new GameOptions.Bomb(integer("bomb.time"),integer("bomb.prep"),integer("bomb.rounds"),integer("bomb.swap"),decimal("bomb.plant"),decimal("bomb.fuse"),decimal("bomb.defuse"));
-        var tdm=new GameOptions.Deathmatch(integer("tdm.time"),integer("tdm.prep"),integer("tdm.score"));
-        var ffa=new GameOptions.FreeForAll(integer("ffa.time"),integer("ffa.prep"),integer("ffa.protection"),integer("ffa.score"));
+        var tdm=new GameOptions.Deathmatch(integer("tdm.time"),integer("tdm.prep"),integer("tdm.score"),weaponMode("tdm.weapons"),integer("tdm.rotation"),integer("tdm.choice"));
+        var ffa=new GameOptions.FreeForAll(integer("ffa.time"),integer("ffa.prep"),integer("ffa.protection"),integer("ffa.score"),weaponMode("ffa.weapons"),integer("ffa.rotation"),integer("ffa.choice"));
         return new GameOptions(common,control,normandy,prop,escort,bomb,tdm,ffa);
     }
     /** Clears the selected mode's section and the common rules back to the map's values. */
@@ -144,15 +149,19 @@ final class GameOptionsScreen extends ArenaScreen {
             }
             case "DEATHMATCH"->{
                 var t=d.deathmatch();header("팀 데스매치");
-                time("tdm.time",t.timeSeconds());prep("tdm.prep",t.preparationSeconds());
+                weapons("tdm.");
+                time("tdm.time",randomWeapons("tdm.")?Integer.valueOf(GameOptions.RANDOM_TIME_SECONDS):t.timeSeconds());prep("tdm.prep",t.preparationSeconds());
                 rows.add(new Row("tdm.score","목표 점수 (킬)",Kind.INTEGER,text(t.targetScore())));
+                rotation("tdm.");
             }
             case "FREE_FOR_ALL"->{
                 var f=d.freeForAll();header("개인전");
-                time("ffa.time",f.timeSeconds());
+                weapons("ffa.");
+                time("ffa.time",randomWeapons("ffa.")?Integer.valueOf(GameOptions.RANDOM_TIME_SECONDS):f.timeSeconds());
                 rows.add(new Row("ffa.prep","게임 준비 시간 (시작 무적, 제한 시간에 포함, 초)",Kind.SECONDS,text(f.preparationSeconds())));
                 rows.add(new Row("ffa.protection","리스폰 후 무적 시간 (초)",Kind.SECONDS,text(f.protectionSeconds())));
                 rows.add(new Row("ffa.score","목표 점수",Kind.INTEGER,text(f.targetScore())));
+                rotation("ffa.");
             }
             default->{}
         }
@@ -163,6 +172,14 @@ final class GameOptionsScreen extends ArenaScreen {
         rows.add(new Row("common.dupPrimary","같은 팀 주무기 중복",Kind.TOGGLE,"false"));
         rows.add(new Row("common.dupSecondary","같은 팀 보조무기 중복",Kind.TOGGLE,"true"));
         rows.add(new Row("common.respawn","리스폰 시간 (초)",Kind.SECONDS,text(c.respawnSeconds()),()->!mode().equals("PROP_HUNT"),s->mode().equals("PROP_HUNT")?"숨바꼭질 미사용":null));
+    }
+    /** 무기 방식: 클래식 (each picks a loadout) or 랜덤 무기. */
+    private void weapons(String prefix){rows.add(new Row(prefix+"weapons","무기 방식",Kind.WEAPONS,"CLASSIC"));}
+    /** 랜덤 무기 timing, editable only while the section plays 랜덤 무기. */
+    private void rotation(String prefix){
+        Supplier<Boolean> on=()->randomWeapons(prefix);Function<String,String> off=s->randomWeapons(prefix)?null:"랜덤 무기 전용";
+        rows.add(new Row(prefix+"rotation","랜덤 무기: 무기 교체 간격 (초)",Kind.SECONDS,Integer.toString(GameOptions.ROTATION_SECONDS),on,off));
+        rows.add(new Row(prefix+"choice","랜덤 무기: 교체 전 선택 시간 (초)",Kind.SECONDS,Integer.toString(GameOptions.CHOICE_SECONDS),on,off));
     }
     private void header(String label){rows.add(new Row("",label,Kind.HEADER,""));}
     private void time(String key,Integer fallback){rows.add(new Row(key,"게임 제한 시간 (초)",Kind.SECONDS,text(fallback)));}
@@ -251,6 +268,11 @@ final class GameOptionsScreen extends ArenaScreen {
                     String label=(on?"켜기":"끄기")+(v.isEmpty()?" (기본)":"");
                     button(label,boxX(),y,BOX,18,enabled,on?ACCENT:MUTED,()->{boolean cur=Boolean.parseBoolean(value(row.key()).isEmpty()?row.placeholder():value(row.key()));values.put(row.key(),Boolean.toString(!cur));rebuildWidgets();});
                 }
+                case WEAPONS->{
+                    String v=value(row.key());var current=GameOptions.WeaponMode.valueOf(v.isEmpty()?row.placeholder():v);
+                    String label=switch(current){case CLASSIC->"클래식 (직접 선택)";case RANDOM->"랜덤 무기 (주기마다 교체)";}+(v.isEmpty()?" · 기본":"");
+                    button(label,boxX(),y,BOX+NOTE+6,18,enabled,ACCENT,()->{var next=GameOptions.WeaponMode.values()[(current.ordinal()+1)%GameOptions.WeaponMode.values().length];values.put(row.key(),next.name());rebuildWidgets();});
+                }
                 case CHOICE->{
                     String v=value(row.key());var current=GameOptions.Choice.valueOf(v.isEmpty()?row.placeholder():v);
                     String label=switch(current){case OFF->"끄기 (무작위)";case BASIC->"기본 (3개 중 선택)";case FIRST_COME->"선착순";}+(v.isEmpty()?" · 기본":"");
@@ -326,7 +348,7 @@ final class GameOptionsScreen extends ArenaScreen {
             }
             boolean enabled=row.enabled().get();
             g.drawString(font,font.plainSubstrByWidth(row.label(),boxX()-x-12),x+7,y+5,enabled?INK:MUTED,false);
-            if(row.kind()!=Kind.CHOICE){
+            if(row.kind()!=Kind.CHOICE&&row.kind()!=Kind.WEAPONS){
                 String note=note(row);boolean warn=note.startsWith("§c");if(warn)note=note.substring(2);
                 int noteX=row.kind()==Kind.TEXT?boxX()+BOX+NOTE-42:boxX()+BOX+6;
                 g.drawString(font,font.plainSubstrByWidth(note,x+w-noteX),noteX,y+5,warn?0xFFFF6666:MUTED,false);

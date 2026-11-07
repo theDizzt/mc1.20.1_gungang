@@ -37,7 +37,8 @@ public final class PropInteraction {
             "minecraft:respawn_anchor","minecraft:armor_stand","minecraft:daylight_detector","minecraft:lectern","minecraft:end_portal_frame","gungang:eunbi_doll",
             "gungang:prettiest_block","minecraft:crying_obsidian","minecraft:tnt_minecart","gungang:hanbi_doll","minecraft:conduit","gungang:nozzle",
             "minecraft:cartography_table","minecraft:farmland","minecraft:piston","minecraft:sticky_piston","gungang:desk_clock","gungang:money_cart",
-            "gungang:chameleon_block","gungang:capsule_machine","gungang:garden_fountain","gungang:easel","minecraft:light");
+            "gungang:chameleon_block","gungang:capsule_machine","gungang:garden_fountain","gungang:easel","minecraft:light",
+            "gungang:dice","gungang:chandelier","gungang:slot_machine","gungang:billiard_ball","gungang:wishing_well","gungang:embezzlement_statue","gungang:christmas_tree","gungang:sanga_doll","minecraft:dropper");
     private static final Set<String> MENUS=Set.of("minecraft:crafting_table","minecraft:loom","minecraft:grindstone","minecraft:smithing_table","minecraft:enchanting_table",
             "minecraft:cauldron","gungang:war_table","gungang:armory");
     public static boolean special(String item){return SPECIAL.contains(item);}
@@ -46,17 +47,17 @@ public final class PropInteraction {
             "minecraft:soul_campfire","minecraft:magma_block","minecraft:pointed_dripstone","minecraft:stonecutter","gungang:acid_puddle","gungang:acid_nozzle",
             "gungang:uxo","minecraft:spawner","minecraft:fire","minecraft:soul_fire","minecraft:bee_nest","minecraft:infested_stone","minecraft:minecart",
             "minecraft:end_crystal","minecraft:torchflower","gungang:geyser","minecraft:lava","gungang:acid","gungang:eunbi_doll","minecraft:tnt_minecart",
-            "gungang:death_zone","minecraft:conduit","gungang:nuke_warhead","minecraft:lightning_rod");
+            "gungang:death_zone","minecraft:conduit","gungang:nuke_warhead","minecraft:lightning_rod","gungang:slot_machine","gungang:embezzlement_statue","minecraft:dropper","gungang:combat_unit");
     public static boolean attack(String item){return ATTACK.contains(item);}
     /** Disguises that put a status effect on seekers (poison, burning, slowness, glowing), tagged "디버프" in purple. */
     private static final Set<String> DEBUFF=Set.of("gungang:acid_puddle","gungang:acid_nozzle","gungang:acid","minecraft:spawner","minecraft:cobweb",
-            "minecraft:fire","minecraft:soul_fire","minecraft:torchflower","gungang:geyser","minecraft:lava","minecraft:bell","minecraft:soul_sand");
+            "minecraft:fire","minecraft:soul_fire","minecraft:torchflower","gungang:geyser","minecraft:lava","minecraft:bell","minecraft:soul_sand","gungang:unpleasant_photo");
     public static boolean debuff(String item){return DEBUFF.contains(item);}
     /** Disguises that move faster or speed up hiders (minecarts, hanbi doll's cloak, beacon, brewing stand's swiftness), tagged "신속" in blue. */
-    private static final Set<String> SWIFT=Set.of("minecraft:minecart","minecraft:tnt_minecart","gungang:hanbi_doll","minecraft:beacon","minecraft:brewing_stand","minecraft:sponge","gungang:money_cart","minecraft:light");
+    private static final Set<String> SWIFT=Set.of("minecraft:minecart","minecraft:tnt_minecart","gungang:hanbi_doll","minecraft:beacon","minecraft:brewing_stand","minecraft:sponge","gungang:money_cart","minecraft:light","gungang:billiard_ball","gungang:sanga_doll");
     public static boolean swift(String item){return SWIFT.contains(item);}
     /** Disguises seekers cannot see (barrier, structure void, death zone), tagged "은신" in black. */
-    private static final Set<String> STEALTH=Set.of("minecraft:barrier","minecraft:structure_void","gungang:death_zone","minecraft:light");
+    private static final Set<String> STEALTH=Set.of("minecraft:barrier","minecraft:structure_void","gungang:death_zone","minecraft:light","gungang:shadow");
     public static boolean stealth(String item){return STEALTH.contains(item);}
     /** A liquid disguise (water, lava, acid, hot spring water, bubble column): no block model, drawn as its fluid. */
     public static boolean liquid(net.minecraft.world.level.block.state.BlockState state){

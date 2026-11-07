@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "gungang:block/combat_unit"
+    },
+    "facing=east": {
+      "model": "gungang:block/combat_unit"
+    },
+    "facing=south": {
+      "model": "gungang:block/combat_unit"
+    },
+    "facing=west": {
+      "model": "gungang:block/combat_unit"
+    }
+  }
+}

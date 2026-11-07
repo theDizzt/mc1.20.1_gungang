@@ -14,7 +14,9 @@ public final class PropCatalog {
             +" cobblestone_wall nether_bricks red_nether_bricks fletching_table cartography_table farmland oak_sapling prismarine piston sticky_piston red_mushroom"
             +" gungang:desk_clock gungang:money_cart mycelium gungang:aquarium bone_block quartz_pillar raw_iron_block raw_copper_block raw_gold_block"
             +" oak_hanging_sign gungang:chameleon_block gungang:capsule_machine smooth_stone gungang:error_block gungang:garden_fountain mossy_cobblestone"
-            +" prismarine_bricks dark_prismarine gungang:nuke_warhead cocoa gungang:easel light";
+            +" prismarine_bricks dark_prismarine gungang:nuke_warhead cocoa gungang:easel light"
+            +" gungang:wall_clock gungang:mirror gungang:dice gungang:chandelier gungang:slot_machine gungang:billiard_ball gungang:wishing_well gungang:embezzlement_statue gungang:christmas_tree gungang:sanga_doll"
+            +" dropper gungang:unpleasant_photo gungang:combat_unit gungang:shadow";
     private static final Set<String> OBJECTS=Set.of("minecraft:painting","minecraft:minecart","minecraft:end_crystal","minecraft:armor_stand","minecraft:tnt_minecart");
     /** "#" types draw one of the five coral kinds at random (172 coral, 173 coral block). */
     private static final String[] CORALS="tube brain bubble fire horn".split(" ");

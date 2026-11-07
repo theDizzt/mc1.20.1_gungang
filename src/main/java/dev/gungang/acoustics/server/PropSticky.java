@@ -13,7 +13,8 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class PropSticky {
     public static final double REACH=.08,SPEED=.12,PRESS=.02;
-    public static boolean sticky(String item){return item.equals("minecraft:slime_block")||item.equals("minecraft:honey_block");}
+    /** 252 Sanga's doll rides her skateboard up walls the same way. */
+    public static boolean sticky(String item){return item.equals("minecraft:slime_block")||item.equals("minecraft:honey_block")||item.equals("gungang:sanga_doll");}
     private static boolean solid(Level level,AABB box){
         for(var shape:level.getBlockCollisions(null,box))if(!shape.isEmpty())return true;
         return false;

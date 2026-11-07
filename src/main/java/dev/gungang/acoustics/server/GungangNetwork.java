@@ -36,6 +36,8 @@ public final class GungangNetwork {
     public record EaselPaint(net.minecraft.core.BlockPos pos,String pixels) { }
     public record Hud(boolean enabled) { }
     public record PropHunt(String json) {}
+    /** 랜덤 무기: the viewer's weapon choice and the time to the next change ({@link WeaponRotation.View}). */
+    public record WeaponRoll(String json) {}
     public record Emblems() { }
     public record BotSkin(String skin,byte[] png) { }
     public record Levels(String json) { }
@@ -55,6 +57,9 @@ public final class GungangNetwork {
     /** Longest lobby action value: the game options JSON, with room for every mode's section and a long excluded-block list. */
     static final int ACTION_VALUE=8192;
     public static void register() {
+        CHANNEL.registerMessage(32,WeaponRoll.class,(p,b)->b.writeUtf(p.json,262144),b->new WeaponRoll(b.readUtf(262144)),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.WeaponRollClient.receive(p.json)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(29,WeaponPatchView.class,(p,b)->b.writeUtf(p.json,262144),b->new WeaponPatchView(b.readUtf(262144)),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.WeaponPatchScreen.receive(p.json)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));

@@ -104,15 +104,46 @@ public record GameOptions(Common common,Control control,Normandy normandy,PropHu
             range(defuseSeconds,.5,300,"폭탄 해체 시간은 0.5~300초입니다.");
         }
     }
-    public record Deathmatch(Integer timeSeconds,Integer preparationSeconds,Integer targetScore) {
-        public Deathmatch {time(timeSeconds);preparation(preparationSeconds);score(targetScore);}
+    /**
+     * Weapons in team deathmatch and free-for-all. CLASSIC: everyone picks their own loadout. RANDOM: nobody picks;
+     * every {@code rotationSeconds} the primary and secondary change at random, chosen first-come from as many
+     * offers as the team has members (free-for-all: as many as there are players), opened {@code choiceSeconds}
+     * before each change and right as the match begins.
+     */
+    public enum WeaponMode { CLASSIC, RANDOM }
+    /** 랜덤 무기 defaults: a 15-minute match, a change every 3 minutes, the choice opening 15 seconds before. */
+    public static final int RANDOM_TIME_SECONDS=900,ROTATION_SECONDS=180,CHOICE_SECONDS=15;
+    public record Deathmatch(Integer timeSeconds,Integer preparationSeconds,Integer targetScore,WeaponMode weaponMode,Integer rotationSeconds,Integer choiceSeconds) {
+        public Deathmatch {time(timeSeconds);preparation(preparationSeconds);score(targetScore);checkRotation(rotationSeconds,choiceSeconds);}
+        public Deathmatch(Integer timeSeconds,Integer preparationSeconds,Integer targetScore){this(timeSeconds,preparationSeconds,targetScore,null,null,null);}
+        public boolean randomWeapons(){return weaponMode==WeaponMode.RANDOM;}
+        public int rotation(){return rotationSeconds==null?ROTATION_SECONDS:rotationSeconds;}
+        public int choice(){return choiceSeconds==null?CHOICE_SECONDS:choiceSeconds;}
     }
     /** 개인전. preparationSeconds: the opening grace (part of the time limit); protectionSeconds: after each respawn. */
-    public record FreeForAll(Integer timeSeconds,Integer preparationSeconds,Integer protectionSeconds,Integer targetScore) {
+    public record FreeForAll(Integer timeSeconds,Integer preparationSeconds,Integer protectionSeconds,Integer targetScore,WeaponMode weaponMode,Integer rotationSeconds,Integer choiceSeconds) {
         public FreeForAll {
             time(timeSeconds);range(preparationSeconds,0,600,"개인전 준비(시작 무적) 시간은 0~600초입니다.");
-            range(protectionSeconds,0,300,"리스폰 후 무적 시간은 0~300초입니다.");score(targetScore);
+            range(protectionSeconds,0,300,"리스폰 후 무적 시간은 0~300초입니다.");score(targetScore);checkRotation(rotationSeconds,choiceSeconds);
         }
+        public FreeForAll(Integer timeSeconds,Integer preparationSeconds,Integer protectionSeconds,Integer targetScore){this(timeSeconds,preparationSeconds,protectionSeconds,targetScore,null,null,null);}
+        public boolean randomWeapons(){return weaponMode==WeaponMode.RANDOM;}
+        public int rotation(){return rotationSeconds==null?ROTATION_SECONDS:rotationSeconds;}
+        public int choice(){return choiceSeconds==null?CHOICE_SECONDS:choiceSeconds;}
+    }
+    private static void checkRotation(Integer rotationSeconds,Integer choiceSeconds){
+        range(rotationSeconds,30,3600,"무기 교체 간격은 30~3600초입니다.");
+        range(choiceSeconds,5,120,"무기 선택 시간은 5~120초입니다.");
+        int rotation=rotationSeconds==null?ROTATION_SECONDS:rotationSeconds,choice=choiceSeconds==null?CHOICE_SECONDS:choiceSeconds;
+        if(choice>=rotation)throw new IllegalArgumentException("무기 선택 시간("+choice+"초)은 무기 교체 간격("+rotation+"초)보다 짧아야 합니다.");
+    }
+    /** Whether this mode plays with 랜덤 무기 under these options. */
+    public boolean randomWeapons(String mode){
+        return switch(mode){case "DEATHMATCH"->deathmatch.randomWeapons();case "FREE_FOR_ALL"->freeForAll.randomWeapons();default->false;};
+    }
+    /** {rotation, choice} seconds of 랜덤 무기 in this mode. */
+    public int[] weaponRotation(String mode){
+        return mode.equals("FREE_FOR_ALL")?new int[]{freeForAll.rotation(),freeForAll.choice()}:new int[]{deathmatch.rotation(),deathmatch.choice()};
     }
 
     private static void time(Integer seconds){range(seconds,30,86400,"게임 제한 시간은 30~86400초입니다.");}
@@ -130,7 +161,10 @@ public record GameOptions(Common common,Control control,Normandy normandy,PropHu
 
     // ---- Applying to a match ------------------------------------------------------------------------------------
 
-    public DeathmatchRules deathmatch(DeathmatchRules base){return new DeathmatchRules(or(deathmatch.timeSeconds,base.timeLimitSeconds()),or(deathmatch.targetScore,base.winningKills()));}
+    public DeathmatchRules deathmatch(DeathmatchRules base){
+        int fallback=deathmatch.randomWeapons()?RANDOM_TIME_SECONDS:base.timeLimitSeconds();
+        return new DeathmatchRules(or(deathmatch.timeSeconds,fallback),or(deathmatch.targetScore,base.winningKills()));
+    }
 
     /** The map as this mode plays it with these overrides (the arena already reduced to the mode, see LobbyManager). */
     public ArenaMap apply(ArenaMap base,String mode){
@@ -163,9 +197,11 @@ public record GameOptions(Common common,Control control,Normandy normandy,PropHu
             case "FREE_FOR_ALL"->{
                 if(base.freeForAll()!=null){
                     var f=json.getAsJsonObject("freeForAll");
-                    if(freeForAll.timeSeconds!=null){f.addProperty("timeLimitSeconds",freeForAll.timeSeconds);json.addProperty("timeLimitSeconds",freeForAll.timeSeconds);}
+                    // 랜덤 무기 plays 15 minutes unless a time is set.
+                    Integer custom=freeForAll.timeSeconds!=null?freeForAll.timeSeconds:freeForAll.randomWeapons()?Integer.valueOf(RANDOM_TIME_SECONDS):null;
+                    if(custom!=null){f.addProperty("timeLimitSeconds",custom);json.addProperty("timeLimitSeconds",custom);}
                     if(freeForAll.targetScore!=null)f.addProperty("winningScore",freeForAll.targetScore);
-                    int time=or(freeForAll.timeSeconds,base.freeForAll().timeLimitSeconds()),opening=or(freeForAll.preparationSeconds,FreeForAllMatch.OPENING_TICKS/20);
+                    int time=or(custom,base.freeForAll().timeLimitSeconds()),opening=or(freeForAll.preparationSeconds,FreeForAllMatch.OPENING_TICKS/20);
                     if(opening>=time)throw new IllegalArgumentException("개인전 준비(시작 무적) 시간은 게임 제한 시간보다 짧아야 합니다.");
                 }
             }
@@ -208,8 +244,8 @@ public record GameOptions(Common common,Control control,Normandy normandy,PropHu
             case "PROP_HUNT"->{int hunt=PropHuntGame.huntTicks(arena)/20;prop=new PropHunt(hunt,PropHuntGame.HIDE/20,List.of(),PropHuntGame.legacyChanges(hunt*20),Choice.BASIC,true);}
             case "ESCORT"->{if(arena.escort()!=null){var r=arena.escort();int b=r.checkpointBonusSeconds();escort=new Escort(time,30,List.of(b,b,b),EscortGame.OVERTIME_TICKS/20,r.speed(),r.maxMultiplier(),r.speed()*EscortGame.PUSH_BACK,r.checkpointStopSeconds());}}
             case "BOMB"->{if(arena.bomb()!=null){var r=arena.bomb();var t=BombEquipment.timing;bomb=new Bomb(Math.min(3600,Math.max(10,arena.timeLimitSeconds())),r.preparationSeconds(),Math.max(2,r.rounds()),r.swapEveryRounds(),Math.max(.5,t.plantSeconds()),Math.max(1,t.fuseSeconds()),Math.max(.5,t.defuseSeconds()));}}
-            case "DEATHMATCH"->{var r=team.deathmatch();tdm=new Deathmatch(r.timeLimitSeconds(),30,r.winningKills());}
-            case "FREE_FOR_ALL"->{if(arena.freeForAll()!=null)ffa=new FreeForAll(arena.freeForAll().timeLimitSeconds(),FreeForAllMatch.OPENING_TICKS/20,FreeForAllMatch.RESPAWN_PROTECTION_TICKS/20,arena.freeForAll().winningScore());}
+            case "DEATHMATCH"->{var r=team.deathmatch();tdm=new Deathmatch(r.timeLimitSeconds(),30,r.winningKills(),WeaponMode.CLASSIC,ROTATION_SECONDS,CHOICE_SECONDS);}
+            case "FREE_FOR_ALL"->{if(arena.freeForAll()!=null)ffa=new FreeForAll(arena.freeForAll().timeLimitSeconds(),FreeForAllMatch.OPENING_TICKS/20,FreeForAllMatch.RESPAWN_PROTECTION_TICKS/20,arena.freeForAll().winningScore(),WeaponMode.CLASSIC,ROTATION_SECONDS,CHOICE_SECONDS);}
             default->{}
         }
         return new GameOptions(common,control,normandy,prop,escort,bomb,tdm,ffa);
