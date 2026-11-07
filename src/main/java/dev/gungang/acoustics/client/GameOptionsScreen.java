@@ -44,7 +44,7 @@ final class GameOptionsScreen extends ArenaScreen {
         values.clear();
         var c=o.common();
         put("common.dupPrimary",c.duplicatePrimary());put("common.dupSecondary",c.duplicateSecondary());put("common.respawn",c.respawnSeconds());
-        put("common.handicapSecondary",c.handicapSecondary());put("common.handicapHealth",c.handicapHealth());
+        put("common.handicapSecondary",c.handicapSecondary());put("common.handicapHealth",c.handicapHealth());put("common.handicapLargeHealth",c.handicapLargeHealth());
         var cp=o.control();put("control.time",cp.timeSeconds());put("control.prep",cp.preparationSeconds());put("control.capture",cp.captureSeconds());put("control.score",cp.targetScore());
         var n=o.normandy();put("normandy.time",n.timeSeconds());put("normandy.prep",n.preparationSeconds());
         for(int i=0;i<n.captureSeconds().size();i++)put("normandy.capture."+i,n.captureSeconds().get(i));
@@ -77,7 +77,7 @@ final class GameOptionsScreen extends ArenaScreen {
     /** The edited sections over the saved options, so other modes' settings are kept. */
     private GameOptions collect(){
         var saved=state.options().game();
-        var common=new GameOptions.Common(bool("common.dupPrimary"),bool("common.dupSecondary"),integer("common.respawn"),bool("common.handicapSecondary"),decimal("common.handicapHealth"));
+        var common=new GameOptions.Common(bool("common.dupPrimary"),bool("common.dupSecondary"),integer("common.respawn"),bool("common.handicapSecondary"),decimal("common.handicapHealth"),integer("common.handicapLargeHealth"));
         var control=new GameOptions.Control(integer("control.time"),integer("control.prep"),integer("control.capture"),integer("control.score"));
         var normandy=new GameOptions.Normandy(integer("normandy.time"),integer("normandy.prep"),integers("normandy.capture.",Math.max(points().size(),saved.normandy().captureSeconds().size())));
         String choice=value("prop.choice");
@@ -168,6 +168,7 @@ final class GameOptionsScreen extends ArenaScreen {
         var c=d.common();boolean team=GameOptions.teamMode(mode());
         header("공통 설정");
         rows.add(new Row("common.handicapSecondary","핸디캡: 인원 많은 팀 보조무기 금지",Kind.TOGGLE,"false",()->team,s->team?"":"팀 모드 전용"));
+        rows.add(new Row("common.handicapLargeHealth","핸디캡: 인원 많은 팀 체력 (50~100%)",Kind.INTEGER,text(c.handicapLargeHealth()),()->team,s->team?"%":"팀 모드 전용"));
         rows.add(new Row("common.handicapHealth","핸디캡: 인원 적은 팀 체력 배수 (1.00~5.00)",Kind.DECIMAL,text(c.handicapHealth()),()->team,s->team?"x 배":"팀 모드 전용"));
         rows.add(new Row("common.dupPrimary","같은 팀 주무기 중복",Kind.TOGGLE,"false"));
         rows.add(new Row("common.dupSecondary","같은 팀 보조무기 중복",Kind.TOGGLE,"true"));

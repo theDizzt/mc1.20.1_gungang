@@ -3,7 +3,7 @@ package dev.gungang.acoustics.server;
 import java.util.*;
 
 public record PlayerRecord(String id,String name,long experience,long matches,long kills,long deaths,double damage,long playSeconds,long wins,
-                           List<Preset> presets,int defaultPreset) {
+                           List<Preset> presets,int defaultPreset,String nickname) {
     public static final int PRESETS=5;
     /** Saved primary/secondary combination, referenced by weapon id. */
     public record Preset(int slot,String name,String primary,String secondary) {
@@ -16,6 +16,8 @@ public record PlayerRecord(String id,String name,long experience,long matches,lo
         }
     }
     public PlayerRecord {
+        nickname=nickname==null?"":nickname;
+        if(!nickname.isEmpty())nickname=validateNickname(nickname);
         java.util.UUID.fromString(id);
         if(name==null||name.isBlank()||name.length()>64||experience<0||matches<0||kills<0||deaths<0||playSeconds<0||wins<0||!Double.isFinite(damage)||damage<0)
             throw new IllegalArgumentException("Invalid player record");
@@ -29,27 +31,38 @@ public record PlayerRecord(String id,String name,long experience,long matches,lo
     public PlayerRecord(String id,String name,long experience,long matches,long kills,long deaths,double damage,long playSeconds,long wins) {
         this(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,List.of(),0);
     }
+    public PlayerRecord(String id,String name,long experience,long matches,long kills,long deaths,double damage,long playSeconds,long wins,List<Preset> presets,int defaultPreset) {
+        this(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,presets,defaultPreset,"");
+    }
+    public static String validateNickname(String value) {
+        String n=java.text.Normalizer.normalize(value.strip(),java.text.Normalizer.Form.NFC);
+        if(n.isBlank()||n.codePointCount(0,n.length())>8||n.codePoints().anyMatch(c->Character.isISOControl(c)||Character.getType(c)==Character.FORMAT||c==0xA7))
+            throw new IllegalArgumentException("닉네임은 한글·영문 등 1~8글자로 입력해 주세요.");
+        return n;
+    }
+    public PlayerRecord withNickname(String value) {return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,presets,defaultPreset,validateNickname(value));}
+    public String displayName() {return nickname.isEmpty()?name:nickname;}
     public static PlayerRecord empty(String id,String name) { return new PlayerRecord(id,name,0,0,0,0,0,0,0); }
-    public PlayerRecord named(String name) {return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,presets,defaultPreset);}
+    public PlayerRecord named(String name) {return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,presets,defaultPreset,nickname);}
     public PlayerRecord match(MatchSnapshot.Row row,int xp,boolean won) {
-        return new PlayerRecord(id,row.name(),Math.addExact(experience,xp),Math.addExact(matches,1),Math.addExact(kills,row.kills()),
-                Math.addExact(deaths,row.deaths()),damage+row.damage(),Math.addExact(playSeconds,row.playSeconds()),Math.addExact(wins,won?1:0),presets,defaultPreset);
+        return new PlayerRecord(id,name,Math.addExact(experience,xp),Math.addExact(matches,1),Math.addExact(kills,row.kills()),
+                Math.addExact(deaths,row.deaths()),damage+row.damage(),Math.addExact(playSeconds,row.playSeconds()),Math.addExact(wins,won?1:0),presets,defaultPreset,nickname);
     }
     public PlayerRecord set(String field,String value) {
         return new PlayerRecord(id,name,field.equals("xp")?Long.parseLong(value):experience,field.equals("matches")?Long.parseLong(value):matches,
                 field.equals("kills")?Long.parseLong(value):kills,field.equals("deaths")?Long.parseLong(value):deaths,
                 field.equals("damage")?Double.parseDouble(value):damage,field.equals("playSeconds")?Long.parseLong(value):playSeconds,
-                field.equals("wins")?Long.parseLong(value):wins,presets,defaultPreset);
+                field.equals("wins")?Long.parseLong(value):wins,presets,defaultPreset,nickname);
     }
     public Preset preset(int slot) {return presets.stream().filter(p->p.slot()==slot).findFirst().orElse(null);}
     public Preset defaultLoadout() {return defaultPreset==0?null:preset(defaultPreset);}
     public PlayerRecord withPreset(Preset preset) {
         var next=new ArrayList<>(presets);next.removeIf(p->p.slot()==preset.slot());next.add(preset);
-        return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,next,defaultPreset);
+        return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,next,defaultPreset,nickname);
     }
     public PlayerRecord withoutPreset(int slot) {
         var next=new ArrayList<>(presets);next.removeIf(p->p.slot()==slot);
-        return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,next,defaultPreset==slot?0:defaultPreset);
+        return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,next,defaultPreset==slot?0:defaultPreset,nickname);
     }
-    public PlayerRecord withDefault(int slot) {return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,presets,slot);}
+    public PlayerRecord withDefault(int slot) {return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,presets,slot,nickname);}
 }

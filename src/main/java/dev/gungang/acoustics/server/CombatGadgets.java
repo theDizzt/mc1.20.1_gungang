@@ -201,7 +201,7 @@ public final class CombatGadgets {
     static void resetScan(ServerPlayer p) {SCAN_READY.remove(p.getUUID());}
     public static void clear(ServerPlayer p) {p.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED).removeModifier(SHIELD_SLOW);SHIELDS.remove(p.getUUID());BLOCKED.remove(p.getUUID());COMBAT.remove(p.getUUID());SCANS.remove(p.getUUID());SCAN_READY.remove(p.getUUID());LAST_HUD.remove(p.getUUID());LAST_SCAN.remove(p.getUUID());}
     public static void reset(net.minecraft.server.MinecraftServer server) {
-        MercyBullet.reset();SurvivalGadgets.reset(server);
+        Defibrillator.reset();SurvivalGadgets.reset(server);
         SHIELDS.clear();BLOCKED.clear();COMBAT.clear();SCANS.clear();SCAN_READY.clear();LAST_HUD.clear();LAST_SCAN.clear();
         for(var p:server.getPlayerList().getPlayers()) {
             p.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED).removeModifier(SHIELD_SLOW);

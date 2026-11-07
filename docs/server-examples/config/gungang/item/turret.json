@@ -1,6 +1,6 @@
 {
   "damage": 7,
-  "detectionRange": 16,
+  "detectionRange": 24,
   "cooldownSeconds": 120,
   "health": 200,
   "capacity": 120,

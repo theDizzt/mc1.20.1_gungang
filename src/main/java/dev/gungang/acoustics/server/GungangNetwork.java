@@ -41,6 +41,8 @@ public final class GungangNetwork {
     public record Emblems() { }
     public record BotSkin(String skin,byte[] png) { }
     public record Levels(String json) { }
+    public record Nickname(boolean required,String error) { }
+    public record SetNickname(String value) { }
     public record TeamPointRequest() { }
     public record TeamPointView(String json) { }
     public record NozzleBurst(net.minecraft.core.BlockPos pos,boolean acid,double height,int count) { }
@@ -49,6 +51,8 @@ public final class GungangNetwork {
     public record ConveyorSet(net.minecraft.core.BlockPos pos,int speed,boolean reverse) { }
     public record SecretBlockSync(boolean full,long[] positions,byte[] modes) { }
     public record RapierStep(int entity,float yaw) { }
+    public record AssaultMotion(boolean active,double x,double y,double z) { }
+    public record AnchorPull(java.util.UUID anchor,boolean active,double x,double y,double z) { }
     public record Emote(int entity,int slot,boolean prop) { }
     public record PropList() { }
     /** 247+: the live weapon patch screen (server view as JSON) and its requests ({@code open}/{@code apply}). */
@@ -57,6 +61,21 @@ public final class GungangNetwork {
     /** Longest lobby action value: the game options JSON, with room for every mode's section and a long excluded-block list. */
     static final int ACTION_VALUE=8192;
     public static void register() {
+        // 36: opera used 34 for this, which Nickname already holds here.
+        CHANNEL.registerMessage(36,AnchorPull.class,(p,b)->{b.writeUUID(p.anchor);b.writeBoolean(p.active);b.writeDouble(p.x);b.writeDouble(p.y);b.writeDouble(p.z);},
+                b->new AnchorPull(b.readUUID(),b.readBoolean(),b.readDouble(),b.readDouble(),b.readDouble()),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.VoidAnchorClient.receive(p)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(34,Nickname.class,(p,b)->{b.writeBoolean(p.required);b.writeUtf(p.error,256);},b->new Nickname(b.readBoolean(),b.readUtf(256)),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.NicknameScreen.receive(p)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(35,SetNickname.class,(p,b)->b.writeUtf(p.value,64),b->new SetNickname(b.readUtf(64)),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->ProgressionService.nickname(ctx.getSender(),p.value));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(33,AssaultMotion.class,(p,b)->{b.writeBoolean(p.active);b.writeDouble(p.x);b.writeDouble(p.y);b.writeDouble(p.z);},
+                b->new AssaultMotion(b.readBoolean(),b.readDouble(),b.readDouble(),b.readDouble()),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.AirAssaultClient.receive(p)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(32,WeaponRoll.class,(p,b)->b.writeUtf(p.json,262144),b->new WeaponRoll(b.readUtf(262144)),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.WeaponRollClient.receive(p.json)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));

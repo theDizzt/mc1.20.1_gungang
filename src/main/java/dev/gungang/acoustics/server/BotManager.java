@@ -237,6 +237,8 @@ public final class BotManager {
     }
     private static void removeAll(){for(var a:agents)a.remove();agents.clear();}
     static void died(UUID bot,UUID killer){var a=agent(bot);if(a!=null)a.died(killer);}
+    /** Includes the zero-health body while its death event is being handled. */
+    static BotEntity deathBody(UUID id){var a=agent(id);return a==null?null:a.bot;}
     static void openingDeath(UUID bot){var a=agent(bot);if(a!=null)a.openingDeath();}
     /** 폭탄전: a killed bot stays out until {@link #bombRound}. */
     static void bench(UUID bot){var a=agent(bot);if(a!=null)a.respawnAt=Integer.MAX_VALUE;}

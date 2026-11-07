@@ -100,7 +100,7 @@ final class PropObjectRenderer {
         }
     }
     /** A flat strip from a to b, half width w, turned to face the eye (relative coordinates); additive. */
-    private static void strip(com.mojang.blaze3d.vertex.VertexConsumer buffer,org.joml.Matrix4f m,org.joml.Vector3f a,org.joml.Vector3f b,
+    static void strip(com.mojang.blaze3d.vertex.VertexConsumer buffer,org.joml.Matrix4f m,org.joml.Vector3f a,org.joml.Vector3f b,
                               org.joml.Vector3f dir,org.joml.Vector3f eye,float w,float r,float g,float bl,float alpha){
         var mid=new org.joml.Vector3f(a).add(b).mul(.5f);var toEye=new org.joml.Vector3f(eye).sub(mid);
         var side=new org.joml.Vector3f(dir).cross(toEye);if(side.lengthSquared()<1e-6f)side.set(0,1,0);side.normalize().mul(w);

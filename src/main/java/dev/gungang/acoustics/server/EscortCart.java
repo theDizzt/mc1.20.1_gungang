@@ -139,6 +139,25 @@ public final class EscortCart extends Entity {
         entityData.set(TRAVEL,travel()+(float)old.distanceTo(next));
         for(var p:level().getEntitiesOfClass(net.minecraft.server.level.ServerPlayer.class,getBoundingBox().inflate(.1,.3,.1),this::carries))p.fallDistance=0;
         setYRot((float)yaw);setPos(next);setBoundingBox(makeBoundingBox());
+        shoveMobs();
+    }
+    /**
+     * Players are pushed out by their own client (EscortRiding); bots and other mobs have no client, so a cart rolling or
+     * turning into one swallowed it (collision ignores shapes already overlapped) and it walked about inside the gold.
+     */
+    private void shoveMobs(){
+        for(var mob:level().getEntitiesOfClass(LivingEntity.class,getBoundingBox().inflate(.5),e->e instanceof net.minecraft.world.entity.Mob&&e.isAlive()&&!e.isSpectator())){
+            for(int i=0;i<3;i++){
+                var out=pushOut(mob.getBoundingBox());if(out==null)break;
+                if(!level().noCollision(mob,mob.getBoundingBox().move(out))){
+                    // The short way is a wall: try the deck, else leave the move to collision next tick.
+                    var up=new Vec3(0,getY()+DECK+.01-mob.getY(),0);
+                    if(up.y>0&&level().noCollision(mob,mob.getBoundingBox().move(up)))out=up;else break;
+                }
+                mob.setPos(mob.position().add(out));
+                if(mob instanceof net.minecraft.world.entity.Mob m)m.getNavigation().stop();
+            }
+        }
     }
     @Override public void tick(){super.tick();if(!level().isClientSide&&!MatchManager.isEscortCart(this))discard();}
     @Override public void lerpTo(double x,double y,double z,float yaw,float pitch,int steps,boolean teleport){setYRot(getYRot()+net.minecraft.util.Mth.wrapDegrees(yaw-getYRot()));setXRot(pitch);setPos(x,y,z);setBoundingBox(makeBoundingBox());}

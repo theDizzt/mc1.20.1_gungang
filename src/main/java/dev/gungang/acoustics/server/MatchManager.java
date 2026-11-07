@@ -5,6 +5,7 @@ import dev.gungang.acoustics.GungangAcoustics;
 import java.nio.file.*;
 import java.time.*;
 import java.util.*;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.*;
 import net.minecraft.world.phys.AABB;
@@ -85,7 +86,7 @@ public final class MatchManager {
         escort=escortRoute==null?null:new EscortMatch(s,arena,escortRoute);
         presence.clear(); contested=false;
         started=ZonedDateTime.now();
-        for (var p:s.getPlayerList().getPlayers()) ledger.add(p.getUUID(),p.getGameProfile().getName(),freeForAll!=null&&freeForAll.participant(p.getUUID())?p.getUUID().toString():LobbyManager.team(p.getUUID()));
+        for (var p:s.getPlayerList().getPlayers()) ledger.add(p.getUUID(),ProgressionService.name(p),freeForAll!=null&&freeForAll.participant(p.getUUID())?p.getUUID().toString():LobbyManager.team(p.getUUID()));
         alphaOnPoint=bravoOnPoint=false;
         bots=deathmatch!=null||freeForAll!=null||normandy!=null||escort!=null||bomb!=null||propHunt!=null||arena.capture()!=null&&normandy==null&&bomb==null&&escort==null&&freeForAll==null;
         if(bots)BotManager.prepare(s,arena);else BotManager.close();
@@ -242,7 +243,7 @@ public final class MatchManager {
     @SubscribeEvent(priority=EventPriority.LOWEST) public static void death(LivingDeathEvent event) {
         if(!running||map==null||event.isCanceled())return;
         if(BotManager.owns(event.getEntity())){
-            event.setCanceled(true);var killer=event.getSource().getEntity();
+            event.setCanceled(true);var killer=DamageCredit.attacker(event.getEntity(),event.getSource());
             botDeath(event.getEntity().getUUID(),killer==null?null:killer.getUUID());return;
         }
         if(event.getEntity() instanceof ServerPlayer victim) {
@@ -251,17 +252,17 @@ public final class MatchManager {
             if(bomb!=null){
                 if(!java.util.Set.of("ALPHA","BRAVO").contains(LobbyManager.team(victim.getUUID())))return;
                 if(bomb.dead(victim.getUUID())||!bomb.activePlay()){victim.setHealth(victim.getMaxHealth());event.setCanceled(true);return;}
-                var killer=event.getSource().getEntity() instanceof ServerPlayer p?p:null;
+                var killer=DamageCredit.attacker(victim,event.getSource());
                 ledger.death(victim.getUUID(),killer==null?null:killer.getUUID(),server.getTickCount(),false);
-                var message=victim.getCombatTracker().getDeathMessage();bomb.eliminate(victim);event.setCanceled(true);
+                var message=deathMessage(victim,killer);bomb.eliminate(victim);event.setCanceled(true);
                 for(var p:server.getPlayerList().getPlayers())p.sendSystemMessage(message);
                 return;
             }
             if(LobbyManager.respawning(victim.getUUID())) {
                 victim.setHealth(victim.getMaxHealth()); event.setCanceled(true); return;
             }
-            var killer=event.getSource().getEntity() instanceof ServerPlayer player?player:null;
-            var source=event.getSource().getEntity();
+            var source=DamageCredit.attacker(victim,event.getSource());
+            var killer=source instanceof ServerPlayer player?player:null;
             var killerId=source!=null&&BotManager.identity(source.getUUID())?source.getUUID():killer==null?(freeForAll!=null?victim.getUUID():null):killer.getUUID();
             ledger.death(victim.getUUID(),killerId,server.getTickCount(),deathmatch!=null);
             if(freeForAll!=null)freeForAll.death(victim.getUUID(),killerId); // bot kills score like player kills
@@ -276,7 +277,7 @@ public final class MatchManager {
         }
     }
     public static void participant(ServerPlayer player) {
-        if (map!=null) ledger.add(player.getUUID(),player.getGameProfile().getName(),freeForAll!=null&&freeForAll.participant(player.getUUID())?player.getUUID().toString():LobbyManager.team(player.getUUID()));
+        if (map!=null) ledger.add(player.getUUID(),ProgressionService.name(player),freeForAll!=null&&freeForAll.participant(player.getUUID())?player.getUUID().toString():LobbyManager.team(player.getUUID()));
     }
     static boolean botRunning(){return running&&map!=null&&bots;}
     /** In free-for-all a bot is its own side, keyed by its UUID like a player. */
@@ -287,6 +288,13 @@ public final class MatchManager {
         if(freeForAll!=null&&freeForAll.opening()){BotManager.openingDeath(bot);return;}
         // 폭탄전: nobody dies between rounds (players are healed the same way).
         if(bomb!=null&&!bomb.activePlay()){BotManager.revive(bot);return;}
+        var body=BotManager.deathBody(bot);
+        if(body!=null){
+            net.minecraft.world.entity.Entity attacker=killer==null?null:server.getPlayerList().getPlayer(killer);
+            if(attacker==null&&killer!=null)attacker=BotManager.body(killer);
+            var message=deathMessage(body,attacker);
+            for(var player:server.getPlayerList().getPlayers())player.sendSystemMessage(message);
+        }
         ledger.death(bot,killer,server.getTickCount(),deathmatch!=null);
         if(freeForAll!=null)freeForAll.death(bot,killer);
         BotManager.died(bot,killer);
@@ -294,6 +302,10 @@ public final class MatchManager {
         if(freeForAll!=null){String winner=freeForAll.winner(false);if(!winner.isEmpty())LobbyManager.finish(winner);return;}
         if(deathmatch==null)return;
         String winner=deathmatch.winner(alphaScore(),bravoScore(),false);if(!winner.isEmpty())LobbyManager.finish(winner);
+    }
+    static Component deathMessage(net.minecraft.world.entity.LivingEntity victim,net.minecraft.world.entity.Entity killer){
+        if(killer==null||killer.getUUID().equals(victim.getUUID()))return victim.getCombatTracker().getDeathMessage();
+        return Component.empty().append(victim.getDisplayName()).append(" 님이 ").append(killer.getDisplayName()).append(" 님에게 처치당했습니다.");
     }
     /** The mission bots of {@code team} work toward in the running mode, or null (team deathmatch). */
     static BotObjective botObjective(String team,int slot){

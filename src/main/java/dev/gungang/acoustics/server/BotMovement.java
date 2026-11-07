@@ -740,17 +740,21 @@ final class BotMovement {
         for(var pos:BlockPos.betweenClosed(Mth.floor(box.minX),Mth.floor(box.minY-.05),Mth.floor(box.minZ),
                 Mth.floor(box.maxX-1e-6),Mth.floor(box.maxY-1e-6),Mth.floor(box.maxZ-1e-6))) {
             if(!bot.level().hasChunkAt(pos))return true;
-            var state=bot.level().getBlockState(pos);var block=state.getBlock();
-            if(state.getFluidState().is(net.minecraft.tags.FluidTags.LAVA)||block instanceof AcidBlock||AcidLogging.acid(state)
-                    ||block instanceof PuddleBlock puddle&&puddle.acid
-                    ||state.is(net.minecraft.tags.BlockTags.FIRE)||block==net.minecraft.world.level.block.Blocks.MAGMA_BLOCK
-                    ||block==net.minecraft.world.level.block.Blocks.CACTUS||block==net.minecraft.world.level.block.Blocks.SWEET_BERRY_BUSH
-                    ||block==net.minecraft.world.level.block.Blocks.WITHER_ROSE||block==net.minecraft.world.level.block.Blocks.POWDER_SNOW
-                    ||block instanceof net.minecraft.world.level.block.CampfireBlock&&state.getValue(net.minecraft.world.level.block.CampfireBlock.LIT)
-                    // An armed UXO goes off as soon as a body overlaps its cell (see GimmickEntity.tick).
-                    ||uxo(state)||block instanceof DeathZoneBlock)return true;
+            if(hazard(bot.level().getBlockState(pos)))return true;
         }
         return false;
+    }
+    /** A block that hurts or kills whoever stands in or on it: lava, fire, acid, magma, thorns, powder snow, armed UXO, death zones. */
+    static boolean hazard(net.minecraft.world.level.block.state.BlockState state) {
+        var block=state.getBlock();
+        return state.getFluidState().is(net.minecraft.tags.FluidTags.LAVA)||block instanceof AcidBlock||AcidLogging.acid(state)
+                ||block instanceof PuddleBlock puddle&&puddle.acid
+                ||state.is(net.minecraft.tags.BlockTags.FIRE)||block==net.minecraft.world.level.block.Blocks.MAGMA_BLOCK
+                ||block==net.minecraft.world.level.block.Blocks.CACTUS||block==net.minecraft.world.level.block.Blocks.SWEET_BERRY_BUSH
+                ||block==net.minecraft.world.level.block.Blocks.WITHER_ROSE||block==net.minecraft.world.level.block.Blocks.POWDER_SNOW
+                ||block instanceof net.minecraft.world.level.block.CampfireBlock&&state.getValue(net.minecraft.world.level.block.CampfireBlock.LIT)
+                // An armed UXO goes off as soon as a body overlaps its cell (see GimmickEntity.tick).
+                ||uxo(state)||block instanceof DeathZoneBlock;
     }
     static boolean uxo(net.minecraft.world.level.block.state.BlockState state) {
         return state.getBlock() instanceof GimmickBlock g&&g.id.equals("uxo")&&state.getValue(GimmickBlock.ACTIVE);

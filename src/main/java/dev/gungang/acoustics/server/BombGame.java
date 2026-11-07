@@ -40,7 +40,8 @@ public final class BombGame {
         switch(phase){
             case PREPARING->{if(--remaining<=0){phase=Phase.RUNNING;remaining=roundTicks;}}
             case RUNNING->{
-                if(planted){if(--fuse<=0)win(attacker(),"EXPLODED");}
+                // A defender wipe ends the round at once, planted or not; an attacker wipe only before the plant (the bomb still ticks).
+                if(planted){if(defendersAlive==0)win(attacker(),"ELIMINATED");else if(--fuse<=0)win(attacker(),"EXPLODED");}
                 else if(attackersAlive==0)win(defender(),"ELIMINATED");
                 else if(defendersAlive==0)win(attacker(),"ELIMINATED");
                 else if(--remaining<=0)win(defender(),"TIMEOUT");

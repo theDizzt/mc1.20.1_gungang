@@ -15,7 +15,7 @@ public final class BotEntity extends PathfinderMob {
         super.travel(steering==null?input:steering);
     }
     private static final net.minecraft.network.syncher.EntityDataAccessor<String> SKIN=net.minecraft.network.syncher.SynchedEntityData.defineId(BotEntity.class,net.minecraft.network.syncher.EntityDataSerializers.STRING);
-    /** Absorption is a plain server field on mobs; synced so teammates' health bars show the yellow bonus (mercy bullet, life support). */
+    /** Absorption is a plain server field on mobs; synced so teammates' health bars show the yellow bonus (defibrillator, life support). */
     private static final net.minecraft.network.syncher.EntityDataAccessor<Float> ABSORPTION=net.minecraft.network.syncher.SynchedEntityData.defineId(BotEntity.class,net.minecraft.network.syncher.EntityDataSerializers.FLOAT);
     /** 숨바꼭질: entity id of the bot's own disguise, or -1. The body then takes the block's size and steps aside for bullets. */
     private static final net.minecraft.network.syncher.EntityDataAccessor<Integer> DISGUISE=net.minecraft.network.syncher.SynchedEntityData.defineId(BotEntity.class,net.minecraft.network.syncher.EntityDataSerializers.INT);
@@ -77,7 +77,11 @@ public final class BotEntity extends PathfinderMob {
                         if(state.getBlock() instanceof ShutterBlock&&!BotNavGraph.shutterOpen(world,new net.minecraft.core.BlockPos(x,y,z)))return BlockPathTypes.BLOCKED;
                         // An armed UXO goes off under whoever stands in its cell, so never route through it.
                         if(state.getBlock() instanceof GimmickBlock g&&g.id.equals("uxo")&&state.getValue(GimmickBlock.ACTIVE))return BlockPathTypes.BLOCKED;
+                        // Vanilla knows lava and fire but not acid, acid puddles or death zones: a short drop (up to three
+                        // blocks, which vanilla paths take without the nav graph's landing check) must never end on one.
+                        if(BotMovement.hazard(state))return BlockPathTypes.BLOCKED;
                         var type=super.getBlockPathType(world,x,y,z);
+                        if((type==BlockPathTypes.WALKABLE||type==BlockPathTypes.OPEN)&&BotMovement.hazard(world.getBlockState(new net.minecraft.core.BlockPos(x,y-1,z))))return BlockPathTypes.BLOCKED;
                         // Seen enemy mines and traps, fire and strike zones cost extra, so paths bend around them.
                         return type==BlockPathTypes.WALKABLE&&BotManager.avoid(BotEntity.this,x,y,z)?BlockPathTypes.DAMAGE_OTHER:type;
                     }
