@@ -349,6 +349,7 @@ public final class LobbyManager {
                 return;
             }
             if (action.action().equals("equipment")) { equipment(sender, true); return; }
+            if (action.action().equals("weaponPick")) { try { WeaponRotation.pick(sender, Integer.parseInt(action.value())-1); } catch (NumberFormatException ignored) { } return; }
             if (action.action().equals("primary") || action.action().equals("secondary")) { chooseWeapon(sender, action.action(), action.value()); return; }
             if (action.action().equals("randomLoadout")) { randomLoadout(sender); return; }
             if (action.action().startsWith("preset")) { preset(sender, action); return; }
@@ -598,7 +599,7 @@ public final class LobbyManager {
         grant(p,primary,0,true); grant(p,secondary,40,true);
         notifyReplacement(p,true,choice[0],primary.id());notifyReplacement(p,false,choice[1],secondary.id());
         if(loadouts.slot9()!=null) grant(p,loadouts.slot9(),8,true);
-        MatchManager.participant(p); equipment(p,true); broadcast(false);
+        MatchManager.participant(p); WeaponRotation.joined(p); equipment(p,!WeaponRotation.active()); broadcast(false);
         if(MatchManager.bomb()!=null)MatchManager.bomb().lateJoin(p);
     }
     private static void resetCooldowns(net.minecraft.commands.CommandSourceStack source, java.util.Collection<ServerPlayer> targets) {
@@ -659,6 +660,7 @@ public final class LobbyManager {
             else giveSlot9(p);
         }
         if(MatchManager.bomb()!=null)MatchManager.bomb().announceRound();
+        WeaponRotation.begin(server,activeMode,options().game(),activeMap.timeLimitSeconds());
     }
     private static void teleportSpawn(ServerPlayer p, Entry e) {
         if(MatchManager.freeForAll()!=null&&!e.team.equals("SPECTATOR")){MatchManager.freeForAll().spawn(p);return;}
@@ -857,6 +859,20 @@ public final class LobbyManager {
         p.inventoryMenu.broadcastChanges();
         GungangNetwork.send(p, new GungangNetwork.Equipment(ServerFiles.GSON.toJson(new EquipmentSnapshot(false, false, e.team, e.primary, e.secondary, 0, null))));
     }
+    /**
+     * 랜덤 무기: the rotation's weapons replace the current ones in place (anywhere in the inventory), or wait for the
+     * respawn of a player who is down; they are the player's loadout until the next change.
+     */
+    static void rotationLoadout(ServerPlayer p,Loadouts.Weapon primary,Loadouts.Weapon secondary){
+        var e=PLAYERS.get(p.getUUID());if(e==null||activeMap==null)return;
+        if(!secondary.id().equals(e.secondary))GadgetManager.clearDeployables(p);
+        e.primary=primary.id();e.secondary=secondary.id();
+        if(!RESPAWNING.containsKey(p.getUUID())&&p.isAlive()&&!p.isSpectator()){
+            if(p.isUsingItem())p.stopUsingItem();
+            grant(p,primary,0,false);grant(p,secondary,40,false);giveSlot9(p);
+        }
+        equipment(p,false);
+    }
     private static boolean issued(ItemStack stack) { return stack.hasTag() && stack.getTag().contains(TAG); }
     private static void grant(ServerPlayer p, Loadouts.Weapon weapon, int slot, boolean remember) {
         if(slot==40)GadgetManager.changingSecondary(p,weapon);
@@ -979,7 +995,8 @@ public final class LobbyManager {
                 return;
             }
         }
-        if (show && !allowed) p.sendSystemMessage(Component.literal("무기 선택 불가: 자기 팀 스폰 구역 또는 무기고 근처로 이동하세요. 서버 무기 설정도 확인하세요."));
+        if (show && !allowed) p.sendSystemMessage(Component.literal(WeaponRotation.active()?"랜덤 무기 모드에서는 무기를 직접 바꿀 수 없습니다. 교체 시간에 숫자 키로 고르세요."
+                :"무기 선택 불가: 자기 팀 스폰 구역 또는 무기고 근처로 이동하세요. 서버 무기 설정도 확인하세요."));
         var choice=FREE_SELECTION.getOrDefault(p.getUUID(),new String[]{"",""});
         PlayerRecord record=null;
         try { record=ProgressionService.record(p); } catch (IllegalStateException unavailable) { }
@@ -1011,6 +1028,8 @@ public final class LobbyManager {
     }
     private static boolean canChoose(ServerPlayer p) {
         if(MatchManager.realPropHunt()!=null||PropHuntMatch.testing(p.getUUID()))return false;
+        // 랜덤 무기: the rotation hands out every loadout.
+        if(WeaponRotation.active())return false;
         if(MatchManager.bomb()!=null&&(MatchManager.bomb().dead(p.getUUID())||MatchManager.bomb().game.phase()==BombGame.Phase.ROUND_END))return false;
         var e=PLAYERS.get(p.getUUID());
         boolean team=e!=null&&(e.team.equals("ALPHA")||e.team.equals("BRAVO"));

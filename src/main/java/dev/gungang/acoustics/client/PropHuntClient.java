@@ -112,6 +112,8 @@ public final class PropHuntClient {
             if(key==GLFW.GLFW_KEY_1+i||EmoteClient.KEYS[i].matches(key,scan)){if(action==GLFW.GLFW_PRESS)action("pick"+(i+1));return true;}
         // No disguise yet (the first choice is open): nothing else to control.
         if(self().block().isEmpty())return false;
+        // 255 drives itself: none of the disguise keys do anything (the horn still sounds).
+        if(auto()&&(key==GLFW.GLFW_KEY_T||key==GLFW.GLFW_KEY_R||key==GLFW.GLFW_KEY_E||key==GLFW.GLFW_KEY_Q||key==GLFW.GLFW_KEY_SPACE||key==GLFW.GLFW_KEY_LEFT_SHIFT))return true;
         if(key==GLFW.GLFW_KEY_T){if(action==GLFW.GLFW_PRESS)action("lock");return true;}
         if(key==GLFW.GLFW_KEY_R){if(action==GLFW.GLFW_PRESS){if(fixed())action("home");else action("rotate");}return true;}
         // 178: E on one's own lectern opens the book to write in (the server only stores the text).
@@ -147,6 +149,8 @@ public final class PropHuntClient {
     private static boolean primary;
     /** 95 / 190: stuck to a wall or ceiling this tick; let go with E until the disguise lands. */
     private static boolean stuck,letGo;
+    /** 255 autonomous combat unit: the server moves the body; the keys are locked. */
+    private static boolean auto(){var s=self();return s!=null&&s.block().equals("gungang:combat_unit");}
     private static boolean sticky(){var s=self();return s!=null&&dev.gungang.acoustics.server.PropSticky.sticky(s.block());}
     private static boolean doll(){var s=self();return hider()&&(s.block().equals("gungang:eunbi_doll")||s.block().equals("gungang:hanbi_doll"));}
     private static void primary(boolean down){if(primary!=down){primary=down;action(down?"primaryDown":"primaryUp");}}
@@ -182,12 +186,12 @@ public final class PropHuntClient {
         if(System.currentTimeMillis()<noticeUntil)lines.add("변신: "+disguise(self().block())+(PropInteraction.tagText(self().block()).isEmpty()?"":" "+PropInteraction.tagText(self().block()).trim()+"§r"));
         // TNT and gas barrels blast with E (30 s cooldown on the server).
         // Dispensers shoot an arrow with E (1 s cooldown) and turn through six facings with R.
-        String block=self().block();boolean blast=block.equals("minecraft:tnt")||block.equals("gungang:gas_barrel"),shoot=block.equals("minecraft:dispenser");
+        String block=self().block();boolean blast=block.equals("minecraft:tnt")||block.equals("gungang:gas_barrel"),shoot=block.equals("minecraft:dispenser")||block.equals("minecraft:dropper");
         boolean hologram=block.equals("gungang:hologram_projector");
         // E only where it does something: turning a block is R's job alone.
         var blockState=net.minecraft.world.level.block.Block.stateById(self().state());
         boolean interactive=PropInteraction.interactive(block,blockState.isAir()?PropCatalog.state(block):blockState);
-        String use=blast?"폭발":shoot?"화살 발사":switch(block){
+        String use=blast?"폭발":shoot?(block.equals("minecraft:dropper")?"폭죽 발사":"화살 발사"):switch(block){
             case "minecraft:sculk_sensor","minecraft:sculk_shrieker"->"비명 켜기/끄기";
             case "gungang:hologram_projector"->"홀로그램 크기";
             case "gungang:shutter"->"열기/닫기";
@@ -202,6 +206,14 @@ public final class PropHuntClient {
             case "gungang:garden_fountain"->"물 분사";
             case "gungang:easel"->"그림 그리기";
             case "minecraft:light"->"밝기 조절";
+            case "gungang:dice"->"주사위 던지기";
+            case "gungang:chandelier"->"천장에 매달리기/떨어지기";
+            case "gungang:slot_machine"->"슬롯 돌리기";
+            case "gungang:billiard_ball"->"공 바꾸기";
+            case "gungang:wishing_well"->"두레박 내리기/올리기";
+            case "gungang:embezzlement_statue"->"돈벼락";
+            case "gungang:christmas_tree"->"장식등 켜기/끄기";
+            case "gungang:sanga_doll"->"포즈 바꾸기";
             case "minecraft:lightning_rod"->"충전 켜기/끄기";
             case "minecraft:jukebox"->"CD 발사";
             case "minecraft:brewing_stand"->"팀 물약 효과";
@@ -226,6 +238,8 @@ public final class PropHuntClient {
         String q=TeamPointHud.POINT.getTranslatedKeyMessage().getString().toUpperCase(Locale.ROOT);
         if(free()){
             lines.add("자유 관전 중");lines.add("이동 키·점프·Shift  비행");lines.add(q+"  자유 관전 해제");lines.add("휠  다른 시점");lines.add("R  내 시점");lines.add("T  고정 해제");
+        }else if(auto()){
+            lines.add("자율 전투 중 · 조작 불가");lines.add("찾는 시간에 술래를 찾아가 미니건 사격");lines.add("G  경적");
         }else if(fixed()){
             lines.add("T  고정 해제");lines.add("휠  다른 시점");lines.add(q+"  자유 관전");lines.add("R  내 시점");lines.add("G  경적");
             if(blast||shoot)lines.add("E  "+use);
@@ -284,7 +298,7 @@ public final class PropHuntClient {
         if(stick)stuck=true;else if(stuck){stuck=false;player.setNoGravity(false);}
         if(sticky()&&!liquid())input.jumping=false;
         if(self().active()>elapsed(0)&&self().block().equals("minecraft:command_block")){input.shiftKeyDown=false;e.getEntity().setDeltaMovement(e.getEntity().getDeltaMovement().multiply(1,0,1));}
-        if(fixed()||self().stunned()){input.forwardImpulse=0;input.leftImpulse=0;input.jumping=false;input.shiftKeyDown=false;input.up=false;input.down=false;input.left=false;input.right=false;}
+        if(fixed()||self().stunned()||auto()){input.forwardImpulse=0;input.leftImpulse=0;input.jumping=false;input.shiftKeyDown=false;input.up=false;input.down=false;input.left=false;input.right=false;}
     }
     @SubscribeEvent public static void hide(RenderPlayerEvent.Pre e){if(hidden(e.getEntity().getUUID()))e.setCanceled(true);}
     @SubscribeEvent public static void opening(ScreenEvent.Opening e){if(active()&&(e.getNewScreen() instanceof LoadoutScreen))e.setCanceled(true);}

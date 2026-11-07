@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "gungang:block/embezzlement_statue"
+    },
+    "facing=east": {
+      "model": "gungang:block/embezzlement_statue"
+    },
+    "facing=south": {
+      "model": "gungang:block/embezzlement_statue"
+    },
+    "facing=west": {
+      "model": "gungang:block/embezzlement_statue"
+    }
+  }
+}

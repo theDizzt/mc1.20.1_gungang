@@ -101,6 +101,8 @@ public final class EscortCart extends Entity {
         for(var part:PARTS){var hit=part.clip(a,b);if(hit.isPresent()&&(best==null||hit.get().distanceToSqr(a)<best.distanceToSqr(a)))best=hit.get();}
         return best==null?Optional.empty():Optional.of(world(best.x,best.y,best.z));
     }
+    /** Inside the model itself (not the turned bounding box). */
+    public boolean modelContains(Vec3 point){var l=local(point);for(var part:PARTS)if(part.contains(l))return true;return false;}
     /** Standing on the deck: shared by the server (fall reset) and the client (carrying), so both agree on who rides. */
     public boolean carries(net.minecraft.world.entity.player.Player p){
         var b=p.getBoundingBox();

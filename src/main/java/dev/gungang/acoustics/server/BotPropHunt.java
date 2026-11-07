@@ -357,6 +357,8 @@ final class BotPropHunt {
     // Hider
     // =====================================================================================================
     private void hide(BotAgent a,PropHuntMatch hunt,int now)throws Exception{
+        // 255 drives itself (PropAbilities.auto): the bot keeps still and lets it.
+        var own=hunt.prop(a.bot.getUUID());if(own!=null&&own.item().equals(PartyBlocks.AUTO)){a.bot.getNavigation().stop();a.movement.halt(a.bot);mode="자율 전투";return;}
         var bot=a.bot;var prop=bot.disguise();if(prop==null)return;
         if(!prop.item().equals(lastItem)){boolean first=lastItem.isEmpty();lastItem=prop.item();toggledAt=-1;if(!first)reconsider=true;}
         if(now>=nextPerceive){nextPerceive=now+5;perceive(a,hunt,prop,now);}
@@ -609,7 +611,7 @@ final class BotPropHunt {
         var bot=a.bot;String item=prop.item();
         var unaware=threats.stream().filter(t->!t.looking()).min(Comparator.comparingDouble(Threat::distance)).orElse(null);
         switch(item){
-            case "minecraft:dispenser"->{
+            case "minecraft:dispenser","minecraft:dropper"->{
                 var facing=prop.state().getValue(BlockStateProperties.FACING);var line=Vec3.atLowerCornerOf(facing.getNormal());
                 for(var t:threats){
                     var to=t.seeker().getBoundingBox().getCenter().subtract(prop.getBoundingBox().getCenter());
@@ -650,6 +652,9 @@ final class BotPropHunt {
                 var close=threats.stream().filter(t->t.distance()<4.5&&(!t.looking()||t.distance()<2.5)).min(Comparator.comparingDouble(Threat::distance)).orElse(null);
                 if(close!=null&&random.nextDouble()<.4+boldness*.5){ramTarget=close.seeker();ramUntil=now+30;state=Hide.RAM;mode="광산 수레 돌진";return;}
             }
+            // 250: money rain once a seeker is within its 8 blocks; 247: a pull of the slot machine now and then.
+            case "gungang:embezzlement_statue"->{if(hunt.botCooldown(a.id)==0&&threats.stream().anyMatch(t->t.distance()<7)){hunt.botUse(bot);nextAbility=now+100;mode="돈벼락";return;}}
+            case "gungang:slot_machine"->{if(hunt.botCooldown(a.id)==0&&random.nextDouble()<.3){hunt.botUse(bot);nextAbility=now+100;mode="슬롯 돌리기";return;}}
             default->{}
         }
         if(nextAbility<now)nextAbility=now+10;
@@ -669,7 +674,8 @@ final class BotPropHunt {
         boolean done=switch(item){
             case "minecraft:note_block","minecraft:jukebox"->hunt.botCooldown(a.id)==0&&hunt.botUse(bot);
             case "minecraft:sculk_sensor","minecraft:sculk_shrieker"->{if(!prop.open()&&hunt.botUse(bot)){toggledAt=now;yield true;}yield false;}
-            case "minecraft:oak_sign","minecraft:oak_hanging_sign","gungang:shutter","minecraft:bubble_column"->hunt.botUse(bot);
+            case "minecraft:oak_sign","minecraft:oak_hanging_sign","gungang:shutter","minecraft:bubble_column","gungang:billiard_ball","gungang:christmas_tree","gungang:wishing_well"->hunt.botUse(bot);
+            case "gungang:dice"->hunt.botCooldown(a.id)==0&&hunt.botUse(bot);
             // Crying, hearts and an emoticon, or night falling all at once.
             case "minecraft:crying_obsidian","gungang:prettiest_block","minecraft:daylight_detector"->hunt.botCooldown(a.id)==0&&hunt.botUse(bot);
             // Doors, trapdoors, lids and flames: creak open (or go out) and back a couple of seconds later.

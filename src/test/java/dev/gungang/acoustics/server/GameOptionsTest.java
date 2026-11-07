@@ -41,6 +41,23 @@ class GameOptionsTest {
         var options=with(null,null,null,null,null,new GameOptions.Deathmatch(420,null,23),null);
         assertEquals(new DeathmatchRules(420,23),options.deathmatch(DeathmatchRules.defaults()));
     }
+    @Test void randomWeaponsPlayFifteenMinutesUnlessTimed(){
+        var random=GameOptions.WeaponMode.RANDOM;
+        var tdm=with(null,null,null,null,null,new GameOptions.Deathmatch(null,null,null,random,null,null),null);
+        assertTrue(tdm.randomWeapons("DEATHMATCH"));assertFalse(tdm.randomWeapons("FREE_FOR_ALL"));
+        assertEquals(GameOptions.RANDOM_TIME_SECONDS,tdm.deathmatch(DeathmatchRules.defaults()).timeLimitSeconds());
+        assertArrayEquals(new int[]{GameOptions.ROTATION_SECONDS,GameOptions.CHOICE_SECONDS},tdm.weaponRotation("DEATHMATCH"));
+        var timed=with(null,null,null,null,null,new GameOptions.Deathmatch(420,null,null,random,120,10),null);
+        assertEquals(420,timed.deathmatch(DeathmatchRules.defaults()).timeLimitSeconds());assertArrayEquals(new int[]{120,10},timed.weaponRotation("DEATHMATCH"));
+        var ffa=with(null,null,null,null,null,null,new GameOptions.FreeForAll(null,null,null,null,random,null,null));
+        assertEquals(GameOptions.RANDOM_TIME_SECONDS,ffa.apply(FreeForAllRules.example(),"FREE_FOR_ALL").timeLimitSeconds());
+        // Classic keeps the map's time.
+        assertFalse(GameOptions.defaults().randomWeapons("DEATHMATCH"));
+        // The choice opens before the change, so it must be shorter than the interval.
+        assertThrows(IllegalArgumentException.class,()->new GameOptions.Deathmatch(null,null,null,random,30,30));
+        assertThrows(IllegalArgumentException.class,()->new GameOptions.FreeForAll(null,null,null,null,random,20,null));
+        var json=ServerFiles.GSON.toJson(timed);assertEquals(timed,ServerFiles.GSON.fromJson(json,GameOptions.class));
+    }
     @Test void normandyCaptureTimePerPoint(){
         var rules=NormandyRules.defaults();
         var options=with(null,new GameOptions.Normandy(null,null,Arrays.asList(10,null,30)),null,null,null,null,null);

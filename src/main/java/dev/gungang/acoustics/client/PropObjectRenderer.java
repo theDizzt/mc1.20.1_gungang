@@ -136,7 +136,7 @@ final class PropObjectRenderer {
      * through them twisted the torso edge-on and dropped parts of the second skin layer.
      */
     private static net.minecraft.client.model.geom.ModelPart wide,slimFigure;
-    private static net.minecraft.client.model.geom.ModelPart figure(boolean slim){
+    static net.minecraft.client.model.geom.ModelPart figure(boolean slim){
         if(slim)return slimFigure==null?slimFigure=bake(true):slimFigure;
         return wide==null?wide=bake(false):wide;
     }

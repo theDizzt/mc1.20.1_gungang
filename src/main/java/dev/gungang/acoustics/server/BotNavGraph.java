@@ -19,11 +19,15 @@ import net.minecraft.world.phys.Vec3;
  * is scanned once, a few chunks per tick, into one byte per block; the grid then answers reachability (connected
  * parts) and A* routes that know jump pads, gap jumps and shutters opened by a nearby lever or button, hops over
  * low railings (iron bars, panes), long drops (any height into water) and swimming at the water surface, such as
- * 이동점령's attackers leaving their ship: over the deck bars, down to the bow, overboard and ashore.
+ * 이동점령's attackers leaving their ship: over the deck bars, down to the bow, overboard and ashore. Conveyor belts
+ * are priced by their live direction and speed: riding one is a shortcut, walking against one is slow or ruled out.
  */
 final class BotNavGraph {
-    /** WATER: a water cell (swum at its surface). THIN: a low obstacle too narrow to stand on (bars, panes), hopped over. */
-    static final int PASS=1,FLOOR=2,DANGER=4,DYNAMIC=8,PAD=16,SWITCH=32,SWITCHABLE=64,WATER=128,THIN=256;
+    /**
+     * WATER: a water cell (swum at its surface). THIN: a low obstacle too narrow to stand on (bars, panes), hopped over.
+     * BELT: a conveyor, a floor that carries whoever stands on it.
+     */
+    static final int PASS=1,FLOOR=2,DANGER=4,DYNAMIC=8,PAD=16,SWITCH=32,SWITCHABLE=64,WATER=128,THIN=256,BELT=512;
     /**
      * Moves between neighbouring stand cells. DOOR walks into a closed shutter that a switch can open; DROP walks off
      * an edge higher than the vanilla pathfinder's 3 blocks; VAULT jumps over a low obstacle (and falls beyond it).
@@ -37,6 +41,8 @@ final class BotNavGraph {
     private static final int MAX_CELLS=8_000_000,CHUNKS_PER_TICK=4,LOADS_PER_TICK=1,FINISH_PER_TICK=400_000,
             SEARCHES_PER_TICK=2,EXPANSIONS=60_000,SWITCH_RANGE=8;
     private static final float DOOR_COST=12;
+    /** A bot's path-walking pace in blocks per tick, against which a belt's drift is weighed. */
+    private static final double PACE=.28;
     private static final Map<String,BotNavGraph> GRAPHS=new HashMap<>();
     private static final Map<BlockState,Short> KINDS=new IdentityHashMap<>();
     private static int searches=SEARCHES_PER_TICK;
@@ -148,6 +154,7 @@ final class BotNavGraph {
         else {
             if(block instanceof LeverBlock||block instanceof ButtonBlock)flags|=SWITCH;
             if(block instanceof JumpPadBlock)flags|=PAD;
+            if(block instanceof ConveyorBlock)flags|=BELT;
             if(state.getFluidState().is(FluidTags.WATER))flags|=WATER;
             if(state.getFluidState().is(FluidTags.LAVA)||state.is(BlockTags.FIRE)||block instanceof AcidBlock||AcidLogging.acid(state)
                     ||block instanceof PuddleBlock puddle&&puddle.acid
@@ -245,9 +252,10 @@ final class BotNavGraph {
     private void moves(int x,int y,int z,Level level,BotEntity bot,Set<Long> blocked,Sink sink){
         for(var direction:Direction.Plane.HORIZONTAL){
             int dx=direction.getStepX(),dz=direction.getStepZ(),nx=x+dx,nz=z+dz;
+            float belt=belt(x,y,z,dx,dz,level);if(belt==Float.POSITIVE_INFINITY)continue;
             int s=stand(nx,y,nz,level,bot,blocked);
-            if(s>=0){sink.move(nx,y,nz,s==1?1+DOOR_COST:1,s==1?DOOR:WALK);continue;}
-            if(clear(x,y+2,z,level,bot,blocked)==0&&(s=stand(nx,y+1,nz,level,bot,blocked))>=0){sink.move(nx,y+1,nz,s==1?1.5f+DOOR_COST:1.5f,s==1?DOOR:WALK);continue;}
+            if(s>=0){sink.move(nx,y,nz,s==1?belt+DOOR_COST:belt,s==1?DOOR:WALK);continue;}
+            if(clear(x,y+2,z,level,bot,blocked)==0&&(s=stand(nx,y+1,nz,level,bot,blocked))>=0){sink.move(nx,y+1,nz,s==1?1.5f*belt+DOOR_COST:1.5f*belt,s==1?DOOR:WALK);continue;}
             if(clear(nx,y,nz,level,bot,blocked)!=0||clear(nx,y+1,nz,level,bot,blocked)!=0) {
                 vault(x,y,z,dx,dz,level,bot,blocked,sink);
                 continue;
@@ -255,7 +263,7 @@ final class BotNavGraph {
             int fall=landing(nx,y,nz,1,level,bot,blocked);
             if(fall>=1&&(blocked==null||!blocked.contains(BlockPos.asLong(nx,y-fall,nz)))){
                 float cost=fallCost(fall,(cell(nx,y-fall,nz)&WATER)!=0);
-                if(cost<Float.MAX_VALUE)sink.move(nx,y-fall,nz,1+cost,fall<=3?WALK:DROP);
+                if(cost<Float.MAX_VALUE)sink.move(nx,y-fall,nz,belt+cost,fall<=3?WALK:DROP);
                 if(fall<=3)continue;
             }
             if(clear(x,y+2,z,level,bot,blocked)!=0)continue;
@@ -277,6 +285,29 @@ final class BotNavGraph {
             }
         }
     }
+    /**
+     * Travel-time multiplier for a one-block step from a cell whose floor is a belt: with the belt the bot moves at
+     * pace plus drift, against it at pace minus drift, across it crabbing to cancel the drift. A belt the bot can
+     * barely outwalk is not walked against at all. Without a level (the grid scan) every belt costs plain walking,
+     * so connectivity stays optimistic, like one-way drops.
+     */
+    private float belt(int x,int y,int z,int dx,int dz,Level level){
+        if(level==null||(cell(x,y-1,z)&BELT)==0)return 1;
+        var pos=new BlockPos(x,y-1,z);
+        if(!level.isLoaded(pos))return 1;
+        var state=level.getBlockState(pos);
+        if(!(state.getBlock() instanceof ConveyorBlock)||!(level.getBlockEntity(pos) instanceof ConveyorEntity tile))return 1;
+        double drift=.01*tile.speed; // ConveyorEntity's travel per tick
+        var out=ConveyorBlock.output(state);var ports=ConveyorBlock.ports(state.getValue(ConveyorBlock.SHAPE));
+        var in=ports[0]==out?ports[1]:ports[0];
+        double pace;
+        if(dx==out.getStepX()&&dz==out.getStepZ())pace=PACE+drift;
+        else if(dx==in.getStepX()&&dz==in.getStepZ())pace=PACE-drift;
+        else pace=Math.sqrt(Math.max(0,PACE*PACE-drift*drift));
+        return pace<PACE*.3?Float.POSITIVE_INFINITY:(float)(PACE/pace);
+    }
+    /** Whether this stand cell's floor is a belt. */
+    private boolean onBelt(int i){var p=pos(i);return (cell(p.getX(),p.getY()-1,p.getZ())&BELT)!=0;}
     /** Blocks fallen before landing in this column, starting {@code from} below y (0 = level); -1 when none in reach. */
     private int landing(int x,int y,int z,int from,Level level,BotEntity bot,Set<Long> blocked){
         for(int k=from;k<=MAX_FALL;k++){
@@ -340,7 +371,7 @@ final class BotNavGraph {
         int a=snap(from),b=snap(to);
         return a>=0&&b>=0&&parts[a]>=0&&parts[b]>=0&&find(a)==find(b);
     }
-    record Node(Vec3 pos,int kind,BlockPos cell) { }
+    record Node(Vec3 pos,int kind,BlockPos cell,boolean belt) { }
     /** A* from the bot to the goal, honouring live gates and shutters; null when none (or out of budget, see {@link #searchSpent}). */
     List<Node> route(BotEntity bot,Vec3 goal,Set<Long> blocked){
         if(searches<=0)return null;
@@ -378,9 +409,9 @@ final class BotNavGraph {
             long link=from.get(i);int kind=(int)(link>>>32);var pos=pos(i);
             // A door move names the shutter tile the bot walks through (feet or head height).
             BlockPos cell=kind!=DOOR?null:level.getBlockState(pos).getBlock() instanceof ShutterBlock?pos:pos.above();
-            nodes.add(new Node(point(i),kind,cell));i=(int)link;
+            nodes.add(new Node(point(i),kind,cell,onBelt(i)));i=(int)link;
         }
-        nodes.add(new Node(point(start),WALK,null));
+        nodes.add(new Node(point(start),WALK,null,onBelt(start)));
         Collections.reverse(nodes);return nodes;
     }
     /** Lever and button positions within reach of a shutter tile. */

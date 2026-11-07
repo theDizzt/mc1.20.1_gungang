@@ -636,6 +636,8 @@ public final class PropHuntMatch {
             return;
         }
         if(m.prop==null)return;
+        // 255 drives itself: the hider only watches (and may sound the horn).
+        if(m.prop.item().equals(PartyBlocks.AUTO)&&!action.equals("horn"))return;
         switch(action){
             case "lock"->{home(p,m);m.fixed=!m.fixed;m.anchor=p.position();m.yaw=p.getYRot();m.pitch=p.getXRot();m.charge=-1;}
             case "next"->cycle(p,m,1);
@@ -646,7 +648,7 @@ public final class PropHuntMatch {
             case "rotate"->{if(m.prop!=null&&!m.away()&&abilities.rotate(p,m.prop)){}else if(!m.fixed&&m.prop!=null){m.prop.rotate();p.refreshDimensions();}}
             case "snap"->{if(!m.fixed&&m.wall==null)snap(p);}
             case "cling"->cling(p,m);
-            case "interact"->{noise(m);if(m.prop!=null&&!m.away()&&abilities.use(p,m.prop)){m.prop.setPos(spot(m,p));p.refreshDimensions();}else if(m.prop!=null&&!m.away()&&m.prop.item().equals("minecraft:dispenser"))fire(p,m);else if(m.prop!=null&&!m.away()&&explosive(m.prop.item()))blast(p,m);else if(m.prop!=null&&!m.away()){PropInteraction.use(p,m.prop);if(m.prop.sinkable()){m.prop.setPos(spot(m,p));p.displayClientMessage(Component.literal(m.prop.sunk()?"생명력 팩: 바닥 아래로 들어갔습니다 · E로 나오기":"생명력 팩: 바닥 위로 나왔습니다 · E로 들어가기"),true);}p.refreshDimensions();}}
+            case "interact"->{noise(m);if(m.prop!=null&&!m.away()&&abilities.use(p,m.prop)){m.prop.setPos(spot(m,p));p.refreshDimensions();}else if(m.prop!=null&&!m.away()&&launcher(m.prop.item()))fire(p,m);else if(m.prop!=null&&!m.away()&&explosive(m.prop.item()))blast(p,m);else if(m.prop!=null&&!m.away()){PropInteraction.use(p,m.prop);if(m.prop.sinkable()){m.prop.setPos(spot(m,p));p.displayClientMessage(Component.literal(m.prop.sunk()?"생명력 팩: 바닥 아래로 들어갔습니다 · E로 나오기":"생명력 팩: 바닥 위로 나왔습니다 · E로 들어가기"),true);}p.refreshDimensions();}}
             // On a jump pad the jump key launches at once, as for everyone else; elsewhere it starts the charge.
             // 95 / 190 slime and honey disguises climb instead of jumping.
             case "charge"->{if(!m.fixed&&m.wall==null&&p.onGround()&&(m.prop==null||!PropSticky.sticky(m.prop.item()))){if(PropSurfacePhysics.pad(p)!=null){p.setDeltaMovement(p.getDeltaMovement().x,PropSurfacePhysics.jump(p,0),p.getDeltaMovement().z);p.hurtMarked=true;m.charge=-1;}else m.charge=server.getTickCount();}}
@@ -676,6 +678,18 @@ public final class PropHuntMatch {
         m.prop.level().playSound(null,m.prop.getX(),m.prop.getY()+.5,m.prop.getZ(),variants.get(random.nextInt(variants.size())).value(),net.minecraft.sounds.SoundSource.PLAYERS,4,1);
     }
     static final String ARROW_TAG="gungang_prop_arrow";
+    /** 94 dispenser (arrows) and 253 dropper (fireworks): E shoots out of the facing side. */
+    static boolean launcher(String item){return item.equals("minecraft:dispenser")||item.equals("minecraft:dropper");}
+    /** A firework rocket with one explosion of a random shape (small/large ball, star, creeper, burst) and colours. */
+    static net.minecraft.world.item.ItemStack firework(net.minecraft.util.RandomSource random){
+        var stack=new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.FIREWORK_ROCKET);var fireworks=stack.getOrCreateTagElement("Fireworks");
+        fireworks.putByte("Flight",(byte)1);var dyes=net.minecraft.world.item.DyeColor.values();
+        var explosion=new net.minecraft.nbt.CompoundTag();explosion.putByte("Type",(byte)random.nextInt(5));
+        int[] colors=new int[1+random.nextInt(3)];for(int i=0;i<colors.length;i++)colors[i]=dyes[random.nextInt(dyes.length)].getFireworkColor();
+        explosion.putIntArray("Colors",colors);if(random.nextBoolean())explosion.putIntArray("FadeColors",new int[]{dyes[random.nextInt(dyes.length)].getFireworkColor()});
+        explosion.putBoolean("Flicker",random.nextBoolean());explosion.putBoolean("Trail",random.nextBoolean());
+        var list=new net.minecraft.nbt.ListTag();list.add(explosion);fireworks.put("Explosions",list);return stack;
+    }
     static final float ARROW_DAMAGE=25;
     /** E on a dispenser disguise: an arrow out of its facing side against seekers, once a second while hunting. */
     private void fire(LivingEntity p,Member m){
@@ -684,6 +698,12 @@ public final class PropHuntMatch {
         if(now<m.shot)return;m.shot=now+20;
         var prop=m.prop;var level=prop.level();var facing=prop.state().getValue(DispenserBlock.FACING);
         var dir=Vec3.atLowerCornerOf(facing.getNormal());var from=new Vec3(prop.getX(),prop.getY()+.5,prop.getZ()).add(dir.scale(.8));
+        if(prop.item().equals("minecraft:dropper")){
+            // 253: a firework of a random shape and colours instead of an arrow (it hurts seekers like the arrow; hiders never).
+            var rocket=new net.minecraft.world.entity.projectile.FireworkRocketEntity(level,firework(level.random),p,from.x,from.y-.1,from.z,true);
+            rocket.shoot(dir.x,dir.y,dir.z,1.4f,0);rocket.addTag(ARROW_TAG);level.addFreshEntity(rocket);
+            level.playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.FIREWORK_ROCKET_LAUNCH,net.minecraft.sounds.SoundSource.BLOCKS,2,1);return;
+        }
         var arrow=new net.minecraft.world.entity.projectile.Arrow(level,from.x,from.y-.25,from.z);
         arrow.pickup=net.minecraft.world.entity.projectile.AbstractArrow.Pickup.DISALLOWED;arrow.addTag(ARROW_TAG);
         arrow.shoot(dir.x,dir.y,dir.z,2.5f,1);level.addFreshEntity(arrow);arrows.add(arrow);arrows.removeIf(net.minecraft.world.entity.Entity::isRemoved);
@@ -769,7 +789,7 @@ public final class PropHuntMatch {
         int now=server.getTickCount();if(now-m.actions.getOrDefault("interact",-100)<2)return false;m.actions.put("interact",now);
         String item=m.prop.item();noise(m);
         if(abilities.use(bot,m.prop)){m.prop.setPos(spot(m,bot));bot.refreshDimensions();}
-        else if(item.equals("minecraft:dispenser")){if(now<m.shot||!hunting())return false;fire(bot,m);}
+        else if(launcher(item)){if(now<m.shot||!hunting())return false;fire(bot,m);}
         else if(explosive(item)){if(now<m.blast||!hunting())return false;blast(bot,m);}
         else{PropInteraction.use(bot,m.prop);if(m.prop.sinkable())m.prop.setPos(spot(m,bot));bot.refreshDimensions();}
         sync();return true;
@@ -852,7 +872,7 @@ public final class PropHuntMatch {
     }
     private int abilityRemaining(Member m){
         if(m.prop==null)return 0;String item=m.prop.item();
-        return Math.max(0,item.equals("minecraft:dispenser")?m.shot-now():explosive(item)?m.blast-now():m.prop.healthPack()?m.hazard-now():abilities.remaining(m.id));
+        return Math.max(0,launcher(item)?m.shot-now():explosive(item)?m.blast-now():m.prop.healthPack()?m.hazard-now():abilities.remaining(m.id));
     }
     /** Players and bots of the match. */
     private static boolean member(PropHuntMatch m,net.minecraft.world.entity.Entity entity){return (entity instanceof ServerPlayer||entity instanceof BotEntity)&&m.participant(entity.getUUID());}

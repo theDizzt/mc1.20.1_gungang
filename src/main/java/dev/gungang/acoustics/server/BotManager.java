@@ -86,6 +86,8 @@ public final class BotManager {
     static boolean live(BotEntity bot){return entities().contains(bot);}
     /** A bot's live body by its id (also the id of its gadget fake player), or null: what a spectator camera follows. */
     static BotEntity body(UUID id){var a=agent(id);return a==null||a.bot==null||a.bot.isRemoved()||!a.bot.isAlive()?null:a.bot;}
+    /** The bots in the current match. */
+    static List<BotAgent> roster(){return List.copyOf(agents);}
     static Set<UUID> activeIds(){var ids=new HashSet<UUID>();for(var a:agents)ids.add(a.id);return ids;}
     static boolean boosted(Entity attacker){var a=agent(attacker);return a!=null&&a.gadgets.boosted(attacker.level().getGameTime());}
     /** Pathfinding cost hook: ground this bot knows is mined, trapped or burning. */

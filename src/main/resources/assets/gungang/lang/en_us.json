@@ -39,5 +39,18 @@
     "block.gungang.error_block":  "Error Block",
     "block.gungang.garden_fountain":  "Garden Fountain",
     "block.gungang.nuke_warhead":  "Nuclear Warhead",
-    "block.gungang.easel":  "Easel"
+    "block.gungang.easel":  "Easel",
+    "block.gungang.wall_clock":  "Analog Wall Clock",
+    "block.gungang.mirror":  "Mirror",
+    "block.gungang.dice":  "Dice",
+    "block.gungang.chandelier":  "Chandelier",
+    "block.gungang.slot_machine":  "777 Slot Machine",
+    "block.gungang.billiard_ball":  "Billiard Ball",
+    "block.gungang.wishing_well":  "Wishing Well",
+    "block.gungang.embezzlement_statue":  "Statue of Honorary Embezzlement",
+    "block.gungang.christmas_tree":  "Christmas Tree",
+    "block.gungang.sanga_doll":  "Sanga's Doll",
+    "block.gungang.unpleasant_photo":  "Unpleasant Photo",
+    "block.gungang.combat_unit":  "Autonomous Combat Unit",
+    "block.gungang.shadow":  "Shadow"
 }

@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "gungang:block/sanga_doll"
+    },
+    "facing=east": {
+      "model": "gungang:block/sanga_doll"
+    },
+    "facing=south": {
+      "model": "gungang:block/sanga_doll"
+    },
+    "facing=west": {
+      "model": "gungang:block/sanga_doll"
+    }
+  }
+}

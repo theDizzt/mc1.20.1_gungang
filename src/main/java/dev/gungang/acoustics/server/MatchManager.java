@@ -111,8 +111,9 @@ public final class MatchManager {
             if(map!=null&&server.getTickCount()%4==0)send(snapshot(false,"",preparationSeconds));
             return;
         }
+        if(running)ticks++;
+        WeaponRotation.tick(running,ticks);
         if(running) {
-            ticks++;
             if(freeForAll!=null){freeForAll.tick();String winner=freeForAll.winner(ticks>=map.timeLimitSeconds()*20);if(!winner.isEmpty()){LobbyManager.finish(winner);return;}}
             if(deathmatch!=null) {
                 String winner=deathmatch.winner(alphaScore(),bravoScore(),ticks>=map.timeLimitSeconds()*20);
@@ -212,6 +213,7 @@ public final class MatchManager {
     public static void end(String winner) {
         TeamPoints.clear(server);
         BombDrops.clear(server);
+        WeaponRotation.end();
         if(map==null)return;
         MapEnvironment.restore();
         GimmickEpoch.reset(server);

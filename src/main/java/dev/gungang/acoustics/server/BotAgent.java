@@ -38,6 +38,8 @@ final class BotAgent {
     private BotLoadoutChoice.Outcome lastLife;
     private final Map<String,List<BotLoadoutChoice.Outcome>> primaryHistory=new HashMap<>(),secondaryHistory=new HashMap<>();
     private boolean chooseOnSpawn=true;
+    /** 랜덤 무기: the rotation issued this loadout; deaths keep it instead of choosing again. */
+    private boolean rotationLocked;
     private int bornAt;
     private double lifeDamage,encounterDistance;
     String choiceReason="첫 출전";
@@ -64,7 +66,7 @@ final class BotAgent {
     }
 
     void activate(Loadouts loadouts)throws Exception{
-        movement.routeMemory.clear();
+        movement.routeMemory.clear();rotationLocked=false;
         weapon=BotManager.selectWeapon(loadouts);secondary=BotManager.selectSecondary(loadouts);
         primaryChoices=loadouts.primary().stream().filter(BotManager::supportedPrimary).toList();
         secondaryChoices=loadouts.secondary().stream().filter(BotManager::supportedSecondary).toList();
@@ -250,8 +252,26 @@ final class BotAgent {
                 Math.max(0,server.getTickCount()-bornAt),encounterDistance>0?encounterDistance:12);
         remember(primaryHistory,weapon.id(),lastLife);
         if(secondary!=null)remember(secondaryHistory,secondary.id(),lastLife);
-        chooseOnSpawn=true;
+        chooseOnSpawn=!rotationLocked;
         remove();respawnAt=server.getTickCount()+LobbyManager.respawnTicks();
+    }
+    /**
+     * 랜덤 무기: the rotation's weapons replace the loadout at once (a dead bot takes them on respawn) and stay through
+     * deaths until the next change. A secondary the bot cannot use is left out.
+     */
+    void rotate(Loadouts.Weapon primary,Loadouts.Weapon second){
+        weapon=primary;secondary=second!=null&&BotManager.supportedSecondary(second)&&!LobbyManager.secondaryBanned(team)?second:null;
+        rotationLocked=true;chooseOnSpawn=false;choiceReason="랜덤 무기";
+        if(bot==null||bot.isRemoved())return;
+        try{if(gun!=null)gun.unequip();}catch(ReflectiveOperationException ignored){}
+        usingSecondary=false;secondarySupplied=false;nextSwitch=switchedAt=0;
+        primaryStack=weapon.stack();secondaryStack=secondary==null?ItemStack.EMPTY:secondary.stack();
+        bot.getAttribute(Attributes.MAX_HEALTH).setBaseValue(weapon.maxHealth()*LobbyManager.healthScale(team));
+        if(bot.getHealth()>bot.getMaxHealth())bot.setHealth(bot.getMaxHealth());
+        gadgets.equip(bot,secondary,secondaryStack,heldSecondary());
+        bot.setItemSlot(EquipmentSlot.MAINHAND,primaryStack);
+        try{gun=BotGun.supports(primaryStack)?new BotGun(bot):null;}catch(ReflectiveOperationException error){gun=null;}
+        updateSpeed();
     }
     private static void remember(Map<String,List<BotLoadoutChoice.Outcome>> history,String id,BotLoadoutChoice.Outcome outcome) {
         var entries=history.computeIfAbsent(id,key->new ArrayList<>());entries.add(outcome);

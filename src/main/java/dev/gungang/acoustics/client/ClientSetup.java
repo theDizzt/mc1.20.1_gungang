@@ -26,6 +26,7 @@ public final class ClientSetup {
         event.registerBlockEntityRenderer(dev.gungang.acoustics.server.ToyBlocks.AQUARIUM_ENTITY.get(),AquariumRenderer::new);
         event.registerBlockEntityRenderer(dev.gungang.acoustics.server.ToyBlocks.NUKE_ENTITY.get(),NukeRenderer::new);
         event.registerBlockEntityRenderer(dev.gungang.acoustics.server.ToyBlocks.EASEL_ENTITY.get(),EaselRenderer::new);
+        event.registerBlockEntityRenderer(dev.gungang.acoustics.server.PartyBlocks.ENTITY.get(),PartyRenderer::new);
         event.registerBlockEntityRenderer(dev.gungang.acoustics.server.ShutterBlocks.ENTITY.get(),ShutterRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.BotEntity.TYPE.get(),BotRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.PropEntity.TYPE.get(),PropRenderer::new);
