@@ -32,8 +32,12 @@ public final class GungangNetwork {
     public record Action(String action, String value, String target) { }
     /** 178: a hider's lectern book text (up to PropHuntMatch.LECTERN_LIMIT characters). */
     public record PropText(String text) { }
+    /** 241: a painted canvas for the placed easel at pos (256 palette hex digits). */
+    public record EaselPaint(net.minecraft.core.BlockPos pos,String pixels) { }
     public record Hud(boolean enabled) { }
     public record PropHunt(String json) {}
+    /** 랜덤 무기: the viewer's weapon choice and the time to the next change ({@link WeaponRotation.View}). */
+    public record WeaponRoll(String json) {}
     public record Emblems() { }
     public record BotSkin(String skin,byte[] png) { }
     public record Levels(String json) { }
@@ -45,7 +49,29 @@ public final class GungangNetwork {
     public record ConveyorSet(net.minecraft.core.BlockPos pos,int speed,boolean reverse) { }
     public record SecretBlockSync(boolean full,long[] positions,byte[] modes) { }
     public record RapierStep(int entity,float yaw) { }
+    public record Emote(int entity,int slot,boolean prop) { }
+    public record PropList() { }
+    /** 247+: the live weapon patch screen (server view as JSON) and its requests ({@code open}/{@code apply}). */
+    public record WeaponPatchView(String json) { }
+    public record WeaponPatchRequest(String action, String json) { }
+    /** Longest lobby action value: the game options JSON, with room for every mode's section and a long excluded-block list. */
+    static final int ACTION_VALUE=8192;
     public static void register() {
+        CHANNEL.registerMessage(32,WeaponRoll.class,(p,b)->b.writeUtf(p.json,262144),b->new WeaponRoll(b.readUtf(262144)),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.WeaponRollClient.receive(p.json)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(29,WeaponPatchView.class,(p,b)->b.writeUtf(p.json,262144),b->new WeaponPatchView(b.readUtf(262144)),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.WeaponPatchScreen.receive(p.json)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(30,WeaponPatchRequest.class,(p,b)->{b.writeUtf(p.action,16);b.writeUtf(p.json,32768);},b->new WeaponPatchRequest(b.readUtf(16),b.readUtf(32768)),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->WeaponPatch.receive(ctx.getSender(),p.action,p.json));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(28,PropList.class,(p,b)->{},b->new PropList(),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->dev.gungang.acoustics.client.PropListScreen::open));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(27,Emote.class,(p,b)->{b.writeVarInt(p.entity);b.writeByte(p.slot);b.writeBoolean(p.prop);},b->new Emote(b.readVarInt(),b.readByte(),b.readBoolean()),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.EmoteClient.receive(p)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(25,RapierStep.class,(p,b)->{b.writeVarInt(p.entity);b.writeFloat(p.yaw);},b->new RapierStep(b.readVarInt(),b.readFloat()),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.RapierTrail.receive(p)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
@@ -68,8 +94,14 @@ public final class GungangNetwork {
                 b->new NozzleBurst(b.readBlockPos(),b.readBoolean(),b.readDouble(),b.readVarInt()),(p,context)->{
                     var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.NozzleParticles.receive(p)));ctx.setPacketHandled(true);
                 },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(31,EaselPaint.class,(p,b)->{b.writeBlockPos(p.pos);b.writeUtf(p.pixels,512);},b->new EaselPaint(b.readBlockPos(),b.readUtf(512)),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->{
+                var sender=ctx.getSender();if(sender==null||sender.isSpectator()||sender.distanceToSqr(p.pos.getCenter())>64)return;
+                if(sender.level().getBlockEntity(p.pos) instanceof ToyBlocks.EaselEntity easel){easel.paint(p.pixels);sender.level().playSound(null,p.pos,net.minecraft.sounds.SoundEvents.BOOK_PAGE_TURN,net.minecraft.sounds.SoundSource.BLOCKS,.8f,1.3f);}
+            });ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(26,PropText.class,(p,b)->b.writeUtf(p.text,4096),b->new PropText(b.readUtf(4096)),(p,context)->{
-            var ctx=context.get();ctx.enqueueWork(()->{var match=MatchManager.propHunt();if(ctx.getSender()!=null&&match!=null)match.lecternText(ctx.getSender(),p.text);});ctx.setPacketHandled(true);
+            var ctx=context.get();ctx.enqueueWork(()->{var match=MatchManager.propHunt();if(ctx.getSender()!=null&&match!=null)match.propText(ctx.getSender(),p.text);});ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(18,TeamPointRequest.class,(p,b)->{},b->new TeamPointRequest(),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->TeamPoints.request(ctx.getSender()));ctx.setPacketHandled(true);
@@ -139,8 +171,9 @@ public final class GungangNetwork {
                             () -> () -> dev.gungang.acoustics.client.LobbyClient.receive(p.json)));
                     ctx.setPacketHandled(true);
                 }, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
-        CHANNEL.registerMessage(2, Action.class, (p, b) -> { b.writeUtf(p.action, 16); b.writeUtf(p.value, 64); b.writeUtf(p.target, 36); },
-                b -> new Action(b.readUtf(16), b.readUtf(64), b.readUtf(36)), (p, context) -> {
+        // The value carries whole game options as JSON (several hundred characters with per-mode settings), so it is not capped at 64.
+        CHANNEL.registerMessage(2, Action.class, (p, b) -> { b.writeUtf(p.action, 16); b.writeUtf(p.value, ACTION_VALUE); b.writeUtf(p.target, 36); },
+                b -> new Action(b.readUtf(16), b.readUtf(ACTION_VALUE), b.readUtf(36)), (p, context) -> {
                     var ctx = context.get();
                     ctx.enqueueWork(() -> { if (ctx.getSender() != null) LobbyManager.action(ctx.getSender(), p); });
                     ctx.setPacketHandled(true);

@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "gungang:block/unpleasant_photo"
+    },
+    "facing=east": {
+      "model": "gungang:block/unpleasant_photo"
+    },
+    "facing=south": {
+      "model": "gungang:block/unpleasant_photo"
+    },
+    "facing=west": {
+      "model": "gungang:block/unpleasant_photo"
+    }
+  }
+}

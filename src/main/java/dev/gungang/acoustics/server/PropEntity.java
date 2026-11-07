@@ -47,14 +47,42 @@ public final class PropEntity extends LivingEntity {
     public double sinkDepth(){return healthPack()&&open()?1:state().getBlock() instanceof JumpPadBlock&&open()?.125:state().getBlock() instanceof ConveyorBlock&&open()?.5:0;}
     /** Blocks that E sinks into the floor and back: health packs and the conveyor belt. */
     public boolean sinkable(){return healthPack()||state().getBlock() instanceof ConveyorBlock;}
-    /** R: 90° turn; a dispenser instead steps through all six facings (N, E, S, W, up, down). */
+    /**
+     * R: 90° turn. Blocks a vertical turn cannot change step through every orientation instead: any block that can face
+     * up or down (dispenser, barrel, end rod, hopper...) cycles N, E, S, W, up, down (those it allows), and pillar blocks
+     * (logs, hay, chains) cycle their axis upright → along X → along Z.
+     */
     public void rotate(){
-        if(state().getBlock() instanceof net.minecraft.world.level.block.DispenserBlock){
-            var order=List.of(net.minecraft.core.Direction.NORTH,net.minecraft.core.Direction.EAST,net.minecraft.core.Direction.SOUTH,net.minecraft.core.Direction.WEST,net.minecraft.core.Direction.UP,net.minecraft.core.Direction.DOWN);
-            var facing=state().getValue(net.minecraft.world.level.block.DispenserBlock.FACING);
-            state(state().setValue(net.minecraft.world.level.block.DispenserBlock.FACING,order.get((order.indexOf(facing)+1)%order.size())));return;
+        var state=state();
+        // 195·197·198 torches: standing → on a wall facing N, E, S, W → standing again (a redstone torch keeps its on/off).
+        var wall=TORCHES.get(state.getBlock());
+        if(wall!=null){state(copyLit(state,wall.defaultBlockState().setValue(net.minecraft.world.level.block.WallTorchBlock.FACING,net.minecraft.core.Direction.NORTH)));return;}
+        for(var torch:TORCHES.entrySet())if(torch.getValue()==state.getBlock()){
+            var facing=state.getValue(net.minecraft.world.level.block.WallTorchBlock.FACING);
+            state(facing==net.minecraft.core.Direction.WEST?copyLit(state,torch.getKey().defaultBlockState()):state.setValue(net.minecraft.world.level.block.WallTorchBlock.FACING,facing.getClockWise()));return;
         }
-        entityData.set(ROTATION,(rotation()+1)%4);state(state().rotate(net.minecraft.world.level.block.Rotation.CLOCKWISE_90));
+        for(var property:List.of(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING,net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING_HOPPER)){
+            if(!state.hasProperty(property))continue;
+            var order=new java.util.ArrayList<net.minecraft.core.Direction>();
+            for(var d:List.of(net.minecraft.core.Direction.NORTH,net.minecraft.core.Direction.EAST,net.minecraft.core.Direction.SOUTH,net.minecraft.core.Direction.WEST,net.minecraft.core.Direction.UP,net.minecraft.core.Direction.DOWN))
+                if(property.getPossibleValues().contains(d))order.add(d);
+            state(state.setValue(property,order.get((order.indexOf(state.getValue(property))+1)%order.size())));return;
+        }
+        var axis=net.minecraft.world.level.block.state.properties.BlockStateProperties.AXIS;
+        if(state.hasProperty(axis)){
+            var next=switch(state.getValue(axis)){case Y->net.minecraft.core.Direction.Axis.X;case X->net.minecraft.core.Direction.Axis.Z;case Z->net.minecraft.core.Direction.Axis.Y;};
+            entityData.set(ROTATION,(rotation()+1)%4);state(state.setValue(axis,next));return;
+        }
+        entityData.set(ROTATION,(rotation()+1)%4);state(state.rotate(net.minecraft.world.level.block.Rotation.CLOCKWISE_90));
+    }
+    /** Standing torch → its wall-mounted form. */
+    private static final java.util.Map<Block,Block> TORCHES=java.util.Map.of(
+            net.minecraft.world.level.block.Blocks.TORCH,net.minecraft.world.level.block.Blocks.WALL_TORCH,
+            net.minecraft.world.level.block.Blocks.SOUL_TORCH,net.minecraft.world.level.block.Blocks.SOUL_WALL_TORCH,
+            net.minecraft.world.level.block.Blocks.REDSTONE_TORCH,net.minecraft.world.level.block.Blocks.REDSTONE_WALL_TORCH);
+    private static BlockState copyLit(BlockState from,BlockState to){
+        var lit=net.minecraft.world.level.block.state.properties.BlockStateProperties.LIT;
+        return from.hasProperty(lit)&&to.hasProperty(lit)?to.setValue(lit,from.getValue(lit)):to;
     }
     public UUID owner(){return entityData.get(OWNER).orElse(null);}
     public void setup(UUID owner,String item,int painting){entityData.set(OWNER,Optional.of(owner));entityData.set(ITEM,item);entityData.set(PAINTING,painting);entityData.set(MODE,0);entityData.set(HEIGHT,1);entityData.set(TEXT,"");entityData.set(OPEN,false);entityData.set(FOUND,false);setGlowingTag(false);state(PropCatalog.state(item));}
@@ -63,9 +91,13 @@ public final class PropEntity extends LivingEntity {
     @Override public void tick(){super.tick();setDeltaMovement(0,0,0);setBoundingBox(makeBoundingBox());if(!level().isClientSide&&MatchManager.propHunt()==null)discard();}
     @Override protected AABB makeBoundingBox(){
         if(entityData==null)return super.makeBoundingBox();
-        if(item().equals("minecraft:minecart")||item().equals("minecraft:tnt_minecart"))return new AABB(getX()-.49,getY(),getZ()-.49,getX()+.49,getY()+.7,getZ()+.49);
+        if(item().equals("minecraft:minecart")||item().equals("minecraft:tnt_minecart")||item().equals("gungang:money_cart"))return new AABB(getX()-.49,getY(),getZ()-.49,getX()+.49,getY()+.7,getZ()+.49);
         if(item().equals("minecraft:armor_stand"))return new AABB(getX()-.25,getY(),getZ()-.25,getX()+.25,getY()+1.975,getZ()+.25);
         if(item().equals("minecraft:end_crystal"))return new AABB(getX()-.875,getY(),getZ()-.875,getX()+.875,getY()+3.3,getZ()+.875);
+        // 239: the 2x3x2 warhead.
+        if(item().equals("gungang:nuke_warhead"))return new AABB(getX()-1,getY(),getZ()-1,getX()+1,getY()+3,getZ()+1);
+        // 243·246·249·250·251: bigger than their placed cell.
+        var party=PartyBlocks.propBox(item(),state());if(party!=null)return party.move(getX(),getY(),getZ());
         if(item().equals("minecraft:painting")){
             var list=level().registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.PAINTING_VARIANT).holders().toList();
             var variant=list.get(Math.floorMod(painting(),list.size())).value();double w=variant.getWidth()/16d,h=variant.getHeight()/16d;
@@ -85,13 +117,14 @@ public final class PropEntity extends LivingEntity {
         // The bottle hologram above a health pack is part of the target, as is the sunk block below it,
         // so a shot at the hologram or at the floor cell it sank into still lands.
         if(healthPack())box=box.minmax(new AABB(.3,1.35,.3,.7,1.95,.7));
-        return box.move(getX()-.5,getY(),getZ()-.5);
+        return box.move(PropGeometry.thinOffset(this)).move(getX()-.5,getY(),getZ()-.5);
     }
     /** Real collision shapes of nearby disguises for this mover; the owner walks through its own. */
     public static List<net.minecraft.world.phys.shapes.VoxelShape> collisions(Level level,Entity entity,AABB box){
         if(entity instanceof PropEntity||entity.isSpectator()||entity.noPhysics)return List.of();
         var result=new ArrayList<net.minecraft.world.phys.shapes.VoxelShape>();
         for(var prop:level.getEntitiesOfClass(PropEntity.class,box.inflate(1),p->!p.isRemoved()&&!entity.getUUID().equals(p.owner()))){
+            if(prop.item().equals("gungang:nuke_warhead")||PartyBlocks.propBox(prop.item(),prop.state())!=null){result.add(net.minecraft.world.phys.shapes.Shapes.create(prop.getBoundingBox()));continue;}
             for(var part:PropGeometry.parts(prop)){
                 var state=part.state();
                 // An open shutter disguise keeps only its side rails and header; the world has no shutter tile to ask.

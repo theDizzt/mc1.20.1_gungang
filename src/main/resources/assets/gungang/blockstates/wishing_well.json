@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "gungang:block/wishing_well"
+    },
+    "facing=east": {
+      "model": "gungang:block/wishing_well"
+    },
+    "facing=south": {
+      "model": "gungang:block/wishing_well"
+    },
+    "facing=west": {
+      "model": "gungang:block/wishing_well"
+    }
+  }
+}

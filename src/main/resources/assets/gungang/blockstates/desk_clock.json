@@ -1,0 +1,34 @@
+{
+  "variants": {
+    "facing=north,alarm=false": {
+      "model": "gungang:block/desk_clock"
+    },
+    "facing=north,alarm=true": {
+      "model": "gungang:block/desk_clock"
+    },
+    "facing=east,alarm=false": {
+      "model": "gungang:block/desk_clock",
+      "y": 90
+    },
+    "facing=east,alarm=true": {
+      "model": "gungang:block/desk_clock",
+      "y": 90
+    },
+    "facing=south,alarm=false": {
+      "model": "gungang:block/desk_clock",
+      "y": 180
+    },
+    "facing=south,alarm=true": {
+      "model": "gungang:block/desk_clock",
+      "y": 180
+    },
+    "facing=west,alarm=false": {
+      "model": "gungang:block/desk_clock",
+      "y": 270
+    },
+    "facing=west,alarm=true": {
+      "model": "gungang:block/desk_clock",
+      "y": 270
+    }
+  }
+}

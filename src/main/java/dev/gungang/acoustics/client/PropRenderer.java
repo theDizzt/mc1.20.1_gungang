@@ -42,11 +42,15 @@ public final class PropRenderer extends EntityRenderer<PropEntity> {
         try{for(var sprite:list)MARK_ACTIVE.invokeExact(sprite);}catch(Throwable ignored){}
     }
     public PropRenderer(EntityRendererProvider.Context context){super(context);shadowRadius=0;}
-    /** A disguise under brewing-stand invisibility: only hiders still hiding see it. */
-    static boolean concealed(PropEntity entity){var self=Minecraft.getInstance().player;return entity.isInvisible()&&!entity.marker()&&(self==null||!PropHuntClient.hidden(self.getUUID()));}
+    /**
+     * A disguise under invisibility (159 brewing stand, 191 doll's cloak) is not drawn at all while the effect lasts, for
+     * everyone, its own hider and teammates included; a found block's marker still shows.
+     */
+    static boolean concealed(PropEntity entity){return entity.isInvisible()&&!entity.marker();}
     @Override public void render(PropEntity entity,float yaw,float partial,PoseStack pose,MultiBufferSource buffers,int light){
         if(concealed(entity))return;
         var mc=Minecraft.getInstance();var state=entity.state();pose.pushPose();
+        var emote=EmoteClient.offset(entity,partial);pose.translate(emote.x,emote.y,emote.z);
         if(PropObjectRenderer.render(entity,partial,pose,buffers,light)){
         }else if(entity.item().equals("minecraft:barrier")){
             // Invisible barrier body; only authorized viewers receive a cube in the outline mask.
@@ -70,6 +74,8 @@ public final class PropRenderer extends EntityRenderer<PropEntity> {
         }else{
             if(entity.item().equals("gungang:dried_ghast"))pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(180-net.minecraft.util.Mth.rotLerp(partial,entity.yRotO,entity.getYRot())));
             pose.translate(-.5,0,-.5);
+            // 243 / 244 hang at the back of their cell; centred on the hider's thin body instead (as the hitbox is).
+            var thin=dev.gungang.acoustics.server.PropGeometry.thinOffset(entity);pose.translate(thin.x,0,thin.z);
             // Slightly larger than a block around its centre, so where a disguise overlaps world blocks
             // (a sunk health pack in the floor, a prop against a wall) the disguise's faces win the depth test.
             pose.translate(.5,.5,.5);pose.scale(1.004f,1.004f,1.004f);pose.translate(-.5,-.5,-.5);
@@ -89,7 +95,15 @@ public final class PropRenderer extends EntityRenderer<PropEntity> {
                 if(partState.getBlock() instanceof EntityBlock block){
                     // Ticked by PropEffects (book pages, chest lid); the chest lid opens while the prop is open.
                     var be=PropEffects.blockEntity(entity,part.offset(),partState,block);
-                    if(be!=null){if(be instanceof net.minecraft.world.level.block.entity.ChestBlockEntity chest)chest.triggerEvent(1,entity.open()?1:0);mc.getBlockEntityRenderDispatcher().renderItem(be,pose,buffers,partLight,OverlayTexture.NO_OVERLAY);}
+                    // 241: the easel disguise's canvas lives in the prop's text.
+                    if(be instanceof dev.gungang.acoustics.server.ToyBlocks.EaselEntity easel)easel.pixels=dev.gungang.acoustics.server.ToyBlocks.canvas(entity.text());
+                    // 243~252: the slot reels, bucket, lights, doll pose and ball roll come from the prop.
+                    if(be instanceof dev.gungang.acoustics.server.PartyBlocks.PartyEntity party)party.fromProp(entity,partial);
+                    if(be!=null){
+                        if(be instanceof net.minecraft.world.level.block.entity.ChestBlockEntity chest)chest.triggerEvent(1,entity.open()?1:0);
+                        // A modded renderer may expect a placed block entity's world data (231 chameleon copies any block); skip a draw it cannot make.
+                        try{mc.getBlockEntityRenderDispatcher().renderItem(be,pose,buffers,partLight,OverlayTexture.NO_OVERLAY);}catch(RuntimeException unsupported){}
+                    }
                 }
                 if(partState.getRenderShape()==RenderShape.MODEL){animate(partState);mc.getBlockRenderer().renderSingleBlock(partState,pose,buffers,partLight,OverlayTexture.NO_OVERLAY);}
                 // A bubble column disguise is the bubbles alone (PropEffects), without the water block around them.
@@ -99,6 +113,7 @@ public final class PropRenderer extends EntityRenderer<PropEntity> {
             if(entity.item().equals("minecraft:beacon")&&entity.open())net.minecraft.client.renderer.blockentity.BeaconRenderer.renderBeaconBeam(pose,buffers,new ResourceLocation("minecraft","textures/entity/beacon_beam.png"),partial,1,entity.level().getGameTime(),0,128,new float[]{.45f,1,.85f},.2f,.25f);
         }
         pose.popPose();
+        EmoteClient.popup(entity,partial,pose,buffers,light);
         if(entity.marker())renderNameTag(entity,entity.getDisplayName(),pose,buffers,light);
     }
     /**
@@ -129,5 +144,5 @@ public final class PropRenderer extends EntityRenderer<PropEntity> {
         }
     }
     @Override public ResourceLocation getTextureLocation(PropEntity entity){return TextureAtlas.LOCATION_BLOCKS;}
-    @Override public boolean shouldRender(PropEntity entity,net.minecraft.client.renderer.culling.Frustum frustum,double x,double y,double z){return entity.marker()||super.shouldRender(entity,frustum,x,y,z);}
+    @Override public boolean shouldRender(PropEntity entity,net.minecraft.client.renderer.culling.Frustum frustum,double x,double y,double z){return entity.marker()||PropObjectRenderer.beaming(entity)||super.shouldRender(entity,frustum,x,y,z);}
 }

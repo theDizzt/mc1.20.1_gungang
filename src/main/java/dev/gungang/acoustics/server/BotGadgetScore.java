@@ -20,6 +20,7 @@ final class BotGadgetScore {
             case "molotov","arrow_grenade","use"->s.seen()?bell(s.distance(),13,12):0;
             // Traps go down on quiet stretches of the route, the longer since the last contact the likelier.
             case "landmine","bear_trap"->!s.seen()&&s.traveling()?clamp(s.sinceSeen()/200f)*.75f:0;
+            case "turret"->s.seen()&&s.distance()>=6&&s.distance()<=24?.8f:0;
             // Cover when hurt and under fire.
             case "barrier"->s.seen()&&s.distance()<20?(1-s.health())*1.1f+(s.sinceHurt()<40?.2f:0):0;
             // Far targets are the ones guns struggle with; the strike itself refuses unsafe spots.

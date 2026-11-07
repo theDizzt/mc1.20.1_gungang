@@ -18,7 +18,8 @@ import net.minecraft.world.phys.Vec3;
 final class BotRoute {
     /** Goals closer than this go straight to vanilla pathing. */
     static final double FAR=12;
-    private static final int SPACING=12,BLOCK_TICKS=600,DOOR_WAIT=200,SWITCH_WALK=160;
+    /** BELT_SPACING: waypoints run closer on belts, so vanilla pathing between them stays on the belt's line. */
+    private static final int SPACING=12,BELT_SPACING=4,BLOCK_TICKS=600,DOOR_WAIT=200,SWITCH_WALK=160;
     enum Result {OFF,WALK,HOLD,WAIT,NONE}
     private record Step(int kind,Vec3 pos,Vec3 landing,BlockPos cell) { }
     private final ArrayDeque<Step> steps=new ArrayDeque<>();
@@ -35,6 +36,7 @@ final class BotRoute {
 
     void clear(){steps.clear();target=null;point=null;lever=null;usedLever=null;door=null;presses=0;state="없음";}
     void reset(){clear();blocked.clear();failedSwitches.clear();}
+    void avoidCurrent(int now){if(point!=null)blocked.put(BlockPos.containing(point).asLong(),now+200);clear();}
     boolean active(){return target!=null&&!steps.isEmpty();}
     Vec3 point(){return point;}
     String state(){return state;}
@@ -57,7 +59,7 @@ final class BotRoute {
         }
         return follow(bot,arena,graph,now);
     }
-    /** Waypoints every few nodes, and always just before a jump, a launch or a shutter. */
+    /** Waypoints every few nodes, and always just before a jump, a launch or a shutter, and where a belt ride begins and ends. */
     private void load(List<BotNavGraph.Node> nodes){
         steps.clear();lever=null;usedLever=null;door=null;presses=0;
         int since=0;
@@ -71,7 +73,11 @@ final class BotRoute {
                     steps.add(new Step(BotNavGraph.WALK,previous.pos(),null,null));
                     steps.add(new Step(BotNavGraph.DOOR,node.pos(),null,node.cell()));since=0;
                 }
-                default->{if(since>=SPACING||i==nodes.size()-1){steps.add(new Step(BotNavGraph.WALK,node.pos(),null,null));since=0;}}
+                default->{
+                    // Leaving a belt: its last cell first, so the ride is not cut short across the side.
+                    if(previous.belt()&&!node.belt()&&since>1)steps.add(new Step(BotNavGraph.WALK,previous.pos(),null,null));
+                    if(since>=(node.belt()?BELT_SPACING:SPACING)||node.belt()!=previous.belt()||i==nodes.size()-1){steps.add(new Step(BotNavGraph.WALK,node.pos(),null,null));since=0;}
+                }
             }
         }
     }
@@ -116,8 +122,8 @@ final class BotRoute {
                         }
                         state=vault?"장애물로 이동":"뛰어내릴 곳으로 이동";point=from;return Result.WALK;
                     }
-                    // A drop that would kill (or nearly kill) the bot as it is now is skipped for another way down.
-                    if(!safeDrop(bot,arena,from,to)||!survivable(bot,from,to)){bot.getNavigation().stop();blocked.put(BlockPos.containing(to).asLong(),now+BLOCK_TICKS);clear();return Result.WAIT;}
+                    // Fall damage is disabled for bots; collision, hazards and death zones still forbid unsafe drops.
+                    if(!safeDrop(bot,arena,from,to)){bot.getNavigation().stop();blocked.put(BlockPos.containing(to).asLong(),now+BLOCK_TICKS);clear();return Result.WAIT;}
                     if(!vault){
                         // Walk straight off the edge; vanilla path following refuses drops over three blocks.
                         bot.getNavigation().stop();bot.getMoveControl().setWantedPosition(to.x,from.y,to.z,1);
@@ -200,12 +206,6 @@ final class BotRoute {
             if(BotMovement.danger(arena,bot,p)||BotMovement.knownDanger(bot,p))return false;
         }
         return bot.level().noCollision(bot,bot.getDimensions(net.minecraft.world.entity.Pose.STANDING).makeBoundingBox(to));
-    }
-    /** Fall damage (blocks beyond three) must leave at least a quarter of the bot's health; water takes none. */
-    private static boolean survivable(BotEntity bot,Vec3 from,Vec3 to){
-        if(bot.level().getFluidState(BlockPos.containing(to)).is(net.minecraft.tags.FluidTags.WATER))return true;
-        double damage=Math.max(0,from.y-to.y-3);
-        return damage<=0||bot.getHealth()-damage>=bot.getMaxHealth()*.25f;
     }
     private static boolean reach(BotEntity bot,BlockPos pos){
         return bot.getEyePosition().distanceTo(Vec3.atCenterOf(pos))<=3.5;

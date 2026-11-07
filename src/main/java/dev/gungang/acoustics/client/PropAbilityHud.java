@@ -12,14 +12,13 @@ final class PropAbilityHud {
         if(state.isAir())state=dev.gungang.acoustics.server.PropCatalog.state(row.block());
         float scale=(float)(2/mc.getWindow().getGuiScale());g.pose().pushPose();g.pose().scale(scale,scale,1);
         String name=dev.gungang.acoustics.server.PropCatalog.name(row.block(),state).getString();
-        // A block with its own E effect says so in yellow right after its name.
-        // A random colour variant says "색상" in pink.
-        boolean special=dev.gungang.acoustics.server.PropInteraction.special(row.block()),colored=dev.gungang.acoustics.server.PropCatalog.colored(row.block());
-        int specialW=special?mc.font.width("특수")+4:0,colorW=colored?mc.font.width("색상")+4:0;
-        name=mc.font.plainSubstrByWidth(name,Math.max(1,mc.getWindow().getWidth()/4-18-specialW-colorW));
-        TaczAmmoHud.text(g,mc.font,name,l.right()-specialW-colorW-mc.font.width(name),l.rowTop()-11,0xFFE2E8F0);
-        if(special)TaczAmmoHud.text(g,mc.font,"특수",l.right()-colorW-mc.font.width("특수"),l.rowTop()-11,0xFFFFD84A);
-        if(colored)TaczAmmoHud.text(g,mc.font,"색상",l.right()-mc.font.width("색상"),l.rowTop()-11,0xFFFF8AD0);
+        // Its categories (공격, 디버프, 견고, 접착, 신속, 액체, 광원, 특수, 색상) follow the name in their colours.
+        var tags=dev.gungang.acoustics.server.PropInteraction.tags(row.block(),state);
+        int tagsW=0;for(var t:tags)tagsW+=mc.font.width(t.label())+4;
+        name=mc.font.plainSubstrByWidth(name,Math.max(1,mc.getWindow().getWidth()/4-18-tagsW));
+        TaczAmmoHud.text(g,mc.font,name,l.right()-tagsW-mc.font.width(name),l.rowTop()-11,0xFFE2E8F0);
+        int tx=l.right()-tagsW+4;
+        for(var t:tags){TaczAmmoHud.text(g,mc.font,t.label(),tx,l.rowTop()-11,t.color());tx+=mc.font.width(t.label())+4;}
         icon(g,row.block(),state,l.iconX()+26,l.iconY());
         String number=dev.gungang.acoustics.server.PropCatalog.number(row.block());
         if(number.chars().allMatch(Character::isDigit))number="0".repeat(Math.max(0,3-number.length()))+number;else number="???";
@@ -27,6 +26,8 @@ final class PropAbilityHud {
         // This is an identifier: keep all three digits equally legible, including leading zeros.
         TaczAmmoHud.digits(g,mc.font,number,0,0xFFFFFFFF);g.pose().popPose();
         if(row.cooldownTotal()>0)TaczAmmoHud.bar(g,l,1-Math.max(0,remaining)/row.cooldownTotal(),remaining>0?0xFFFFC36B:0xFF75D9AD);
+        // 119 · 189 · 222 · 242 · 248 · 252: the speedometer sits over the name row.
+        speedometer(g,l.right(),l.rowTop()-15);
         g.pose().popPose();
     }
     private static void icon(GuiGraphics g,String id,net.minecraft.world.level.block.state.BlockState state,int x,int y){icon(g,id,state,x,y,26);}
@@ -42,7 +43,12 @@ final class PropAbilityHud {
         g.pose().pushPose();
         float unit=size/26f;
         boolean liquid=state.getRenderShape()!=net.minecraft.world.level.block.RenderShape.MODEL&&!state.getFluidState().isEmpty();
-        if(item!=null&&item!=net.minecraft.world.item.Items.AIR&&!id.equals("minecraft:flower_pot")&&!liquid){
+        // 61 / 62 health packs show as a potion: light blue for the small pack, green for the large one.
+        int potion=id.equals("gungang:small_health_pack")?0x55C8FF:id.equals("gungang:large_health_pack")?0x3FD44A:-1;
+        if(potion>=0){
+            var stack=new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.POTION);stack.getOrCreateTag().putInt("CustomPotionColor",potion);
+            g.pose().translate(x,y,0);g.pose().scale(size/16f,size/16f,1);g.renderItem(stack,0,0);
+        }else if(item!=null&&item!=net.minecraft.world.item.Items.AIR&&!id.equals("minecraft:flower_pot")&&!liquid){
             g.pose().translate(x,y,0);g.pose().scale(size/16f,size/16f,1);
             g.renderItem(new net.minecraft.world.item.ItemStack(item),0,0);
         }else{
@@ -54,8 +60,10 @@ final class PropAbilityHud {
             g.flush();
         }
         g.pose().popPose();
-        if(state.getBlock() instanceof net.minecraft.world.level.block.BubbleColumnBlock){
-            var bubble=mc.getTextureAtlas(net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_PARTICLES).apply(new net.minecraft.resources.ResourceLocation("minecraft","bubble"));
+        // The particle atlas belongs to the particle engine, not the model manager: getTextureAtlas() would crash on it.
+        if(state.getBlock() instanceof net.minecraft.world.level.block.BubbleColumnBlock
+                &&mc.getTextureManager().getTexture(net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_PARTICLES) instanceof net.minecraft.client.renderer.texture.TextureAtlas atlas){
+            var bubble=atlas.getSprite(new net.minecraft.resources.ResourceLocation("minecraft","bubble"));
             int b=Math.max(4,Math.round(7*unit));
             g.pose().pushPose();g.pose().translate(0,0,300);
             g.blit(x+Math.round(5*unit),y+Math.round(10*unit),0,b,b,bubble);
@@ -65,6 +73,41 @@ final class PropAbilityHud {
         }
     }
     /** Hider's jump charge: a thin yellow line right above the health bar (below the compass), only while charging. */
+    /** 119 minecart, 189 TNT minecart, 222 money cart, 242 light, 248 billiard ball, 252 Sanga's doll: the fast movers. */
+    private static final java.util.Set<String> SPEEDOMETER=java.util.Set.of("minecraft:minecart","minecraft:tnt_minecart","gungang:money_cart","minecraft:light","gungang:billiard_ball","gungang:sanga_doll");
+    /** Full bar at 1000 blocks per in-game hour (a sprint is about 280). */
+    private static final float SPEEDOMETER_MAX=1000;
+    private static float speed;
+    /**
+     * A small speedometer over the disguise's name in the ammo HUD (fixed two-pixel units, right edge {@code right},
+     * bottom {@code bottom}): "000.0 B/h", blocks per in-game hour (1000 ticks), in the Gungang font with every digit in the same cell, so the reading never
+     * shifts as it changes, over a bar that fills up to 1000 B/h, green, then yellow, then red. Speed is the body's motion
+     * over the last tick, eased so it does not flicker.
+     */
+    static void speedometer(GuiGraphics g,int right,int bottom){
+        var mc=Minecraft.getInstance();var p=mc.player;var block=PropHuntClient.disguise();
+        if(p==null||block==null||!SPEEDOMETER.contains(block)){speed=0;return;}
+        double dx=p.getX()-p.xo,dy=p.getY()-p.yo,dz=p.getZ()-p.zo;
+        float target=(float)(Math.sqrt(dx*dx+dy*dy+dz*dz)*1000); // blocks per tick x 1000 ticks
+        speed+=(target-speed)*.2f;if(speed<.05f)speed=0;
+        String reading=String.format(java.util.Locale.ROOT,"%05.1f",Math.min(999.9f,speed));
+        int cell=0;for(char c='0';c<='9';c++)cell=Math.max(cell,HudText.numberWidth(String.valueOf(c)));
+        int dot=HudText.numberWidth("."),unit=HudText.numberWidth("B/h"),gap=3;
+        int textW=4*cell+dot+gap+unit;float size=1.5f;
+        int width=Math.round(textW*size),barH=3,textTop=bottom-barH-2-Math.round(8*size);
+        g.pose().pushPose();g.pose().translate(right-width,textTop,0);g.pose().scale(size,size,1);
+        int x=0;
+        for(int i=0;i<reading.length();i++){
+            String c=String.valueOf(reading.charAt(i));int w=c.equals(".")?dot:cell;
+            HudText.drawNumber(g,HudText.number(c),x+(w-HudText.numberWidth(c))/2,0,0xFFFFFFFF);x+=w;
+        }
+        HudText.drawNumber(g,HudText.number("B/h"),x+gap,0,0xFFB8C2CF);
+        g.pose().popPose();
+        float fill=Math.min(1,speed/SPEEDOMETER_MAX);
+        int color=fill<.4f?0xFF7CF2A0:fill<.75f?0xFFFFD34D:0xFFFF6B5A;
+        g.fill(right-width,bottom-barH,right,bottom,0x99000000);
+        g.fill(right-width,bottom-barH,right-width+Math.round(width*fill),bottom,color);
+    }
     static void jump(GuiGraphics g,int x,int y,int width,float partial){
         float charge=PropHuntClient.charge(partial);if(charge<0)return;
         g.fill(x,y,x+width,y+2,0x99000000);

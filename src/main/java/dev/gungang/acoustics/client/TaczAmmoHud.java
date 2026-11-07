@@ -53,19 +53,57 @@ public final class TaczAmmoHud {
     }
     static void drawRapier(GuiGraphics g,int amount){
         var mc=Minecraft.getInstance();amount=Math.max(0,Math.min(100,amount));
-        int color=amount<20?0xFFFF6565:TacticalStyle.GOLD;
-        var l=layout(3);int right=l.right(),w=l.countW(),top=l.countTop();
+        // White like the gun count; red while too low for a dash, as an empty magazine is.
+        boolean alert=amount<DASH_COST;int color=alert?0xFFFF5555:0xFFFFFFFF;
+        var l=layout(3);int right=l.right(),w=l.countW(),top=l.countTop(),x0=right-w;
+        double clock=System.nanoTime()/1e9;
+        // Drawing it again after a weapon switch snaps instead of animating from the stale value.
+        if(clock-rapierFrame>.25){RAPIER_BAR.reset();lastGauge=amount;dashAt=readyAt=-10;}
+        rapierFrame=clock;
+        if(amount!=lastGauge){
+            // A drop is a dash; crossing the dash cost or filling up is the "reload".
+            if(amount<lastGauge)dashAt=clock;
+            else if(lastGauge<DASH_COST&&amount>=DASH_COST||amount==100&&lastGauge<100)readyAt=clock;
+            lastGauge=amount;
+        }
         float scale=(float)(2.0/mc.getWindow().getGuiScale());g.pose().pushPose();g.pose().scale(scale,scale,1);
-        rapierSilhouette(g,l.iconX(),l.iconY()+6,0xB3000000);
-        text(g,mc.font,"레이피어 · 대시 20",right-mc.font.width("레이피어 · 대시 20"),l.rowTop()-11,TacticalStyle.INK);
-        String value=String.valueOf(amount),padding="0".repeat(3-value.length());
-        g.pose().pushPose();g.pose().translate(right-w,top,0);g.pose().scale(AMMO_SCALE,AMMO_SCALE,1);
-        digits(g,mc.font,padding,0,TacticalStyle.DIM);digits(g,mc.font,value,padding.length(),color);g.pose().popPose();
-        bar(g,l,amount/100f,color);
+        rapierSilhouette(g,l.iconX(),l.iconY()+6,alert?0xB3FF4D4D:0xB3000000);
+        text(g,mc.font,"레이피어 · 대시 20",right-mc.font.width("레이피어 · 대시 20"),l.rowTop()-11,0xFFE2E8F0);
+        // Bar: eased fill with the same spent/gained flash and refill sheen as gun magazines.
+        float shown=RAPIER_BAR.update(amount/100f);int fill=Math.round(w*shown),barTop=l.barTop();
+        g.fill(x0+1,barTop+1,right+1,barTop+BAR_H+1,SHADOW);
+        g.fill(x0,barTop,right,barTop+BAR_H,0x803A3B32);
+        g.fill(x0,barTop,x0+fill,barTop+BAR_H,color);
+        float flash=RAPIER_BAR.flash();
+        if(flash>0&&!RAPIER_BAR.rising()){
+            int lo=x0+Math.round(w*RAPIER_BAR.flashLow()),hi=x0+Math.round(w*RAPIER_BAR.flashHigh());
+            if(hi>lo)g.fill(lo,barTop-1,hi,barTop+BAR_H+1,Math.round(230*flash)<<24|0xFFFFFF);
+        }
+        double sinceReady=clock-readyAt;
+        if(sinceReady>=0&&sinceReady<.5&&fill>0){
+            float t=(float)(sinceReady/.5);int sweep=x0+Math.round((w+16)*t)-16;
+            int a=Math.max(x0,sweep),b=Math.min(x0+fill,sweep+10);
+            if(b>a)g.fill(a,barTop,b,barTop+BAR_H,Math.round(170*(1-t))<<24|0xFFFFFF);
+        }
         // Cost marker: immediately see whether the next dash is available.
-        int mark=right-w+Math.round(w*.20f);g.fill(mark,l.barTop()-1,mark+1,l.barTop()+BAR_H+1,TacticalStyle.INK);
+        int mark=x0+Math.round(w*DASH_COST/100f);g.fill(mark,barTop-1,mark+1,barTop+BAR_H+1,0xFFE2E8F0);
+        // Dash: upward kick and white flash. Dash ready again / full: a green pulse that settles.
+        float kick=pulse(clock-dashAt,.14),pop=pulse(clock-readyAt,.38);
+        float grow=1+.10f*kick+.18f*pop;int digitColor=color;
+        if(kick>0)digitColor=ArenaScreen.blend(digitColor,0xFFFFFFFF,.6f*kick);
+        if(pop>0&&!alert)digitColor=ArenaScreen.blend(digitColor,0xFF9CF2B0,.75f*pop);
+        String value=String.valueOf(amount),padding="0".repeat(3-value.length());
+        float cx=x0+w/2f,cy=top+3.5f*AMMO_SCALE;
+        g.pose().pushPose();g.pose().translate(cx,cy-2.5f*kick,0);g.pose().scale(grow,grow,1);g.pose().translate(-cx,-cy,0);
+        g.pose().translate(x0,top,0);g.pose().scale(AMMO_SCALE,AMMO_SCALE,1);
+        digits(g,mc.font,padding,0,ArenaScreen.blend(0xFF1A2230,color,.35f));digits(g,mc.font,value,padding.length(),digitColor);g.pose().popPose();
         g.pose().popPose();
     }
+    private static final int DASH_COST=dev.gungang.acoustics.server.RapierEnergy.COST;
+    private static final BarTween RAPIER_BAR=new BarTween(.32,.07);
+    private static double rapierFrame=-10;
+    private static int lastGauge;
+    private static double dashAt=-10,readyAt=-10;
     private static boolean unavailable;
     private static void rapierSilhouette(GuiGraphics g,int x,int y,int color){
         // Long tapered blade, swept knuckle guard, grip and pommel.
@@ -170,14 +208,46 @@ public final class TaczAmmoHud {
             RenderSystem.setShaderColor(1,1,1,1);
         }
         float ratio=capacity>0?Math.max(0,Math.min(1,ammo/(float)capacity)):ammo>0?1:0;
-        int fill=Math.round(countW*ratio);
-        g.fill(right-countW+1,barTop+1,right+1,barTop+BAR_H+1,SHADOW);
-        g.fill(right-countW,barTop,right,barTop+BAR_H,0x803A3B32);
-        g.fill(right-countW,barTop,right-countW+fill,barTop+BAR_H,color);
-        g.pose().pushPose();g.pose().translate(right-countW,countTop,0);g.pose().scale(AMMO_SCALE,AMMO_SCALE,1);
+        // Switching weapons (or slots) snaps; firing and reloading on the same gun animate.
+        String key=mc.player.getInventory().selected+"|"+gunId;
+        if(!key.equals(animatedGun)){animatedGun=key;BAR.reset();lastAmmo=ammo;shotAt=reloadAt=-10;}
+        boolean heat=heatData!=null;double clock=System.nanoTime()/1e9;
+        if(ammo!=lastAmmo){
+            // Heat climbs while firing, so for the heat gauge a rise is the shot.
+            if(ammo<lastAmmo!=heat)shotAt=clock;else reloadAt=clock;
+            lastAmmo=ammo;
+        }
+        float shown=BAR.update(ratio);
+        int x0=right-countW,fill=Math.round(countW*shown);
+        g.fill(x0+1,barTop+1,right+1,barTop+BAR_H+1,SHADOW);
+        g.fill(x0,barTop,right,barTop+BAR_H,0x803A3B32);
+        g.fill(x0,barTop,x0+fill,barTop+BAR_H,color);
+        float flash=BAR.flash();
+        if(flash>0){
+            // The rounds just spent linger white and fade; reloaded rounds glow as the bar fills.
+            int lo=x0+Math.round(countW*BAR.flashLow()),hi=x0+Math.round(countW*BAR.flashHigh());
+            int alpha=Math.round((BAR.rising()?150:230)*flash);
+            if(hi>lo)g.fill(lo,barTop-(BAR.rising()?0:1),hi,barTop+BAR_H+(BAR.rising()?0:1),alpha<<24|0xFFFFFF);
+        }
+        double sinceReload=clock-reloadAt;
+        if(sinceReload>=0&&sinceReload<.5&&fill>0){
+            // A sheen sweeps across the refilled bar.
+            float t=(float)(sinceReload/.5);int sweep=x0+Math.round((countW+16)*t)-16;
+            int a=Math.max(x0,sweep),b=Math.min(x0+fill,sweep+10);
+            if(b>a)g.fill(a,barTop,b,barTop+BAR_H,Math.round(170*(1-t))<<24|0xFFFFFF);
+        }
+        // Shot: a quick upward kick and white flash. Reload: a larger pulse that settles, tinted green.
+        float kick=pulse(clock-shotAt,.14),pop=pulse(clock-reloadAt,.38);
+        float grow=1+.10f*kick+.18f*pop;
+        int digitColor=color;
+        if(kick>0)digitColor=ArenaScreen.blend(digitColor,0xFFFFFFFF,.6f*kick);
+        if(pop>0&&!alert)digitColor=ArenaScreen.blend(digitColor,0xFF9CF2B0,.75f*pop);
+        float cx=x0+countW/2f,cy=countTop+3.5f*AMMO_SCALE;
+        g.pose().pushPose();g.pose().translate(cx,cy-2.5f*kick,0);g.pose().scale(grow,grow,1);g.pose().translate(-cx,-cy,0);
+        g.pose().translate(x0,countTop,0);g.pose().scale(AMMO_SCALE,AMMO_SCALE,1);
         // An empty magazine shows a solid red "000" instead of dimmed padding.
         digits(g,font,padding,0,alert?color:ArenaScreen.blend(0xFF1A2230,color,.35f));
-        digits(g,font,count,padding.length(),color);g.pose().popPose();
+        digits(g,font,count,padding.length(),digitColor);g.pose().popPose();
         // Fire selector to the right of the name: every mode the gun has, the current one lit.
         String current=String.valueOf(api.fireMode().invoke(gun,stack));
         var modes=new java.util.ArrayList<String>();
@@ -194,23 +264,34 @@ public final class TaczAmmoHud {
         text(g,font,name,nameRight-font.width(name),rowTop-11,0xFFE2E8F0);
         g.pose().popPose();
     }
+    /** Ammo bar easing and the last count seen, per held gun. */
+    private static final BarTween BAR=new BarTween(.32,.07);
+    private static String animatedGun;
+    private static int lastAmmo;
+    private static double shotAt=-10,reloadAt=-10;
+    /** 1 at the start of an effect lasting {@code seconds}, easing out to 0. */
+    private static float pulse(double elapsed,double seconds){
+        if(elapsed<0||elapsed>=seconds)return 0;float t=(float)(elapsed/seconds);return (1-t)*(1-t);
+    }
     /** Width of the widest number-font digit, so every digit gets the same cell. */
     private static int digitCell(net.minecraft.client.gui.Font font) {
         int cell=0;for(char c='0';c<='9';c++)cell=Math.max(cell,HudText.numberWidth(String.valueOf(c)));return cell;
     }
     /**
      * Tabular digits: each character centred in a fixed cell so the count does not shift as it changes.
-     * No drop shadow: the number font's counters and gaps are one pixel wide, so a 1px shadow fills them as dark lines.
+     * Drawn with the black HUD number shadow (HudText.drawNumber).
      */
     static void digits(GuiGraphics g,net.minecraft.client.gui.Font font,String text,int firstCell,int color) {
         int cell=digitCell(font);
         for(int i=0;i<text.length();i++) {
             String c=String.valueOf(text.charAt(i));int x=(firstCell+i)*cell+(cell-HudText.numberWidth(c))/2;
-            g.drawString(font,HudText.number(c),x,0,color,false);
+            HudText.drawNumber(g,HudText.number(c),x,0,color);
         }
     }
     /** Text with a translucent drop shadow instead of vanilla's opaque one. */
     static void text(GuiGraphics g,net.minecraft.client.gui.Font font,String text,int x,int y,int color) {
+        // Black text (the "은신" tag) would vanish into its shadow: a light outline instead.
+        if((color&0xFFFFFF)==0){for(int dx=-1;dx<=1;dx++)for(int dy=-1;dy<=1;dy++)if(dx!=0||dy!=0)g.drawString(font,text,x+dx,y+dy,0xFFC8CED6,false);g.drawString(font,text,x,y,color,false);return;}
         g.drawString(font,text,x+1,y+1,SHADOW,false);
         g.drawString(font,text,x,y,color,false);
     }

@@ -13,7 +13,7 @@ import net.minecraft.world.level.Level;
 /** Server-authoritative crosshair thrust and player-owned dash energy. */
 @net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid=dev.gungang.acoustics.GungangAcoustics.ID)
 public final class RapierItem extends Item {
-    public static final double RANGE=4.5;
+    public static final double RANGE=6;
     public static final int DASH_TICKS=6;
     public static final String SWEEP_ANIMATION="RapierSweepTick";
     public static final int SWEEP_ANIMATION_TICKS=10;
@@ -49,7 +49,7 @@ public final class RapierItem extends Item {
     private final Multimap<Attribute,AttributeModifier> attributes=ImmutableMultimap.<Attribute,AttributeModifier>builder()
             .put(Attributes.ATTACK_DAMAGE,new AttributeModifier(BASE_ATTACK_DAMAGE_UUID,"Rapier damage",20,AttributeModifier.Operation.ADDITION))
             .put(Attributes.ATTACK_SPEED,new AttributeModifier(BASE_ATTACK_SPEED_UUID,"Rapier speed",-2.0/3,AttributeModifier.Operation.ADDITION))
-            .put(net.minecraftforge.common.ForgeMod.ENTITY_REACH.get(),new AttributeModifier(java.util.UUID.fromString("ecdf4756-1d78-45af-9792-098cbb4c5f28"),"Rapier reach",1.5,AttributeModifier.Operation.ADDITION)).build();
+            .put(net.minecraftforge.common.ForgeMod.ENTITY_REACH.get(),new AttributeModifier(java.util.UUID.fromString("ecdf4756-1d78-45af-9792-098cbb4c5f28"),"Rapier reach",3,AttributeModifier.Operation.ADDITION)).build();
     public RapierItem(){super(new Properties().stacksTo(1));}
     /** Gauge synchronization must not lower/re-equip the blade every four ticks. */
     @Override public boolean shouldCauseReequipAnimation(ItemStack oldStack,ItemStack newStack,boolean slotChanged){return slotChanged||oldStack.getItem()!=newStack.getItem();}

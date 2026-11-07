@@ -1,0 +1,58 @@
+{
+  "variants": {
+    "ball=0": {
+      "model": "gungang:block/billiard_ball"
+    },
+    "ball=1": {
+      "model": "gungang:block/billiard_ball"
+    },
+    "ball=2": {
+      "model": "gungang:block/billiard_ball"
+    },
+    "ball=3": {
+      "model": "gungang:block/billiard_ball"
+    },
+    "ball=4": {
+      "model": "gungang:block/billiard_ball"
+    },
+    "ball=5": {
+      "model": "gungang:block/billiard_ball"
+    },
+    "ball=6": {
+      "model": "gungang:block/billiard_ball"
+    },
+    "ball=7": {
+      "model": "gungang:block/billiard_ball"
+    },
+    "ball=8": {
+      "model": "gungang:block/billiard_ball"
+    },
+    "ball=9": {
+      "model": "gungang:block/billiard_ball"
+    },
+    "ball=10": {
+      "model": "gungang:block/billiard_ball"
+    },
+    "ball=11": {
+      "model": "gungang:block/billiard_ball"
+    },
+    "ball=12": {
+      "model": "gungang:block/billiard_ball"
+    },
+    "ball=13": {
+      "model": "gungang:block/billiard_ball"
+    },
+    "ball=14": {
+      "model": "gungang:block/billiard_ball"
+    },
+    "ball=15": {
+      "model": "gungang:block/billiard_ball"
+    },
+    "ball=16": {
+      "model": "gungang:block/billiard_ball"
+    },
+    "ball=17": {
+      "model": "gungang:block/billiard_ball"
+    }
+  }
+}

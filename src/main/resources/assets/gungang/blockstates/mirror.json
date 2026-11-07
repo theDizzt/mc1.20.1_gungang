@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "gungang:block/mirror"
+    },
+    "facing=east": {
+      "model": "gungang:block/mirror"
+    },
+    "facing=south": {
+      "model": "gungang:block/mirror"
+    },
+    "facing=west": {
+      "model": "gungang:block/mirror"
+    }
+  }
+}

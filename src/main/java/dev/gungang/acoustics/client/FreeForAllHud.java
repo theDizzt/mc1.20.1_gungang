@@ -46,34 +46,12 @@ public final class FreeForAllHud {
             plate(g,true,me,mine+1,goal,lead);
             if(rows.size()>1)plate(g,false,rows.get(rival),rival+1,goal,null);
         }
-        DeathmatchHud.small(g,"목표 "+goal,0,30,.6f,DeathmatchHud.MUTED,true);
+        DeathmatchHud.small(g,"목표 "+goal,0,37,.8f,DeathmatchHud.MUTED,true);
     }
     private static void plate(GuiGraphics g,boolean left,MatchSnapshot.Row row,int rank,int goal,Integer lead) {
-        int color=0xFF000000|row.color(),inner=36,outer=116,y1=3,y2=27,x1=left?-outer:inner,x2=left?-inner:outer;
-        DeathmatchHud.plate(g,x1,y1,x2,y2,color,left,rank==1);
-        // Score progress replaces the plate underline: dim track, player-coloured fill from the centre.
-        int fill=Math.round((x2-x1)*Math.max(0,Math.min(1,row.score()/(float)Math.max(1,goal))));
-        g.fill(x1,y2-2,x2,y2,TacticalStyle.EDGE);
-        g.fill(left?x2-fill:x1,y2-2,left?x2:x1+fill,y2,color);
-        var font=Minecraft.getInstance().font;String text=String.valueOf(row.score());int numberWidth=HudText.numberWidth(text);
-        float size=Math.min(2f,36f/Math.max(1,numberWidth));int width=Math.round(numberWidth*size);
-        DeathmatchHud.score(g,left?0:1,row.score(),text,(left?x2-8-width:x1+8)+width/2f,y1+12,size,rank==1);
-        int edge=left?x1+7:x2-7;
-        // Rank chip, then the name in the remaining space before the score.
-        String chip=rank+"위";int chipW=Math.round(font.width(chip)*.7f)+6,cx=left?edge:edge-chipW;
-        g.fill(cx,y1+4,cx+chipW,y1+12,(rankColor(rank)&0xFFFFFF)|0x40000000);g.fill(left?cx:cx+chipW-1,y1+4,left?cx+1:cx+chipW,y1+12,rankColor(rank));
-        DeathmatchHud.small(g,chip,cx+3,y1+5,.7f,rank<=3?rankColor(rank):0xFFFFFFFF,false,true);
-        int room=Math.max(1,Math.round((x2-x1-chipW-width-24)/.7f));
-        String name=font.plainSubstrByWidth(row.name(),room);
-        DeathmatchHud.small(g,name,left?cx+chipW+4:cx-4,y1+5,.7f,0xFFFFFFFF,false,left);
-        if(lead!=null) {
-            String tag=lead>0?"+"+lead:lead==0?"±0":String.valueOf(lead);
-            int tagColor=lead>0?0xFF7BE07B:lead==0?TacticalStyle.MUTED:0xFFFF8A65,w=Math.round(font.width(tag)*.6f)+6;
-            g.fill(edge,y1+14,edge+w,y1+21,(tagColor&0xFFFFFF)|0x40000000);g.fill(edge,y1+14,edge+1,y1+21,tagColor);
-            DeathmatchHud.small(g,tag,edge+3,y1+15,.6f,tagColor,false,true);
-        }
+        String note=lead==null?"":lead>0?"+"+lead:lead==0?"±0":String.valueOf(lead);
+        MatchRibbonHud.wing(g,left,0xFF000000|row.color(),row.score(),goal,rank+"위 · "+row.name(),note);
     }
-
     static int capacity(int height){return Math.max(1,(height-HEAD-COLS-FOOT)/ROW);}
     static int pages(MatchSnapshot s,int height){return Math.max(1,(s.players().size()+capacity(height)-1)/capacity(height));}
     /** One ranking card in the team-card style: mint header, column strip, player-coloured stripes and top-three ranks. */
@@ -93,7 +71,7 @@ public final class FreeForAllHud {
         if(leader!=null) {
             String total=String.valueOf(leader.score()),label="1위";
             g.pose().pushPose();g.pose().translate(right-8-HudText.numberWidth(total)*2,y+6,0);g.pose().scale(2,2,1);
-            g.drawString(font,HudText.number(total),0,0,0xFFFFFFFF,false);g.pose().popPose();
+            HudText.drawNumber(g,HudText.number(total),0,0,0xFFFFFFFF);g.pose().popPose();
             g.drawString(font,label,right-12-HudText.numberWidth(total)*2-font.width(label),y+13,GOLD,false);
         }
         int dmg=right-8,assist=dmg-46,death=assist-22,kill=death-22,score=kill-30,face=x+26,nameX=face+30,cy=y+HEAD;
@@ -109,7 +87,7 @@ public final class FreeForAllHud {
             else if(i%2==1)g.fill(x,ry,right,ry+ROW,0x10FFFFFF);
             g.fill(x,ry,x+2,ry+ROW,color);
             String number=String.valueOf(rank);
-            g.drawString(font,HudText.number(number),x+8+(10-HudText.numberWidth(number))/2,ry+5,rank<=3&&r.score()>0?rankColor(rank):DIM,false);
+            HudText.drawNumber(g,HudText.number(number),x+8+(10-HudText.numberWidth(number))/2,ry+5,rank<=3&&r.score()>0?rankColor(rank):DIM);
             g.fill(face-1,ry+2,face+13,ry+16,mine?color:TacticalStyle.EDGE);
             PlayerFaceRenderer.draw(g,MatchHud.skin(r.id()),face,ry+3,12);
             PlayerLevels.draw(g,r.id(),face+15,ry+3,12);

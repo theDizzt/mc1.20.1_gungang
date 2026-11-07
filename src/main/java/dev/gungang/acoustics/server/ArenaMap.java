@@ -48,6 +48,7 @@ public record ArenaMap(String id, String name, String description, boolean enabl
         if(propHunt!=null)timeLimitSeconds=propHuntMinutes==null?600:propHuntMinutes*60;
  if(freeForAll!=null&&bomb==null)timeLimitSeconds=freeForAll.timeLimitSeconds();
         if(escort!=null&&timeLimitSeconds==0)timeLimitSeconds=240;
+        // Legacy: map JSON death zones are no longer used (gungang:death_zone blocks replaced them); kept so old files still load.
         deathZones=deathZones==null?java.util.List.of():java.util.List.copyOf(deathZones);
         if(bomb!=null){
             alphaSpawn=bomb.attackSpawn();bravoSpawn=bomb.defenseSpawn();alphaArea=bomb.attackArea();bravoArea=bomb.defenseArea();

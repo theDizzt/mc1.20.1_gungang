@@ -1,3 +1,6 @@
 {
-    "parent":  "gungang:block/mannequin"
+    "parent": "minecraft:item/generated",
+    "textures": {
+        "layer0": "gungang:item/mannequin"
+    }
 }

@@ -1,8 +1,8 @@
 {
-  "damage": 6,
+  "damage": 7,
   "detectionRange": 16,
   "cooldownSeconds": 120,
-  "health": 150,
+  "health": 200,
   "capacity": 120,
   "fireIntervalTicks": 4,
   "reloadPerSecond": 20,

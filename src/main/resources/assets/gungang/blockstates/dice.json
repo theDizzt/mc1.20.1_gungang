@@ -1,0 +1,22 @@
+{
+  "variants": {
+    "value=1": {
+      "model": "gungang:block/dice_1"
+    },
+    "value=2": {
+      "model": "gungang:block/dice_2"
+    },
+    "value=3": {
+      "model": "gungang:block/dice_3"
+    },
+    "value=4": {
+      "model": "gungang:block/dice_4"
+    },
+    "value=5": {
+      "model": "gungang:block/dice_5"
+    },
+    "value=6": {
+      "model": "gungang:block/dice_6"
+    }
+  }
+}

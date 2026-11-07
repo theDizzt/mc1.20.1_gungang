@@ -75,6 +75,19 @@ public final class PropEffects {
                     if(state.getBlock() instanceof EntityBlock block&&!(block instanceof dev.gungang.acoustics.server.ConveyorBlock))clientTicker(level,block,state,pos,blockEntity(prop,part.offset(),state,block));
                 }
             }finally{particleOffset=net.minecraft.world.phys.Vec3.ZERO;}
+            // 196: the death zone disguise shows the skull marker a held death zone block shows, but never to seekers:
+            // to them it is as invisible as a barrier.
+            if(prop.item().equals("gungang:death_zone")&&level.getGameTime()%20==0&&!PropRenderer.concealed(prop)&&!PropHuntClient.seeker())
+                level.addParticle(new net.minecraft.core.particles.BlockParticleOption(net.minecraft.core.particles.ParticleTypes.BLOCK_MARKER,prop.state()),prop.getX(),prop.getY()+.5,prop.getZ(),0,0,0);
+            // 242: the light disguise is invisible; its own team (never seekers) sees the light marker, as with a held light.
+            if(prop.item().equals("minecraft:light")&&level.getGameTime()%20==0&&!PropRenderer.concealed(prop)&&!PropHuntClient.seeker())
+                level.addParticle(new net.minecraft.core.particles.BlockParticleOption(net.minecraft.core.particles.ParticleTypes.BLOCK_MARKER,prop.state()),prop.getX(),prop.getY()+.5,prop.getZ(),0,0,0);
+            // 105: soul sand gives off drifting souls and soul fire flecks, as it does under someone with Soul Speed.
+            if(prop.item().equals("minecraft:soul_sand")&&!PropRenderer.concealed(prop)){
+                var random=level.random;
+                if(random.nextInt(10)==0)level.addParticle(net.minecraft.core.particles.ParticleTypes.SOUL,prop.getX()+(random.nextDouble()-.5)*.9,prop.getY()+1.02,prop.getZ()+(random.nextDouble()-.5)*.9,0,.03+random.nextDouble()*.02,0);
+                if(random.nextInt(6)==0)level.addParticle(net.minecraft.core.particles.ParticleTypes.SOUL_FIRE_FLAME,prop.getX()+(random.nextDouble()-.5)*.9,prop.getY()+1.02,prop.getZ()+(random.nextDouble()-.5)*.9,0,.01,0);
+            }
             BlockPos cell=BlockPos.containing(prop.getX(),prop.getY()+.5,prop.getZ());
             glow(level,prop.getId(),emission>0&&!PropRenderer.concealed(prop)?cell:null,emission);
         }
@@ -137,6 +150,10 @@ public final class PropEffects {
         if(be==null||be instanceof Shulker)return;
         var ticker=block.getTicker(level,state,(net.minecraft.world.level.block.entity.BlockEntityType<T>)be.getType());
         if(ticker!=null)ticker.tick(level,pos,state,(T)be);
+        // 199: a disguise conduit has no prismarine frame; keep it awake (spinning cage, open eye) as a working one looks.
+        if(be instanceof net.minecraft.world.level.block.entity.ConduitBlockEntity conduit){
+            var awake=(dev.gungang.acoustics.mixin.ConduitStateAccessor)conduit;awake.gungang$setActive(true);awake.gungang$setHunting(true);
+        }
     }
     private static void glow(ClientLevel level,int id,BlockPos pos,int emission){
         var current=GLOWS.get(id);

@@ -86,6 +86,8 @@ public final class BotManager {
     static boolean live(BotEntity bot){return entities().contains(bot);}
     /** A bot's live body by its id (also the id of its gadget fake player), or null: what a spectator camera follows. */
     static BotEntity body(UUID id){var a=agent(id);return a==null||a.bot==null||a.bot.isRemoved()||!a.bot.isAlive()?null:a.bot;}
+    /** The bots in the current match. */
+    static List<BotAgent> roster(){return List.copyOf(agents);}
     static Set<UUID> activeIds(){var ids=new HashSet<UUID>();for(var a:agents)ids.add(a.id);return ids;}
     static boolean boosted(Entity attacker){var a=agent(attacker);return a!=null&&a.gadgets.boosted(attacker.level().getGameTime());}
     /** Pathfinding cost hook: ground this bot knows is mined, trapped or burning. */
@@ -185,17 +187,17 @@ public final class BotManager {
     static void validate(Loadouts loadouts){if(added()){selectWeapon(loadouts);selectSecondary(loadouts);}}
     /** Swords, axes and any modded melee item that carries main-hand attack damage (e.g. lrtactical knives). */
     static boolean melee(ItemStack stack){
+        if(new net.minecraft.resources.ResourceLocation("lrtactical","melee").equals(net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(stack.getItem())))return true;
         if(stack.getItem() instanceof SwordItem||stack.getItem() instanceof AxeItem)return true;
-        if(stack.isEmpty()||stack.getItem() instanceof GadgetItem||BotGun.supports(stack))return false;
+        if(stack.isEmpty()||stack.getItem() instanceof GadgetItem||BotGun.supports(stack)||BotRanged.supports(stack))return false;
         return stack.getAttributeModifiers(EquipmentSlot.MAINHAND).get(Attributes.ATTACK_DAMAGE).stream().anyMatch(m->m.getAmount()>0);
     }
     /** Held secondaries replace the primary in hand; everything else is used as an ability by {@link BotGadgets}. */
-    static boolean held(ItemStack stack){return BotGun.supports(stack)||stack.is(Items.BOW)||melee(stack);}
+    static boolean held(ItemStack stack){return BotGun.supports(stack)||BotRanged.supports(stack)||melee(stack);}
+    static boolean supportedPrimary(Loadouts.Weapon w){return !w.commandOnly()&&held(w.stack());}
     static boolean supportedSecondary(Loadouts.Weapon w){
         // Command-only entries run a player command; the bot has no player to run it as.
         if(w.commandOnly())return false;
-        // The mercy bullet only fires at a teammate under a player's crosshair; a bot would aim it at enemies.
-        if(w.id().equals(MercyBullet.ID))return false;
         var stack=w.stack();return held(stack)||BotGadgets.supported(stack);
     }
     static Loadouts.Weapon selectSecondary(Loadouts loadouts){
@@ -207,8 +209,8 @@ public final class BotManager {
     }
     static Loadouts.Weapon selectWeapon(Loadouts loadouts){
         return loadouts.primary().stream().filter(w->settings.weapon().isEmpty()||w.id().equals(settings.weapon()))
-                .filter(w->{var stack=w.stack();return stack.is(Items.BOW)||BotGun.supports(stack);}).findFirst()
-                .orElseThrow(()->new IllegalArgumentException("봇 주무기는 TaCZ 총기 또는 minecraft:bow여야 합니다. /gungang bot weapon <주무기 ID>"));
+                .filter(BotManager::supportedPrimary).findFirst()
+                .orElseThrow(()->new IllegalArgumentException("봇 주무기는 TaCZ 총기·활·석궁·컴파운드 보우·근접 무기여야 합니다. /gungang bot weapon <주무기 ID>"));
     }
     static boolean weaponTaken(UUID player,String team,boolean primary,String id){
         return agents.stream().anyMatch(a->!a.id.equals(player)&&a.team.equals(team)&&(primary?a.weapon:a.secondary)!=null&&(primary?a.weapon:a.secondary).id().equals(id));
@@ -220,7 +222,7 @@ public final class BotManager {
     /** Every reserved slot joins on the team it has now; off/on during a match never changes sides or resets scores. */
     private static void activate()throws Exception{
         if(arena==null||!added())return;
-        var loadouts=Loadouts.load();fault="";
+        var loadouts=LobbyManager.catalog(Loadouts.load());fault="";
         for(int slot:lobby.keySet()){
             if(agent(BotDatabase.id(slot))!=null)continue;
             var agent=new BotAgent(slot,lobbyTeam(slot));agents.add(agent);agent.activate(loadouts);
@@ -318,11 +320,11 @@ public final class BotManager {
         if(!botVictim&&!botAttack)return;
         if(arena==null||!settings.enabled()||!MatchManager.botRunning()){event.setCanceled(true);return;}
         if(botAttack&&botVictim&&attacker.getUUID().equals(victim.getUUID()))return;
-        var ffa=MatchManager.freeForAll();
+        var ffa=MatchManager.freeForAll();boolean turret=Turrets.shot(event.getSource());
         if(ffa!=null) {
             // Everyone fights everyone; FreeForAllMatch itself blocks attacks to and from protected participants.
             if(victim instanceof ServerPlayer p&&!botVictim&&(!ffa.participant(p.getUUID())||LobbyManager.respawning(p.getUUID())))event.setCanceled(true);
-            if(botVictim&&!botAttack&&attacker instanceof ServerPlayer p&&(!ffa.participant(p.getUUID())||p.isSpectator()))event.setCanceled(true);
+            if(botVictim&&!botAttack&&attacker instanceof ServerPlayer p&&(!ffa.participant(p.getUUID())||p.isSpectator()&&!turret))event.setCanceled(true);
             return;
         }
         // A bot's fake player (thrown items) carries the bot's UUID: its side is the bot's, not a lobby entry.
@@ -331,7 +333,7 @@ public final class BotManager {
         boolean teams=Set.of("ALPHA","BRAVO").contains(attackerSide)&&Set.of("ALPHA","BRAVO").contains(victimSide);
         if(botAttack&&victim instanceof ServerPlayer p&&!botVictim&&(!teams||attackerSide.equals(victimSide)||LobbyManager.respawning(p.getUUID())))event.setCanceled(true);
         if(botAttack&&botVictim&&(!teams||attackerSide.equals(victimSide)))event.setCanceled(true);
-        if(botVictim&&!botAttack&&attacker instanceof ServerPlayer p&&(!teams||attackerSide.equals(victimSide)||p.isSpectator()))event.setCanceled(true);
+        if(botVictim&&!botAttack&&attacker instanceof ServerPlayer p&&(!teams||attackerSide.equals(victimSide)||p.isSpectator()&&!turret))event.setCanceled(true);
     }
 
     // ---- commands ----

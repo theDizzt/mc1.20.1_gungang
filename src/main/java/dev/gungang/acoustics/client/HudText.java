@@ -18,6 +18,24 @@ public final class HudText {
         return Component.literal(value).withStyle(style -> style.withFont(NUMBER_FONT));
     }
     public static int numberWidth(String value) { return Minecraft.getInstance().font.width(number(value)); }
+    /** Number-font text with a translucent black drop shadow one glyph pixel down-right (vanilla's is only a darker tint). */
+    public static void drawNumber(GuiGraphics g, Component text, int x, int y, int color) {
+        var font = Minecraft.getInstance().font;
+        // Translucent black: half the text's own alpha (an alpha below 4 means opaque to drawString), never below 4
+        // itself, which drawString would also read as opaque.
+        int alpha = (color & 0xFC000000) == 0 ? 255 : color >>> 24;
+        int shadow = Math.max(4, alpha * 0x80 / 255) << 24;
+        g.drawString(font, text, x + 1, y + 1, shadow, false);
+        g.drawString(font, text, x, y, color, false);
+    }
+    /** Small number-font label (e.g. a prop catalog id) scaled by {@code size} and right-aligned to {@code right}. */
+    public static void smallNumber(GuiGraphics g, String value, int right, int y, float size, int color) {
+        g.pose().pushPose();
+        g.pose().translate(right - numberWidth(value) * size, y, 0);
+        g.pose().scale(size, size, 1);
+        drawNumber(g, number(value), 0, 0, color);
+        g.pose().popPose();
+    }
     /** Number font on digit runs only, so units such as "3명" keep the regular font. */
     public static Component numbers(String value) {
         MutableComponent text = Component.empty();
@@ -28,6 +46,29 @@ public final class HudText {
             start = i;
         }
         return text;
+    }
+    /** "00:00"-style clock text (also "1:05:09"); drawn with {@link #drawTime} so the digits keep fixed cells. */
+    public static boolean time(String value) { return value.matches("[0-9]+(:[0-9][0-9])+"); }
+    private static int digitCell() {
+        int cell = 0;
+        for (char c = '0'; c <= '9'; c++) cell = Math.max(cell, numberWidth(String.valueOf(c)));
+        return cell;
+    }
+    /** Width of {@code value} in the number font with tabular digits. */
+    public static int timeWidth(String value) {
+        int cell = digitCell(), colon = numberWidth(":"), width = 0;
+        for (int i = 0; i < value.length(); i++) width += value.charAt(i) == ':' ? colon : cell;
+        return width;
+    }
+    /** Number-font clock with every digit centred in the widest digit's cell, so the time never shifts as it counts. */
+    public static void drawTime(GuiGraphics g, String value, int x, int y, int color) {
+        int cell = digitCell(), colon = numberWidth(":");
+        for (int i = 0; i < value.length(); i++) {
+            String c = String.valueOf(value.charAt(i));
+            int w = c.equals(":") ? colon : cell;
+            drawNumber(g, number(c), x + (w - numberWidth(c)) / 2, y, color);
+            x += w;
+        }
     }
     private static boolean numeric(char c) { return c >= '0' && c <= '9' || ".:/+-%".indexOf(c) >= 0; }
 
@@ -40,13 +81,52 @@ public final class HudText {
     public static void health(GuiGraphics g, String value, int x, int y, int width, int height, int color, float sizeMultiplier) {
         centered(g, value, x, y, width, height, color, sizeMultiplier, 8, HudText::styled);
     }
-    /** Same placement as {@link #health}, drawn in the number font and centred on its 7-row digits. */
+    /** {@link #health} with a black outline one font pixel thick, for labels over bright bars. */
+    public static void healthOutlined(GuiGraphics g, String value, int x, int y, int width, int height, int color) {
+        float px = healthSize(height, 1f);
+        for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++) {
+            if (dx == 0 && dy == 0) continue;
+            g.pose().pushPose();
+            g.pose().translate(dx * px, dy * px, 0);
+            health(g, value, x, y, width, height, 0xFF000000);
+            g.pose().popPose();
+        }
+        health(g, value, x, y, width, height, color);
+    }
+    /**
+     * Same placement as {@link #health}, drawn in the number font and centred on its 7-row digits. A "123/125" label
+     * draws the "/125" maximum smaller, sharing the current value's baseline; it is dropped when it does not fit.
+     */
     public static void healthNumber(GuiGraphics g, String value, int x, int y, int width, int height, int color, float sizeMultiplier) {
-        centered(g, value, x, y, width, height, color, sizeMultiplier, 7, HudText::number);
+        int slash = value.indexOf('/');
+        if (slash < 0) { centered(g, value, x, y, width, height, color, sizeMultiplier, 7, HudText::number); return; }
+        String current = value.substring(0, slash), maximum = value.substring(slash);
+        float size = healthSize(height, sizeMultiplier), small = size * MAX_SCALE;
+        int top = y + Math.round((height - 7 * size) / 2);
+        int currentWidth = Math.round(numberWidth(current) * size);
+        drawScaled(g, current, x, top, width, color, size, HudText::number);
+        if (currentWidth + numberWidth(maximum) * small > width) return;
+        var font = Minecraft.getInstance().font;
+        g.pose().pushPose();
+        // Bottom-aligned with the larger digits.
+        g.pose().translate(x + currentWidth, top + 7 * (size - small), 0);
+        g.pose().scale(small, small, 1);
+        g.drawString(font, number(maximum), 0, 0, color, false);
+        g.pose().popPose();
+    }
+    /** Size of the "/max" part of a health label relative to the current value. */
+    private static final float MAX_SCALE = .6f;
+    /** Drawn width of a health label as {@link #healthNumber} lays it out, at text scale 1. */
+    public static float healthWidth(String value) {
+        int slash = value.indexOf('/');
+        return slash < 0 ? numberWidth(value) : numberWidth(value.substring(0, slash)) + numberWidth(value.substring(slash)) * MAX_SCALE;
+    }
+    private static float healthSize(int height, float sizeMultiplier) {
+        return Math.min(height / 8f, AcousticConfig.HUD_TEXT_SIZE.get() / 100f * 1.2f) * sizeMultiplier;
     }
     private static void centered(GuiGraphics g, String value, int x, int y, int width, int height, int color, float sizeMultiplier,
                                  int rows, Function<String, Component> style) {
-        float size = Math.min(height / 8f, AcousticConfig.HUD_TEXT_SIZE.get() / 100f * 1.2f) * sizeMultiplier;
+        float size = healthSize(height, sizeMultiplier);
         drawScaled(g, value, x, y + Math.round((height - rows * size) / 2), width, color, size, style);
     }
     private static Component styled(String value) {

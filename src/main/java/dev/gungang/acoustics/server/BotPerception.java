@@ -28,8 +28,12 @@ final class BotPerception {
     /**
      * Dangerous ground the bot has noticed: an enemy mine or trap it saw (remembered until the device is gone),
      * a burning molotov patch or an orbital strike marker. {@code flee}: get out now, not just path around it.
+     * Map gimmicks are blocks ({@code block} set): an armed UXO cell is never stepped on, and an armed gas barrel's
+     * blast radius is {@code combat} ground, avoided and left only while enemies are in sight or shooting at the bot
+     * (someone could shoot the barrel), so barrels do not block ordinary walking.
      */
-    record Hazard(java.util.UUID id,Vec3 center,double radius,boolean flee) {
+    record Hazard(java.util.UUID id,Vec3 center,double radius,boolean flee,net.minecraft.core.BlockPos block,boolean combat) {
+        Hazard(java.util.UUID id,Vec3 center,double radius,boolean flee){this(id,center,radius,flee,null,false);}
         boolean covers(double x,double y,double z) {double dx=x-center.x,dz=z-center.z;return dx*dx+dz*dz<=radius*radius&&Math.abs(y-center.y)<4;}
     }
     private final Map<UUID,Hazard> hazards=new HashMap<>();
@@ -43,12 +47,17 @@ final class BotPerception {
     private float damageWindow;
     private int damageAt;
     private int nextWideHazardScan;
+    /** Enemies seen last update or the bot was hit recently: gas barrel blast zones count as danger. */
+    private boolean alert;
+    private UUID selectedTarget;
+    private int selectedAt;
 
-    void reset() {hazards.clear();contacts.clear();lastSample.clear();allies.clear();visibleCount=0;engagedAlly=null;allyThreat=null;damageWindow=0;lastHurt=allyEngagedAt=-100000;lastAttacker=null;damageAt=0;nextWideHazardScan=0;}
+    void reset() {selectedTarget=null;selectedAt=0;hazards.clear();contacts.clear();lastSample.clear();allies.clear();visibleCount=0;engagedAlly=null;allyThreat=null;damageWindow=0;lastHurt=allyEngagedAt=-100000;lastAttacker=null;damageAt=0;nextWideHazardScan=0;}
 
     void update(BotEntity bot,String team,BotSettings settings,int now) {
         var level=bot.level();double range=settings.visionRange();
         int memory=(int)Math.round(settings.memorySeconds()*20);
+        alert=visibleCount>0||underFire(now);
         visibleCount=0;allies.clear();
         for(var contact:contacts.values())contact.visible=false;
         // A running scan by our team (anyone's scanner, ours included) shows every enemy, as on a player's screen.
@@ -67,7 +76,7 @@ final class BotPerception {
             if(scan&&distanceSqr<=SCAN_RANGE*SCAN_RANGE)note(bot,player,Cue.SCAN,now,.5);
             if(distanceSqr>range*range)continue;
             boolean inView=distanceSqr<=PERIPHERAL*PERIPHERAL||inCone(bot,player.getEyePosition(),settings.fov());
-            if(inView&&bot.hasLineOfSight(player)&&!SpawnGateProtection.separates(bot,player)) {
+            if(inView&&bot.hasLineOfSight(player)&&!SpawnGateProtection.separates(bot,player)&&!SmokeScreen.blocks(bot,player)) {
                 var contact=contacts.computeIfAbsent(player.getUUID(),Contact::new);
                 if(contact.position!=null&&contact.cue==Cue.SEEN&&now>contact.updated)
                     contact.velocity=player.position().subtract(contact.position).scale(1.0/(now-contact.updated));
@@ -113,6 +122,7 @@ final class BotPerception {
         var level=bot.level();String own=bot.getTeam()==null?"":bot.getTeam().getName();
         // Forget devices that are gone; a sprung trap is no longer a threat.
         hazards.values().removeIf(h->{
+            if(h.block()!=null)return !armed(level,h.block());
             var entity=((net.minecraft.server.level.ServerLevel)level).getEntity(h.id());
             return entity==null||entity.isRemoved()||entity instanceof BearTrapEntity trap&&trap.sprung()
                     ||entity instanceof OrdnanceEntity strike&&strike.orbital()&&strike.detonated();
@@ -121,11 +131,11 @@ final class BotPerception {
         // Include the configured blast radius so a large strike covering us is never treated as distant.
         boolean wide=now>=nextWideHazardScan;
         double radius=wide?96:Math.min(96,Math.max(24,ExtraGadgetConfig.orbital.radius()+3));
-        if(wide)nextWideHazardScan=now+20;
+        if(wide){nextWideHazardScan=now+20;gimmicks(bot);}
         for(var entity:level.getEntities(bot,bot.getBoundingBox().inflate(radius),e->e instanceof DeployableEntity||e instanceof BearTrapEntity||e instanceof OrdnanceEntity)) {
             if(hazards.containsKey(entity.getUUID()))continue;
             double distance=entity.distanceTo(bot);
-            if(entity instanceof DeployableEntity mine&&!mine.wall()&&!own.equals(mine.teamName())&&distance<=10&&bot.hasLineOfSight(mine))
+            if(entity instanceof DeployableEntity mine&&!mine.wall()&&!own.equals(mine.teamName())&&distance<=16&&bot.hasLineOfSight(mine))
                 hazards.put(mine.getUUID(),new Hazard(mine.getUUID(),mine.position(),GadgetConfig.mine.triggerRadius()+.8,false));
             else if(entity instanceof BearTrapEntity trap&&!trap.sprung()&&!own.equals(trap.teamName())&&distance<=10&&bot.hasLineOfSight(trap))
                 hazards.put(trap.getUUID(),new Hazard(trap.getUUID(),trap.position(),1.0,false));
@@ -136,11 +146,38 @@ final class BotPerception {
                 hazards.put(strike.getUUID(),new Hazard(strike.getUUID(),strike.position(),ExtraGadgetConfig.orbital.radius()+3,true));
         }
     }
+    private static final double GIMMICK_RANGE=24;
+    /** An active UXO or gas barrel (bottom half) at this position. */
+    private static boolean armed(net.minecraft.world.level.Level level,net.minecraft.core.BlockPos pos){
+        var state=level.getBlockState(pos);
+        return state.getBlock() instanceof GimmickBlock g&&(g.id.equals("uxo")||g.id.equals("gas_barrel"))&&state.getValue(GimmickBlock.ACTIVE)&&!state.getValue(GimmickBlock.TOP);
+    }
+    /**
+     * Map UXOs and gas barrels near the bot, read from the loaded chunks' block entities (no block scan). They are
+     * part of the map, so the bot knows them without seeing them, like a player who knows the map.
+     */
+    private void gimmicks(BotEntity bot){
+        if(!(bot.level() instanceof net.minecraft.server.level.ServerLevel level))return;
+        int cx=net.minecraft.core.SectionPos.blockToSectionCoord(bot.getBlockX()),cz=net.minecraft.core.SectionPos.blockToSectionCoord(bot.getBlockZ());
+        int reach=(int)Math.ceil(GIMMICK_RANGE/16);
+        for(int x=cx-reach;x<=cx+reach;x++)for(int z=cz-reach;z<=cz+reach;z++){
+            var chunk=level.getChunkSource().getChunkNow(x,z);if(chunk==null)continue;
+            for(var entity:chunk.getBlockEntities().values()){
+                if(!(entity instanceof GimmickEntity))continue;
+                var pos=entity.getBlockPos();
+                if(pos.distToCenterSqr(bot.position())>GIMMICK_RANGE*GIMMICK_RANGE||!armed(level,pos))continue;
+                var id=new UUID(pos.asLong(),0x6A5B_A22E_1000L);if(hazards.containsKey(id))continue;
+                boolean uxo=((GimmickBlock)level.getBlockState(pos).getBlock()).id.equals("uxo");
+                hazards.put(id,uxo?new Hazard(id,Vec3.atBottomCenterOf(pos),.95,false,pos,false)
+                        :new Hazard(id,Vec3.atBottomCenterOf(pos),GimmickConfig.gas.radius()+.75,false,pos,true));
+            }
+        }
+    }
     /** Ground to route around (pathfinding cost), for every hazard the bot knows of. */
-    boolean avoid(double x,double y,double z) {for(var h:hazards.values())if(h.covers(x,y,z))return true;return false;}
+    boolean avoid(double x,double y,double z) {for(var h:hazards.values())if((!h.combat()||alert)&&h.covers(x,y,z))return true;return false;}
     /** The flee-now hazard the bot is standing in, if any (the largest when several overlap). */
     Hazard danger(Vec3 at) {
-        return hazards.values().stream().filter(h->h.flee()&&h.covers(at.x,at.y,at.z)).max(Comparator.comparingDouble(Hazard::radius)).orElse(null);
+        return hazards.values().stream().filter(h->(h.flee()||h.combat()&&alert)&&h.covers(at.x,at.y,at.z)).max(Comparator.comparingDouble(Hazard::radius)).orElse(null);
     }
     int hazardCount() {return hazards.size();}
 
@@ -158,13 +195,20 @@ final class BotPerception {
     LivingEntity target(BotEntity bot,LivingEntity current,int now) {
         Contact best=null;double bestScore=Double.MAX_VALUE;
         for(var c:contacts.values()) {
-            if(!c.visible||c.player==null)continue;
+            if(!c.visible||c.player==null||!c.player.isAlive())continue;
             double score=c.player.distanceToSqr(bot);
             if(c.player==current)score*=.6;
             if(c.id.equals(lastAttacker)&&now-lastHurt<40)score*=.5;
             if(score<bestScore) {best=c;bestScore=score;}
         }
-        return best==null?null:best.player;
+        if(best==null){selectedTarget=null;return null;}
+        var held=selectedTarget==null?null:contacts.get(selectedTarget);
+        // Keep a visible target briefly so tiny distance changes do not restart aiming every decision.
+        // A close enemy or the attacker who just hit us can still interrupt immediately.
+        if(held!=null&&held.visible&&held.player!=null&&held.player.isAlive()&&now-selectedAt<20
+                &&best.player.distanceToSqr(bot)>16&&!(best.id.equals(lastAttacker)&&now-lastHurt<20))return held.player;
+        if(!best.id.equals(selectedTarget)){selectedTarget=best.id;selectedAt=now;}
+        return best.player;
     }
     /** The freshest enemy we cannot see right now: what to investigate. */
     Contact lead(int now) {

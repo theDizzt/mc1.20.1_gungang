@@ -80,7 +80,7 @@ public final class MatchManager {
         freeForAll=arena.freeForAll()==null?null:new FreeForAllMatch(s,arena);
         if(freeForAll!=null)for(var p:s.getPlayerList().getPlayers())if(java.util.Set.of("ALPHA","BRAVO").contains(LobbyManager.team(p.getUUID())))freeForAll.add(p);
         server=s; map=arena; ledger=new MatchLedger(); capture=new CaptureGame(); ticks=0; running=false;
-        normandy=arena.normandy()==null?null:new NormandyGame(arena.normandy());
+        normandy=arena.normandy()==null?null:new NormandyGame(arena.normandy(),LobbyManager.options().game().normandyTicks(arena.normandy()));
         bomb=arena.bomb()==null?null:new BombMatch(s,arena);
         escort=escortRoute==null?null:new EscortMatch(s,arena,escortRoute);
         presence.clear(); contested=false;
@@ -111,8 +111,9 @@ public final class MatchManager {
             if(map!=null&&server.getTickCount()%4==0)send(snapshot(false,"",preparationSeconds));
             return;
         }
+        if(running)ticks++;
+        WeaponRotation.tick(running,ticks);
         if(running) {
-            ticks++;
             if(freeForAll!=null){freeForAll.tick();String winner=freeForAll.winner(ticks>=map.timeLimitSeconds()*20);if(!winner.isEmpty()){LobbyManager.finish(winner);return;}}
             if(deathmatch!=null) {
                 String winner=deathmatch.winner(alphaScore(),bravoScore(),ticks>=map.timeLimitSeconds()*20);
@@ -164,7 +165,9 @@ public final class MatchManager {
                     if(presence.update(bot.getUUID(),bot.getBoundingBox(),box)) {alpha |= team.equals("ALPHA"); bravo |= team.equals("BRAVO");}
                 }
                 presence.retain(eligible);alphaOnPoint=alpha;bravoOnPoint=bravo;
-                capture.tick(alpha,bravo,c.captureStepTicks(),c.scoreIntervalTicks());
+                // 점령 시간 override: seconds from neutral to fully held, 100 steps.
+                var custom=LobbyManager.options().game().control().captureSeconds();
+                capture.tick(alpha,bravo,custom==null?c.captureStepTicks():custom*20/100.0,c.scoreIntervalTicks());
                 contested=alpha&&bravo;
                 floor.color(capture.scoringOwner());
                 String winner=capture.winner(c.winningScore());
@@ -183,7 +186,7 @@ public final class MatchManager {
         if(deathmatch!=null) point=new MatchSnapshot.Capture("",0,false,0,deathmatch.winningKills(),"DEATHMATCH",0);
         if(escort!=null){point=new MatchSnapshot.Capture("호위",0,false,0,escort.game.checkpoints.size(),"ESCORT",escort.game.completed);if(!result&&running)seconds=(escort.game.remainingTicks+19)/20;}
         if(bomb!=null){point=new MatchSnapshot.Capture("",0,false,0,map.bomb().winsRequired(),"BOMB",bomb.game.round());if(!result)seconds=(bomb.game.remainingTicks()+19)/20;}
-        return new MatchSnapshot(!result,result,map.name(),bomb!=null?bomb.game.phase().name():running?"RUNNING":"PREPARING",seconds,!running||map.timeLimitSeconds()>0,winner,alphaScore(),bravoScore(),propHunt!=null?propHunt.rows(ledger.rows()):freeForAll==null?ledger.rows():freeForAll.rows(ledger.rows()),point,LobbyManager.options(),LobbyManager.respawns(),ticks/20,map.weather(),map.dimension(),bomb==null?null:bomb.view(),map.timeOfDay(),escort==null?null:escort.view());
+        return new MatchSnapshot(!result,result,map.name(),bomb!=null?bomb.game.phase().name():running?"RUNNING":"PREPARING",seconds,!running||map.timeLimitSeconds()>0,winner,alphaScore(),bravoScore(),propHunt!=null?propHunt.rows(ledger.rows()):freeForAll==null?ledger.rows():freeForAll.rows(ledger.rows()),point,LobbyManager.options(),LobbyManager.respawns(),ticks/20,map.weather(),map.dimension(),bomb==null?null:bomb.view(),MapEnvironment.timeOfDay(map.timeOfDay()),escort==null?null:escort.view());
     }
     private static int alphaScore() { return escort!=null?escort.game.completed+(escort.game.winner.equals("ALPHA")?1:0):bomb!=null?bomb.game.alphaScore():deathmatch!=null?ledger.kills("ALPHA"):normandy==null?capture.alphaScore():4-normandy.stage(); }
     private static int bravoScore() { return escort!=null?(escort.game.winner.equals("BRAVO")?1:0):bomb!=null?bomb.game.bravoScore():deathmatch!=null?ledger.kills("BRAVO"):normandy==null?capture.bravoScore():normandy.stage(); }
@@ -210,6 +213,7 @@ public final class MatchManager {
     public static void end(String winner) {
         TeamPoints.clear(server);
         BombDrops.clear(server);
+        WeaponRotation.end();
         if(map==null)return;
         MapEnvironment.restore();
         GimmickEpoch.reset(server);
@@ -286,7 +290,7 @@ public final class MatchManager {
         ledger.death(bot,killer,server.getTickCount(),deathmatch!=null);
         if(freeForAll!=null)freeForAll.death(bot,killer);
         BotManager.died(bot,killer);
-        if(bomb!=null){BotManager.bench(bot);return;} // out until the next round, like an eliminated player
+        if(bomb!=null){bomb.botDied(bot);BotManager.bench(bot);return;} // out until the next round, like an eliminated player
         if(freeForAll!=null){String winner=freeForAll.winner(false);if(!winner.isEmpty())LobbyManager.finish(winner);return;}
         if(deathmatch==null)return;
         String winner=deathmatch.winner(alphaScore(),bravoScore(),false);if(!winner.isEmpty())LobbyManager.finish(winner);
@@ -297,7 +301,9 @@ public final class MatchManager {
         if(bomb!=null)return bomb.game.phase()==BombGame.Phase.PREPARING||bomb.activePlay()?bomb.objective(team,slot):null;
         if(escort!=null) {
             if(!escort.game.winner.isEmpty())return null;
-            return BotObjective.escort(escort.cart.position(),escort.game.rules.radius(),team,escort.escortsAtCart,escort.defendersAtCart,escort.game.distance>escort.floor()+1e-6);
+            // A side with no human player on it: its bots coordinate on their own around the cart.
+            boolean botsOnly=server.getPlayerList().getPlayers().stream().noneMatch(p->LobbyManager.team(p.getUUID()).equals(team));
+            return BotObjective.escort(escort.cart.position(),escort.game.rules.radius(),team,escort.escortsAtCart,escort.defendersAtCart,escort.game.distance>escort.floor()+1e-6,botsOnly);
         }
         if(normandy!=null) {
             if(normandy.complete())return null;

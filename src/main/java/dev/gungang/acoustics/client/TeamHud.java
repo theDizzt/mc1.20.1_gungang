@@ -34,7 +34,9 @@ public final class TeamHud {
         Kill(DeathNotice notice, long started, long expires) { this.notice = notice; this.started = started; this.expires = expires; }
     }
     /** Softer charcoal than the card surface behind a teammate's missing health. */
-    private static final int BAR_TRACK = 0xFF292B24;
+    private static final int BAR_TRACK = 0x99292B24;
+    /** Teammate item slot: the card surface, see-through like the bar track. */
+    private static final int SLOT_SURFACE = 0x99000000 | (ShooterHud.SURFACE & 0xFFFFFF);
     private static final long ENTER_NS = 280_000_000L, EXIT_NS = 400_000_000L, LIFE_NS = 8_000_000_000L;
     private static long lastFrame;
     private static final ArrayDeque<Kill> KILLS = new ArrayDeque<>();
@@ -78,50 +80,24 @@ public final class TeamHud {
         rosterBottom = 8;
         if (AcousticConfig.TEAM_HUD.get()) {
             var members = members(mc);
-            int capacity = Math.max(0, Math.min(height / 3, mainY - 20) / 34);
+            // Fill the left column down to just above the player's own card; when some still don't fit,
+            // give up a row if needed so the "+N" overflow line has room too.
+            int space = Math.max(0, mainY - 8 - 8);
+            int capacity = space / 34;
+            if (members.size() > capacity) capacity = Math.max(0, (space - 12) / 34);
             int count = Math.min(capacity, members.size());
             for (int i = 0; i < count; i++) {
                 var member = members.get(i);
-                LivingEntity p = member.entity();
                 int y = 8 + i * 34;
-                ShooterHud.portrait(g, x, y, 30, teamColor(mc.player));
-                PlayerFaceRenderer.draw(g, member.skin(), x + 2, y + 2, 26);
-                RespawnPortrait.render(g, member.id(), x + 2, y + 2, 26);
-                TeamPointHud.badge(g,member.id(),x+2,y+2,26);
-                Integer level = PlayerLevels.level(member.id());
-                if (level != null) LevelEmblem.draw(g, level, x + 34, y + 1, 12);
-                int nameX = level != null ? x + 49 : x + 34;
-                HudText.draw(g, member.name(), nameX, y + 1, x + 114 - nameX, 0xFFFFFFFF);
-                ShooterHud.card(g, x + 34, y + 16, 80, 14, ShooterHud.BAR_EDGE, BAR_TRACK, 0);
-                ShooterHud.card(g, x + 118, y + 8, 22, 22, ShooterHud.EDGE, ShooterHud.SURFACE, 0);
-                if (p != null) {
-                    var layers = HudHealthBars.layers(p, partialTick);
-                    float fraction = layers.absorptionEnd();
-                    HudHealthBars.render(g, x + 35, y + 17, 78, 12, layers, 0xFFF5F5F0);
-                    ShooterHud.finish(g, x + 35, y + 17, 78, 12, fraction);
-                    HudText.healthNumber(g, HudHealth.label(p.getHealth(), p.getMaxHealth(),p.getAbsorptionAmount()), x + 36, y + 16, 76, 14, 0xFFFFFFFF, 0.78f);
-                    float scale = (float) (2.0 / mc.getWindow().getGuiScale());
-                    g.enableScissor(Math.round((x + 35) * scale), Math.round((y + 17) * scale),
-                            Math.round((x + 35 + 78 * fraction) * scale), Math.round((y + 29) * scale));
-                    HudText.healthNumber(g, HudHealth.label(p.getHealth(), p.getMaxHealth(),p.getAbsorptionAmount()), x + 36, y + 16, 76, 14, 0xFF111820, 0.78f);
-                    g.disableScissor();
-                    g.renderItem(p.getMainHandItem(), x + 121, y + 11);
-                } else if (TeamPointHud.vital(member.id()) != null) {
-                    // Out of tracking range: the health the server reports for the team.
-                    var vital = TeamPointHud.vital(member.id());
-                    float maximum = Math.max(1, vital.maximum()), fraction = Math.min(1, (vital.health() + vital.absorption()) / maximum);
-                    HudHealthBars.fill(g, x + 35, y + 17, 78, 12, Math.min(1, vital.health() / maximum), 0xFFF5F5F0);
-                    ShooterHud.finish(g, x + 35, y + 17, 78, 12, fraction);
-                    String label = HudHealth.label(vital.health(), maximum, vital.absorption());
-                    HudText.healthNumber(g, label, x + 36, y + 16, 76, 14, 0xFFFFFFFF, 0.78f);
-                    float scale = (float) (2.0 / mc.getWindow().getGuiScale());
-                    g.enableScissor(Math.round((x + 35) * scale), Math.round((y + 17) * scale),
-                            Math.round((x + 35 + 78 * Math.min(1, vital.health() / maximum)) * scale), Math.round((y + 29) * scale));
-                    HudText.healthNumber(g, label, x + 36, y + 16, 76, 14, 0xFF111820, 0.78f);
-                    g.disableScissor();
-                } else {
-                    HudText.draw(g, "--", x + 36, y + 18, 76, 0xFFAAAAAA);
-                }
+                // A dead teammate's row is drawn offscreen and composited see-through; the respawn countdown on
+                // the portrait stays fully opaque on top.
+                boolean dead = dead(member);
+                if (dead) FadeLayer.begin(g);
+                if (AcousticConfig.LEGACY_TEAM_HUD.get()) legacy(g, mc, member, x, y, partialTick);
+                else compact(g, mc, member, x, y, partialTick);
+                if (dead) FadeLayer.end(g, DEAD_OPACITY);
+                if (RespawnPortrait.render(g, member.id(), x + 2, y + 2, 26) && AcousticConfig.LEGACY_TEAM_HUD.get())
+                    TeamPointHud.badge(g, member.id(), x + 2, y + 2, 26);
             }
             rosterBottom = 8 + count * 34;
             if (members.size() > count) {
@@ -133,8 +109,10 @@ public final class TeamHud {
         KILLS.removeIf(k -> k.expires < now);
         float dt = lastFrame == 0 ? 0 : Math.min(.1f, (now - lastFrame) / 1e9f);
         lastFrame = now;
+        // The mission card sits at the top right; the kill log lines up below it.
+        int killTop = MissionHud.render(g, width);
         if (AcousticConfig.KILL_LOG.get()) {
-            int slot = 8;
+            int slot = killTop;
             for (Kill kill : KILLS) {
                 if (slot + 16 > height / 2) break;
                 if (Float.isNaN(kill.y)) kill.y = slot;
@@ -154,7 +132,7 @@ public final class TeamHud {
                 int y = Math.round(kill.y), right = width - 8;
                 skull(g, right - 10, y + 3);
                 right = actor(g, kill.notice.victim(), right - 16, y);
-                String verb = kill.notice.killer() == null ? "DIED" : "KILLED";
+                String verb = kill.notice.killer() == null ? "DIED" : kill.notice.found() ? "FOUND" : "KILLED";
                 int verbWidth = mc.font.width(verb);
                 g.drawString(mc.font, verb, right - verbWidth - 5, y + 4, 0xFFE2E6E8, false);
                 if (kill.notice.killer() != null) actor(g, kill.notice.killer(), right - verbWidth - 10, y);
@@ -194,8 +172,137 @@ public final class TeamHud {
             String skin = row.skin() != null && !row.skin().isEmpty() ? row.skin() : bot != null ? bot.skin() : BotDatabase.DEFAULT_SKIN;
             members.add(new Member(id, row.name(), BotRenderer.texture(skin), bot != null && bot.isAlive() ? bot : null));
         }
-        members.sort(Comparator.comparing(Member::name));
+        // Roster number order (the badge on the portrait); anyone without a number goes last, by name.
+        members.sort(Comparator.comparingInt((Member m) -> { int n = TeamPointHud.number(m.id()); return n > 0 ? n : Integer.MAX_VALUE; })
+                .thenComparing(Member::name));
         return members;
+    }
+
+    /** Teammate rows draw at 30% opacity (70% transparent) while the teammate is dead or, in prop hunt, found. */
+    private static final float DEAD_OPACITY = .3f;
+    private static boolean dead(Member member) {
+        return RespawnPortrait.active(member.id()) || member.entity() != null && member.entity().isDeadOrDying()
+                || PropHuntClient.found(member.id());
+    }
+
+    /** The older wide teammate row: portrait, name, long health bar and an item slot. */
+    private static void legacy(GuiGraphics g, Minecraft mc, Member member, int x, int y, float partialTick) {
+        LivingEntity p = member.entity();
+        ShooterHud.portrait(g, x, y, 30, teamColor(mc.player));
+        PlayerFaceRenderer.draw(g, member.skin(), x + 2, y + 2, 26);
+        TeamPointHud.badge(g,member.id(),x+2,y+2,26);
+        Integer level = PlayerLevels.level(member.id());
+        if (level != null) LevelEmblem.draw(g, level, x + 34, y + 1, 12);
+        int nameX = level != null ? x + 49 : x + 34;
+        HudText.draw(g, member.name(), nameX, y + 1, x + 114 - nameX, 0xFFFFFFFF);
+        ShooterHud.card(g, x + 34, y + 16, 80, 14, ShooterHud.BAR_EDGE, BAR_TRACK, 0);
+        ShooterHud.card(g, x + 118, y + 8, 22, 22, ShooterHud.EDGE, SLOT_SURFACE, 0);
+        if (p != null) {
+            var layers = HudHealthBars.layers(p, partialTick);
+            float fraction = layers.absorptionEnd();
+            HudHealthBars.render(g, x + 35, y + 17, 78, 12, layers, 0xFFF5F5F0);
+            ShooterHud.finish(g, x + 35, y + 17, 78, 12, fraction);
+            HudText.healthNumber(g, HudHealth.label(p.getHealth(), p.getMaxHealth(),p.getAbsorptionAmount()), x + 36, y + 16, 76, 14, 0xFFFFFFFF, 0.78f);
+            float scale = (float) (2.0 / mc.getWindow().getGuiScale());
+            g.enableScissor(Math.round((x + 35) * scale), Math.round((y + 17) * scale),
+                    Math.round((x + 35 + 78 * fraction) * scale), Math.round((y + 29) * scale));
+            HudText.healthNumber(g, HudHealth.label(p.getHealth(), p.getMaxHealth(),p.getAbsorptionAmount()), x + 36, y + 16, 76, 14, 0xFF111820, 0.78f);
+            g.disableScissor();
+            if (!disguise(g, member.id(), x + 118, y + 8)) g.renderItem(p.getMainHandItem(), x + 121, y + 11);
+        } else if (TeamPointHud.vital(member.id()) != null) {
+            // Out of tracking range: the health the server reports for the team.
+            var vital = TeamPointHud.vital(member.id());
+            float maximum = Math.max(1, vital.maximum()), fraction = Math.min(1, (vital.health() + vital.absorption()) / maximum);
+            HudHealthBars.fill(g, x + 35, y + 17, 78, 12, Math.min(1, vital.health() / maximum), 0xFFF5F5F0);
+            ShooterHud.finish(g, x + 35, y + 17, 78, 12, fraction);
+            String label = HudHealth.label(vital.health(), maximum, vital.absorption());
+            HudText.healthNumber(g, label, x + 36, y + 16, 76, 14, 0xFFFFFFFF, 0.78f);
+            float scale = (float) (2.0 / mc.getWindow().getGuiScale());
+            g.enableScissor(Math.round((x + 35) * scale), Math.round((y + 17) * scale),
+                    Math.round((x + 35 + 78 * Math.min(1, vital.health() / maximum)) * scale), Math.round((y + 29) * scale));
+            HudText.healthNumber(g, label, x + 36, y + 16, 76, 14, 0xFF111820, 0.78f);
+            g.disableScissor();
+        } else {
+            HudText.draw(g, "--", x + 36, y + 18, 76, 0xFFAAAAAA);
+        }
+        if (p == null) disguise(g, member.id(), x + 118, y + 8);
+    }
+
+    /**
+     * The compact teammate row (legacy layout off): the portrait, then beside it the roster number badge and the held
+     * item (a hider's disguise icon and catalog number in prop hunt), a short health bar, and the health below it.
+     */
+    private static void compact(GuiGraphics g, Minecraft mc, Member member, int x, int y, float partialTick) {
+        LivingEntity p = member.entity();
+        ShooterHud.portrait(g, x, y, 30, teamColor(mc.player));
+        PlayerFaceRenderer.draw(g, member.skin(), x + 2, y + 2, 26);
+        int left = x + 34, barW = 48;
+        TeamPointHud.square(g, member.id(), left, y + 1, 11);
+        // Item slot right of the badge: no box of its own, only the item (or the disguise and its number).
+        int slotX = left + 15;
+        var row = PropHuntClient.disguiseOf(member.id());
+        if (row != null) {
+            var state = row.state() != 0 ? net.minecraft.world.level.block.Block.stateById(row.state()) : dev.gungang.acoustics.server.PropCatalog.state(row.block());
+            PropAbilityHud.icon(g, row.block(), state, slotX, y, 12);
+            g.pose().pushPose(); g.pose().translate(slotX + 14, y + 3, 180); g.pose().scale(.8f, .8f, 1);
+            HudText.drawNumber(g, HudText.number(dev.gungang.acoustics.server.PropCatalog.number(row.block())), 0, 0, 0xFFFFFFFF);
+            g.pose().popPose();
+        } else if (p != null && !p.getMainHandItem().isEmpty()) {
+            g.pose().pushPose(); g.pose().translate(slotX, y, 0); g.pose().scale(.75f, .75f, 1);
+            g.renderItem(p.getMainHandItem(), 0, 0); g.pose().popPose();
+        }
+        int barY = y + 16;
+        // Drop shadow one pixel down-right, only where it shows past the bar; then the track (its frame comes last).
+        g.fill(left + barW, barY + 1, left + barW + 1, barY + 7, 0x66000000);
+        g.fill(left + 1, barY + 6, left + barW, barY + 7, 0x66000000);
+        g.fill(left, barY, left + barW, barY + 6, BAR_TRACK);
+        String label;
+        if (p != null) {
+            var layers = HudHealthBars.layers(p, partialTick);
+            HudHealthBars.render(g, left + 1, barY + 1, barW - 2, 4, layers, 0xFFF5F5F0);
+            ShooterHud.finish(g, left + 1, barY + 1, barW - 2, 4, layers.absorptionEnd());
+            label = HudHealth.label(p.getHealth(), p.getMaxHealth(), p.getAbsorptionAmount());
+        } else if (TeamPointHud.vital(member.id()) != null) {
+            // Out of tracking range: the health the server reports for the team.
+            var vital = TeamPointHud.vital(member.id());
+            float maximum = Math.max(1, vital.maximum());
+            HudHealthBars.fill(g, left + 1, barY + 1, barW - 2, 4, Math.min(1, vital.health() / maximum), 0xFFF5F5F0);
+            ShooterHud.finish(g, left + 1, barY + 1, barW - 2, 4, Math.min(1, (vital.health() + vital.absorption()) / maximum));
+            label = HudHealth.label(vital.health(), maximum, vital.absorption());
+        } else label = null;
+        hairline(g, left, barY, barW, 6, ShooterHud.BAR_EDGE);
+        if (label != null) {
+            // A translucent black drop shadow one pixel down-right, then the white number.
+            HudText.healthNumber(g, label, left + 1, y + 24, barW + 20, 9, 0x80000000, 0.78f);
+            HudText.healthNumber(g, label, left, y + 23, barW + 20, 9, 0xFFFFFFFF, 0.78f);
+        }
+        else HudText.draw(g, "--", left, y + 23, barW, 0xFFAAAAAA);
+    }
+
+    /** A frame half a GUI pixel thick around (x, y, w, h). */
+    private static void hairline(GuiGraphics g, int x, int y, int w, int h, int color) {
+        g.pose().pushPose(); g.pose().scale(.5f, .5f, 1);
+        int x2 = x * 2, y2 = y * 2, w2 = w * 2, h2 = h * 2;
+        g.fill(x2, y2, x2 + w2, y2 + 1, color); g.fill(x2, y2 + h2 - 1, x2 + w2, y2 + h2, color);
+        g.fill(x2, y2 + 1, x2 + 1, y2 + h2 - 1, color); g.fill(x2 + w2 - 1, y2 + 1, x2 + w2, y2 + h2 - 1, color);
+        g.pose().popPose();
+    }
+
+    /**
+     * Prop hunt hider: the 22px item slot at (x, y) shows the disguise icon and its catalog number instead of the
+     * held item. False when the member is not a disguised hider.
+     */
+    private static boolean disguise(GuiGraphics g, UUID id, int x, int y) {
+        var row = PropHuntClient.disguiseOf(id);
+        if (row == null) return false;
+        var state = row.state() != 0 ? net.minecraft.world.level.block.Block.stateById(row.state()) : dev.gungang.acoustics.server.PropCatalog.state(row.block());
+        PropAbilityHud.icon(g, row.block(), state, x + 3, y + 3, 16);
+        // Above the item (z 150), like the disguise tiles at the top of the screen.
+        g.pose().pushPose();
+        g.pose().translate(0, 0, 180);
+        HudText.smallNumber(g, dev.gungang.acoustics.server.PropCatalog.number(row.block()), x + 21, y + 14, .62f, 0xFFFFFFFF);
+        g.pose().popPose();
+        return true;
     }
 
     private static int actor(GuiGraphics g, Component name, int right, int y) {

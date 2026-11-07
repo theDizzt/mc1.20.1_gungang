@@ -21,6 +21,16 @@ import net.minecraftforge.eventbus.api.*;
 public final class PropHuntMatch {
     final PropAbilities abilities=new PropAbilities(this);
     int now(){return server.getTickCount();}
+    /** Hider gimmicks hurt seekers with ownerless damage sources; remember who did it so the kill log can name them. */
+    private record Credit(UUID owner,int tick){}
+    private final Map<UUID,Credit> credits=new HashMap<>();
+    /** Fire set by a gimmick burns for up to 10 seconds; credit the hider that long. */
+    private static final int CREDIT_TICKS=200;
+    void credit(LivingEntity target,UUID owner){if(target!=null&&owner!=null&&!owner.equals(target.getUUID()))credits.put(target.getUUID(),new Credit(owner,now()));}
+    private LivingEntity credited(LivingEntity victim){
+        var c=credits.remove(victim.getUUID());
+        return c==null||now()-c.tick()>CREDIT_TICKS?null:body(c.owner());
+    }
     boolean hunting(){return !reviewing&&phase()==PropHuntGame.Phase.HUNTING;}
     boolean hiding(){return !reviewing&&phase()==PropHuntGame.Phase.HIDING;}
     List<ServerPlayer> players(){return members.keySet().stream().map(id->server.getPlayerList().getPlayer(id)).filter(Objects::nonNull).toList();}
@@ -49,6 +59,12 @@ public final class PropHuntMatch {
     static void tell(LivingEntity p,String text){say(p,Component.literal(text),true);}
     static void say(LivingEntity p,Component text,boolean overlay){if(p instanceof ServerPlayer sp)sp.displayClientMessage(text,overlay);}
     /** A push that reaches a player's client at once; a bot just takes the motion. */
+    /** 39 nozzle burst: thrown straight up, first freed from a T lock or a wall, so the body steers freely while airborne. */
+    void launch(LivingEntity body,double up){
+        var m=members.get(body.getUUID());
+        if(m!=null){if(m.fixed)unlock(body);if(body instanceof ServerPlayer sp)release(sp,m);else if(m.wall!=null){m.wall=null;body.setNoGravity(false);}}
+        var v=body.getDeltaMovement();impulse(body,new Vec3(v.x,up,v.z));body.fallDistance=0;
+    }
     static void impulse(LivingEntity p,Vec3 motion){if(p instanceof ServerPlayer sp)PlayerImpulse.apply(sp,motion);else{p.setDeltaMovement(motion);p.hurtMarked=true;p.hasImpulse=true;}}
     Vec3 randomMapPosition(LivingEntity p){
         if(map!=null&&map.previewArea()!=null){var a=map.previewArea();return new Vec3(a.minX()+random.nextDouble()*(a.maxX()-a.minX()+1),a.minY()+random.nextDouble()*(a.maxY()-a.minY()+1),a.minZ()+random.nextDouble()*(a.maxZ()-a.minZ()+1));}
@@ -62,6 +78,16 @@ public final class PropHuntMatch {
         /** Q wall cling: the wall it hangs on, or null. */
         Direction wall;
         UUID watching;
+        /** Locked hider flying a free spectator camera (Q); the disguise stays at the anchor. */
+        boolean free;
+        /** Who was watched before flying free, to return to. */
+        UUID freeFrom;
+        /** Off the disguise's own view: watching someone or flying free. */
+        boolean away(){return watching!=null||free;}
+        /** Block choice: server tick the offer closes, the picked offer index (-1: none yet), first disguise or a change. */
+        int choiceUntil,picked=-1;boolean initial;
+        /** First-come: the tick a bot makes its pick (0: none pending). */
+        int botPickAt;
         final Map<String,Integer> actions=new HashMap<>();
         Member(ServerPlayer p,String team){id=p.getUUID();name=p.getGameProfile().getName();this.team=team;invisible=p.isInvisible();health=p.getAttribute(Attributes.MAX_HEALTH).getBaseValue();bot=false;}
         /** An AI bot reserved in the lobby; its body comes and goes with {@link BotAgent}. */
@@ -96,8 +122,26 @@ public final class PropHuntMatch {
         hiders.addAll(BotManager.lobbyIds().stream().filter(id->BotManager.team(id).equals("ALPHA")).toList());
         if(server.getPlayerList().getPlayers().stream().noneMatch(p->LobbyManager.team(p.getUUID()).equals("BRAVO"))
                 &&BotManager.lobbyIds().stream().noneMatch(id->BotManager.team(id).equals("BRAVO")))throw new IllegalArgumentException("술래가 필요합니다.");
-        new PropHuntGame(PropCatalog.available(),hiders,new Random(),PropHuntGame.huntTicks(map));return gun;
+        game(hiders,new Random(),map);return gun;
     }
+    /** The lobby's prop hunt options (the defaults in a debug session). */
+    private static GameOptions.PropHunt options(){return LobbyManager.options().game().propHunt();}
+    /** A new game with the lobby's seek time, hiding time, change count and excluded blocks. */
+    private static PropHuntGame game(Collection<UUID> hiders,Random random,ArenaMap map){
+        var o=options();
+        var excluded=new HashSet<String>();for(var n:o.excluded()){var type=PropCatalog.type(n);if(type!=null)excluded.add(type);}
+        var types=PropCatalog.available().stream().filter(t->!excluded.contains(t)).toList();
+        int hunt=o.timeSeconds()==null?PropHuntGame.huntTicks(map):o.timeSeconds()*20;
+        int hide=o.preparationSeconds()==null?PropHuntGame.HIDE:o.preparationSeconds()*20;
+        return new PropHuntGame(types,hiders,random,hunt,hide,o.changes());
+    }
+    /** Block choice of this match: none (random), three each, or one first-come list for every hider. */
+    private final GameOptions.Choice choice;
+    /** Wall cling (Q) allowed in this match. */
+    private final boolean cling;
+    boolean clingEnabled(){return cling;}
+    /** First-come: the tick the open shared list closes. */
+    private int sharedUntil;
     /** Weapon ID, or the M1014 when empty; must be a real TaCZ shotgun. */
     static Loadouts.Weapon shotgun(Loadouts loadouts,String id){
         var gun=loadouts.primary().stream().filter(w->id.isEmpty()?w.itemNbt().contains("tacz:m1014"):w.id().equals(id)).findFirst()
@@ -115,9 +159,12 @@ public final class PropHuntMatch {
         this.server=server;this.map=map;this.shotgun=shotgun;test=false;
         for(var p:server.getPlayerList().getPlayers())if(Set.of("ALPHA","BRAVO").contains(LobbyManager.team(p.getUUID())))members.put(p.getUUID(),new Member(p,LobbyManager.team(p.getUUID())));
         for(var id:BotManager.lobbyIds()){String team=BotManager.team(id);if(Set.of("ALPHA","BRAVO").contains(team))members.put(id,new Member(id,BotManager.name(id),team));}
-        game=new PropHuntGame(PropCatalog.available(),members.values().stream().filter(m->m.team.equals("ALPHA")).map(m->m.id).toList(),random,PropHuntGame.huntTicks(map));
+        game=game(members.values().stream().filter(m->m.team.equals("ALPHA")).map(m->m.id).toList(),random,map);
+        choice=options().choiceOrDefault();cling=options().clingEnabled();
+        // First-come: one list for the first disguises, as many blocks as there are hiders.
+        if(choice==GameOptions.Choice.FIRST_COME)openShared();
     }
-    private PropHuntMatch(MinecraftServer server){this.server=server;map=null;test=true;game=new PropHuntGame();}
+    private PropHuntMatch(MinecraftServer server){this.server=server;map=null;test=true;game=new PropHuntGame();choice=GameOptions.Choice.BASIC;cling=true;}
     private PropHuntGame.Phase phase(){return test?PropHuntGame.Phase.HUNTING:game.phase();}
     private static PropHuntMatch testMatch;
     /** The debug prop session, or null. */
@@ -158,6 +205,7 @@ public final class PropHuntMatch {
     @SubscribeEvent public static void testTick(net.minecraftforge.event.TickEvent.ServerTickEvent e){if(e.phase==net.minecraftforge.event.TickEvent.Phase.END&&testMatch!=null)testMatch.tick();}
     @SubscribeEvent public static void stopping(net.minecraftforge.event.server.ServerStoppingEvent e){endTest();}
     public boolean participant(UUID id){return members.containsKey(id);}
+    ArenaMap map(){return map;}
     public boolean hider(UUID id){var m=members.get(id);return m!=null&&m.team.equals("ALPHA");}
     public boolean frozen(UUID id){var m=members.get(id);return m!=null&&!reviewing&&(m.fixed||abilities.stunned(id)||m.waiting>server.getTickCount()||m.team.equals("BRAVO")&&phase()==PropHuntGame.Phase.HIDING);}
     public void equip(ServerPlayer p){
@@ -167,8 +215,53 @@ public final class PropHuntMatch {
         if(m.team.equals("BRAVO")){
             p.getInventory().setItem(0,seekerShotgun());p.getInventory().selected=0;
             p.getInventory().setItem(40,PropAwn.createJetpack(p));
-        }else{p.setInvisible(true);if(m.prop==null)change(p,m);}
+        }else{
+            p.setInvisible(true);
+            // The first disguise is picked from three blocks (10 s); a test session or an empty deck takes it at once.
+            if(m.prop==null&&game.offers(m.id).isEmpty()){
+                if(test||!offer(m,true))change(p,m);
+            }
+        }
         p.inventoryMenu.broadcastChanges();
+    }
+    /** How long a hider may pick its next block, and how many it sees. */
+    static final int CHOICE=10*20,OFFER=3;
+    /**
+     * Puts blocks on offer to a player hider: three, or fewer when the deck must still last every other hider still
+     * waiting for a block (bots draw at random and never get an offer). False when nothing could be offered.
+     */
+    private boolean offer(Member m,boolean initial){
+        if(test||m.bot||choice==GameOptions.Choice.OFF)return false;
+        if(choice==GameOptions.Choice.FIRST_COME){
+            if(game.offers(m.id).isEmpty())return false;
+            m.choiceUntil=sharedUntil;m.picked=game.claimed(m.id);m.initial=initial;
+            return true;
+        }
+        long waiting=members.values().stream().filter(o->hider(o.id)&&game.alive(o.id)&&game.offers(o.id).isEmpty()&&(!initial||o.prop==null)).count();
+        int count=Math.min(OFFER,Math.max(1,game.free()/(int)Math.max(1,waiting)));
+        if(game.offer(m.id,count,random).isEmpty())return false;
+        m.choiceUntil=server.getTickCount()+CHOICE;m.picked=-1;m.initial=initial;
+        var p=server.getPlayerList().getPlayer(m.id);
+        if(p!=null)p.sendSystemMessage(Component.literal(initial?"변신할 블록을 숫자 키로 고르세요 (10초, 고르지 않으면 무작위)":"10초 뒤 블록이 바뀝니다 · 숫자 키로 다음 블록을 고르세요 (고르지 않으면 무작위)").withStyle(net.minecraft.ChatFormatting.AQUA));
+        return true;
+    }
+    /** 10 s before a change: every living player hider gets its choice (bots keep drawing at random). */
+    private void openChoices(){
+        if(choice==GameOptions.Choice.OFF)return;
+        if(choice==GameOptions.Choice.FIRST_COME){openShared();return;}
+        var hiders=members.values().stream().filter(o->hider(o.id)&&game.alive(o.id)).toList();
+        int left=hiders.size();
+        for(var o:hiders){
+            if(!o.bot){
+                int count=Math.min(OFFER,Math.max(1,game.free()/Math.max(1,left)));
+                if(!game.offer(o.id,count,random).isEmpty()){
+                    o.choiceUntil=server.getTickCount()+CHOICE;o.picked=-1;o.initial=false;
+                    var p=server.getPlayerList().getPlayer(o.id);
+                    if(p!=null)p.sendSystemMessage(Component.literal("10초 뒤 블록이 바뀝니다 · 숫자 키로 다음 블록을 고르세요 (고르지 않으면 무작위)").withStyle(net.minecraft.ChatFormatting.AQUA));
+                }
+            }
+            left--;
+        }
     }
     /** A bot body entering the match: a hider becomes its block (50 health, invisible), a seeker keeps 100 health. */
     void botSpawned(BotEntity bot){
@@ -178,7 +271,7 @@ public final class PropHuntMatch {
             bot.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND,ItemStack.EMPTY);
             bot.getAttribute(Attributes.MAX_HEALTH).setBaseValue(50);bot.setHealth(50);
             bot.setInvisible(true);bot.setCustomNameVisible(false);
-            if(m.prop==null||m.prop.isRemoved())change(bot,m);else{bot.disguise(m.prop);bot.refreshDimensions();}
+            if(m.prop==null||m.prop.isRemoved()){botPick(bot,m);change(bot,m);}else{bot.disguise(m.prop);bot.refreshDimensions();}
         }else{bot.getAttribute(Attributes.MAX_HEALTH).setBaseValue(100);bot.setHealth(100);}
     }
     /** The seekers' issued shotgun: infinite dummy ammunition, marked so its pellets count against disguises. */
@@ -191,18 +284,42 @@ public final class PropHuntMatch {
             "minecraft:end_crystal","minecraft:spawner","minecraft:bubble_column","gungang:shutter","minecraft:brewing_stand");
     private void noise(Member m){if(m.prop!=null&&NOISY.contains(m.prop.item())&&hunting())BotManager.propNoise(m.prop.position(),m.id);}
     private void change(LivingEntity p,Member m){
+        // The picked offer, a random one of the offer when time ran out, or (bots) the next free block.
+        String item=test?items.get(m.id):PropCatalog.variant(game.take(m.id,m.picked,random),random);
+        m.picked=-1;m.initial=false;m.choiceUntil=0;m.botPickAt=0;
+        wear(p,m,item);
+    }
+    /**
+     * 232 capsule machine: every other living, disguised hider of the user's team draws a new random block from the
+     * deck (in a test session, any catalog block). The number of hiders changed.
+     */
+    int reroll(LivingEntity user){
+        int changed=0;
+        for(var m:List.copyOf(members.values())){
+            if(m.id.equals(user.getUUID())||!hider(m.id)||!game.alive(m.id)||m.prop==null)continue;
+            var body=body(m.id);if(body==null)continue;
+            String type;
+            try{type=test?null:game.draw();}catch(IllegalStateException empty){type=null;}
+            if(type==null){var all=PropCatalog.available();type=all.get(random.nextInt(all.size()));}
+            wear(body,m,PropCatalog.variant(type,random));changed++;
+            if(body instanceof ServerPlayer sp)sp.displayClientMessage(Component.literal("캡슐 뽑기로 블록이 바뀌었습니다!"),true);
+        }
+        if(changed>0)sync();
+        return changed;
+    }
+    /** Puts {@code item} on the hider as a new disguise in place of the old one. */
+    private void wear(LivingEntity p,Member m,String item){
         // A health pack sunk into the floor comes back up first, so the new block never starts inside the ground.
         boolean sunk=m.prop!=null&&m.prop.sunk();
         if(m.prop!=null){PropInteraction.remove(m.prop);m.prop.discard();}if(p instanceof ServerPlayer sp)sp.closeContainer();
-        String item=test?items.get(m.id):PropCatalog.variant(game.draw(),random);
         var level=(ServerLevel)p.level();
         m.prop=PropEntity.TYPE.get().create(level);m.prop.setup(m.id,item,random.nextInt(26));m.prop.setPos(m.fixed?m.anchor:p.position());
         level.addFreshEntity(m.prop);
         if(p instanceof BotEntity bot)bot.disguise(m.prop);
         abilities.initialize(p,m.prop);
         p.refreshDimensions();
-        if(m.watching==null)unstick(p);
-        if(m.fixed&&m.watching==null)m.anchor=p.position();
+        if(!m.away())unstick(p);
+        if(m.fixed&&!m.away())m.anchor=p.position();
         if(sunk&&p instanceof ServerPlayer sp)sp.sendSystemMessage(Component.literal("블록이 바뀌어 생명력 팩 매설이 풀렸습니다."));
         // The new disguise is announced in the client's control guide (right side), not the action bar.
         m.hazard=server.getTickCount()+80;
@@ -212,6 +329,8 @@ public final class PropHuntMatch {
         // Keep the real hiding place loaded even while its owner watches a distant player.
         for(var m:members.values())if(m.prop!=null)((ServerLevel)m.prop.level()).getChunkSource().addRegionTicket(net.minecraft.server.level.TicketType.POST_TELEPORT,new net.minecraft.world.level.ChunkPos(m.prop.blockPosition()),2,m.prop.getId());
         boolean change=!test&&game.tick();
+        if(!test&&!reviewing&&phase()!=PropHuntGame.Phase.REVIEW&&game.nextChange()==CHOICE)openChoices();
+        if(game.sharing())for(var m:members.values())if(m.bot&&m.botPickAt>0&&server.getTickCount()>=m.botPickAt&&body(m.id) instanceof BotEntity bot){m.botPickAt=0;botPick(bot,m);}
         if(phase()==PropHuntGame.Phase.REVIEW&&!reviewing){
             abilities.clear();PropSummons.clear(server);
             reviewing=true;
@@ -227,10 +346,12 @@ public final class PropHuntMatch {
                 if(!game.alive(m.id))continue;
                 p.setInvisible(true);
                 if(change)change(p,m);
+                // First disguise: on the pick (see action) or when the 10 s run out.
+                else if(m.prop==null&&(game.offers(m.id).isEmpty()||server.getTickCount()>=m.choiceUntil))change(p,m);
                 if(m.watching!=null){var camera=camera(m.watching);if(camera==null)home(p,m);else if(p.getCamera()!=camera)p.setCamera(camera);}
-                if(m.fixed&&m.watching==null){hold(p,m.anchor,m.yaw,m.pitch);}
+                if(m.fixed&&!m.away()){hold(p,m.anchor,m.yaw,m.pitch);}
                 // Off the wall (moved past its edge, or a new disguise that no longer fits there): fall as usual.
-                if(m.wall!=null&&m.watching==null){if(PropCling.attached(p.level(),p.getBoundingBox(),m.wall,PropCling.SERVER_REACH)){p.setNoGravity(true);p.fallDistance=0;}else release(p,m);}
+                if(m.wall!=null&&!m.away()){if(PropCling.attached(p.level(),p.getBoundingBox(),m.wall,PropCling.SERVER_REACH)){p.setNoGravity(true);p.fallDistance=0;}else release(p,m);}
                 if(m.prop!=null){p.setAirSupply(p.getMaxAirSupply());m.prop.setPos(spot(m,p));if(m.fixed)look(m);submerge(m.prop);hazards(p,m);abilities.tick(p,m.prop);}
             }else{
                 rush(p,rush);
@@ -251,7 +372,41 @@ public final class PropHuntMatch {
             }
         }
         abilities.orphanTick();
+        // Every hider changed (or took a random block) when the first-come list ran out of time.
+        if(game.sharing()&&server.getTickCount()>=sharedUntil)game.closeShared();
         if(server.getTickCount()%4==0)sync();
+    }
+    /**
+     * Opens a first-come list with a block for every living hider: players pick with the number keys, bots pick a few
+     * seconds later (players first), each taking the block that blends in best where it stands.
+     */
+    private void openShared(){
+        var hiders=members.values().stream().filter(o->hider(o.id)&&game.alive(o.id)).toList();
+        if(hiders.isEmpty()||game.openShared(Math.min(MAX_SHARED,hiders.size()),random).isEmpty())return;
+        sharedUntil=server.getTickCount()+CHOICE;
+        boolean initial=members.values().stream().anyMatch(o->hider(o.id)&&o.prop==null);
+        for(var o:hiders){
+            if(o.bot){o.botPickAt=server.getTickCount()+60+random.nextInt(80);continue;}
+            o.choiceUntil=sharedUntil;o.picked=-1;o.initial=o.prop==null;
+            var p=server.getPlayerList().getPlayer(o.id);
+            if(p!=null)p.sendSystemMessage(Component.literal((initial?"선착순 블록 선택":"10초 뒤 블록이 바뀝니다 · 선착순 선택")+" · 숫자 키로 먼저 고른 사람이 가져갑니다 (고르지 않으면 남은 블록 중 무작위)").withStyle(net.minecraft.ChatFormatting.AQUA));
+        }
+    }
+    /** Number keys 1-9 pick; a bigger hider group shares nine blocks and the rest draw at random. */
+    static final int MAX_SHARED=9;
+    /** A bot's first-come pick: the unclaimed block most like what surrounds it (ties at random). */
+    private void botPick(BotEntity bot,Member m){
+        if(!game.sharing()||game.claimed(m.id)>=0)return;
+        var free=game.unclaimed();if(free.isEmpty())return;
+        var around=new HashMap<String,Integer>();var level=bot.level();var base=bot.blockPosition();
+        for(var pos:BlockPos.betweenClosed(base.offset(-4,-2,-4),base.offset(4,2,4))){
+            var state=level.getBlockState(pos);if(state.isAir())continue;
+            var key=net.minecraftforge.registries.ForgeRegistries.BLOCKS.getKey(state.getBlock());
+            if(key!=null)around.merge(PropCatalog.number(key.toString()),1,Integer::sum);
+        }
+        var offers=game.offers(m.id);int best=-1;double score=-1;
+        for(int i:free){double s=around.getOrDefault(PropCatalog.number(PropCatalog.display(offers.get(i))),0)+random.nextDouble();if(s>score){score=s;best=i;}}
+        if(best>=0)game.claim(m.id,best);
     }
     /**
      * A bot member's share of the match tick, the server-side half of what a player's client does: the disguise follows
@@ -316,7 +471,7 @@ public final class PropHuntMatch {
             if(nozzle.acid()&&server.getTickCount()<m.hazard)return;
             for(var target:seekers()){
                 if(target.level()!=owner.level()||!target.getBoundingBox().intersects(column))continue;
-                if(nozzle.acid()){target.hurt(owner.damageSources().magic(),CONTACT_DAMAGE);AcidBlock.poison(owner.level(),target);hit=true;}else target.clearFire();
+                if(nozzle.acid()){credit(target,owner.getUUID());target.hurt(owner.damageSources().magic(),CONTACT_DAMAGE);AcidBlock.poison(owner.level(),target);hit=true;}else target.clearFire();
             }
             if(hit)m.hazard=server.getTickCount()+20;
             return;
@@ -328,18 +483,21 @@ public final class PropHuntMatch {
             if(id.equals("gungang:uxo")){
                 m.hazard=server.getTickCount()+100;
                 explode(prop,3);
+            }else if(id.equals("gungang:death_zone")){
+                // 196: a seeker who touches the death zone disguise dies on the spot (and respawns as seekers do).
+                eliminate(target,owner);
             }else if(id.endsWith("health_pack")){
                 var config=id.contains("large")?GadgetConfig.largeHealthPack:GadgetConfig.smallHealthPack;
                 if(target.getHealth()<target.getMaxHealth()){target.heal((float)config.heal());m.hazard=server.getTickCount()+(int)Math.ceil(config.cooldownSeconds()*20);}
             }else if(contactDamage(prop.state())){
                 // Damaging blocks deal a fixed hit to seekers only (never another hider), at most once a second per disguise.
-                target.hurt(contactSource(owner,prop.state()),CONTACT_DAMAGE);m.hazard=server.getTickCount()+20;
+                credit(target,owner.getUUID());target.hurt(contactSource(owner,prop.state()),CONTACT_DAMAGE);m.hazard=server.getTickCount()+20;
                 // Status effects still apply on top (acid puddle poison).
                 if(prop.state().getBlock() instanceof PuddleBlock)prop.state().entityInside(owner.level(),prop.blockPosition(),target);
                 if(prop.state().getBlock() instanceof LiquidBlock)target.setSecondsOnFire(15);
             }else{
                 // Other blocks keep their real contact behavior (webs, acid, water, etc.).
-                prop.state().entityInside(owner.level(),prop.blockPosition(),target);
+                credit(target,owner.getUUID());prop.state().entityInside(owner.level(),prop.blockPosition(),target);
                 prop.state().getBlock().stepOn(owner.level(),prop.blockPosition(),prop.state(),target);
             }
         }
@@ -354,6 +512,8 @@ public final class PropHuntMatch {
         if(abilities.cloaked(prop.owner()))return false;
         // A full volley deals SEEKER_DAMAGE, whatever the gun's own damage: each pellet its share (M1014: 10 pellets, 10 each).
         amount=pelletDamage();
+        // 239: the warhead goes off at the very first hit, before the hit itself counts.
+        if(prop.item().equals(PropAbilities.NUKE))abilities.detonate(p,prop);
         if(p.getHealth()<=amount+1e-3f)eliminate(p,shooter);else {p.setHealth(p.getHealth()-amount);abilities.struck(p,prop);}
         // A bot hider feels the hit (it is found out and runs); a bot seeker learns that this block is a hider.
         BotManager.propShot(p,shooter,prop,!game.alive(prop.owner()));
@@ -396,20 +556,23 @@ public final class PropHuntMatch {
     /** A blast that breaks nothing: seekers within {@code radius} of {@code at} take {@code damage}, hiders none. */
     void blast(ServerLevel level,Vec3 at,double radius,float damage,UUID source){
         for(var target:bodies())if(target.level()==level&&!hider(target.getUUID())&&target.position().distanceTo(at)<=radius)
-            target.hurt(level.damageSources().explosion(null,null),damage);
+            {credit(target,source);target.hurt(level.damageSources().explosion(null,null),damage);}
         level.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION_EMITTER,at.x,at.y+.5,at.z,1,0,0,0,0);
         BotManager.propNoise(at,source);
         level.playSound(null,BlockPos.containing(at),net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,net.minecraft.sounds.SoundSource.BLOCKS,1,1);
     }
-    public void eliminate(LivingEntity body,LivingEntity killer){
+    public void eliminate(LivingEntity body,LivingEntity killer){eliminate(body,killer,killer);}
+    /** {@code cause} is who the kill log names; only {@code killer} is credited with a find. */
+    void eliminate(LivingEntity body,LivingEntity killer,LivingEntity cause){
         var m=members.get(body.getUUID());if(m==null||reviewing)return;
         body.setHealth(body.getMaxHealth());body.clearFire();body.fallDistance=0;
         if(test){body.sendSystemMessage(Component.literal("[테스트] "+(m.team.equals("ALPHA")?"발견됨":"쓰러짐")+" · 체력을 회복하고 계속합니다."));return;}
-        if(!(body instanceof ServerPlayer p)){eliminateBot(body,m,killer);sync();return;}
+        if(!(body instanceof ServerPlayer p)){eliminateBot(body,m,killer,cause);sync();return;}
         p.setCamera(p);
         if(m.team.equals("ALPHA")){
             abilities.found(p,m.prop);
             if(!game.eliminate(m.id,killer==null?null:killer.getUUID()))return;
+            announce(p,cause,true);
             // A found gas barrel or TNT goes off where it stood.
             if(m.prop!=null&&(m.prop.item().equals("gungang:gas_barrel")||m.prop.item().equals("minecraft:tnt"))){
                 m.prop.setPos(spot(m,p));explode(m.prop,radius(m.prop));
@@ -417,15 +580,17 @@ public final class PropHuntMatch {
             if(m.prop!=null){m.prop.setPos(spot(m,p));mark(m);}release(p,m);home(p,m);m.fixed=false;p.setInvisible(false);p.setGameMode(GameType.SPECTATOR);p.refreshDimensions();
         }else{
             if(m.waiting>server.getTickCount())return;
+            announce(p,cause,false);
             var s=map.bravoSpawn();p.teleportTo(p.serverLevel(),s.x(),s.y(),s.z(),s.yaw(),s.pitch());p.setGameMode(GameType.ADVENTURE);m.waiting=server.getTickCount()+100;equip(p);
         }
         sync();
     }
     /** A bot found or killed: hiders leave their marker block behind and the body goes; seekers go back to wait 5 s. */
-    private void eliminateBot(LivingEntity body,Member m,LivingEntity killer){
+    private void eliminateBot(LivingEntity body,Member m,LivingEntity killer,LivingEntity cause){
         if(m.team.equals("ALPHA")){
             abilities.found(body,m.prop);
             if(!game.eliminate(m.id,killer==null?null:killer.getUUID()))return;
+            announce(body,cause,true);
             if(m.prop!=null&&explosive(m.prop.item())){m.prop.setPos(spot(m,body));explode(m.prop,radius(m.prop));}
             if(m.prop!=null){m.prop.setPos(spot(m,body));mark(m);}
             m.fixed=false;abilities.remove(body);
@@ -433,8 +598,21 @@ public final class PropHuntMatch {
             return;
         }
         if(m.waiting>server.getTickCount())return;
+        announce(body,cause,false);
         var s=map.bravoSpawn();teleport(body,new Vec3(s.x(),s.y(),s.z()));body.setYRot(s.yaw());m.waiting=server.getTickCount()+100;
         BotManager.propRespawn(m.id);
+    }
+    /**
+     * Kill log line for every client, in the vanilla death-message shape the HUD already reads:
+     * a found hider ("death.gungang.prop_found"), a seeker taken out by a hider, or a member who simply died.
+     */
+    private void announce(LivingEntity victim,LivingEntity killer,boolean found){
+        if(killer!=null&&(killer==victim||!participant(killer.getUUID())))killer=null;
+        if(killer==null&&!found)killer=credited(victim);else credits.remove(victim.getUUID());
+        Component message=killer==null?Component.translatable("death.attack.generic",victim.getDisplayName())
+                :found?Component.translatableWithFallback("death.gungang.prop_found","%1$s was found by %2$s",victim.getDisplayName(),killer.getDisplayName())
+                :Component.translatable("death.attack.player",victim.getDisplayName(),killer.getDisplayName());
+        for(var p:server.getPlayerList().getPlayers())p.sendSystemMessage(message);
     }
     private void mark(Member m){m.prop.markFound();m.prop.setCustomName(Component.literal(m.name));m.prop.setCustomNameVisible(true);}
     public void leave(ServerPlayer p){if(test){test(p,null,"");return;}var m=members.get(p.getUUID());if(m==null)return;if(hider(m.id)){game.eliminate(m.id,null);if(m.prop!=null)mark(m);}restore(p,m);}
@@ -448,29 +626,45 @@ public final class PropHuntMatch {
     public void action(ServerPlayer p,String action){
         var m=members.get(p.getUUID());if(m==null||!hider(m.id)||!game.alive(m.id)||reviewing)return;
         int now=server.getTickCount();if(now-m.actions.getOrDefault(action,-100)<2)return;m.actions.put(action,now);
+        if(action.startsWith("pick")){
+            int index;try{index=Integer.parseInt(action.substring(4))-1;}catch(NumberFormatException e){return;}
+            if(index<0||index>=game.offers(m.id).size())return;
+            if(choice==GameOptions.Choice.FIRST_COME&&!game.claim(m.id,index)){p.displayClientMessage(Component.literal("다른 숨는 사람이 먼저 고른 블록입니다"),true);sync();return;}
+            m.picked=index;
+            // The first disguise starts at once; a change keeps its time and uses the pick then.
+            if(m.prop==null)change(p,m);
+            return;
+        }
+        if(m.prop==null)return;
+        // 255 drives itself: the hider only watches (and may sound the horn).
+        if(m.prop.item().equals(PartyBlocks.AUTO)&&!action.equals("horn"))return;
         switch(action){
             case "lock"->{home(p,m);m.fixed=!m.fixed;m.anchor=p.position();m.yaw=p.getYRot();m.pitch=p.getXRot();m.charge=-1;}
             case "next"->cycle(p,m,1);
             case "previous"->cycle(p,m,-1);
             case "home"->home(p,m);
-            case "rotate"->{if(m.prop!=null&&m.watching==null&&abilities.rotate(p,m.prop)){}else if(!m.fixed&&m.prop!=null){m.prop.rotate();p.refreshDimensions();}}
+            case "free"->free(p,m);
+            case "brightUp","brightDown"->{if(m.prop!=null&&!m.away())abilities.brightness(p,m.prop,action.equals("brightUp")?1:-1);}
+            case "rotate"->{if(m.prop!=null&&!m.away()&&abilities.rotate(p,m.prop)){}else if(!m.fixed&&m.prop!=null){m.prop.rotate();p.refreshDimensions();}}
             case "snap"->{if(!m.fixed&&m.wall==null)snap(p);}
             case "cling"->cling(p,m);
-            case "interact"->{noise(m);if(m.prop!=null&&m.watching==null&&abilities.use(p,m.prop)){m.prop.setPos(spot(m,p));p.refreshDimensions();}else if(m.prop!=null&&m.watching==null&&m.prop.item().equals("minecraft:dispenser"))fire(p,m);else if(m.prop!=null&&m.watching==null&&explosive(m.prop.item()))blast(p,m);else if(m.prop!=null&&m.watching==null){PropInteraction.use(p,m.prop);if(m.prop.sinkable()){m.prop.setPos(spot(m,p));p.displayClientMessage(Component.literal(m.prop.sunk()?"생명력 팩: 바닥 아래로 들어갔습니다 · E로 나오기":"생명력 팩: 바닥 위로 나왔습니다 · E로 들어가기"),true);}p.refreshDimensions();}}
+            case "interact"->{noise(m);if(m.prop!=null&&!m.away()&&abilities.use(p,m.prop)){m.prop.setPos(spot(m,p));p.refreshDimensions();}else if(m.prop!=null&&!m.away()&&launcher(m.prop.item()))fire(p,m);else if(m.prop!=null&&!m.away()&&explosive(m.prop.item()))blast(p,m);else if(m.prop!=null&&!m.away()){PropInteraction.use(p,m.prop);if(m.prop.sinkable()){m.prop.setPos(spot(m,p));p.displayClientMessage(Component.literal(m.prop.sunk()?"생명력 팩: 바닥 아래로 들어갔습니다 · E로 나오기":"생명력 팩: 바닥 위로 나왔습니다 · E로 들어가기"),true);}p.refreshDimensions();}}
             // On a jump pad the jump key launches at once, as for everyone else; elsewhere it starts the charge.
-            case "charge"->{if(!m.fixed&&m.wall==null&&p.onGround()){if(PropSurfacePhysics.pad(p)!=null){p.setDeltaMovement(p.getDeltaMovement().x,PropSurfacePhysics.jump(p,0),p.getDeltaMovement().z);p.hurtMarked=true;m.charge=-1;}else m.charge=server.getTickCount();}}
+            // 95 / 190 slime and honey disguises climb instead of jumping.
+            case "charge"->{if(!m.fixed&&m.wall==null&&p.onGround()&&(m.prop==null||!PropSticky.sticky(m.prop.item()))){if(PropSurfacePhysics.pad(p)!=null){p.setDeltaMovement(p.getDeltaMovement().x,PropSurfacePhysics.jump(p,0),p.getDeltaMovement().z);p.hurtMarked=true;m.charge=-1;}else m.charge=server.getTickCount();}}
             case "cancelCharge"->m.charge=-1;
             case "horn"->horn(m);
             // Dolls (184, 191): the attack key held down and let go.
-            case "primaryDown","primaryUp"->{if(m.prop!=null&&m.watching==null)abilities.primary(p,m.prop,action.equals("primaryDown"));}
-            case "jump"->{if(!m.fixed&&m.wall==null&&p.onGround()&&m.charge>=0){p.setDeltaMovement(p.getDeltaMovement().x,PropSurfacePhysics.jump(p,PropHuntGame.jumpVelocity(server.getTickCount()-m.charge)),p.getDeltaMovement().z);p.hurtMarked=true;}m.charge=-1;}
+            case "primaryDown","primaryUp"->{if(m.prop!=null&&!m.away())abilities.primary(p,m.prop,action.equals("primaryDown"));}
+            case "jump"->{if(!m.fixed&&m.wall==null&&p.onGround()&&m.charge>=0&&(m.prop==null||!PropSticky.sticky(m.prop.item()))){p.setDeltaMovement(p.getDeltaMovement().x,PropSurfacePhysics.jump(p,PropHuntGame.jumpVelocity(p,server.getTickCount()-m.charge)),p.getDeltaMovement().z);p.hurtMarked=true;}m.charge=-1;}
         }
         sync();
     }
     /** Q: hang on the wall beside the disguise, or let go of it. Not while locked or watching someone else. */
     private void cling(ServerPlayer p,Member m){
         if(m.wall!=null){release(p,m);return;}
-        if(m.fixed||m.watching!=null)return;
+        if(!cling){p.displayClientMessage(Component.literal("이번 경기에서는 벽에 붙기가 꺼져 있습니다"),true);return;}
+        if(m.fixed||m.away())return;
         var wall=PropCling.find(p.level(),p.getBoundingBox(),p.getYRot());
         if(wall==null){p.displayClientMessage(Component.literal("붙을 벽이 없습니다 · 몸보다 0.6블록 이상 높은 벽 옆에서 사용하세요"),true);return;}
         m.wall=wall;m.charge=-1;p.setNoGravity(true);p.setDeltaMovement(Vec3.ZERO);p.hurtMarked=true;p.fallDistance=0;
@@ -484,6 +678,18 @@ public final class PropHuntMatch {
         m.prop.level().playSound(null,m.prop.getX(),m.prop.getY()+.5,m.prop.getZ(),variants.get(random.nextInt(variants.size())).value(),net.minecraft.sounds.SoundSource.PLAYERS,4,1);
     }
     static final String ARROW_TAG="gungang_prop_arrow";
+    /** 94 dispenser (arrows) and 253 dropper (fireworks): E shoots out of the facing side. */
+    static boolean launcher(String item){return item.equals("minecraft:dispenser")||item.equals("minecraft:dropper");}
+    /** A firework rocket with one explosion of a random shape (small/large ball, star, creeper, burst) and colours. */
+    static net.minecraft.world.item.ItemStack firework(net.minecraft.util.RandomSource random){
+        var stack=new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.FIREWORK_ROCKET);var fireworks=stack.getOrCreateTagElement("Fireworks");
+        fireworks.putByte("Flight",(byte)1);var dyes=net.minecraft.world.item.DyeColor.values();
+        var explosion=new net.minecraft.nbt.CompoundTag();explosion.putByte("Type",(byte)random.nextInt(5));
+        int[] colors=new int[1+random.nextInt(3)];for(int i=0;i<colors.length;i++)colors[i]=dyes[random.nextInt(dyes.length)].getFireworkColor();
+        explosion.putIntArray("Colors",colors);if(random.nextBoolean())explosion.putIntArray("FadeColors",new int[]{dyes[random.nextInt(dyes.length)].getFireworkColor()});
+        explosion.putBoolean("Flicker",random.nextBoolean());explosion.putBoolean("Trail",random.nextBoolean());
+        var list=new net.minecraft.nbt.ListTag();list.add(explosion);fireworks.put("Explosions",list);return stack;
+    }
     static final float ARROW_DAMAGE=25;
     /** E on a dispenser disguise: an arrow out of its facing side against seekers, once a second while hunting. */
     private void fire(LivingEntity p,Member m){
@@ -492,6 +698,12 @@ public final class PropHuntMatch {
         if(now<m.shot)return;m.shot=now+20;
         var prop=m.prop;var level=prop.level();var facing=prop.state().getValue(DispenserBlock.FACING);
         var dir=Vec3.atLowerCornerOf(facing.getNormal());var from=new Vec3(prop.getX(),prop.getY()+.5,prop.getZ()).add(dir.scale(.8));
+        if(prop.item().equals("minecraft:dropper")){
+            // 253: a firework of a random shape and colours instead of an arrow (it hurts seekers like the arrow; hiders never).
+            var rocket=new net.minecraft.world.entity.projectile.FireworkRocketEntity(level,firework(level.random),p,from.x,from.y-.1,from.z,true);
+            rocket.shoot(dir.x,dir.y,dir.z,1.4f,0);rocket.addTag(ARROW_TAG);level.addFreshEntity(rocket);
+            level.playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.FIREWORK_ROCKET_LAUNCH,net.minecraft.sounds.SoundSource.BLOCKS,2,1);return;
+        }
         var arrow=new net.minecraft.world.entity.projectile.Arrow(level,from.x,from.y-.25,from.z);
         arrow.pickup=net.minecraft.world.entity.projectile.AbstractArrow.Pickup.DISALLOWED;arrow.addTag(ARROW_TAG);
         arrow.shoot(dir.x,dir.y,dir.z,2.5f,1);level.addFreshEntity(arrow);arrows.add(arrow);arrows.removeIf(net.minecraft.world.entity.Entity::isRemoved);
@@ -505,13 +717,32 @@ public final class PropHuntMatch {
         var owner=server.getPlayerList().getPlayer(prop.owner());if(owner!=null)owner.refreshDimensions();
         return true;
     }
+    /**
+     * Q while locked: fly a free spectator camera from wherever the view is now; Q again goes back to the player that was
+     * being watched (else the own view). The body is a spectator meanwhile and the disguise stays at the anchor.
+     */
+    private void free(ServerPlayer p,Member m){
+        if(!m.fixed)return;
+        if(m.free){
+            var back=m.freeFrom;var camera=back==null?null:camera(back);
+            if(camera==null){home(p,m);return;}
+            m.free=false;m.freeFrom=null;m.watching=back;p.setCamera(camera);
+            return;
+        }
+        var from=p.getCamera();double x=from.getX(),y=from.getEyeY()-p.getEyeHeight(),z=from.getZ();float yaw=from.getYRot(),pitch=from.getXRot();
+        if(m.watching==null){x=m.anchor.x;y=m.anchor.y;z=m.anchor.z;yaw=m.yaw;pitch=m.pitch;}
+        m.freeFrom=m.watching;m.watching=null;m.free=true;
+        p.closeContainer();p.stopUsingItem();p.setGameMode(GameType.SPECTATOR);p.setCamera(p);
+        p.teleportTo(p.serverLevel(),x,y,z,yaw,pitch);
+    }
     private void home(ServerPlayer p,Member m){
-        if(m.watching==null)return;m.watching=null;p.setCamera(p);
+        if(!m.away())return;m.watching=null;m.free=false;m.freeFrom=null;p.setCamera(p);
         var level=test?p.serverLevel():server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,PropCatalog.id(map.dimension())));
         p.teleportTo(level,m.anchor.x,m.anchor.y,m.anchor.z,m.yaw,m.pitch);p.setGameMode(GameType.ADVENTURE);
     }
     private void cycle(ServerPlayer p,Member m,int direction){
         if(!m.fixed)return;
+        m.free=false;m.freeFrom=null;
         var targets=members.values().stream().map(t->t.id).filter(id->!id.equals(m.id)&&camera(id)!=null).toList();
         if(targets.isEmpty()){home(p,m);return;}
         int current=targets.indexOf(m.watching);
@@ -527,7 +758,7 @@ public final class PropHuntMatch {
         // A bot is watched through its own body: a seeker's eyes, or a hider's view from inside its block.
         if(t.bot){var body=body(id);return body==null||!body.isAlive()||hider(id)&&!game.alive(id)?null:body;}
         var player=server.getPlayerList().getPlayer(id);if(player==null)return null;
-        if(hider(id))return !game.alive(id)?null:t.watching!=null&&t.prop!=null?t.prop:player;
+        if(hider(id))return !game.alive(id)?null:t.away()&&t.prop!=null?t.prop:player;
         return player.isSpectator()||!player.isAlive()?null:player;
     }
     /**
@@ -558,14 +789,19 @@ public final class PropHuntMatch {
         int now=server.getTickCount();if(now-m.actions.getOrDefault("interact",-100)<2)return false;m.actions.put("interact",now);
         String item=m.prop.item();noise(m);
         if(abilities.use(bot,m.prop)){m.prop.setPos(spot(m,bot));bot.refreshDimensions();}
-        else if(item.equals("minecraft:dispenser")){if(now<m.shot||!hunting())return false;fire(bot,m);}
+        else if(launcher(item)){if(now<m.shot||!hunting())return false;fire(bot,m);}
         else if(explosive(item)){if(now<m.blast||!hunting())return false;blast(bot,m);}
         else{PropInteraction.use(bot,m.prop);if(m.prop.sinkable())m.prop.setPos(spot(m,bot));bot.refreshDimensions();}
         sync();return true;
     }
+    /** Text a hider's client sends for its own disguise: 178 the lectern's book, 241 the easel's canvas. */
+    public void propText(ServerPlayer p,String text){
+        var m=members.get(p.getUUID());if(m==null||!hider(m.id)||!game.alive(m.id)||reviewing||m.prop==null)return;
+        if(m.prop.item().equals("gungang:easel")){m.prop.text(ToyBlocks.canvas(text));p.level().playSound(null,m.prop.blockPosition(),net.minecraft.sounds.SoundEvents.BOOK_PAGE_TURN,net.minecraft.sounds.SoundSource.BLOCKS,.8f,1.3f);return;}
+        if(m.prop.item().equals("minecraft:lectern"))lecternText(p,m,text);
+    }
     /** 178: the owner's text for their lectern's book (from the client's editor). */
-    public void lecternText(ServerPlayer p,String text){
-        var m=members.get(p.getUUID());if(m==null||!hider(m.id)||!game.alive(m.id)||reviewing||m.prop==null||!m.prop.item().equals("minecraft:lectern"))return;
+    private void lecternText(ServerPlayer p,Member m,String text){
         var clean=new StringBuilder();for(char c:text.toCharArray())if(c=='\n'||c>=' '&&c!='\u00a7')clean.append(c);
         String value=clean.length()>LECTERN_LIMIT?clean.substring(0,LECTERN_LIMIT):clean.toString();
         m.prop.text(value);p.level().playSound(null,m.prop.blockPosition(),net.minecraft.sounds.SoundEvents.BOOK_PAGE_TURN,net.minecraft.sounds.SoundSource.BLOCKS,1,1);
@@ -625,16 +861,22 @@ public final class PropHuntMatch {
                 boolean found=hider(m.id)&&!game.alive(m.id),visible=see||found;
                 rows.add(new PropHuntSnapshot.Row(m.id.toString(),m.name,m.team,visible&&m.prop!=null?m.prop.item():"",visible&&m.prop!=null?Block.getId(m.prop.state()):0,m.prop==null?-1:m.prop.getId(),found,m.fixed,game.hidden(m.id),game.found(m.id),visible?abilityRemaining(m):0,m.prop==null?0:PropAbilities.cooldown(m.prop.item()),visible?abilities.active(m.id):0,visible?abilities.auxiliary(m.id):0,visible?abilities.auxiliaryMax(m.id):0,abilities.stunned(m.id),m.wall==null?-1:m.wall.get2DDataValue()));
             }
-            GungangNetwork.send(viewer,new GungangNetwork.PropHunt(ServerFiles.GSON.toJson(new PropHuntSnapshot(true,phase().name(),test?0:(game.remaining()+19)/20,test?0:(game.nextChange()+19)/20,rows,test?0:(game.huntRemaining()+19)/20,!test&&game.finalMinute()))));
+            // Only the viewer's own block choice is sent, never anyone else's.
+            var own=members.get(viewer.getUUID());
+            var offers=own==null||reviewing||!hider(own.id)||!game.alive(own.id)?List.<String>of():game.offers(own.id);
+            boolean shared=choice==GameOptions.Choice.FIRST_COME&&!offers.isEmpty();
+            int picked=offers.isEmpty()?-1:shared?game.claimed(own.id):own.picked;
+            int seconds=offers.isEmpty()?0:Math.max(0,((shared?sharedUntil:own.choiceUntil)-server.getTickCount()+19)/20);
+            GungangNetwork.send(viewer,new GungangNetwork.PropHunt(ServerFiles.GSON.toJson(new PropHuntSnapshot(true,phase().name(),test?0:(game.remaining()+19)/20,test?0:(game.nextChange()+19)/20,rows,test?0:(game.huntRemaining()+19)/20,!test&&game.finalMinute(),offers,picked,seconds,!offers.isEmpty()&&own.initial,shared?game.takenByOthers(own.id):List.of(),!cling,shared,abilities.scout(viewer.getUUID())))));
         }
     }
     private int abilityRemaining(Member m){
         if(m.prop==null)return 0;String item=m.prop.item();
-        return Math.max(0,item.equals("minecraft:dispenser")?m.shot-now():explosive(item)?m.blast-now():m.prop.healthPack()?m.hazard-now():abilities.remaining(m.id));
+        return Math.max(0,launcher(item)?m.shot-now():explosive(item)?m.blast-now():m.prop.healthPack()?m.hazard-now():abilities.remaining(m.id));
     }
     /** Players and bots of the match. */
     private static boolean member(PropHuntMatch m,net.minecraft.world.entity.Entity entity){return (entity instanceof ServerPlayer||entity instanceof BotEntity)&&m.participant(entity.getUUID());}
-    @SubscribeEvent(priority=EventPriority.HIGHEST) public static void death(net.minecraftforge.event.entity.living.LivingDeathEvent e){var m=MatchManager.propHunt();if(m!=null&&member(m,e.getEntity())){e.setCanceled(true);m.eliminate(e.getEntity(),null);}}
+    @SubscribeEvent(priority=EventPriority.HIGHEST) public static void death(net.minecraftforge.event.entity.living.LivingDeathEvent e){var m=MatchManager.propHunt();if(m!=null&&member(m,e.getEntity())){e.setCanceled(true);m.eliminate(e.getEntity(),null,DamageCredit.attacker(e.getEntity(),e.getSource()) instanceof LivingEntity killer?killer:null);}}
     @SubscribeEvent(priority=EventPriority.HIGHEST) public static void attack(net.minecraftforge.event.entity.living.LivingAttackEvent e){
         var m=MatchManager.propHunt();if(m==null)return;
         if(member(m,e.getEntity())){var p=e.getEntity();

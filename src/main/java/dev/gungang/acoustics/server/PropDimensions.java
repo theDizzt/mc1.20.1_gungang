@@ -13,7 +13,7 @@ public final class PropDimensions {
         // The health pack's hologram and sunk part are shot targets only; the hider keeps the block's own size.
         if(prop.healthPack())height=1;
         // The body box is square, so a painting takes its thin side: it can back flat against a wall.
-        if(prop.item().equals("minecraft:painting"))width=(float)Math.max(.1,Math.min(box.getXsize(),box.getZsize()));
+        if(prop.item().equals("minecraft:painting")||PartyBlocks.thin(prop.item()))width=(float)Math.max(.1,Math.min(box.getXsize(),box.getZsize()));
         e.setNewSize(EntityDimensions.scalable(width,height));
         // Puddles, carpets and other flat props keep the camera off the ground so the hider can still look around.
         e.setNewEyeHeight(Math.max(MIN_EYE,height*.85f));

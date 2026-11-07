@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "gungang:block/wall_clock"
+    },
+    "facing=east": {
+      "model": "gungang:block/wall_clock"
+    },
+    "facing=south": {
+      "model": "gungang:block/wall_clock"
+    },
+    "facing=west": {
+      "model": "gungang:block/wall_clock"
+    }
+  }
+}
