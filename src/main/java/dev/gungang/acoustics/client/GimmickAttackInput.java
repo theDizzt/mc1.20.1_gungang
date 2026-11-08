@@ -16,7 +16,7 @@ public final class GimmickAttackInput {
             event.setCanceled(true);event.setSwingHand(false);
             // Thrust only as often as the server deals one, so every thrust the player sees is a real attack.
             long now=mc.level.getGameTime();
-            if(now-lastThrust>=0&&now-lastThrust<RapierItem.THRUST_TICKS)return;
+            if(now-lastThrust>=0&&now-lastThrust<RapierItem.thrustTicks(mc.player.getMainHandItem()))return;
             lastThrust=now;
             // The entity under the crosshair on this client: the server accepts it when its own ray misses by lag.
             String aimed=mc.crosshairPickEntity!=null?Integer.toString(mc.crosshairPickEntity.getId()):"";

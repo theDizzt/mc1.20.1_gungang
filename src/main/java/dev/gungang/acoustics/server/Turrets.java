@@ -24,6 +24,8 @@ public final class Turrets {
         var previous=BULLET_VICTIM.get();BULLET_VICTIM.set(target);
         try{target.hurt(source,damage);}finally{if(previous==null)BULLET_VICTIM.remove();else BULLET_VICTIM.set(previous);}
     }
+    /** Whether this victim is being hit by a turret bullet right now (turret bullets do not push). */
+    static boolean bulletVictim(net.minecraft.world.entity.LivingEntity victim){return BULLET_VICTIM.get()==victim;}
     @SubscribeEvent(priority=net.minecraftforge.eventbus.api.EventPriority.HIGHEST)
     public static void knockback(net.minecraftforge.event.entity.living.LivingKnockBackEvent event){if(BULLET_VICTIM.get()==event.getEntity())event.setCanceled(true);}
     /**

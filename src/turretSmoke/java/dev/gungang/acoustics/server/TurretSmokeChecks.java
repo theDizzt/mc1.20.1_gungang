@@ -171,7 +171,7 @@ public final class TurretSmokeChecks {
                 check(Math.abs(p.getY()-dashY)<1e-6,"Dash jump changed altitude");
                 server.getWorldData().overworldData().setGameTime(level.getGameTime()+1);
             }
-            check(Math.abs(p.getZ()-(4-6*RapierDash.SPEED))<1e-6&&Math.abs(p.getX()-8.5)<1e-6,"Dash is not fixed-distance straight motion");
+            check(Math.abs(p.getZ()-(4-6*RapierDash.speed()))<1e-6&&Math.abs(p.getX()-8.5)<1e-6,"Dash is not fixed-distance straight motion");
             check(p.getDeltaMovement().lengthSqr()==0&&!RapierDash.step(p),"Dash retained extra momentum");
             check(contact.getHealth()==contactHp-21,"Dash must hit each enemy once as a normal attack");
             check(p.getPersistentData().getInt(RapierItem.COMBO)==1,"Dash did not build combo");
@@ -181,7 +181,7 @@ public final class TurretSmokeChecks {
             level.setBlockAndUpdate(new BlockPos(12,240,3),Blocks.STONE.defaultBlockState());
             check(RapierDash.step(p)&&p.getZ()>=4.29,"Dash crossed a solid wall");
             check(!RapierDash.step(p),"Dash must stop at collision instead of sliding");
-            System.out.println("GUNGANG_TURRET_SERVER_PASS turret_lifecycle rapier_adventure_gimmicks dash_cost20 immunity_expiry");
+            System.out.println("GUNGANG_TURRET_SERVER_PASS turret_lifecycle rapier_adventure_gimmicks dash_cost immunity_expiry");
         }catch(Throwable error){error.printStackTrace();System.out.println("GUNGANG_TURRET_SERVER_FAIL");}
         finally{server.getWorldData().overworldData().setGameTime(start);server.halt(false);}
     }

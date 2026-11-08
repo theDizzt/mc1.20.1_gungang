@@ -19,6 +19,27 @@ public final class Las5Damage {
         return 2*(1+Math.max(0,Math.min(1,ratio)));
     }
     private static boolean matches(ItemStack stack){return stack.hasTag()&&"zeta:las_5".equals(stack.getTag().getString("GunId"));}
+    /** Beam reach in blocks. */
+    private static final double BEAM_RANGE=96;
+    /**
+     * Every player near the shot sees its beam. A laser bullet is often gone before the entity tracker would send it,
+     * so observers cannot rely on the bullet entity reaching their client; the server traces the hit and broadcasts it.
+     */
+    @SubscribeEvent public static void beam(EntityJoinLevelEvent event){
+        if(event.getLevel().isClientSide||!(event.getEntity() instanceof Projectile bullet)
+                ||!(bullet instanceof BulletAccess access)||!"zeta:las_5".equals(String.valueOf(access.getGunId())))return;
+        var motion=bullet.getDeltaMovement();if(motion.lengthSqr()<1e-6)return;
+        var owner=bullet.getOwner();var start=bullet.position();var end=start.add(motion.normalize().scale(BEAM_RANGE));
+        var block=bullet.level().clip(new net.minecraft.world.level.ClipContext(start,end,net.minecraft.world.level.ClipContext.Block.COLLIDER,net.minecraft.world.level.ClipContext.Fluid.NONE,bullet));
+        if(block.getType()!=net.minecraft.world.phys.HitResult.Type.MISS)end=block.getLocation();
+        var hit=net.minecraft.world.entity.projectile.ProjectileUtil.getEntityHitResult(bullet.level(),bullet,start,end,bullet.getBoundingBox().expandTowards(end.subtract(start)).inflate(1),
+                e->e!=owner&&e.isPickable()&&!e.isSpectator(),.3f);
+        if(hit!=null)end=hit.getLocation();
+        var packet=new GungangNetwork.Las5Shot(owner==null?-1:owner.getId(),start.x,start.y,start.z,end.x,end.y,end.z);
+        var target=owner!=null?net.minecraftforge.network.PacketDistributor.TRACKING_ENTITY_AND_SELF.with(()->owner)
+                :net.minecraftforge.network.PacketDistributor.NEAR.with(()->new net.minecraftforge.network.PacketDistributor.TargetPoint(start.x,start.y,start.z,BEAM_RANGE,bullet.level().dimension()));
+        GungangNetwork.CHANNEL.send(target,packet);
+    }
     @SubscribeEvent public static void shot(EntityJoinLevelEvent event){
         if(event.getLevel().isClientSide||!(event.getEntity() instanceof Projectile bullet)
                 ||!(bullet instanceof BulletAccess access)||!"zeta:las_5".equals(String.valueOf(access.getGunId()))

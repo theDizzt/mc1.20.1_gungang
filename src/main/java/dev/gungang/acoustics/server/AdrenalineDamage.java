@@ -33,6 +33,10 @@ public final class AdrenalineDamage {
     }
     private record Burn(UUID owner,long until,double damage) { }
     private static final Map<LivingEntity,Burn> BURNS=new WeakHashMap<>();
+    /** Whether an item burn (molotov, jetpack) with its own burnDamage is running on the victim. */
+    /** The per-second burn damage of a running item burn (molotov, jetpack), or -1. */
+    static double burnDamage(LivingEntity victim) {return burnActive(victim)?BURNS.get(victim).damage():-1;}
+    static boolean burnActive(LivingEntity victim) {var burn=BURNS.get(victim);return burn!=null&&victim.isOnFire()&&burn.until()>victim.level().getGameTime();}
     public static void burning(LivingEntity victim,UUID owner,int seconds,double damage) {
         BURNS.put(victim,new Burn(owner,victim.level().getGameTime()+seconds*20L,damage));DamageCredit.burning(victim,owner,seconds);
     }
