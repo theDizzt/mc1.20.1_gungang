@@ -678,6 +678,11 @@ public final class LobbyManager {
     }
     /** The mode of the match being prepared or played (the lobby's selection may differ once it closes). */
     private static String activeMode="CONTROL";
+    /**
+     * Whether the current match plays 랜덤 무기 (weapons change every few minutes). True from preparation on, before
+     * WeaponRotation starts, so loadouts handed out at match start already know it.
+     */
+    static boolean randomWeaponMatch(){return WeaponRotation.active()||activeMap!=null&&options().game().randomWeapons(activeMode);}
     /** The selected map as the chosen mode plays it, before lobby overrides. */
     private static ArenaMap modeArena(ArenaMap arena,String mode,GameOptions game){
         if(mode.equals("PROP_HUNT"))arena=PropHuntRules.arena(arena);

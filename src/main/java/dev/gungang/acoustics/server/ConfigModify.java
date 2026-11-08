@@ -22,7 +22,7 @@ public final class ConfigModify {
         try{work.run();return 1;}catch(Exception ex){source.sendFailure(Component.literal("설정 편집 실패: "+ex.getMessage()));return 0;}
     }
     public static void register(LiteralArgumentBuilder<CommandSourceStack> root){
-        var modify=Commands.literal("modify").requires(s->s.hasPermission(2)).executes(c->{say(c.getSource(),"/gungang modify <map|weapon|secondary|item|block> [ID] [항목] [값] · 생략하면 목록/현재값 조회 · /gungang modify ui [무기ID] 무기 실시간 패치 화면");return 1;});
+        var modify=Commands.literal("modify").requires(s->s.hasPermission(2)).executes(c->{say(c.getSource(),"/gungang modify <map|weapon|secondary|item|block> [ID] [항목] [값] · 생략하면 목록/현재값 조회 · /gungang modify ui [무기ID] 무기 실시간 패치 화면 · /gungang modify ui secondary [ID] 보조무기 수치 편집");return 1;});
         for(String kind:KINDS)modify.then(Commands.literal(kind)
                 .executes(c->run(c.getSource(),()->list(c.getSource(),kind)))
                 .then(Commands.argument("id",StringArgumentType.word()).suggests((c,b)->suggestIds(kind,b))
@@ -32,6 +32,9 @@ public final class ConfigModify {
                                 .then(Commands.argument("value",StringArgumentType.greedyString()).suggests((c,b)->suggestValue(kind,c,b))
                                         .executes(c->run(c.getSource(),()->edit(c.getSource(),kind,StringArgumentType.getString(c,"id"),StringArgumentType.getString(c,"field"),StringArgumentType.getString(c,"value"))))))));
         modify.then(Commands.literal("ui").executes(c->run(c.getSource(),()->WeaponPatch.open(c.getSource().getPlayerOrException(),"")))
+                .then(Commands.literal("secondary").executes(c->run(c.getSource(),()->WeaponPatch.open(c.getSource().getPlayerOrException(),WeaponPatch.SECONDARY,"")))
+                        .then(Commands.argument("id",StringArgumentType.word()).suggests((c,b)->suggestIds("secondary",b))
+                                .executes(c->run(c.getSource(),()->WeaponPatch.open(c.getSource().getPlayerOrException(),WeaponPatch.SECONDARY,StringArgumentType.getString(c,"id"))))))
                 .then(Commands.argument("id",StringArgumentType.word()).suggests((c,b)->suggestIds("weapon",b))
                         .executes(c->run(c.getSource(),()->WeaponPatch.open(c.getSource().getPlayerOrException(),StringArgumentType.getString(c,"id"))))));
         root.then(modify);
@@ -193,6 +196,14 @@ public final class ConfigModify {
             if(target.fields.containsKey(key))result.put(key,value(target.effective,key));
         return result;
     }
+    /** Every value field of a setting (secondary weapon, item effect ...) with its current effective value. */
+    static Map<String,JsonElement> editable(String kind,String id)throws Exception{
+        var target=target(kind,id);var result=new LinkedHashMap<String,JsonElement>();
+        for(String key:target.fields.keySet())result.put(key,value(target.effective,key));
+        return result;
+    }
+    /** Whether {@code id} names an existing setting of this kind (e.g. an item effect file such as "turret"). */
+    static boolean exists(String kind,String id)throws Exception{return ids(kind).containsKey(id);}
     static boolean numeric(String kind,String id,String field)throws Exception{var type=fieldType(target(kind,id),field);return type!=String.class&&type!=boolean.class&&type!=Boolean.class;}
     static List<String> weaponIds()throws Exception{return new ArrayList<>(ids("weapon").keySet());}
     private static CompletableFuture<Suggestions> suggestIds(String kind,SuggestionsBuilder b){try{return SharedSuggestionProvider.suggest(ids(kind).keySet(),b);}catch(Exception ignored){return b.buildFuture();}}

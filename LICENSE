@@ -1,0 +1,24 @@
+Copyright (c) 2026 theDizzt and the GunGangRealistic contributors.
+All rights reserved.
+
+GunGangRealistic (this repository, its source code, and the mod JAR files built from it) is proprietary.
+The source is published for reference and collaboration among the project's contributors only.
+
+Without prior written permission from the copyright holder, you may not:
+  - copy, modify, merge, publish, distribute, sublicense or sell this software or any part of it;
+  - redistribute built JAR files, including in modpacks or on other download sites;
+  - use the code or the original assets in other projects.
+
+Installing an official release JAR to play on a server that runs GunGangRealistic is permitted.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Third-party material
+--------------------
+Some models, textures and other assets were made by third parties and remain under their own licenses
+(for example CC-BY-4.0). Each one's attribution and license is listed in src/main/resources/META-INF/licenses/
+and in the README of the matching folder under models/. Those terms apply to those assets instead of the
+notice above. Minecraft, Forge, TaCZ, LR Tactical and other mods this project works with belong to their owners.

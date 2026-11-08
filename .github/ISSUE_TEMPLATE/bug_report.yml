@@ -1,0 +1,60 @@
+name: 버그 제보
+description: 게임 모드·무기·HUD·서버 동작의 버그를 알려 주세요.
+title: "[버그] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        보안 문제(권한 우회, 서버 크래시 악용 등)는 이 양식 대신 [보안 정책](https://github.com/theDizzt/mc1.20.1_gungang/blob/main/SECURITY.md)에 따라 비공개로 알려 주세요.
+  - type: input
+    id: version
+    attributes:
+      label: 모드 버전
+      description: JAR 파일 이름의 업데이트 번호 (예 u294). 서버와 클라이언트가 다르면 둘 다 적어 주세요.
+      placeholder: u294
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: 분류
+      options:
+        - 게임 모드 (쟁탈전·데스매치·이동점령·폭탄전·호위·개인전)
+        - 숨바꼭질
+        - 무기 (TaCZ 총기·근접 무기)
+        - 보조무기·아이템
+        - AI 봇
+        - HUD·화면·음향
+        - 블록·맵 기믹
+        - 로비·전적·명령어
+        - 기타
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: 무슨 일이 있었나요?
+      description: 실제 동작과 기대한 동작을 적어 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 재현 순서
+      placeholder: |
+        1. 폭탄전 맵 ○○에서 공격팀으로 시작
+        2. 폭탄 설치 후 수비팀 전원 처치
+        3. 라운드가 끝나지 않음
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 스크린샷·로그
+      description: 화면 캡처, `logs/latest.log`의 관련 부분, 크래시 리포트를 붙여 주세요.
+  - type: input
+    id: environment
+    attributes:
+      label: 환경
+      description: 싱글·멀티(Forge/Mohist), 함께 쓰는 모드·셰이더
