@@ -11,8 +11,20 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
     public record Specs(String damage, String accuracy, String stability, String range, String fireRate) { }
     /** Free-form spec row for the loadout screen, e.g. {"name":"속박 시간","value":"3초"}. */
     public record Stat(String name, String value) { }
+    /**
+     * Elemental damage of a weapon ({@link ElementalDamage}); a null field leaves that element as it is.
+     * burnDamage / witherDamage / poisonDamage: damage of each status tick on a victim the weapon hit;
+     * explosionMultiplier: scales the weapon's explosion damage to players and bots.
+     */
+    public record Elements(Double burnDamage, Double witherDamage, Double poisonDamage, Double explosionMultiplier) {
+        void validate(String id) {
+            for (Double value : new Double[]{burnDamage, witherDamage, poisonDamage})
+                if (value != null && (!Double.isFinite(value) || value < 0 || value > 10000)) throw new IllegalArgumentException("Invalid elemental damage: " + id);
+            if (explosionMultiplier != null && (!Double.isFinite(explosionMultiplier) || explosionMultiplier < 0 || explosionMultiplier > 100)) throw new IllegalArgumentException("Invalid explosion multiplier: " + id);
+        }
+    }
     public record Weapon(String id, @com.google.gson.annotations.SerializedName(value="itemNbt",alternate={"nbt"}) String itemNbt, String name, String description, Specs specs, String usage, String category,
-                         Double maxHealth, Double movementSpeed, Double cooldownSeconds, String command, boolean jetpackVerticalFlight, String releaseDate, List<Stat> stats) {
+                         Double maxHealth, Double movementSpeed, Double cooldownSeconds, String command, boolean jetpackVerticalFlight, String releaseDate, List<Stat> stats, Elements elements) {
         public Weapon {
             stats=stats==null?List.of():List.copyOf(stats);
             releaseDate=ArenaMap.releaseDate(releaseDate,id);
@@ -26,6 +38,10 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
             cooldownSeconds=cooldownSeconds==null?0:cooldownSeconds;
             if(!Double.isFinite(maxHealth)||maxHealth<1||maxHealth>1024||!Double.isFinite(movementSpeed)||movementSpeed<1||movementSpeed>1000
                     ||!Double.isFinite(cooldownSeconds)||cooldownSeconds<0||cooldownSeconds>3600) throw new IllegalArgumentException("Invalid weapon health, speed or cooldown: "+id);
+            if(elements!=null)elements.validate(id);
+        }
+        public Weapon(String id,String itemNbt,String name,String description,Specs specs,String usage,String category,Double maxHealth,Double movementSpeed,Double cooldownSeconds,String command,boolean jetpackVerticalFlight,String releaseDate,List<Stat> stats) {
+            this(id,itemNbt,name,description,specs,usage,category,maxHealth,movementSpeed,cooldownSeconds,command,jetpackVerticalFlight,releaseDate,stats,null);
         }
         public Weapon(String id,String itemNbt,String name,String description,Specs specs,String usage,String category,Double maxHealth,Double movementSpeed,Double cooldownSeconds,String command,boolean jetpackVerticalFlight,String releaseDate) {
             this(id,itemNbt,name,description,specs,usage,category,maxHealth,movementSpeed,cooldownSeconds,command,jetpackVerticalFlight,releaseDate,null);
@@ -56,6 +72,7 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
                 ItemStack stack = ItemStack.of(tag);
                 if (stack.isEmpty() || stack.getCount() < 1 || stack.getCount() > stack.getMaxStackSize()) throw new IllegalArgumentException("Invalid item stack: " + id);
                 stack.setHoverName(Component.literal(name));
+                stack.getOrCreateTag().putString("GunGangLearningWeaponId",id);
                 return stack;
             } catch (com.mojang.brigadier.exceptions.CommandSyntaxException failure) {
                 throw new IllegalArgumentException("Invalid SNBT for " + id, failure);

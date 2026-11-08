@@ -22,7 +22,7 @@ public final class ConfigModify {
         try{work.run();return 1;}catch(Exception ex){source.sendFailure(Component.literal("설정 편집 실패: "+ex.getMessage()));return 0;}
     }
     public static void register(LiteralArgumentBuilder<CommandSourceStack> root){
-        var modify=Commands.literal("modify").requires(s->s.hasPermission(2)).executes(c->{say(c.getSource(),"/gungang modify <map|weapon|secondary|item|block> [ID] [항목] [값] · 생략하면 목록/현재값 조회 · /gungang modify ui [무기ID] 무기 실시간 패치 화면 · /gungang modify ui secondary [ID] 보조무기 수치 편집");return 1;});
+        var modify=Commands.literal("modify").requires(s->s.hasPermission(2)).executes(c->{say(c.getSource(),"/gungang modify <map|weapon|secondary|item|block> [ID] [항목] [값] · 생략하면 목록/현재값 조회 · /gungang modify ui [무기ID] 무기 실시간 패치 화면 · /gungang modify ui secondary [ID] 보조무기 수치 편집 · /gungang modify ui general 전역 설정(체력 재생)");return 1;});
         for(String kind:KINDS)modify.then(Commands.literal(kind)
                 .executes(c->run(c.getSource(),()->list(c.getSource(),kind)))
                 .then(Commands.argument("id",StringArgumentType.word()).suggests((c,b)->suggestIds(kind,b))
@@ -32,6 +32,7 @@ public final class ConfigModify {
                                 .then(Commands.argument("value",StringArgumentType.greedyString()).suggests((c,b)->suggestValue(kind,c,b))
                                         .executes(c->run(c.getSource(),()->edit(c.getSource(),kind,StringArgumentType.getString(c,"id"),StringArgumentType.getString(c,"field"),StringArgumentType.getString(c,"value"))))))));
         modify.then(Commands.literal("ui").executes(c->run(c.getSource(),()->WeaponPatch.open(c.getSource().getPlayerOrException(),"")))
+                .then(Commands.literal("general").executes(c->run(c.getSource(),()->WeaponPatch.open(c.getSource().getPlayerOrException(),WeaponPatch.GENERAL,""))))
                 .then(Commands.literal("secondary").executes(c->run(c.getSource(),()->WeaponPatch.open(c.getSource().getPlayerOrException(),WeaponPatch.SECONDARY,"")))
                         .then(Commands.argument("id",StringArgumentType.word()).suggests((c,b)->suggestIds("secondary",b))
                                 .executes(c->run(c.getSource(),()->WeaponPatch.open(c.getSource().getPlayerOrException(),WeaponPatch.SECONDARY,StringArgumentType.getString(c,"id"))))))
@@ -46,7 +47,7 @@ public final class ConfigModify {
             result.put("arrow_grenade",ExtraGadgetConfig.arrowGrenade);
             result.put("turret",Turrets.config);
             result.put("landmine",GadgetConfig.mine);result.put("recovery_potion",GadgetConfig.recovery);result.put("adrenaline",GadgetConfig.adrenaline);result.put("barrier",GadgetConfig.barrier);result.put("bear_trap",GadgetConfig.bearTrap);
-            result.put("molotov",ExtraGadgetConfig.molotov);result.put("orbital_strike",ExtraGadgetConfig.orbital);result.put("life_support",ExtraGadgetConfig.life);result.put("jetpack",ExtraGadgetConfig.jet);result.put("infrared_scanner",ExtraGadgetConfig.scanner);result.put("shield",ExtraGadgetConfig.shield);result.put("hand_axe",ExtraGadgetConfig.handAxe);
+            result.put("molotov",ExtraGadgetConfig.molotov);result.put("orbital_strike",ExtraGadgetConfig.orbital);result.put("life_support",ExtraGadgetConfig.life);result.put("jetpack",ExtraGadgetConfig.jet);result.put("infrared_scanner",ExtraGadgetConfig.scanner);result.put("shield",ExtraGadgetConfig.shield);result.put("hand_axe",ExtraGadgetConfig.handAxe);result.put("rapier",ExtraGadgetConfig.rapier);result.put("katana",ExtraGadgetConfig.katana);result.put("health_regeneration",ExtraGadgetConfig.regeneration);result.put("combat",ExtraGadgetConfig.combat);result.put("fallout",ExtraGadgetConfig.fallout);result.put("twin_blades",ExtraGadgetConfig.twinBlades);result.put("arc_thrower",ExtraGadgetConfig.arcThrower);
         }else if(kind.equals("block")){
             result.put("small_health_pack",GadgetConfig.smallHealthPack);result.put("large_health_pack",GadgetConfig.largeHealthPack);
             result.put("uxo",GimmickConfig.uxo);result.put("gas_barrel",GimmickConfig.gas);result.put("puddle",GimmickConfig.puddle);result.put("acid",GimmickConfig.acid);result.put("nozzle",GimmickConfig.nozzle);result.put("acid_nozzle",GimmickConfig.acidNozzle);result.putAll(GimmickConfig.walls);
@@ -192,10 +193,15 @@ public final class ConfigModify {
     /** Weapon fields the patch screen edits, in display order, with their current effective values. */
     static Map<String,JsonElement> weaponFields(String id)throws Exception{
         var target=target("weapon",id);var result=new LinkedHashMap<String,JsonElement>();
-        for(String key:List.of("name","category","maxHealth","movementSpeed","specs.damage","specs.accuracy","specs.stability","specs.range","specs.fireRate"))
+        for(String key:List.of("name","category","description","usage","releaseDate","maxHealth","movementSpeed","specs.damage","specs.accuracy","specs.stability","specs.range","specs.fireRate"))
             if(target.fields.containsKey(key))result.put(key,value(target.effective,key));
+        // Card stat lines (stats.N.value), labelled by their name on the patch screen.
+        for(String key:target.fields.keySet())if(key.matches("stats\\.\\d+\\.(name|value)"))result.put(key,value(target.effective,key));
+        // Elemental damage the weapon has (weapon JSON "elements"), editable live like the rest.
+        for(String key:ELEMENT_FIELDS)if(target.fields.containsKey(key)&&!value(target.effective,key).isJsonNull())result.put(key,value(target.effective,key));
         return result;
     }
+    static final List<String> ELEMENT_FIELDS=List.of("elements.burnDamage","elements.witherDamage","elements.poisonDamage","elements.explosionMultiplier");
     /** Every value field of a setting (secondary weapon, item effect ...) with its current effective value. */
     static Map<String,JsonElement> editable(String kind,String id)throws Exception{
         var target=target(kind,id);var result=new LinkedHashMap<String,JsonElement>();

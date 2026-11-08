@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class RapierComboTest {
     @Test void successfulHitsUseAllFiveDamageTiersAndCap(){
         var combo=new RapierCombo(0,0);int now=100;
-        for(int damage:new int[]{21,26,32,39,47,47,47}){
+        for(int damage:new int[]{27,33,40,48,57,57,57}){
             combo=combo.hit(now);assertEquals(damage,RapierCombo.damage(combo.stacks()));
             assertEquals(now+60,combo.expires());now+=6;
         }

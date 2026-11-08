@@ -101,7 +101,7 @@ final class BotAgent {
         // Free-for-all hides every name tag; the bot's must not give it away either.
         bot.setCustomName(Component.literal(name()).withStyle(LobbyManager.options().formatting(team)));bot.setCustomNameVisible(ffa==null);
         bot.skin(BotManager.skin(slot));
-        bot.getAttribute(Attributes.MAX_HEALTH).setBaseValue(weapon.maxHealth()*LobbyManager.healthScale(team));
+        bot.getAttribute(Attributes.MAX_HEALTH).setBaseValue(LoadoutAttributes.maxHealth(weapon.maxHealth(),LobbyManager.healthScale(team)));
         usingSecondary=false;secondarySupplied=false;nextSwitch=switchedAt=0;health.reset();movement.reset();
         primaryStack=weapon.stack();secondaryStack=secondary==null?ItemStack.EMPTY:secondary.stack();
         updateSpeed();
@@ -184,12 +184,14 @@ final class BotAgent {
     }
     /** Free-for-all opening grace: back to a spawn with full health, nothing recorded. */
     void openingDeath(){
+        BotLearning.end(this,false);
         var ffa=MatchManager.freeForAll();if(bot==null||ffa==null)return;
         var spawn=ffa.spawnFor(bot);
         bot.setHealth(bot.getMaxHealth());bot.clearFire();bot.getNavigation().stop();bot.fallDistance=0;
         bot.teleportTo(spawn.x(),spawn.y(),spawn.z());bot.setYRot(spawn.yaw());movement.reset();
     }
     void remove(){
+        BotLearning.end(this,false);
         var server=BotManager.server();
         if(bot!=null){
             if(server!=null)server.getScoreboard().removePlayerFromTeam(bot.getScoreboardName());
@@ -247,6 +249,7 @@ final class BotAgent {
         updateSpeed();switchedAt=now;nextSwitch=now+60;nextShot=now+4;nextPath=0;
     }
     void died(UUID killer){
+        BotLearning.end(this,true);
         var server=BotManager.server();
         lastLife=new BotLoadoutChoice.Outcome(killer!=null||lifeDamage>0||encounterDistance>0,lifeDamage,
                 Math.max(0,server.getTickCount()-bornAt),encounterDistance>0?encounterDistance:12);
@@ -266,7 +269,7 @@ final class BotAgent {
         try{if(gun!=null)gun.unequip();}catch(ReflectiveOperationException ignored){}
         usingSecondary=false;secondarySupplied=false;nextSwitch=switchedAt=0;
         primaryStack=weapon.stack();secondaryStack=secondary==null?ItemStack.EMPTY:secondary.stack();
-        bot.getAttribute(Attributes.MAX_HEALTH).setBaseValue(weapon.maxHealth()*LobbyManager.healthScale(team));
+        bot.getAttribute(Attributes.MAX_HEALTH).setBaseValue(LoadoutAttributes.maxHealth(weapon.maxHealth(),LobbyManager.healthScale(team)));
         if(bot.getHealth()>bot.getMaxHealth())bot.setHealth(bot.getMaxHealth());
         gadgets.equip(bot,secondary,secondaryStack,heldSecondary());
         bot.setItemSlot(EquipmentSlot.MAINHAND,primaryStack);
@@ -349,7 +352,7 @@ final class BotAgent {
         float missionScore=mission==null?0:BotTactics.objective(situation,mission.stance(),mission.contains(bot.getBoundingBox()),mission.guardAll()||slot%2==0);
         action=tactics.choose(situation,now,
                 actions.holdingCover()&&!melee&&bot.getHealth()>bot.getMaxHealth()*.2f&&(!seen||bot.distanceToSqr(target)>16),
-                gadgets.shielding(time)&&seen,point!=null,missionScore);
+                gadgets.shielding(time)&&seen,point!=null,missionScore,BotLearning.offsets(this,situation,mission,now));
         if(bombMatch!=null&&mission!=null&&mission.act()!=BotObjective.Act.NONE&&!situation.hazard()){
             boolean defusing=mission.act()==BotObjective.Act.DEFUSE;
             int duration=defusing?bombMatch.timing().defuseTicks():bombMatch.timing().plantTicks();
@@ -358,6 +361,7 @@ final class BotAgent {
             if(BotBombDecision.commit(defusing,timer,duration,bombMatch.botProgress(id),safe))action=BotTactics.Action.OBJECTIVE;
         }
         // Act: the chosen behaviour's tree.
+        BotLearning.decision(this,situation,mission,action,now);
         var ctx=actions.ctx();
         ctx.bot=bot;ctx.arena=arena;ctx.team=team;ctx.settings=settings;ctx.now=now;ctx.pathTurn=pathTurn;ctx.melee=melee;
         ctx.shielding=gadgets.shielding(time);ctx.reloading=reloading;ctx.target=seen?target:null;

@@ -61,6 +61,7 @@ public final class DeployableEntity extends LivingEntity {
             var player=owner()==null?null:((net.minecraft.server.level.ServerLevel)level()).getEntity(owner());
             for(var victim:level().getEntitiesOfClass(LivingEntity.class,getBoundingBox().inflate(config.radius()),this::enemy))
                 if(victim.distanceTo(this)<=config.radius())victim.hurt(level().damageSources().explosion(this,player),(float)config.damage());
+            GimmickEntity.blast(level(),position(),config.radius(),(float)config.damage());
             level().playSound(null,blockPosition(),net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,net.minecraft.sounds.SoundSource.BLOCKS,1,1);
             ((net.minecraft.server.level.ServerLevel)level()).sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION,getX(),getY()+.2,getZ(),1,0,0,0,0);discard();
     }

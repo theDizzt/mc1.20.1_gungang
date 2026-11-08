@@ -49,10 +49,13 @@ public final class TaczAmmoHud {
         if(PropAbilityHud.ammo(g,partial))return;
         if(mc.player.isSpectator())return;
         var stack=mc.player.getMainHandItem();if(!(stack.getItem() instanceof dev.gungang.acoustics.server.RapierItem))return;
-        drawRapier(g,dev.gungang.acoustics.server.RapierItem.gauge(stack));
+        drawRapier(g,dev.gungang.acoustics.server.RapierItem.gauge(stack),dev.gungang.acoustics.server.RapierItem.cost(stack));
     }
-    static void drawRapier(GuiGraphics g,int amount){
+    static void drawRapier(GuiGraphics g,int amount){drawRapier(g,amount,dev.gungang.acoustics.server.RapierEnergy.DEFAULT_COST);}
+    /** {@code cost}: energy one dash spends; the bar is ticked every {@code cost} points. */
+    static void drawRapier(GuiGraphics g,int amount,int cost){
         var mc=Minecraft.getInstance();amount=Math.max(0,Math.min(100,amount));
+        final int DASH_COST=Math.max(1,Math.min(100,cost));
         // White like the gun count; red while too low for a dash, as an empty magazine is.
         boolean alert=amount<DASH_COST;int color=alert?0xFFFF5555:0xFFFFFFFF;
         var l=layout(3);int right=l.right(),w=l.countW(),top=l.countTop(),x0=right-w;
@@ -68,7 +71,8 @@ public final class TaczAmmoHud {
         }
         float scale=(float)(2.0/mc.getWindow().getGuiScale());g.pose().pushPose();g.pose().scale(scale,scale,1);
         rapierSilhouette(g,l.iconX(),l.iconY()+6,alert?0xB3FF4D4D:0xB3000000);
-        text(g,mc.font,"레이피어 · 대시 20",right-mc.font.width("레이피어 · 대시 20"),l.rowTop()-11,0xFFE2E8F0);
+        String title="레이피어 · 대시 "+DASH_COST;
+        text(g,mc.font,title,right-mc.font.width(title),l.rowTop()-11,0xFFE2E8F0);
         // Bar: eased fill with the same spent/gained flash and refill sheen as gun magazines.
         float shown=RAPIER_BAR.update(amount/100f);int fill=Math.round(w*shown),barTop=l.barTop();
         g.fill(x0+1,barTop+1,right+1,barTop+BAR_H+1,SHADOW);
@@ -85,8 +89,8 @@ public final class TaczAmmoHud {
             int a=Math.max(x0,sweep),b=Math.min(x0+fill,sweep+10);
             if(b>a)g.fill(a,barTop,b,barTop+BAR_H,Math.round(170*(1-t))<<24|0xFFFFFF);
         }
-        // Cost marker: immediately see whether the next dash is available.
-        int mark=x0+Math.round(w*DASH_COST/100f);g.fill(mark,barTop-1,mark+1,barTop+BAR_H+1,0xFFE2E8F0);
+        // A tick every dash's worth of energy: count at a glance how many dashes are available.
+        for(int step=DASH_COST;step<100;step+=DASH_COST){int mark=x0+Math.round(w*step/100f);g.fill(mark,barTop-1,mark+1,barTop+BAR_H+1,0xFFE2E8F0);}
         // Dash: upward kick and white flash. Dash ready again / full: a green pulse that settles.
         float kick=pulse(clock-dashAt,.14),pop=pulse(clock-readyAt,.38);
         float grow=1+.10f*kick+.18f*pop;int digitColor=color;
@@ -99,7 +103,6 @@ public final class TaczAmmoHud {
         digits(g,mc.font,padding,0,ArenaScreen.blend(0xFF1A2230,color,.35f));digits(g,mc.font,value,padding.length(),digitColor);g.pose().popPose();
         g.pose().popPose();
     }
-    private static final int DASH_COST=dev.gungang.acoustics.server.RapierEnergy.COST;
     private static final BarTween RAPIER_BAR=new BarTween(.32,.07);
     private static double rapierFrame=-10;
     private static int lastGauge;

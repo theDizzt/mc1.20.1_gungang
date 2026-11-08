@@ -89,6 +89,7 @@ public final class OrdnanceEntity extends Entity {
             if(OrdnanceRules.inBlast(victim.getX()-getX(),victim.getY()-getY(),victim.getZ()-getZ()))
                 OrdnanceDamage.hurt(victim,source,OrdnanceRules.orbitalDamage(victim.position().distanceTo(position())));
         entityData.set(DETONATED,true);
+        GimmickEntity.blast(level,position(),radius,(float)ExtraGadgetConfig.orbital.centerDamage());
         // Layered impact: deep blast, thunder crack and a sonic boom tail. Volume above 1 widens the hearing range.
         var pos=blockPosition();var players=net.minecraft.sounds.SoundSource.PLAYERS;
         level.playSound(null,pos,net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,players,10,.5f);

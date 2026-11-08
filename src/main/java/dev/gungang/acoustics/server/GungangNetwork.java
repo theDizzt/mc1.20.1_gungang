@@ -50,7 +50,13 @@ public final class GungangNetwork {
     public record ConveyorView(net.minecraft.core.BlockPos pos,int speed) { }
     public record ConveyorSet(net.minecraft.core.BlockPos pos,int speed,boolean reverse) { }
     public record SecretBlockSync(boolean full,long[] positions,byte[] modes) { }
-    public record RapierStep(int entity,float yaw) { }
+    public record RapierStep(int entity,float yaw,float distance) { }
+    /** One LAS-5 shot: shooter entity id (-1: none), bullet start and the server-side hit point. */
+    public record Las5Shot(int owner,double fx,double fy,double fz,double tx,double ty,double tz) { }
+    /** A TaCZ gun-pack sound for the receiving player only (e.g. tacz:kill for a twin-blades kill). */
+    public record KillSound(String sound) { }
+    /** Pending status-ailment damage per entity id in the receiver's dimension (purple share of health bars). */
+    public record StatusDamage(int[] ids,float[] amounts) { }
     public record AssaultMotion(boolean active,double x,double y,double z) { }
     public record AnchorPull(java.util.UUID anchor,boolean active,double x,double y,double z) { }
     public record Emote(int entity,int slot,boolean prop) { }
@@ -91,7 +97,18 @@ public final class GungangNetwork {
         CHANNEL.registerMessage(27,Emote.class,(p,b)->{b.writeVarInt(p.entity);b.writeByte(p.slot);b.writeBoolean(p.prop);},b->new Emote(b.readVarInt(),b.readByte(),b.readBoolean()),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.EmoteClient.receive(p)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
-        CHANNEL.registerMessage(25,RapierStep.class,(p,b)->{b.writeVarInt(p.entity);b.writeFloat(p.yaw);},b->new RapierStep(b.readVarInt(),b.readFloat()),(p,context)->{
+        CHANNEL.registerMessage(37,Las5Shot.class,(p,b)->{b.writeVarInt(p.owner+1);b.writeDouble(p.fx);b.writeDouble(p.fy);b.writeDouble(p.fz);b.writeDouble(p.tx);b.writeDouble(p.ty);b.writeDouble(p.tz);},
+                b->new Las5Shot(b.readVarInt()-1,b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble()),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.Las5Beam.receive(p)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(39,StatusDamage.class,(p,b)->{b.writeVarIntArray(p.ids);b.writeVarInt(p.amounts.length);for(float f:p.amounts)b.writeFloat(f);},
+                b->{var ids=b.readVarIntArray(256);int n=Math.min(256,b.readVarInt());var amounts=new float[n];for(int i=0;i<n;i++)amounts[i]=b.readFloat();return new StatusDamage(ids,amounts);},(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.StatusDamageClient.receive(p.ids(),p.amounts())));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(38,KillSound.class,(p,b)->b.writeUtf(p.sound,128),b->new KillSound(b.readUtf(128)),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.TaczSounds.play(p.sound())));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(25,RapierStep.class,(p,b)->{b.writeVarInt(p.entity);b.writeFloat(p.yaw);b.writeFloat(p.distance);},b->new RapierStep(b.readVarInt(),b.readFloat(),b.readFloat()),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.RapierTrail.receive(p)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(24,SecretBlockSync.class,(p,b)->{b.writeBoolean(p.full);b.writeVarInt(p.positions.length);for(int i=0;i<p.positions.length;i++){b.writeLong(p.positions[i]);b.writeByte(p.modes[i]);}},b->{

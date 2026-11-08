@@ -94,6 +94,7 @@ final class LoadoutScreen extends ArenaScreen {
             var label=Component.empty();
             if(worn)label.append(Component.literal("● ").withStyle(net.minecraft.ChatFormatting.GOLD));
             label.append(Component.literal(weapon.name()).withStyle(worn?net.minecraft.ChatFormatting.GOLD:net.minecraft.ChatFormatting.WHITE));
+            if(ReleaseDateText.upcoming(weapon.releaseDate()))label.append(Component.literal(" ["+ReleaseDateText.UPCOMING+"]").withStyle(net.minecraft.ChatFormatting.AQUA));
             // The category is drawn right-aligned over the reserved padding in render().
             listButton(label,x,85+(i-page)*27,list-6,24,true,
                     weapon.id().equals(selected().id())?ACCENT:MUTED,9,categoryWidth(weapon)+6+silhouetteWidth(),()->clickWeapon(weapon.id()));
@@ -194,6 +195,7 @@ final class LoadoutScreen extends ArenaScreen {
         TacticalStyle.band(g,dx,85,right,18,ACCENT,PANEL);
         int tagX=right-6;
         if(worn){String tag="장착 중";tagX-=font.width(tag)+8;badge(g,tag,tagX,89,ACCENT);tagX-=4;}
+        if(ReleaseDateText.upcoming(weapon.releaseDate())){String tag=ReleaseDateText.UPCOMING;tagX-=font.width(tag)+8;badge(g,tag,tagX,89,0xFF5FC8E0);tagX-=4;}
         var title=Component.literal(weapon.name()).withStyle(worn?net.minecraft.ChatFormatting.GOLD:net.minecraft.ChatFormatting.WHITE)
                 .append(Component.literal(" [id: "+weapon.id()+"]").withStyle(s->s.withColor(0xC8B060)));
         g.drawString(font,net.minecraft.locale.Language.getInstance().getVisualOrder(font.substrByWidth(title,Math.max(1,tagX-dx-10))),dx+6,90,INK,false);
@@ -357,6 +359,7 @@ final class LoadoutScreen extends ArenaScreen {
             int edge=picked?ACCENT:worn?TacticalStyle.GOLD:hover?MUTED:0;
             if(edge!=0){g.fill(cx,y,cx+tile,y+1,edge);g.fill(cx,y+tile-1,cx+tile,y+tile,edge);g.fill(cx,y,cx+1,y+tile,edge);g.fill(cx+tile-1,y,cx+tile,y+tile,edge);}
             if(worn)g.fill(cx+3,y+3,cx+6,y+6,TacticalStyle.GOLD);
+            if(ReleaseDateText.upcoming(weapon.releaseDate()))small(g,ReleaseDateText.UPCOMING,cx+(worn?8:3),y+3,.55f,0xFF5FC8E0);
             // Id small at the top right; name at the bottom left over a dark strip.
             float idScale=.55f,nameScale=.65f;
             String id=font.plainSubstrByWidth(weapon.id(),Math.max(1,(int)((tile-10)/idScale)));

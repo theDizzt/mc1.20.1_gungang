@@ -20,7 +20,7 @@ import net.minecraftforge.fml.common.Mod;
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID)
 public final class MeleeHitSlow {
     static final double AMOUNT=-.4;static final int TICKS=10;
-    private static final UUID MODIFIER=UUID.fromString("6a2f0f7e-3c1b-4d6a-9a55-1f2e8b7c4d30");
+    public static final UUID MODIFIER=UUID.fromString("6a2f0f7e-3c1b-4d6a-9a55-1f2e8b7c4d30");
     private static final Set<String> MELEE=Set.of("katana:katanagai","lrtactical:karambit");
     /** Victims still slowed, until the server tick in the value. */
     private static final Map<LivingEntity,Integer> slowed=new WeakHashMap<>();
