@@ -10,47 +10,70 @@ import net.minecraft.server.level.ServerPlayer;
  * Live weapon patching for administrators ({@code /gungang modify ui}). GunGang equipment fields are saved to the
  * weapon JSON and re-applied to players using that weapon; TaCZ gun stats are written into the gun pack's data file
  * (values only, comments kept) and TaCZ re-reads its packs, which syncs the new numbers to every client.
+ * Secondaries ({@code kind} "secondary") edit their weapon file and, for GunGang's built-in items, the item effect
+ * settings (damage, range, duration ...); those are saved through the lobby-only settings reload.
  */
 public final class WeaponPatch {
     /** Rows of the screen. {@code key} is {@code gg:<field>} or {@code tacz:<path>}. */
     public record Row(String key, String label, String group, boolean numeric, String value) { }
-    /** {@code weight} is the TaCZ gun weight in kg (null: not a TaCZ gun or its data file was not found). */
-    public record Entry(String id, String name, String category, Double weight, double movementSpeed) { }
-    public record View(List<Entry> weapons, String id, String name, String gunId, String file, List<Row> rows, String message, String error, String phase, double weightMultiplier) { }
-    public record Request(String id, Map<String, String> changes) { }
+    /** {@code weight} is the TaCZ gun weight in kg (null: not a TaCZ gun or its data file was not found); {@code kind}: "weapon" or "secondary". */
+    public record Entry(String id, String name, String category, Double weight, double movementSpeed, String kind) { }
+    public record View(List<Entry> weapons, String id, String name, String gunId, String file, List<Row> rows, String message, String error, String phase, double weightMultiplier, String kind) { }
+    /** {@code kind} null means a primary weapon (older clients). */
+    public record Request(String id, Map<String, String> changes, String kind) {
+        public Request(String id, Map<String, String> changes) { this(id, changes, null); }
+    }
+    public static final String PRIMARY = "weapon", SECONDARY = "secondary";
+    /** Secondary weapon-file fields shown, in order (stats.N.value rows follow, labelled by their stat name). */
+    private static final List<String> SECONDARY_FIELDS = List.of("name", "category", "cooldownSeconds", "maxHealth", "movementSpeed", "plantSeconds", "fuseSeconds", "defuseSeconds");
+    private static final Map<String, String> SECONDARY_LABELS = Map.of("cooldownSeconds", "쿨타임 (초)", "plantSeconds", "설치 시간 (초)", "fuseSeconds", "폭발 시간 (초)", "defuseSeconds", "해체 시간 (초)");
+    /** Item effect setting labels; anything not listed shows its field name. */
+    private static final Map<String, String> ITEM_LABELS = Map.ofEntries(
+            Map.entry("damage", "피해"), Map.entry("radius", "반경 (블록)"), Map.entry("range", "범위 (블록)"), Map.entry("durationSeconds", "지속 시간 (초)"),
+            Map.entry("cooldownSeconds", "쿨타임 (초)"), Map.entry("health", "체력"), Map.entry("heal", "회복량"), Map.entry("speed", "속도"),
+            Map.entry("capacity", "용량·탄약"), Map.entry("projectileRange", "투사체 사거리 (블록)"), Map.entry("projectileSpeed", "투사체 속도"),
+            Map.entry("throwSpeed", "투척 속도"), Map.entry("throwDamage", "투척 피해"), Map.entry("emissionIntervalTicks", "발사 간격 (틱)"),
+            Map.entry("burnSeconds", "화상 시간 (초)"), Map.entry("burnDamage", "화상 피해"), Map.entry("knockback", "넉백"),
+            Map.entry("detectionRange", "감지 반경 (블록)"), Map.entry("fireIntervalTicks", "사격 간격 (틱)"), Map.entry("reloadPerSecond", "초당 재장전"),
+            Map.entry("absorption", "추가 체력"), Map.entry("triggerRadius", "작동 반경 (블록)"), Map.entry("delaySeconds", "지연 (초)"),
+            Map.entry("centerDamage", "중심 피해"), Map.entry("edgeDamage", "가장자리 피해"), Map.entry("collisionDamage", "충돌 피해"),
+            Map.entry("maxPlaced", "최대 설치 수"), Map.entry("rootSeconds", "속박 시간 (초)"), Map.entry("slowSeconds", "둔화 시간 (초)"));
     private static final Map<String, String> LABELS = Map.of(
             "name", "이름", "category", "분류", "maxHealth", "최대 체력", "movementSpeed", "이동 속도 (%)",
             "specs.damage", "표시 · 피해", "specs.accuracy", "표시 · 정확도", "specs.stability", "표시 · 안정성", "specs.range", "표시 · 사거리", "specs.fireRate", "표시 · 연사력");
     private static final Map<UUID, Long> LAST_APPLY = new HashMap<>();
     private static final long COOLDOWN_MS = 1500;
 
-    public static void open(ServerPlayer player, String id) throws Exception {
+    public static void open(ServerPlayer player, String id) throws Exception { open(player, PRIMARY, id); }
+    public static void open(ServerPlayer player, String kind, String id) throws Exception {
         requireAdmin(player);
         if (!GungangNetwork.installed(player)) throw new IllegalArgumentException("패치 화면은 GunGang 모드가 설치된 클라이언트에서만 열 수 있습니다.");
-        send(player, id, "", "");
+        send(player, SECONDARY.equals(kind) ? SECONDARY : PRIMARY, id, "", "");
     }
     /** Server-thread handler for the screen's requests: {@code open} (select a weapon) or {@code apply}. */
     public static void receive(ServerPlayer player, String action, String json) {
         if (player == null) return;
-        String id = "";
+        String id = "", kind = PRIMARY;
         try {
             requireAdmin(player);
             var request = ServerFiles.GSON.fromJson(json, Request.class);
             if (request == null || request.id() == null) throw new IllegalArgumentException("잘못된 요청입니다.");
             id = request.id();
+            kind = SECONDARY.equals(request.kind()) ? SECONDARY : PRIMARY;
             switch (action) {
-                case "open" -> send(player, id, "", "");
+                case "open" -> send(player, kind, id, "", "");
                 case "apply" -> {
                     long now = System.currentTimeMillis(), last = LAST_APPLY.getOrDefault(player.getUUID(), 0L);
                     if (now - last < COOLDOWN_MS) throw new IllegalStateException("잠시 후 다시 적용하세요.");
                     LAST_APPLY.put(player.getUUID(), now);
-                    send(player, id, apply(player, id, request.changes() == null ? Map.of() : request.changes()), "");
+                    var changes = request.changes() == null ? Map.<String, String>of() : request.changes();
+                    send(player, kind, id, kind.equals(SECONDARY) ? applySecondary(player, id, changes) : apply(player, id, changes), "");
                 }
                 default -> throw new IllegalArgumentException("알 수 없는 요청입니다.");
             }
         } catch (Exception failure) {
             String message = failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
-            try { send(player, id, "", message); }
+            try { send(player, kind, id, "", message); }
             catch (Exception again) { player.sendSystemMessage(Component.literal("무기 패치 실패: " + message)); }
         }
     }
@@ -68,13 +91,18 @@ public final class WeaponPatch {
     }
     private static Path packs() { return net.minecraftforge.fml.loading.FMLPaths.GAMEDIR.get().resolve("tacz").toAbsolutePath().normalize(); }
 
-    private static void send(ServerPlayer player, String requested, String message, String error) throws Exception {
-        var weapons = Loadouts.load().primary();
-        var entries = weapons.stream().map(w -> new Entry(w.id(), w.name(), w.category(), weight(w), w.movementSpeed())).toList();
+    private static void send(ServerPlayer player, String kind, String requested, String message, String error) throws Exception {
+        var loadouts = Loadouts.load();
+        var entries = new ArrayList<Entry>();
+        for (var w : loadouts.primary()) entries.add(new Entry(w.id(), w.name(), w.category(), weight(w), w.movementSpeed(), PRIMARY));
+        for (var w : loadouts.secondary()) entries.add(new Entry(w.id(), w.name(), w.category(), weight(w), w.movementSpeed(), SECONDARY));
+        var weapons = kind.equals(SECONDARY) ? loadouts.secondary() : loadouts.primary();
+        if (weapons.isEmpty()) throw new IllegalStateException(kind.equals(SECONDARY) ? "등록된 보조무기가 없습니다." : "등록된 주무기가 없습니다.");
         String id = weapon(weapons, requested).map(Loadouts.Weapon::id).orElse(weapons.get(0).id());
         var weapon = weapon(weapons, id).orElseThrow();
         var rows = new ArrayList<Row>();
-        for (var field : ConfigModify.weaponFields(id).entrySet()) {
+        if (kind.equals(SECONDARY)) secondaryRows(id, weapon, rows);
+        else for (var field : ConfigModify.weaponFields(id).entrySet()) {
             var value = field.getValue();
             String text = value == null || value.isJsonNull() ? "" : value.isJsonPrimitive() && value.getAsJsonPrimitive().isString() ? value.getAsString() : value.toString();
             rows.add(new Row("gg:" + field.getKey(), LABELS.getOrDefault(field.getKey(), field.getKey()), field.getKey().startsWith("specs.") ? "display" : "gear",
@@ -89,8 +117,67 @@ public final class WeaponPatch {
                     rows.add(new Row("tacz:" + field.path(), field.label(), "tacz", true, data.values().get(field.path()).text()));
             } catch (IllegalArgumentException missing) { file = "! " + missing.getMessage(); }
         }
-        var view = new View(entries, id, weapon.name(), gun, file, rows, message, error, LobbyManager.phase(), weightMultiplier());
+        var view = new View(entries, id, weapon.name(), gun, file, rows, message, error, LobbyManager.phase(), weightMultiplier(), kind);
         GungangNetwork.send(player, new GungangNetwork.WeaponPatchView(ServerFiles.GSON.toJson(view)));
+    }
+    private static String text(com.google.gson.JsonElement value) {
+        return value == null || value.isJsonNull() ? "" : value.isJsonPrimitive() && value.getAsJsonPrimitive().isString() ? value.getAsString() : value.toString();
+    }
+    /** The GunGang item effect setting behind a secondary ("turret" for gungang:turret), or null. */
+    static String itemSetting(Loadouts.Weapon weapon) {
+        try {
+            var key = net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(weapon.stack().getItem());
+            return key != null && key.getNamespace().equals("gungang") && ConfigModify.exists("item", key.getPath()) ? key.getPath() : null;
+        } catch (Exception invalid) { return null; }
+    }
+    /** Weapon-file fields, then the item effect settings (when it is a GunGang item). TaCZ rows are added by the caller. */
+    private static void secondaryRows(String id, Loadouts.Weapon weapon, List<Row> rows) throws Exception {
+        var fields = ConfigModify.editable(SECONDARY, id);
+        for (String key : SECONDARY_FIELDS) if (fields.containsKey(key))
+            rows.add(new Row("gg:" + key, SECONDARY_LABELS.getOrDefault(key, LABELS.getOrDefault(key, key)), "secondary", ConfigModify.numeric(SECONDARY, id, key), number(text(fields.get(key)))));
+        for (var field : fields.entrySet()) {
+            var stat = field.getKey().matches("stats\\.\\d+\\.value") ? fields.get(field.getKey().replace(".value", ".name")) : null;
+            if (stat != null) rows.add(new Row("gg:" + field.getKey(), "표시 · " + text(stat), "display", false, text(field.getValue())));
+        }
+        String item = itemSetting(weapon);
+        if (item == null) return;
+        for (var field : ConfigModify.editable("item", item).entrySet())
+            rows.add(new Row("item:" + field.getKey(), ITEM_LABELS.getOrDefault(field.getKey(), field.getKey()), "item", ConfigModify.numeric("item", item, field.getKey()), number(text(field.getValue()))));
+    }
+    /** Secondary changes: weapon file and item effect settings (lobby only, like /gungang modify), then TaCZ data. */
+    private static String applySecondary(ServerPlayer player, String id, Map<String, String> changes) throws Exception {
+        if (changes.isEmpty()) throw new IllegalArgumentException("변경한 항목이 없습니다.");
+        if (changes.size() > 128) throw new IllegalArgumentException("항목이 너무 많습니다.");
+        var weapon = weapon(Loadouts.load().secondary(), id).orElseThrow(() -> new IllegalArgumentException("해당 보조무기가 없습니다: " + id));
+        var gear = new LinkedHashMap<String, String>();
+        var item = new LinkedHashMap<String, String>();
+        var tacz = new LinkedHashMap<String, String>();
+        for (var change : changes.entrySet()) {
+            String key = change.getKey(), value = change.getValue() == null ? "" : change.getValue();
+            if (value.length() > 200) throw new IllegalArgumentException("값이 너무 깁니다: " + key);
+            if (key.startsWith("gg:")) gear.put(key.substring(3), value);
+            else if (key.startsWith("item:")) item.put(key.substring(5), value);
+            else if (key.startsWith("tacz:")) tacz.put(key.substring(5), value);
+            else throw new IllegalArgumentException("알 수 없는 항목: " + key);
+        }
+        if (!(gear.isEmpty() && item.isEmpty())) LobbyManager.requireMapEditing();
+        var fields = ConfigModify.editable(SECONDARY, id);
+        for (String field : gear.keySet()) if (!fields.containsKey(field)) throw new IllegalArgumentException("수정할 수 없는 항목: " + field);
+        String setting = itemSetting(weapon);
+        if (!item.isEmpty() && setting == null) throw new IllegalArgumentException("이 보조무기에는 아이템 효과 설정이 없습니다.");
+        TaczGunFile data = null;
+        String patched = null;
+        if (!tacz.isEmpty()) {
+            if (!net.minecraftforge.fml.ModList.get().isLoaded("tacz")) throw new IllegalStateException("서버에 TaCZ가 설치되어 있지 않습니다.");
+            data = TaczGunFile.find(gunId(weapon));
+            patched = data.patched(tacz); // throws before anything is saved
+        }
+        var done = new ArrayList<String>();
+        if (!gear.isEmpty()) { ConfigModify.apply(SECONDARY, id, gear); done.add("장비 " + gear.size() + "개"); }
+        if (!item.isEmpty()) { ConfigModify.apply("item", setting, item); done.add("아이템 효과 " + item.size() + "개"); }
+        if (data != null) { writeTacz(player, data, patched); done.add("TaCZ " + tacz.size() + "개"); }
+        LogUtils.getLogger().info("GunGang secondary patch by {}: {} {}", player.getGameProfile().getName(), id, changes);
+        return "패치 완료: " + weapon.name() + " · " + String.join(", ", done) + " · 다음 지급·장비 선택부터 적용됩니다.";
     }
     /** The weapon's TaCZ weight; a data file without the field weighs 0 kg, as TaCZ reads it. */
     private static Double weight(Loadouts.Weapon weapon) {
@@ -142,18 +229,22 @@ public final class WeaponPatch {
             done.add("장비 " + gear.size() + "개");
         }
         if (data != null) {
-            Path relative = packs().relativize(data.path());
-            Path backup = ServerFiles.root().resolve("backups/tacz").resolve(relative.toString()).toAbsolutePath().normalize();
-            if (!Files.exists(backup)) { Files.createDirectories(backup.getParent()); Files.copy(data.path(), backup); }
-            AreaEditor.atomicWrite(data.path(), patched);
-            var server = player.server;
-            server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), "tacz reload");
+            writeTacz(player, data, patched);
             done.add("TaCZ " + tacz.size() + "개");
         }
         LogUtils.getLogger().info("GunGang weapon patch by {}: {} {}", player.getGameProfile().getName(), id, changes);
         String summary = "실시간 패치 완료: " + weapon.name() + " · " + String.join(", ", done);
         if (data != null) summary += " · 총기팩을 다시 읽어 접속자에게 동기화했습니다";
         return summary + ".";
+    }
+    /** Backs the original pack file up once, writes the patch, and has TaCZ re-read (and re-sync) its packs. */
+    private static void writeTacz(ServerPlayer player, TaczGunFile data, String patched) throws Exception {
+        Path relative = packs().relativize(data.path());
+        Path backup = ServerFiles.root().resolve("backups/tacz").resolve(relative.toString()).toAbsolutePath().normalize();
+        if (!Files.exists(backup)) { Files.createDirectories(backup.getParent()); Files.copy(data.path(), backup); }
+        AreaEditor.atomicWrite(data.path(), patched);
+        var server = player.server;
+        server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), "tacz reload");
     }
     private WeaponPatch() { }
 }

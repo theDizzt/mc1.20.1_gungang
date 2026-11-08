@@ -59,8 +59,8 @@ final class BotGadgets {
             default->(int)Math.ceil(weapon.cooldownSeconds()*20);
         };
         long now=bot.level().getGameTime();
-        // Like players, an orbital strike waits a full cooldown after it is first equipped.
-        if(kind.equals("orbital_strike"))deadlines.putIfAbsent(id,now+cooldown);
+        // Like players, an orbital strike waits a full cooldown after it is first equipped (not in 랜덤 무기).
+        if(kind.equals("orbital_strike")&&!LobbyManager.randomWeaponMatch())deadlines.putIfAbsent(id,now+cooldown);
         shieldHealth=(float)ExtraGadgetConfig.shield.capacity();
         // Carried in the off hand so other players can see what the bot brought.
         bot.setItemSlot(net.minecraft.world.entity.EquipmentSlot.OFFHAND,item.copy());

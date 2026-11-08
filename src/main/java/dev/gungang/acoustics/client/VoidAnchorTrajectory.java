@@ -38,8 +38,7 @@ public final class VoidAnchorTrajectory {
             boolean landed=hit.getType()==HitResult.Type.BLOCK;
             if(landed)end=hit.getLocation();
             if(landed) {
-                Vec3 at=end.add(Vec3.atLowerCornerOf(hit.getDirection().getNormal()).scale(.03));
-                LevelRenderer.renderLineBox(pose,lines,new AABB(at,at).inflate(.16),1,.8f,.2f,1);
+                ThrowAimGuide.impact(pose,lines,end,Vec3.atLowerCornerOf(hit.getDirection().getNormal()),false);
                 break;
             }
             point=end;distance+=step.horizontalDistance();velocity=VoidAnchorFlight.next(velocity,distance);

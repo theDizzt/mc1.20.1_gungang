@@ -40,7 +40,9 @@ public final class SecondaryRuntime {
         }
         if(CombatGadgets.is(stack,"orbital_strike")) {
             tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(ExtraGadgetConfig.orbital.cooldownSeconds()));
-            if(!player.level().isClientSide)DEADLINES.computeIfAbsent(player.getUUID(),id->new HashMap<>())
+            // The first equip waits a full cooldown, except in 랜덤 무기, where weapons change every few minutes and
+            // that wait would use up most of the turn. A cooldown from actually firing it still carries over.
+            if(!player.level().isClientSide&&!LobbyManager.randomWeaponMatch())DEADLINES.computeIfAbsent(player.getUUID(),id->new HashMap<>())
                     .computeIfAbsent(weapon.id(),id->player.level().getGameTime()+ExtraGadgetConfig.ticks(ExtraGadgetConfig.orbital.cooldownSeconds()));
         }
         tag.putLong("GunGangCooldownEnd",DEADLINES.getOrDefault(player.getUUID(),Map.of()).getOrDefault(weapon.id(),0L));

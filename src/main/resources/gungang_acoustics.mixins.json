@@ -7,6 +7,7 @@
   "plugin": "dev.gungang.acoustics.mixin.CompoundBowMixinPlugin",
   "mixins": ["AirAssaultMotionMixin", "PropBulletClipMixin", "RapierDashMixin", "PropTargetMixin", "PropCollisionMixin", "SpawnGateEffectMixin", "MapSnowAccumulationMixin", "AcidLoggedStateMixin", "AcidLoggedFluidMixin", "AcidLoggedShapeMixin", "TaczDamageMixin", "TaczHeatScriptMixin", "TaczNpcPassMixin", "SecondaryItemUseMixin", "SecondaryCooldownMixin", "TacticalCooldownMixin", "FoodRegenerationMixin", "PeacefulRegenerationMixin", "PlayerKnockbackMixin", "RegenerationEffectMixin", "OrdnanceFriendlyFireMixin", "JetpackStepMixin", "BombSpectatorCameraMixin", "BombSpectatorTeleportMixin", "HolidayGiftMixin", "EscortLadderMixin", "EscortProjectileHitMixin", "TaczCartHitMixin", "TaczCartStopMixin", "MeleeConeTargetMixin", "SecretCollisionMixin", "NoteBlockRangeMixin"],
   "client": [
+    "RapierOffhandLayerMixin",
     "TitleScreenMixin",
     "TitleMenuButtonMixin",
     "RapierIndicatorMixin",
