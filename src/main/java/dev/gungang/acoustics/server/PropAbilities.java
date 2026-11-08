@@ -159,10 +159,16 @@ public final class PropAbilities {
                     +"E5 D#5 E5 D#5 E5 B4 D5 C5 A4 C4 E4 A4 B4 E4 C5 B4 A4 "
                     +"B4 C5 D5 E5 G4 F5 E5 D5 F4 E5 D5 C5 E4 D5 C5 B4 E4 E5 E5 E6 D#5 E5 D#5 E5 D#5 E5 "
                     +"D#5 E5 D#5 E5 B4 D5 C5 A4 C4 E4 A4 B4 E4 C5 B4 A4")),
-            // Pachelbel, Canon in D: the first violin's quarter-note and eighth-note lines.
-            new Song("파헬벨 카논",notes("F#5 E5 D5 C#5 B4 A4 B4 C#5 D5 C#5 B4 A4 G4 F#4 G4 E4 "
-                    +"D4 F#4 A4 G4 F#4 D4 F#4 E4 D4 B3 D4 A4 G4 B4 A4 G4 "
-                    +"F#4 D4 E4 C#5 D5 F#5 A5 A4 B4 G4 A4 F#4 D4 D5 D5 C#5")),
+            // Pachelbel, Canon in D: the violin line over the ground bass, eight bars of eighth notes.
+            new Song("파헬벨 카논",notes("D5 C#5 D5 D4 C#4 A4 E4 F#4 D4 D5 C#5 B4 C#5 F#5 A5 B5 "
+                    +"G5 F#5 E5 G5 F#5 E5 D5 C#5 B4 A4 G4 F#4 E4 G4 F#4 E4 "
+                    +"D4 E4 F#4 G4 A4 E4 A4 G4 F#4 B4 A4 G4 A4 G4 F#4 E4 "
+                    +"D4 B3 B4 C#5 D5 C#5 B4 A4 G4 F#4 E4 B4 A4 B4 A4 G4")),
+            // Schubert, "Die Forelle" (The Trout): the song's main tune; rests are skipped, as each press plays a note.
+            new Song("슈베르트 송어",notes("A4 D5 D5 F#5 F#5 D5 A4 A4 A4 A4 E5 D5 C#5 B4 A4 A4 "
+                    +"D5 D5 F#5 F#5 D5 A4 D5 C#5 B4 C#5 D5 G#4 A4 A4 "
+                    +"C#5 C#5 D5 C#5 B4 C#5 D5 A4 D5 C#5 C#5 C#5 G5 E5 C#5 D5 D5 "
+                    +"B4 B4 B4 D5 D5 A4 A4 A4 A4 E5 C#5 D5 D5")),
             // Chopin, Etude Op. 25 No. 9 "Butterfly" in G-flat major: the opening octave figure.
             new Song("쇼팽 나비 에튀드",notes("Bb4 Bb5 Cb6 C6 Db5 Db6 Eb6 Db6 Gb4 Gb5 Ab5 A5 Bb4 Bb5 Cb6 Bb5 "
                     +"Eb4 Eb5 E5 F5 Gb4 Gb5 F5 Gb5 Ab4 Ab5 Bb5 Ab5 Ab4 Ab5 Bb5 Cb6")),

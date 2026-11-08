@@ -1,0 +1,3 @@
+"Star Wars Low Poly Autoinjector" by Crazy Canadian (https://sketchfab.com/CrazyCanadian), https://sketchfab.com/3d-models/star-wars-low-poly-autoinjector-2f38840cc8db4cbb8cd9348e23984e0d
+Licensed under CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/).
+Modifications: glTF (GLB) converted to OBJ; reoriented upright; scale normalized; textures downsized to PNG; emissive / metallic maps dropped.

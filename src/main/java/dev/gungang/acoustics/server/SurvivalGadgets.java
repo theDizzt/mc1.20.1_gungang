@@ -53,7 +53,7 @@ public final class SurvivalGadgets {
         if(!CombatGadgets.is(stack,"life_support")||!SecondaryRuntime.ready(p,stack))return;
         event.setCanceled(true);p.setHealth(SurvivalRules.LIFE_HEALTH);p.setAbsorptionAmount((float)ExtraGadgetConfig.life.absorption());
         long now=p.level().getGameTime();LIFE.put(p.getUUID(),new Life(now+ExtraGadgetConfig.ticks(ExtraGadgetConfig.life.durationSeconds()),now+ExtraGadgetConfig.ticks(ExtraGadgetConfig.life.drainIntervalSeconds()),event.getSource()));
-        SecondaryRuntime.commit(p,stack);p.clearFire();sync(p);
+        SecondaryRuntime.commit(p,stack);StatusCure.cure(p);sync(p); // clears every debuff: harmful effects, burning, bleeding
         p.level().playSound(null,p.blockPosition(),net.minecraft.sounds.SoundEvents.TOTEM_USE,net.minecraft.sounds.SoundSource.PLAYERS,.8f,1.3f);
     }
     public static boolean startJet(ServerPlayer p,ItemStack stack) {

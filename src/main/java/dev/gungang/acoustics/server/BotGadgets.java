@@ -29,7 +29,7 @@ final class BotGadgets {
     // Assigned on equip: touching ItemStack.EMPTY here would load item registries in plain unit tests.
     private ItemStack stack;
     private int cooldown;
-    private long lastSeen,healEnd,boostEnd,jetEnd,lifeEnd,lifeDrain,raisedUntil,shieldRepair,shieldCombat;
+    private long lastSeen,healStart,healEnd,boostEnd,jetEnd,lifeEnd,lifeDrain,raisedUntil,shieldRepair,shieldCombat;
     private float healPerTick,shieldHealth,lastScore;
     private long lastHurt;
     private boolean lifeActive,disabled;
@@ -72,9 +72,12 @@ final class BotGadgets {
             var speed=bot.getAttribute(Attributes.MOVEMENT_SPEED);if(speed!=null)speed.removeModifier(SPEED);
             if(jetting())bot.setNoGravity(false);
             if(lifeActive)bot.setAbsorptionAmount(0);
+            if(healEnd>bot.level().getGameTime())HealCue.interrupted(bot);
         }
         healEnd=boostEnd=jetEnd=lifeEnd=raisedUntil=shieldRepair=0;lifeActive=false;jetDirection=null;lifeSource=null;
     }
+    /** Recovery potion health still to come. */
+    float pendingHeal(long now) {return now<healEnd?(healEnd-now)*healPerTick:0;}
     void clearCooldowns() {deadlines.clear();}
     /** Status line: equipped gadget, its latest utility score and remaining cooldown. */
     String describe(BotEntity bot) {
@@ -90,6 +93,7 @@ final class BotGadgets {
     boolean blocksAttack(long now) {return jetting()||shielding(now);}
     boolean boosted(long now) {return now<boostEnd;}
     private boolean ready(long now) {return !disabled&&now>=deadlines.getOrDefault(id,0L);}
+    boolean readyForLearning(long now){return !kind.isEmpty()&&ready(now);}
     private void commit(long now) {deadlines.put(id,now+cooldown);}
 
 
@@ -117,6 +121,7 @@ final class BotGadgets {
         lastScore=BotGadgetScore.score(kind,situation);
         // A little noise so the same situation does not always fire on the same tick.
         if(lastScore+bot.getRandom().nextFloat()*.15f<BotGadgetScore.THRESHOLD)return;
+        if(Set.of("molotov","arrow_grenade","landmine","bear_trap","turret","orbital_strike").contains(kind)&&!BotLearning.allowSecondary(bot,bot.getServer().getTickCount()))return;
         try {
             boolean used=switch(kind) {
                 case "turret"->placeTurret(bot,level,target);
@@ -127,14 +132,14 @@ final class BotGadgets {
                 case "recovery_potion"->{
                     if(now<healEnd)yield false;
                     int ticks=Math.max(1,(int)Math.round(GadgetConfig.recovery.durationSeconds()*20));
-                    healPerTick=(float)GadgetConfig.recovery.heal()/ticks;healEnd=now+ticks;
+                    healPerTick=(float)GadgetConfig.recovery.heal()/ticks;healStart=now;healEnd=now+ticks;
                     level.playSound(null,bot.blockPosition(),SoundEvents.GENERIC_DRINK,SoundSource.PLAYERS,.8f,1);yield true;
                 }
                 case "adrenaline"->{
                     var config=GadgetConfig.adrenaline;bot.setHealth(bot.getHealth()-cost);
                     var speed=bot.getAttribute(Attributes.MOVEMENT_SPEED);speed.removeModifier(SPEED);
                     speed.addTransientModifier(new AttributeModifier(SPEED,"GunGang bot adrenaline",config.movementBonusPercent()/100,AttributeModifier.Operation.MULTIPLY_TOTAL));
-                    boostEnd=now+Math.max(1,Math.round(config.durationSeconds()*20));yield true;
+                    boostEnd=now+Math.max(1,Math.round(config.durationSeconds()*20));HealCue.stim(bot);yield true;
                 }
                 case "infrared_scanner"->{
                     if(bot.getTeam()==null)yield false;
@@ -157,7 +162,8 @@ final class BotGadgets {
     }
 
     private void effects(BotEntity bot,ServerLevel level,long now) {
-        if(now<healEnd)bot.heal(healPerTick);
+        if(now<healEnd) {HealCue.potion(bot,(int)(now-healStart),(int)(healEnd-now));bot.heal(healPerTick);}
+        if(now<boostEnd)GadgetAura.stim(bot,now);
         if(boostEnd!=0&&now>=boostEnd) {var speed=bot.getAttribute(Attributes.MOVEMENT_SPEED);if(speed!=null)speed.removeModifier(SPEED);boostEnd=0;}
         if(kind.equals("shield")) {
             var config=ExtraGadgetConfig.shield;
@@ -181,7 +187,7 @@ final class BotGadgets {
     boolean lifeSupport(BotEntity bot,DamageSource source) {
         long now=bot.level().getGameTime();
         if(!kind.equals("life_support")||lifeActive||!ready(now)||source.is(net.minecraft.world.damagesource.DamageTypes.GENERIC_KILL))return false;
-        bot.setHealth(SurvivalRules.LIFE_HEALTH);bot.setAbsorptionAmount((float)ExtraGadgetConfig.life.absorption());bot.clearFire();
+        bot.setHealth(SurvivalRules.LIFE_HEALTH);bot.setAbsorptionAmount((float)ExtraGadgetConfig.life.absorption());StatusCure.cure(bot);
         lifeActive=true;lifeSource=source;lifeEnd=now+ExtraGadgetConfig.ticks(ExtraGadgetConfig.life.durationSeconds());
         lifeDrain=now+ExtraGadgetConfig.ticks(ExtraGadgetConfig.life.drainIntervalSeconds());commit(now);
         bot.level().playSound(null,bot.blockPosition(),SoundEvents.TOTEM_USE,SoundSource.PLAYERS,.8f,1.3f);
@@ -200,7 +206,7 @@ final class BotGadgets {
         Vec3 delta=from.subtract(bot.position()),look=bot.getLookAngle();
         if(!ShieldRules.inFront(look.x,look.z,delta.x,delta.z))return;
         var hit=ShieldRules.absorb(shieldHealth,event.getAmount());shieldHealth=hit.durability();
-        if(shieldHealth==0) {shieldRepair=now+ExtraGadgetConfig.ticks(ExtraGadgetConfig.shield.repairSeconds());raisedUntil=0;}
+        if(shieldHealth==0) {shieldRepair=now+ExtraGadgetConfig.ticks(ExtraGadgetConfig.shield.repairSeconds());raisedUntil=0;ShieldBreakFx.burst(bot);}
         event.setAmount(hit.damage());if(hit.damage()==0)event.setCanceled(true);
         bot.level().playSound(null,bot.blockPosition(),shieldHealth==0?SoundEvents.SHIELD_BREAK:SoundEvents.SHIELD_BLOCK,SoundSource.PLAYERS,1,1);
     }

@@ -9,7 +9,7 @@ class PropSongsTest {
         assertThrows(IllegalArgumentException.class,()->PropAbilities.notes("H4"));
     }
     @Test void everyPieceFitsTheSixOctaveNote(){
-        assertEquals(7,PropAbilities.SONGS.size());
+        assertEquals(8,PropAbilities.SONGS.size());
         for(var song:PropAbilities.SONGS){
             assertTrue(song.notes().length>=16,song.name());
             for(int n:song.notes())assertTrue(n>=-36&&n<=36,song.name()+" "+n);

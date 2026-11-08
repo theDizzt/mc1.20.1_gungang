@@ -373,7 +373,9 @@ final class BotAgent {
         ctx.objective=mission;
         var status=actions.run(action);
         if(action==BotTactics.Action.RALLY&&status!=BotTree.Status.RUNNING&&point!=null)completedPoint=point.sequence();
-        if(ctx.reloadRequested&&gun!=null&&!gadgets.blocksAttack(time))gun.reload();
+        boolean learnedReload=BotLearning.requestReload(this,now)&&!seen&&!situation.hazard()&&situation.ammo()<.65f
+                &&(mission==null||mission.act()==BotObjective.Act.NONE);
+        if((ctx.reloadRequested||learnedReload)&&gun!=null&&!gadgets.blocksAttack(time))gun.reload();
         if(status==BotTree.Status.FAILURE)tactics.failed(action,now);
         // Finished its job: rest the action a moment so the bot moves on (re-engage after cover, etc.).
         else if(status==BotTree.Status.SUCCESS)tactics.completed(action,now,action==BotTactics.Action.COVER?120:60);
@@ -383,7 +385,7 @@ final class BotAgent {
             boolean bow=BotRanged.supports(bot.getMainHandItem());
             var flight=bow?BotRanged.data(bot.getMainHandItem()):gun==null?BotWeaponData.UNKNOWN:gun.ballistics();
             aim.track(bot,target,contact==null?null:contact.velocity,settings,now,melee?0:flight.speed(),flight.gravity(),flight.drag());
-            if(ctx.allowFire&&(melee||bot.distanceTo(target)<=ctx.profile.engage())&&now>=nextShot&&(gun==null||!gun.reloading())&&!gadgets.blocksAttack(time)&&aim.ready(bot,target,now,melee)){
+            if(ctx.allowFire&&(melee||BotLearning.allowFire(this,now))&&(melee||bot.distanceTo(target)<=ctx.profile.engage())&&now>=nextShot&&(gun==null||!gun.reloading())&&!gadgets.blocksAttack(time)&&aim.ready(bot,target,now,melee)){
                 nextShot=now+1;
                 if(melee||BotShot.clear(bot,aim.yaw(),aim.pitch(),Math.min(80,bot.distanceTo(target)+8),flight))shoot(target);
             }
