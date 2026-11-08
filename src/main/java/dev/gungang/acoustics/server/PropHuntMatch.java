@@ -494,7 +494,7 @@ public final class PropHuntMatch {
                 eliminate(target,owner);
             }else if(id.endsWith("health_pack")){
                 var config=id.contains("large")?GadgetConfig.largeHealthPack:GadgetConfig.smallHealthPack;
-                if(target.getHealth()<target.getMaxHealth()){target.heal((float)config.heal());m.hazard=server.getTickCount()+(int)Math.ceil(config.cooldownSeconds()*20);}
+                if(target.getHealth()<target.getMaxHealth()||StatusCure.ailing(target)){target.heal((float)config.heal());StatusCure.cure(target);m.hazard=server.getTickCount()+(int)Math.ceil(config.cooldownSeconds()*20);}
             }else if(contactDamage(prop.state())){
                 // Damaging blocks deal a fixed hit to seekers only (never another hider), at most once a second per disguise.
                 credit(target,owner.getUUID());target.hurt(contactSource(owner,prop.state()),CONTACT_DAMAGE);m.hazard=server.getTickCount()+20;
@@ -564,6 +564,7 @@ public final class PropHuntMatch {
         for(var target:bodies())if(target.level()==level&&!hider(target.getUUID())&&target.position().distanceTo(at)<=radius)
             {credit(target,source);target.hurt(level.damageSources().explosion(null,null),damage);}
         level.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION_EMITTER,at.x,at.y+.5,at.z,1,0,0,0,0);
+        GimmickEntity.blast(level,at,radius,damage);
         BotManager.propNoise(at,source);
         level.playSound(null,BlockPos.containing(at),net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,net.minecraft.sounds.SoundSource.BLOCKS,1,1);
     }

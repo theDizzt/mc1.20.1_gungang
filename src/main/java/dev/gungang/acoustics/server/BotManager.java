@@ -288,7 +288,7 @@ public final class BotManager {
 
     // ---- events ----
     /** Gunfire within earshot of every other bot: players' and bots' shots alike. */
-    static void heard(LivingEntity shooter){for(var a:agents)a.heard(shooter);}
+    static void heard(LivingEntity shooter){BotLearning.event(shooter,"shot_cue");for(var a:agents)a.heard(shooter);}
     @SubscribeEvent public static void bow(net.minecraftforge.event.entity.player.ArrowLooseEvent event){if(event.getEntity() instanceof ServerPlayer p)heard(p);}
     @SuppressWarnings("unchecked")
     public static void registerTacz(){
@@ -333,6 +333,8 @@ public final class BotManager {
         String attackerSide=botAttack?team(attacker.getUUID()):attacker instanceof ServerPlayer p?LobbyManager.team(p.getUUID()):"";
         String victimSide=botVictim?side(victim):victim instanceof ServerPlayer p?LobbyManager.team(p.getUUID()):"";
         boolean teams=Set.of("ALPHA","BRAVO").contains(attackerSide)&&Set.of("ALPHA","BRAVO").contains(victimSide);
+        // Area damage that ignores friendly fire (GP-31 fallout ...) reaches allied bots and players as well.
+        if(teams&&OrdnanceDamage.active()&&!LobbyManager.respawning(victim.getUUID()))return;
         if(botAttack&&victim instanceof ServerPlayer p&&!botVictim&&(!teams||attackerSide.equals(victimSide)||LobbyManager.respawning(p.getUUID())))event.setCanceled(true);
         if(botAttack&&botVictim&&(!teams||attackerSide.equals(victimSide)))event.setCanceled(true);
         if(botVictim&&!botAttack&&attacker instanceof ServerPlayer p&&(!teams||attackerSide.equals(victimSide)||p.isSpectator()&&!turret))event.setCanceled(true);
@@ -358,6 +360,7 @@ public final class BotManager {
     }
     static void register(LiteralArgumentBuilder<CommandSourceStack> root){
         var commands=Commands.literal("bot").requires(s->s.hasPermission(2)).executes(c->{status(c.getSource());return 1;});
+        BotLearning.register(commands);
         commands.then(Commands.literal("status").executes(c->{status(c.getSource());return 1;}));
         commands.then(Commands.literal("debug")
                 .then(slotArgument().executes(c->command(c.getSource(),()->BotDiagnostics.watch(c.getSource(),IntegerArgumentType.getInteger(c,"bot")-1))))

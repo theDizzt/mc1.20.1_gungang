@@ -11,16 +11,21 @@ final class HudHealthBars {
 
     private static final Map<LivingEntity, HealthBarAnimation> ABSORPTION = new WeakHashMap<>();
 
-    record Layers(float health, float healthTrail, float absorptionEnd, float absorptionTrailEnd) {
+    /** Health a running status ailment will still take: the end of health in this colour. */
+    static final int STATUS = 0xFFA45CF0;
+    /** {@code statusStart}: where the share of health that status ailments will still take begins (purple to {@code health}). */
+    record Layers(float health, float healthTrail, float absorptionEnd, float absorptionTrailEnd, float statusStart) {
+        Layers(float health, float healthTrail, float absorptionEnd, float absorptionTrailEnd) { this(health, healthTrail, absorptionEnd, absorptionTrailEnd, health); }
         int colorAt(float point, int healthColor) {
-            if (point < health) return healthColor;
+            if (point < statusStart) return healthColor;
+            if (point < health) return STATUS;
             if (point < absorptionEnd) return 0xFFFFD36B;
             if (point < absorptionTrailEnd) return 0xFFB9903F;
             if (point < healthTrail) return 0xFF45494F;
             return 0x8029353E;
         }
         float[] boundaries() {
-            float[] edges = {0, health, healthTrail, absorptionEnd, absorptionTrailEnd, 1};
+            float[] edges = {0, statusStart, health, healthTrail, absorptionEnd, absorptionTrailEnd, 1};
             java.util.Arrays.sort(edges);
             return edges;
         }
@@ -39,16 +44,19 @@ final class HudHealthBars {
         // Animate a bounded ratio with a fixed maximum, so absorption changes do not reset easing.
         float ratio = animation.update(amount / (maximum + amount), 1, seconds);
         float trailRatio = animation.trail(seconds);
-        return compose(health, trail(entity, partialTick), ratio, trailRatio);
+        return compose(health, trail(entity, partialTick), ratio, trailRatio, StatusDamageClient.pending(entity) / maximum);
     }
 
-    static Layers compose(float health, float healthTrail, float ratio, float trailRatio) {
+    static Layers compose(float health, float healthTrail, float ratio, float trailRatio) { return compose(health, healthTrail, ratio, trailRatio, 0); }
+    /** {@code status}: the share of maximum health running status ailments will still take. */
+    static Layers compose(float health, float healthTrail, float ratio, float trailRatio, float status) {
         float bonus = ratio / Math.max(0.000001f, 1 - ratio);
         float bonusTrail = trailRatio / Math.max(0.000001f, 1 - trailRatio);
         float capacity = 1 + bonusTrail;
         float base = health / capacity;
         return new Layers(base, healthTrail / capacity,
-                Math.min(1, base + bonus / capacity), Math.min(1, base + bonusTrail / capacity));
+                Math.min(1, base + bonus / capacity), Math.min(1, base + bonusTrail / capacity),
+                Math.max(0, base - Math.max(0, status) / capacity));
     }
 
     static void render(GuiGraphics g, int x, int y, int width, int height, Layers layers, int healthColor) {

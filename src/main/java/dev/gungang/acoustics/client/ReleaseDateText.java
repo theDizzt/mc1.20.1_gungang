@@ -12,5 +12,11 @@ public final class ReleaseDateText {
             return date.getYear()+"년 "+date.getMonthValue()+"월 "+date.getDayOfMonth()+"일";
         } catch(DateTimeParseException ignored) {return value;}
     }
+    /** A release date still in the future (the weapon or map shows the "추가 예정" tag). */
+    public static boolean upcoming(String value) {
+        if(value==null||value.isBlank())return false;
+        try {return LocalDate.parse(value).isAfter(LocalDate.now());} catch(DateTimeParseException ignored) {return false;}
+    }
+    public static final String UPCOMING="추가 예정";
     private ReleaseDateText() { }
 }

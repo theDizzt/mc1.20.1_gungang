@@ -36,6 +36,14 @@ public final class GimmickEvents {
         tag.putLong("GunGangGimmickAttack",now);
         GimmickEntity.hit(e.getLevel(),e.getPos(),(float)(p.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE)*AdrenalineDamage.multiplier(p)));
     }
+    /** Vanilla, TaCZ and lrtactical explosions (RPG, grenade launcher, grenades ...) set off and break gimmicks in range. */
+    @SubscribeEvent(priority=net.minecraftforge.eventbus.api.EventPriority.LOW) public static void exploded(net.minecraftforge.event.level.ExplosionEvent.Detonate e){
+        if(e.getLevel().isClientSide)return;
+        var explosion=e.getExplosion();
+        GimmickEntity.blast(e.getLevel(),explosion.getPosition(),((dev.gungang.acoustics.mixin.ExplosionAccessor)explosion).gungang$radius(),EXPLOSION_DAMAGE);
+    }
+    /** Damage an explosion deals to a gimmick (cracked walls hold 40-200). */
+    static final float EXPLOSION_DAMAGE=100;
     @SubscribeEvent public static void breaking(net.minecraftforge.event.level.BlockEvent.BreakEvent e){if(e.getState().getBlock() instanceof GimmickBlock&&!e.getPlayer().isCreative())e.setCanceled(true);}
     @SuppressWarnings("unchecked") public static void registerTacz(){try{
         var type=(Class<net.minecraftforge.eventbus.api.Event>)Class.forName("com.tacz.guns.api.event.server.AmmoHitBlockEvent");

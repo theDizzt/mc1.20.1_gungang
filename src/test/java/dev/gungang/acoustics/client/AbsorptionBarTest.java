@@ -18,6 +18,14 @@ class AbsorptionBarTest {
         assertEquals(0xFFB9903F, layers.colorAt(0.55f, 0xFFFFFFFF));
         assertEquals(0x8029353E, layers.colorAt(0.8f, 0xFFFFFFFF));
     }
+    @Test void pendingStatusDamageShowsAsPurpleEndOfHealth() {
+        var layers = HudHealthBars.compose(0.6f, 0.6f, 0, 0, 0.25f);
+        assertEquals(0.35f, layers.statusStart(), 0.00001);
+        assertEquals(0xFFFFFFFF, layers.colorAt(0.2f, 0xFFFFFFFF));
+        assertEquals(HudHealthBars.STATUS, layers.colorAt(0.5f, 0xFFFFFFFF));
+        assertEquals(0, HudHealthBars.compose(0.1f, 0.1f, 0, 0, 0.5f).statusStart(), 0.00001);
+        assertEquals(0.6f, HudHealthBars.compose(0.6f, 0.6f, 0, 0).statusStart(), 0.00001);
+    }
     @Test void withoutAbsorptionPreservesOriginalHealthAndDamageTrail() {
         var layers = HudHealthBars.compose(0.4f, 0.7f, 0, 0);
         assertEquals(0.4f, layers.health());

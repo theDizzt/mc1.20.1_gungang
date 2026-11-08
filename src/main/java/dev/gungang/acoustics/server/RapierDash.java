@@ -5,11 +5,15 @@ import net.minecraft.world.phys.Vec3;
 
 /** Fixed six-step dash: input, gravity, friction and jump impulses cannot extend it. */
 public final class RapierDash {
-    public static final double SPEED=2.0; // 12 blocks over the 6-tick dash
+    /** Per-tick step for the configured dash distance (item config rapier.dashDistance, default 10 blocks). */
+    public static double speed(){return speed(ExtraGadgetConfig.rapier.dashDistance());}
+    static double speed(double distance){return distance/RapierItem.DASH_TICKS;}
     private static final String LEFT="RapierDashSteps",X="RapierDashX",Z="RapierDashZ";
-    public static void start(Player p,float yaw){
-        var tag=p.getPersistentData();double angle=Math.toRadians(yaw);
-        tag.putInt(LEFT,RapierItem.DASH_TICKS);tag.putDouble(X,-Math.sin(angle)*SPEED);tag.putDouble(Z,Math.cos(angle)*SPEED);
+    public static void start(Player p,float yaw){start(p,yaw,ExtraGadgetConfig.rapier.dashDistance());}
+    /** {@code distance}: blocks covered over the whole dash (the client receives the server's value in the packet). */
+    public static void start(Player p,float yaw,double distance){
+        var tag=p.getPersistentData();double angle=Math.toRadians(yaw),speed=speed(distance);
+        tag.putInt(LEFT,RapierItem.DASH_TICKS);tag.putDouble(X,-Math.sin(angle)*speed);tag.putDouble(Z,Math.cos(angle)*speed);
         tag.putLong("RapierMotionEnd",p.level().getGameTime()+RapierItem.DASH_TICKS);
         p.setDeltaMovement(Vec3.ZERO);
     }

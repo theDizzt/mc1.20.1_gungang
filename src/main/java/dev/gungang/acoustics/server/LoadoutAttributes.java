@@ -6,12 +6,14 @@ import net.minecraft.world.entity.ai.attributes.*;
 
 public final class LoadoutAttributes {
     private static final UUID HEALTH=UUID.fromString("117c11c7-8d1b-4a30-a5a6-b884df81cb17"), SPEED=UUID.fromString("87779744-a60f-43e6-ab7b-77846ed35d98");
+    /** Weapon max health after the team scale, rounded up to a whole point (187.25 -> 188). */
+    public static double maxHealth(double base,double scale) {return Math.ceil(base*scale-1e-9);}
     public static void apply(ServerPlayer player,Loadouts.Weapon weapon) {
         boolean needsRecovery=SurvivalGadgets.needsRecovery(player);
         float ratio=player.getHealth()/player.getMaxHealth();
         var health=player.getAttribute(Attributes.MAX_HEALTH); var speed=player.getAttribute(Attributes.MOVEMENT_SPEED);
         health.removeModifier(HEALTH);
-        health.addTransientModifier(new AttributeModifier(HEALTH,"GunGang primary health",weapon.maxHealth()*LobbyManager.healthScale(player.getUUID())-health.getBaseValue(),AttributeModifier.Operation.ADDITION));
+        health.addTransientModifier(new AttributeModifier(HEALTH,"GunGang primary health",maxHealth(weapon.maxHealth(),LobbyManager.healthScale(player.getUUID()))-health.getBaseValue(),AttributeModifier.Operation.ADDITION));
         speed.removeModifier(SPEED);
         speed.addTransientModifier(new AttributeModifier(SPEED,"GunGang primary speed",weapon.movementSpeed()/100-1,AttributeModifier.Operation.MULTIPLY_TOTAL));
         player.setHealth(needsRecovery?SurvivalRules.LIFE_HEALTH:Math.max(1,Math.min(player.getMaxHealth(),ratio*player.getMaxHealth())));
