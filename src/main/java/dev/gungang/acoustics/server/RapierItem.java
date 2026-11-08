@@ -15,9 +15,10 @@ import net.minecraft.world.level.Level;
 public final class RapierItem extends Item {
     public static final double RANGE=6;
     public static final int DASH_TICKS=6;
-    /** Thrust pacing: the client thrusts at most once per THRUST_TICKS; the server allows a little network jitter on top. */
-    public static final int THRUST_TICKS=6;
-    private static final int THRUST_SERVER_TICKS=4;
+    /** Thrust pacing default (0.6 s): the client thrusts at most once per interval; the server allows two ticks of network jitter. */
+    public static final int THRUST_TICKS=12;
+    private static final int THRUST_JITTER_TICKS=2;
+    private static final String INTERVAL="RapierInterval";
     /** Hit tolerance around a target's box, for the movement the server sees that the shooter's screen had not yet. */
     private static final double HIT_MARGIN=.3;
     public static final String SWEEP_ANIMATION="RapierSweepTick";
@@ -27,7 +28,7 @@ public final class RapierItem extends Item {
     private static final java.util.Map<java.util.UUID,DashContact> DASHES=new java.util.HashMap<>();
     private static final class DashContact {
         net.minecraft.world.phys.Vec3 previous;final java.util.Set<java.util.UUID> hit=new java.util.HashSet<>();
-        final long deadline;double travelled;
+        final long deadline;final double distance=ExtraGadgetConfig.rapier.dashDistance();double travelled;
         DashContact(Player p){
             previous=p.position();
             // Accepted movement packets arrive after the S2C dash start. Bound both time and travelled distance.
@@ -63,13 +64,14 @@ public final class RapierItem extends Item {
     @Override public InteractionResultHolder<ItemStack> use(Level level,Player player,InteractionHand hand){
         var stack=player.getItemInHand(hand);
         if(hand!=InteractionHand.MAIN_HAND||player.getMainHandItem().getItem()!=this||stack.getItem()!=this||player.isSpectator()||!player.isAlive()||player.isPassenger()
-                ||player.getCooldowns().isOnCooldown(this)||LobbyManager.respawning(player.getUUID())||(!level.isClientSide&&!energy(player).canStep()))return InteractionResultHolder.fail(stack);
+                ||player.getCooldowns().isOnCooldown(this)||LobbyManager.respawning(player.getUUID())||(!level.isClientSide&&!energy(player).canStep(cost())))return InteractionResultHolder.fail(stack);
         if(!level.isClientSide){
-            RapierDash.start(player,player.getYRot());
-            DASHES.put(player.getUUID(),new DashContact(player));
+            var dash=new DashContact(player);
+            RapierDash.start(player,player.getYRot(),dash.distance);
+            DASHES.put(player.getUUID(),dash);
             if(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)
-                GungangNetwork.CHANNEL.send(net.minecraftforge.network.PacketDistributor.TRACKING_ENTITY_AND_SELF.with(()->serverPlayer),new GungangNetwork.RapierStep(player.getId(),player.getYRot()));
-            save(player,energy(player).spend());
+                GungangNetwork.CHANNEL.send(net.minecraftforge.network.PacketDistributor.TRACKING_ENTITY_AND_SELF.with(()->serverPlayer),new GungangNetwork.RapierStep(player.getId(),player.getYRot(),(float)dash.distance));
+            save(player,energy(player).spend(cost()));
             player.getPersistentData().putLong(DASH,level.getGameTime()+DASH_TICKS);
             // Vanilla inventory/equipment synchronization also carries this to third-person observers.
             stack.getOrCreateTag().putLong(SWEEP_ANIMATION,level.getGameTime());
@@ -81,6 +83,14 @@ public final class RapierItem extends Item {
     }
     private static RapierEnergy energy(Player p){var tag=p.getPersistentData();return new RapierEnergy(tag.contains(ENERGY)?tag.getInt(ENERGY):100,tag.getInt(WAIT));}
     private static void save(Player p,RapierEnergy energy){p.getPersistentData().putInt(ENERGY,energy.amount());p.getPersistentData().putInt(WAIT,energy.waitTicks());}
+    private static final String COST="RapierCost";
+    private static int cost(){return ExtraGadgetConfig.rapier.energyCost();}
+    /** Ticks between thrusts (item setting attackIntervalSeconds). */
+    private static int interval(){return Math.max(1,(int)Math.round(ExtraGadgetConfig.rapier.attackIntervalSeconds()*20));}
+    /** The thrust interval the server last synced to this blade, for the client's input pacing. */
+    public static int thrustTicks(ItemStack stack){return stack.hasTag()&&stack.getTag().contains(INTERVAL)?Math.max(1,Math.min(200,stack.getTag().getInt(INTERVAL))):THRUST_TICKS;}
+    /** The dash energy cost the server last synced to this blade (HUD tick spacing). */
+    public static int cost(ItemStack stack){return stack.hasTag()&&stack.getTag().contains(COST)?Math.max(1,Math.min(100,stack.getTag().getInt(COST))):RapierEnergy.DEFAULT_COST;}
     public static int gauge(ItemStack stack){return stack.hasTag()&&stack.getTag().contains(ENERGY)?Math.max(0,Math.min(100,stack.getTag().getInt(ENERGY))):100;}
     private static RapierCombo combo(Player p){var tag=p.getPersistentData();return new RapierCombo(tag.getInt(COMBO),tag.getLong(COMBO_END));}
     private static void syncCombo(Player p,ItemStack stack){
@@ -90,6 +100,8 @@ public final class RapierItem extends Item {
         int amount=energy(p).amount();boolean changed=false;
         for(int i=0;i<p.getInventory().getContainerSize();i++){var stack=p.getInventory().getItem(i);
             if(stack.getItem() instanceof RapierItem&&(!stack.hasTag()||!stack.getTag().contains(ENERGY)||gauge(stack)!=amount)){stack.getOrCreateTag().putInt(ENERGY,amount);changed=true;}
+            if(stack.getItem() instanceof RapierItem&&stack.getTag().getInt(COST)!=cost()){stack.getTag().putInt(COST,cost());changed=true;}
+            if(stack.getItem() instanceof RapierItem&&stack.getTag().getInt(INTERVAL)!=interval()){stack.getTag().putInt(INTERVAL,interval());changed=true;}
         }
         if(changed)p.inventoryMenu.broadcastChanges();
     }
@@ -99,6 +111,8 @@ public final class RapierItem extends Item {
             int amount=p.getPersistentData().contains(ENERGY)?p.getPersistentData().getInt(ENERGY):100;
             if(!stack.hasTag()||!stack.getTag().contains(ENERGY)||gauge(stack)!=amount)
                 stack.getOrCreateTag().putInt(ENERGY,amount);
+            if(stack.getTag().getInt(COST)!=cost())stack.getTag().putInt(COST,cost());
+            if(stack.getTag().getInt(INTERVAL)!=interval())stack.getTag().putInt(INTERVAL,interval());
             // Vanilla menu/equipment updates publish changed stacks, including newly acquired rapiers.
         }
     }
@@ -176,7 +190,7 @@ public final class RapierItem extends Item {
                 ||!(p.getMainHandItem().getItem() instanceof RapierItem)){DASHES.remove(p.getUUID());return;}
         var end=p.position();var delta=end.subtract(dash.previous);
         dash.travelled+=delta.length();
-        if(dash.travelled>RapierDash.SPEED*DASH_TICKS+.1){DASHES.remove(p.getUUID());return;}
+        if(dash.travelled>dash.distance+.1){DASHES.remove(p.getUUID());return;}
         if(delta.lengthSqr()<1e-8)return;
         if(!SafeZones.contains(p)&&!FreeForAllMatch.blocked(p)&&!LobbyManager.respawning(p.getUUID())
                 &&!CombatGadgets.holdingShield(p)&&!SurvivalGadgets.jetting(p)&&!GadgetManager.placing(p)) {
@@ -196,7 +210,7 @@ public final class RapierItem extends Item {
     @net.minecraftforge.eventbus.api.SubscribeEvent public static void stopped(net.minecraftforge.event.server.ServerStoppedEvent event){DASHES.clear();}
     static boolean beginAttack(Player p){
         long now=p.level().getGameTime();var tag=p.getPersistentData();
-        if(tag.contains(ATTACK)&&now-tag.getLong(ATTACK)>=0&&now-tag.getLong(ATTACK)<THRUST_SERVER_TICKS)return false;
+        if(tag.contains(ATTACK)&&now-tag.getLong(ATTACK)>=0&&now-tag.getLong(ATTACK)<Math.max(1,interval()-THRUST_JITTER_TICKS))return false;
         tag.putLong(ATTACK,now);return true;
     }
     @Override public void initializeClient(java.util.function.Consumer<net.minecraftforge.client.extensions.common.IClientItemExtensions> consumer){

@@ -149,7 +149,7 @@ final class BotGadgets {
                 case "use"->use(bot,level,team,target);
                 default->false;
             };
-            if(used)commit(now);
+            if(used){commit(now);BotLearning.event(bot,"secondary:"+kind);}
         }catch(RuntimeException failure) {
             // An item the bot cannot drive must not stop the bot; drop it for this life and log once.
             disabled=true;com.mojang.logging.LogUtils.getLogger().warn("[GunGang] Bot cannot use secondary {}",id,failure);

@@ -112,6 +112,7 @@ public final class VoidAnchorEntity extends LivingEntity {
         var source=damageSources().explosion(this,ownerEntity);
         var area=new AABB(getX()-half,getY()-half,getZ()-half,getX()+half,getY()+half,getZ()+half);
         for(var target:level.getEntitiesOfClass(LivingEntity.class,area,this::enemy))target.hurt(source,40);
+        GimmickEntity.blast(level,position(),half,40);
         level.sendParticles(ParticleTypes.EXPLOSION,getX(),getY()+.5,getZ(),1,0,0,0,0);
         level.sendParticles(ParticleTypes.SMOKE,getX(),getY()+.5,getZ(),36,half*.5,half*.5,half*.5,.06);
         level.playSound(null,blockPosition(),net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,net.minecraft.sounds.SoundSource.PLAYERS,1,.65f);

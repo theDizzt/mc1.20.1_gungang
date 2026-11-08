@@ -44,6 +44,7 @@ public final class MatchManager {
         return escort!=null?"BRAVO":normandy!=null?"ALPHA":"";
     }
     public static boolean active(){return map!=null;}
+    static String learningMode(){return map==null?"NONE":propHunt!=null?"PROP_HUNT":freeForAll!=null?"FREE_FOR_ALL":bomb!=null?"BOMB":escort!=null?"ESCORT":normandy!=null?"NORMANDY":deathmatch!=null?"DEATHMATCH":"CONTROL";}
     public static void deathZone(ServerPlayer player){
         if(map==null||!java.util.Set.of("ALPHA","BRAVO").contains(LobbyManager.team(player.getUUID()))||player.isSpectator()||!player.isAlive())return;
         if(freeForAll!=null&&freeForAll.opening()){freeForAll.openingDeath(player);return;}
@@ -219,6 +220,7 @@ public final class MatchManager {
         MapEnvironment.restore();
         GimmickEpoch.reset(server);
         var result=snapshot(true,winner,0); var ended=ZonedDateTime.now();
+        BotLearning.matchEnd(winner,alphaScore(),bravoScore());
         BotManager.close();
         BotManager.finish(result);
         ProgressionService.finish(server,result);

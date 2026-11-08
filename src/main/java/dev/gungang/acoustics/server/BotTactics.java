@@ -117,6 +117,9 @@ final class BotTactics {
         return choose(s,now,holdCover,shield,rally,0);
     }
     Action choose(Situation s,int now,boolean holdCover,boolean shield,boolean rally,float objective) {
+        return choose(s,now,holdCover,shield,rally,objective,Map.of());
+    }
+    Action choose(Situation s,int now,boolean holdCover,boolean shield,boolean rally,float objective,Map<Action,Float> learned) {
         if(s.hazard()) {
             for(var candidate:Action.values())last.put(candidate,score(candidate,s));
             failedUntil.remove(Action.EVADE);
@@ -137,6 +140,10 @@ final class BotTactics {
             // Losing sight of the enemy on the way into cover must not cancel a needed reload.
             if(candidate==Action.COVER&&action==Action.COVER&&s.visible()==0&&(s.reloading()||s.ammo()<.5f))
                 score=Math.max(score,80);
+            // Residual learning may rank viable ordinary actions, never create an unavailable action or
+            // weaken survival/reload decisions. Failure cooldowns and commitments still apply below.
+            if(score>0&&candidate!=Action.EVADE&&!s.reloading()&&s.ammo()>=.15f&&s.health()>=.35f)
+                score+=Math.max(-12,Math.min(12,learned.getOrDefault(candidate,0f)));
             if(now<failedUntil.getOrDefault(candidate,0))score=Float.NEGATIVE_INFINITY;
             last.put(candidate,score);
             if(candidate==action)current=score;

@@ -34,11 +34,13 @@ public final class StationEntity extends BlockEntity {
         if(BotManager.owns(bot)&&MatchManager.botRunning()&&bot.isAlive())heal(bot);
     }
     private void heal(net.minecraft.world.entity.LivingEntity entity){
-        if(level==null||!availableHealthPack()||entity.getHealth()>=entity.getMaxHealth())return;
+        // Taken when hurt or ailing; it also cures harmful status effects, burning and bleeding.
+        if(level==null||!availableHealthPack()||entity.getHealth()>=entity.getMaxHealth()&&!StatusCure.ailing(entity))return;
         var block=(StationBlock)getBlockState().getBlock();
         var config=block.kind==StationBlock.Kind.SMALL?GadgetConfig.smallHealthPack:GadgetConfig.largeHealthPack;
         float before=entity.getHealth();entity.heal((float)config.heal());
-        if(entity.getHealth()<=before)return;
+        boolean cured=StatusCure.cure(entity);
+        if(entity.getHealth()<=before&&!cured)return;
         if(entity instanceof ServerPlayer player)player.playNotifySound(net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP,net.minecraft.sounds.SoundSource.PLAYERS,.8f,1.2f);
         else entity.playSound(net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP,.8f,1.2f);
         readyAt=level.getGameTime()+(long)Math.ceil(config.cooldownSeconds()*20);

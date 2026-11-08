@@ -14,6 +14,27 @@ public final class GimmickEntity extends BlockEntity {
     public GimmickEntity(BlockPos p,BlockState s){super(GimmickBlocks.ENTITY.get(),p,s);}
     public static GimmickEntity at(Level level,BlockPos p){var s=level.getBlockState(p);if(s.getBlock() instanceof GimmickBlock&&s.getValue(GimmickBlock.TOP))p=p.below();return level.getBlockEntity(p) instanceof GimmickEntity e?e:null;}
     public static void hit(Level level,BlockPos p,float amount){var e=at(level,p);if(e!=null)e.damage(amount);}
+    /**
+     * An explosion's effect on map gimmicks. Their blast resistance keeps them out of every explosion's block list, so
+     * each armed UXO, gas barrel and cracked wall within {@code radius} of {@code center} takes {@code damage} here
+     * (a barrel or UXO it sets off blasts its own radius in turn).
+     */
+    public static void blast(Level level,Vec3 center,double radius,float damage){
+        if(!(level instanceof ServerLevel server)||!(radius>0)||!(damage>0))return;
+        var hits=new java.util.ArrayList<GimmickEntity>();
+        int x0=net.minecraft.core.SectionPos.blockToSectionCoord(net.minecraft.util.Mth.floor(center.x-radius)),x1=net.minecraft.core.SectionPos.blockToSectionCoord(net.minecraft.util.Mth.floor(center.x+radius));
+        int z0=net.minecraft.core.SectionPos.blockToSectionCoord(net.minecraft.util.Mth.floor(center.z-radius)),z1=net.minecraft.core.SectionPos.blockToSectionCoord(net.minecraft.util.Mth.floor(center.z+radius));
+        for(int cx=x0;cx<=x1;cx++)for(int cz=z0;cz<=z1;cz++){
+            var chunk=server.getChunkSource().getChunkNow(cx,cz);if(chunk==null)continue;
+            for(var entity:chunk.getBlockEntities().values()){
+                if(!(entity instanceof GimmickEntity gimmick)||gimmick.isRemoved()||gimmick.getBlockState().getValue(GimmickBlock.TOP)||!gimmick.getBlockState().getValue(GimmickBlock.ACTIVE))continue;
+                var p=entity.getBlockPos();
+                double dx=Math.max(Math.max(p.getX()-center.x,center.x-p.getX()-1),0),dy=Math.max(Math.max(p.getY()-center.y,center.y-p.getY()-(gimmick.getBlockState().getBlock() instanceof GasBarrelBlock?2:1)),0),dz=Math.max(Math.max(p.getZ()-center.z,center.z-p.getZ()-1),0);
+                if(dx*dx+dy*dy+dz*dz<=radius*radius)hits.add(gimmick);
+            }
+        }
+        for(var gimmick:hits)gimmick.damage(damage);
+    }
     public double health(){return health;}
     private double maximum(){return GimmickConfig.walls.getOrDefault(((GimmickBlock)getBlockState().getBlock()).id,new GimmickConfig.Wall(1)).health();}
     private void active(boolean active){
@@ -38,6 +59,8 @@ public final class GimmickEntity extends BlockEntity {
             if((hunt==null||!hunt.hider(p.getUUID()))&&p.position().distanceToSqr(center)<=c.radius()*c.radius()&&!SpawnGateProtection.shields(p,center))OrdnanceDamage.hurt(p,server.damageSources().explosion(null,null),(float)c.damage());
         server.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION_EMITTER,center.x,center.y,center.z,1,0,0,0,0);
         server.playSound(null,worldPosition,net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,net.minecraft.sounds.SoundSource.BLOCKS,2,1);
+        // Neighbouring barrels, UXOs and cracked walls go with it (this one is already spent, so the chain ends).
+        blast(server,center,c.radius(),(float)c.damage());
     }
     public static void tick(Level world,BlockPos pos,BlockState state,GimmickEntity e){
         if(state.getValue(GimmickBlock.TOP)||!(world instanceof ServerLevel level))return;

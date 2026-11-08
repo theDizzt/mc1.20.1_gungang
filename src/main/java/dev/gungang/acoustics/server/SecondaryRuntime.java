@@ -54,6 +54,7 @@ public final class SecondaryRuntime {
     public static boolean ready(Player player,ItemStack stack) { return !FreeForAllMatch.blocked(player)&&remaining(player,stack)==0; }
     public static void commit(Player player,ItemStack stack) {
         if(!secondary(stack)||player.level().isClientSide)return;
+        BotLearning.event(player,"secondary_cooldown_commit:"+BotLearning.weapon(stack));
         var tag=stack.getOrCreateTag();long end=player.level().getGameTime()+tag.getInt("GunGangCooldownTicks");
         tag.putLong("GunGangCooldownEnd",end);
         DEADLINES.computeIfAbsent(player.getUUID(),id->new HashMap<>()).put(tag.getString("GunGangSecondaryId"),end);
@@ -99,7 +100,7 @@ public final class SecondaryRuntime {
             var shooter=type.getMethod("getShooter");var item=type.getMethod("getGunItemStack");
             net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.LOWEST,false,type,event->{
                 try {
-                    if(shooter.invoke(event) instanceof Player player&&(FreeForAllMatch.blocked(player)||CombatGadgets.holdingShield(player)||SurvivalGadgets.jetting(player)||GadgetManager.placing(player))) {if(event.isCancelable())event.setCanceled(true);return;}
+                    if(shooter.invoke(event) instanceof Player player&&(FreeForAllMatch.blocked(player)||CombatGadgets.holdingShield(player)||SurvivalGadgets.jetting(player)||GadgetManager.placing(player)||TwinBlades.guarding(player))) {if(event.isCancelable())event.setCanceled(true);return;}
                     if(shooter.invoke(event) instanceof Player player&&item.invoke(event) instanceof ItemStack stack&&secondary(stack)) {
                         if(PropAwn.is(stack)){
                             var match=MatchManager.propHunt();
