@@ -36,6 +36,11 @@ public final class RapierAnimation implements IClientItemExtensions {
         lastYaw=player.getYRot();lastPitch=player.getXRot();
         yawLag+=(yaw-yawLag)*.35f;pitchLag+=(pitch-pitchLag)*.35f;
     }
+    /** First person: the off-hand secondary is not drawn while the rapier is wielded (RapierOffhandLayerMixin does third person). */
+    @net.minecraftforge.eventbus.api.SubscribeEvent(priority=net.minecraftforge.eventbus.api.EventPriority.HIGHEST) public static void offhand(net.minecraftforge.client.event.RenderHandEvent event){
+        var player=net.minecraft.client.Minecraft.getInstance().player;
+        if(event.getHand()==net.minecraft.world.InteractionHand.OFF_HAND&&player!=null&&player.getMainHandItem().getItem() instanceof dev.gungang.acoustics.server.RapierItem)event.setCanceled(true);
+    }
     @net.minecraftforge.eventbus.api.SubscribeEvent public static void hand(net.minecraftforge.client.event.RenderHandEvent event){
         if(!(event.getItemStack().getItem() instanceof dev.gungang.acoustics.server.RapierItem))return;
         var mc=net.minecraft.client.Minecraft.getInstance();var player=mc.player;if(player==null)return;
@@ -69,7 +74,8 @@ public final class RapierAnimation implements IClientItemExtensions {
         if(!(entity.getMainHandItem().getItem() instanceof dev.gungang.acoustics.server.RapierItem))return;
         boolean right=entity.getMainArm()==HumanoidArm.RIGHT;
         float sweep=sweepProgress(entity.getMainHandItem(),entity,net.minecraft.client.Minecraft.getInstance().getFrameTime());
-        poseArm(model,right,sweep>=0?sweep:model.attackTime,sweep>=0,entity.getOffhandItem().isEmpty());
+        // The off-hand item is hidden while the rapier is wielded (RapierOffhandLayerMixin), so that hand always balances.
+        poseArm(model,right,sweep>=0?sweep:model.attackTime,sweep>=0,true);
     }
     public static void poseArm(net.minecraft.client.model.HumanoidModel<?> model,boolean right,float progress,boolean sweep,boolean balanceFree){
         var arm=right?model.rightArm:model.leftArm;

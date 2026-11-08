@@ -1,0 +1,22 @@
+name: 기능 제안
+description: 새 무기·게임 모드·옵션이나 기존 기능 개선을 제안해 주세요.
+title: "[제안] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: 제안 내용
+      description: 무엇을 추가하거나 바꾸고 싶은지 적어 주세요. 수치(피해·쿨타임·범위 등)가 있으면 함께 적어 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: 이유
+      description: 어떤 문제를 해결하거나 어떤 재미를 더하나요?
+  - type: textarea
+    id: reference
+    attributes:
+      label: 참고 자료
+      description: 그림, 영상, 비슷한 게임의 예시 등
