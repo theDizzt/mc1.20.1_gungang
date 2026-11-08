@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 보안 취약점 비공개 신고
+    url: https://github.com/theDizzt/mc1.20.1_gungang/security/advisories/new
+    about: 서버 권한 우회·크래시 악용 같은 보안 문제는 여기로 비공개 신고해 주세요.
+  - name: 사용 문서
+    url: https://github.com/theDizzt/mc1.20.1_gungang/blob/main/README.md
+    about: 설치, 게임 모드, 데이터 등록, 명령어 안내

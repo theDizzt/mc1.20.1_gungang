@@ -8,15 +8,20 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 
 /**
- * Live weapon patch ({@code /gungang modify ui}): the primary weapon list on the left, the selected weapon's GunGang
- * equipment, display specs and TaCZ gun stats on the right. Changed boxes are marked and sent together on apply.
+ * Live weapon patch ({@code /gungang modify ui}): the primary / secondary tabs and weapon list on the left, the selected
+ * weapon's GunGang equipment, display specs, item effect settings (secondaries) and TaCZ gun stats on the right.
+ * Changed boxes are marked and sent together on apply.
  */
 public final class WeaponPatchScreen extends ArenaScreen {
     private static final int TOP = 60, ROW = 22, LIST = 150, BOX = 96;
     private static final Map<String, String> GROUPS = Map.of(
             "gear", "GunGang 장비 · 장착 중인 플레이어에게 즉시 적용",
+            "secondary", "GunGang 보조무기 · 로비에서 적용, 다음 지급부터",
             "display", "무기 선택 화면 표시 정보",
+            "item", "아이템 효과 · 실제 성능 (item 설정, 쿨타임은 이 값이 우선)",
             "tacz", "TaCZ 총기 데이터 · 실제 성능 (총기팩 파일)");
+    /** Tab row above the weapon list. */
+    private static final int TABS = 22;
     private WeaponPatch.View view;
     /** Typed values by row key; rows without an entry show the server's value. */
     private final Map<String, String> edits = new HashMap<>();
@@ -36,15 +41,21 @@ public final class WeaponPatchScreen extends ArenaScreen {
         else mc.setScreen(new WeaponPatchScreen(next));
     }
     private void update(WeaponPatch.View next) {
-        boolean switched = !next.id().equals(view.id());
+        boolean switched = !next.id().equals(view.id()) || !kind(next).equals(kind(view));
         // A rejected apply keeps what was typed; a switch or a successful patch shows the saved values.
         if (switched || next.error() == null || next.error().isEmpty()) edits.clear();
         if (switched) scroll = 0;
         view = next; waiting = false; rebuildWidgets();
     }
 
+    /** "weapon" or "secondary"; views from an older server are primaries. */
+    private static String kind(WeaponPatch.View view) { return WeaponPatch.SECONDARY.equals(view.kind()) ? WeaponPatch.SECONDARY : WeaponPatch.PRIMARY; }
+    private static String kind(WeaponPatch.Entry entry) { return WeaponPatch.SECONDARY.equals(entry.kind()) ? WeaponPatch.SECONDARY : WeaponPatch.PRIMARY; }
+    private boolean secondary() { return kind(view).equals(WeaponPatch.SECONDARY); }
+    /** The current tab's weapons. */
+    private List<WeaponPatch.Entry> listed() { return view.weapons().stream().filter(w -> kind(w).equals(kind(view))).toList(); }
     private WeaponPatch.Entry selected() {
-        return view.weapons().stream().filter(w -> w.id().equals(view.id())).findFirst().orElse(null);
+        return listed().stream().filter(w -> w.id().equals(view.id())).findFirst().orElse(null);
     }
     private static String number(double value) {
         return value == Math.rint(value) ? Long.toString((long) value) : String.format(Locale.ROOT, "%.2f", value).replaceAll("0+$", "").replaceAll("\\.$", "");
@@ -73,13 +84,14 @@ public final class WeaponPatchScreen extends ArenaScreen {
         for (var row : view.rows()) if (changed(row)) result.put(row.key(), edits.get(row.key()).strip());
         return result;
     }
-    private void request(String action, String id, Map<String, String> changes) {
+    private void request(String action, String id, Map<String, String> changes) { request(action, kind(view), id, changes); }
+    private void request(String action, String kind, String id, Map<String, String> changes) {
         if (!LobbyClient.connected()) { status("서버 연결이 끊겨 요청을 보낼 수 없습니다."); return; }
         waiting = true;
-        GungangNetwork.CHANNEL.sendToServer(new GungangNetwork.WeaponPatchRequest(action, ServerFiles.GSON.toJson(new WeaponPatch.Request(id, changes))));
+        GungangNetwork.CHANNEL.sendToServer(new GungangNetwork.WeaponPatchRequest(action, ServerFiles.GSON.toJson(new WeaponPatch.Request(id, changes, kind))));
     }
     private void status(String error) {
-        view = new WeaponPatch.View(view.weapons(), view.id(), view.name(), view.gunId(), view.file(), view.rows(), "", error, view.phase(), view.weightMultiplier());
+        view = new WeaponPatch.View(view.weapons(), view.id(), view.name(), view.gunId(), view.file(), view.rows(), "", error, view.phase(), view.weightMultiplier(), view.kind());
     }
 
     // ---- Layout ----------------------------------------------------------------------------------------------
@@ -91,12 +103,14 @@ public final class WeaponPatchScreen extends ArenaScreen {
     private int formW() { return left() + body() - 12 - formX(); }
     private int boxX() { return formX() + formW() - BOX - 64; }
     private int maxScroll() { return Math.max(0, lines.size() * ROW - (viewBottom() - TOP)); }
-    private int maxListScroll() { return Math.max(0, view.weapons().size() * 20 - (viewBottom() - TOP)); }
+    private int listTop() { return TOP + TABS; }
+    private int maxListScroll() { return Math.max(0, listed().size() * 20 - (viewBottom() - listTop())); }
 
     private void buildLines() {
         lines.clear();
         String group = null;
-        if (selected() != null) lines.add(WEIGHT);
+        // The weight line is about the primary's movement speed; secondaries do not set it.
+        if (selected() != null && !secondary()) lines.add(WEIGHT);
         for (var row : view.rows()) {
             if (!row.group().equals(group)) { group = row.group(); lines.add(GROUPS.getOrDefault(group, group)); }
             lines.add(row);
@@ -106,10 +120,13 @@ public final class WeaponPatchScreen extends ArenaScreen {
         buildLines();
         scroll = Math.max(0, Math.min(scroll, maxScroll()));
         listScroll = Math.max(0, Math.min(listScroll, maxListScroll()));
-        var weapons = view.weapons();
+        int half = (LIST - 4) / 2;
+        tab("주무기", WeaponPatch.PRIMARY, listX(), half);
+        tab("보조무기", WeaponPatch.SECONDARY, listX() + half + 4, LIST - half - 4);
+        var weapons = listed();
         for (int i = 0; i < weapons.size(); i++) {
-            int y = TOP + i * 20 - listScroll;
-            if (y < TOP || y + 18 > viewBottom()) continue;
+            int y = listTop() + i * 20 - listScroll;
+            if (y < listTop() || y + 18 > viewBottom()) continue;
             var weapon = weapons.get(i);
             boolean selected = weapon.id().equals(view.id());
             listButton(Component.literal(weapon.id() + " · " + weapon.name()), listX(), y, LIST, 18, !waiting, selected ? ACCENT : MUTED, 9, 40, () -> {
@@ -132,12 +149,22 @@ public final class WeaponPatchScreen extends ArenaScreen {
         }
         int bottom = bottom(), x = listX(), w = left() + body() - 12 - x, third = (w - 8) / 3;
         button("변경 취소", x, bottom, third, 20, !waiting, MUTED, () -> { edits.clear(); status(""); rebuildWidgets(); });
-        button("실시간 적용", x + third + 4, bottom, third, 20, !waiting, ACCENT, () -> {
+        button(secondary() ? "적용 (로비)" : "실시간 적용", x + third + 4, bottom, third, 20, !waiting, ACCENT, () -> {
             var changes = changes();
             if (changes.isEmpty()) { status("변경한 항목이 없습니다."); rebuildWidgets(); return; }
             request("apply", view.id(), changes); rebuildWidgets();
         });
         closeButton(x + (third + 4) * 2, bottom, w - (third + 4) * 2, 20);
+    }
+    /** Switches the list to primaries or secondaries (opening that tab's first weapon), unless edits are pending. */
+    private void tab(String label, String kind, int x, int w) {
+        boolean active = kind(view).equals(kind);
+        button(label, x, TOP, w, 18, !waiting, active ? ACCENT : MUTED, () -> {
+            if (active) return;
+            if (!changes().isEmpty()) { status("적용하지 않은 변경이 있습니다. 적용하거나 변경 취소 후 전환하세요."); rebuildWidgets(); return; }
+            listScroll = 0;
+            request("open", kind, "", Map.of());
+        });
     }
     @Override public boolean mouseScrolled(double mx, double my, double delta) {
         if (mx < formX()) {
@@ -188,16 +215,16 @@ public final class WeaponPatchScreen extends ArenaScreen {
         int count = changes().size();
         if (view.error() != null && !view.error().isEmpty()) g.drawString(font, font.plainSubstrByWidth(view.error(), statusW), listX(), statusY, 0xFFFF6666, false);
         else if (waiting) g.drawString(font, "서버에 적용하는 중...", listX(), statusY, MUTED, false);
-        else if (count > 0) g.drawString(font, "변경 " + count + "개 · 실시간 적용을 누르면 저장 후 바로 반영됩니다.", listX(), statusY, ACCENT, false);
+        else if (count > 0) g.drawString(font, secondary() ? "변경 " + count + "개 · 로비에서 적용하면 저장되고 다음 지급부터 반영됩니다." : "변경 " + count + "개 · 실시간 적용을 누르면 저장 후 바로 반영됩니다.", listX(), statusY, ACCENT, false);
         else if (view.message() != null && !view.message().isEmpty()) g.drawString(font, font.plainSubstrByWidth(view.message(), statusW), listX(), statusY, READY, false);
         else g.drawString(font, "휠로 스크롤 · 빈칸/회색 글씨는 현재값", listX(), statusY, DIM, false);
         super.render(g, mx, my, partial);
         // Each weapon's TaCZ weight beside its name; a non-zero weight slows the player on top of GunGang's speed.
-        g.enableScissor(listX(), TOP, listX() + LIST, viewBottom());
-        var weapons = view.weapons();
+        g.enableScissor(listX(), listTop(), listX() + LIST, viewBottom());
+        var weapons = listed();
         for (int i = 0; i < weapons.size(); i++) {
-            int y = TOP + i * 20 - listScroll;
-            if (y < TOP || y + 18 > viewBottom()) continue;
+            int y = listTop() + i * 20 - listScroll;
+            if (y < listTop() || y + 18 > viewBottom()) continue;
             var weight = weapons.get(i).weight();
             String text = weight == null ? "-" : kg(weight);
             int color = weight == null ? DIM : weight != 0 ? 0xFFFFAA44 : MUTED;
