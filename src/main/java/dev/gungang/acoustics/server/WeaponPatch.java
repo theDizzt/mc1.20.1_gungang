@@ -36,7 +36,9 @@ public final class WeaponPatch {
             "elements.burnDamage", "화상 피해 (1회당)", "elements.witherDamage", "위더 피해 (1회당)",
             "elements.poisonDamage", "독 피해 (1회당)", "elements.explosionMultiplier", "폭발 피해 배수 (이 무기 · 전역 배수에 곱함)");
     /** Secondary weapon-file fields shown, in order (stats.N.value rows follow, labelled by their stat name). */
-    private static final List<String> SECONDARY_FIELDS = List.of("name", "category", "cooldownSeconds", "maxHealth", "movementSpeed", "plantSeconds", "fuseSeconds", "defuseSeconds");
+    private static final List<String> SECONDARY_FIELDS = List.of("name", "category", "cooldownSeconds", "plantSeconds", "fuseSeconds", "defuseSeconds");
+    /** Max health and movement speed are not edited for secondaries: neither offered nor accepted. */
+    private static final Set<String> SECONDARY_HIDDEN = Set.of("maxHealth", "movementSpeed");
     private static final Map<String, String> SECONDARY_LABELS = Map.of("cooldownSeconds", "쿨타임 (초)", "plantSeconds", "설치 시간 (초)", "fuseSeconds", "폭발 시간 (초)", "defuseSeconds", "해체 시간 (초)");
     /** Item effect setting labels; anything not listed shows its field name. */
     private static final Map<String, String> ITEM_LABELS = Map.ofEntries(
@@ -191,8 +193,23 @@ public final class WeaponPatch {
                     rows.add(new Row("melee:" + field.path(), field.label(), "melee", true, data.values().get(field.path()).text()));
             } catch (IllegalArgumentException missing) { file = "! " + missing.getMessage(); }
         }
+        speedFirst(rows);
         var view = new View(entries, id, weapon.name(), gun, file, rows, message, error, LobbyManager.phase(), weightMultiplier(), kind, falloff);
         GungangNetwork.send(player, new GungangNetwork.WeaponPatchView(ServerFiles.GSON.toJson(view)));
+    }
+    /** Rows that set how fast the weapon attacks: TaCZ fire rate, melee pack cooldowns, GunGang item attack intervals. */
+    static boolean attackSpeed(String key) {
+        return key.equals("tacz:rpm") || key.matches("melee:data\\.attack\\.attack_(left|right)\\.cooldown")
+                || key.startsWith("item:") && ConfigModify.ATTACK_SPEED_ITEM_FIELDS.contains(key.substring(5));
+    }
+    /** Moves the attack speed rows to the top, in their own group (all of them apply live, even mid-match). */
+    private static void speedFirst(List<Row> rows) {
+        var speed = new ArrayList<Row>();
+        for (var it = rows.iterator(); it.hasNext(); ) {
+            var row = it.next();
+            if (attackSpeed(row.key())) { speed.add(new Row(row.key(), row.label(), "speed", row.numeric(), row.value())); it.remove(); }
+        }
+        rows.addAll(0, speed);
     }
     private static String text(com.google.gson.JsonElement value) {
         return value == null || value.isJsonNull() ? "" : value.isJsonPrimitive() && value.getAsJsonPrimitive().isString() ? value.getAsString() : value.toString();
@@ -249,9 +266,10 @@ public final class WeaponPatch {
             else if (key.startsWith("melee:")) melee.put(key.substring(6), value);
             else throw new IllegalArgumentException("알 수 없는 항목: " + key);
         }
-        if (!(gear.isEmpty() && item.isEmpty())) LobbyManager.requireMapEditing();
+        // Attack speed item fields alone are live; everything else in the secondary files waits for the lobby.
+        if (!gear.isEmpty() || !item.isEmpty() && !ConfigModify.attackSpeedOnly("item", item)) LobbyManager.requireMapEditing();
         var fields = ConfigModify.editable(SECONDARY, id);
-        for (String field : gear.keySet()) if (!fields.containsKey(field)) throw new IllegalArgumentException("수정할 수 없는 항목: " + field);
+        for (String field : gear.keySet()) if (!fields.containsKey(field) || SECONDARY_HIDDEN.contains(field)) throw new IllegalArgumentException("수정할 수 없는 항목: " + field);
         String setting = itemSetting(weapon);
         if (!item.isEmpty() && setting == null) throw new IllegalArgumentException("이 보조무기에는 아이템 효과 설정이 없습니다.");
         TaczGunFile data = null;
@@ -336,7 +354,7 @@ public final class WeaponPatch {
             if (!ConfigModify.weaponFields(id).containsKey(field)) throw new IllegalArgumentException("수정할 수 없는 항목: " + field);
         String setting = itemSetting(weapon);
         if (!item.isEmpty() && setting == null) throw new IllegalArgumentException("이 무기에는 아이템 효과 설정이 없습니다.");
-        if (!item.isEmpty()) LobbyManager.requireMapEditing();
+        if (!item.isEmpty() && !ConfigModify.attackSpeedOnly("item", item)) LobbyManager.requireMapEditing();
         TaczGunFile data = null;
         String patched = null;
         if (!tacz.isEmpty() || falloff != null) {

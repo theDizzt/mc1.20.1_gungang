@@ -98,7 +98,7 @@ public final class CombatGadgets {
         var look=p.getLookAngle();if(!ShieldRules.inFront(look.x,look.z,delta.x,delta.z))return;
         var shield=shield(p);var hit=ShieldRules.absorb(shield.health,event.getAmount());shield.health=hit.durability();
         BLOCKED.put(p.getUUID(),p.level().getGameTime());
-        if(shield.health==0)shield.repairEnd=p.level().getGameTime()+ExtraGadgetConfig.ticks(ExtraGadgetConfig.shield.repairSeconds());
+        if(shield.health==0){shield.repairEnd=p.level().getGameTime()+ExtraGadgetConfig.ticks(ExtraGadgetConfig.shield.repairSeconds());ShieldBreakFx.burst(p);}
         event.setAmount(hit.damage());if(hit.damage()==0)event.setCanceled(true);
         p.level().playSound(null,p.blockPosition(),shield.health==0?net.minecraft.sounds.SoundEvents.SHIELD_BREAK:net.minecraft.sounds.SoundEvents.SHIELD_BLOCK,net.minecraft.sounds.SoundSource.PLAYERS,1,1);
         syncShield(p);

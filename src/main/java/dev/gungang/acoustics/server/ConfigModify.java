@@ -170,8 +170,14 @@ public final class ConfigModify {
      * Validates and saves several fields of one setting in a single write. Primary weapons are patched live, even
      * during a match; every other kind keeps the lobby-only full reload. The file is restored when the refresh fails.
      */
+    /** Item settings that only time attacks (rapier thrust interval, turret fire interval): saved live, even mid-match. */
+    static final Set<String> ATTACK_SPEED_ITEM_FIELDS=Set.of("attackIntervalSeconds","fireIntervalTicks");
+    static boolean attackSpeedOnly(String kind,Map<String,String> changes){
+        return kind.equals("item")&&!changes.isEmpty()&&ATTACK_SPEED_ITEM_FIELDS.containsAll(changes.keySet());
+    }
     static Map<String,JsonPrimitive> apply(String kind,String id,Map<String,String> changes)throws Exception{
-        boolean live=kind.equals("weapon");
+        // Attack timing alone reloads only the item settings, so it is applied live like primary weapons.
+        boolean speed=attackSpeedOnly(kind,changes),live=kind.equals("weapon")||speed;
         if(!live)LobbyManager.requireMapEditing();
         var target=target(kind,id);var candidate=target.original.deepCopy();var parsed=new LinkedHashMap<String,JsonPrimitive>();
         for(var change:changes.entrySet()){var value=parse(change.getValue(),fieldType(target,change.getKey()));set(candidate,target.effective,change.getKey(),value);parsed.put(change.getKey(),value);}
@@ -179,10 +185,10 @@ public final class ConfigModify {
         String after=ServerFiles.GSON.toJson(candidate)+"\n";if(after.getBytes(StandardCharsets.UTF_8).length>65536)throw new IllegalArgumentException("설정 파일은 64 KiB 이하여야 합니다.");
         String before=Files.exists(target.path)?Files.readString(target.path,StandardCharsets.UTF_8):null;
         AreaEditor.atomicWrite(target.path,after);
-        try{refresh(kind,id);}
+        try{if(speed)GadgetConfig.load();else refresh(kind,id);}
         catch(Exception failure){
             if(before==null)Files.deleteIfExists(target.path);else AreaEditor.atomicWrite(target.path,before);
-            try{refresh(kind,id);}catch(Exception rollback){failure.addSuppressed(rollback);}
+            try{if(speed)GadgetConfig.load();else refresh(kind,id);}catch(Exception rollback){failure.addSuppressed(rollback);}
             throw failure;
         }
         return parsed;

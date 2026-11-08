@@ -13,19 +13,26 @@ final class HudHealthBars {
 
     /** Health a running status ailment will still take: the end of health in this colour. */
     static final int STATUS = 0xFFA45CF0;
-    /** {@code statusStart}: where the share of health that status ailments will still take begins (purple to {@code health}). */
-    record Layers(float health, float healthTrail, float absorptionEnd, float absorptionTrailEnd, float statusStart) {
-        Layers(float health, float healthTrail, float absorptionEnd, float absorptionTrailEnd) { this(health, healthTrail, absorptionEnd, absorptionTrailEnd, health); }
+    /** Health a heal is still restoring (filling in, or a recovery potion still running): the green ghost after health. */
+    static final int HEAL = 0xB85EE07E;
+    /**
+     * {@code statusStart}: where the share of health that status ailments will still take begins (purple to {@code health}).
+     * {@code healEnd}: where health will be once running heals finish (green from {@code health}); absorption follows it.
+     */
+    record Layers(float health, float healthTrail, float absorptionEnd, float absorptionTrailEnd, float statusStart, float healEnd) {
+        Layers(float health, float healthTrail, float absorptionEnd, float absorptionTrailEnd, float statusStart) { this(health, healthTrail, absorptionEnd, absorptionTrailEnd, statusStart, health); }
+        Layers(float health, float healthTrail, float absorptionEnd, float absorptionTrailEnd) { this(health, healthTrail, absorptionEnd, absorptionTrailEnd, health, health); }
         int colorAt(float point, int healthColor) {
             if (point < statusStart) return healthColor;
             if (point < health) return STATUS;
+            if (point < healEnd) return HEAL;
             if (point < absorptionEnd) return 0xFFFFD36B;
             if (point < absorptionTrailEnd) return 0xFFB9903F;
             if (point < healthTrail) return 0xFF45494F;
             return 0x8029353E;
         }
         float[] boundaries() {
-            float[] edges = {0, statusStart, health, healthTrail, absorptionEnd, absorptionTrailEnd, 1};
+            float[] edges = {0, statusStart, health, healEnd, healthTrail, absorptionEnd, absorptionTrailEnd, 1};
             java.util.Arrays.sort(edges);
             return edges;
         }
@@ -44,19 +51,31 @@ final class HudHealthBars {
         // Animate a bounded ratio with a fixed maximum, so absorption changes do not reset easing.
         float ratio = animation.update(amount / (maximum + amount), 1, seconds);
         float trailRatio = animation.trail(seconds);
-        return compose(health, trail(entity, partialTick), ratio, trailRatio, StatusDamageClient.pending(entity) / maximum);
+        // Green only for heal packs and the recovery potion; natural regeneration fills the bar plainly.
+        float heal = 0;
+        if (StatusDamageClient.gadgetHealing(entity)) {
+            var healthAnimation = ANIMATIONS.get(entity);
+            float heading = healthAnimation == null ? health : Math.max(health, healthAnimation.target());
+            heal = Math.min(1, heading + StatusDamageClient.pendingHeal(entity) / maximum) - health;
+        }
+        return compose(health, trail(entity, partialTick), ratio, trailRatio, StatusDamageClient.pending(entity) / maximum, heal);
     }
 
     static Layers compose(float health, float healthTrail, float ratio, float trailRatio) { return compose(health, healthTrail, ratio, trailRatio, 0); }
-    /** {@code status}: the share of maximum health running status ailments will still take. */
-    static Layers compose(float health, float healthTrail, float ratio, float trailRatio, float status) {
+    static Layers compose(float health, float healthTrail, float ratio, float trailRatio, float status) { return compose(health, healthTrail, ratio, trailRatio, status, 0); }
+    /**
+     * {@code status}: the share of maximum health running status ailments will still take.
+     * {@code heal}: the share of maximum health running heals will still restore (drawn green, never past full health).
+     */
+    static Layers compose(float health, float healthTrail, float ratio, float trailRatio, float status, float heal) {
         float bonus = ratio / Math.max(0.000001f, 1 - ratio);
         float bonusTrail = trailRatio / Math.max(0.000001f, 1 - trailRatio);
         float capacity = 1 + bonusTrail;
         float base = health / capacity;
+        float healEnd = Math.max(base, Math.min(1 / capacity, base + Math.max(0, heal) / capacity));
         return new Layers(base, healthTrail / capacity,
-                Math.min(1, base + bonus / capacity), Math.min(1, base + bonusTrail / capacity),
-                Math.max(0, base - Math.max(0, status) / capacity));
+                Math.min(1, healEnd + bonus / capacity), Math.min(1, healEnd + bonusTrail / capacity),
+                Math.max(0, base - Math.max(0, status) / capacity), healEnd);
     }
 
     static void render(GuiGraphics g, int x, int y, int width, int height, Layers layers, int healthColor) {

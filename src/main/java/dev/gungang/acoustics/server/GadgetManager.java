@@ -32,13 +32,15 @@ public final class GadgetManager {
         for(var player:server.getPlayerList().getPlayers()) {cancel(player);AirAssault.clear(player);}
         PREVIEW.clear();return count;
     }
-    private record Healing(int remaining,float perTick) { }
+    private record Healing(int remaining,float perTick,int elapsed) { }
     private record Boost(long end) { }
     private record Preview(String kind,int slot) { }
     private static final Map<UUID,Preview> PREVIEW=new HashMap<>();
     private static final Map<UUID,List<Healing>> HEALING=new HashMap<>();
     private static final Map<UUID,Boost> BOOST=new HashMap<>();
     private static final Map<UUID,DeployableEntity> PLACED=new HashMap<>();
+    /** Recovery potion health still to come for this player. */
+    public static float pendingHeal(UUID id) {var heals=HEALING.get(id);if(heals==null)return 0;float total=0;for(var h:heals)total+=h.remaining()*h.perTick();return total;}
     public static long boostRemaining(ServerPlayer p) {var boost=BOOST.get(p.getUUID());return boost==null?0:Math.max(0,boost.end()-p.level().getGameTime());}
     private static final UUID SPEED=UUID.fromString("e63b9b9f-7490-4c48-aeeb-fc89f52f1bce"),ATTACK=UUID.fromString("4057aaec-a6fa-4694-b849-a5f16f9a065d");
     public static void track(DeployableEntity entity) {
@@ -50,6 +52,7 @@ public final class GadgetManager {
         if(SurvivalGadgets.jetting(p))return;
         if((kind.equals("landmine")||kind.equals("molotov")||kind.equals("arrow_grenade")||kind.equals("orbital_strike")||kind.equals("bear_trap")||kind.equals("turret"))&&SafeZones.contains(p))return;
         if(!p.isAlive()||p.isSpectator()||LobbyManager.respawning(p.getUUID())||!SecondaryRuntime.ready(p,stack))return;
+        BotLearning.observedAction(p,"secondary");
         if(kind.equals("void_anchor")) {
             if(SafeZones.contains(p))return;
             var spear=GadgetItems.VOID_ANCHOR_ENTITY.get().create(p.serverLevel());if(spear==null)return;
@@ -76,7 +79,7 @@ public final class GadgetManager {
             p.level().playSound(null,p.blockPosition(),net.minecraft.sounds.SoundEvents.SPLASH_POTION_THROW,net.minecraft.sounds.SoundSource.PLAYERS,.7f,1);
         } else if(kind.equals("recovery_potion")) {
             var c=GadgetConfig.recovery;int ticks=Math.max(1,(int)Math.round(c.durationSeconds()*20));
-            HEALING.computeIfAbsent(p.getUUID(),id->new ArrayList<>()).add(new Healing(ticks,(float)c.heal()/ticks));
+            HEALING.computeIfAbsent(p.getUUID(),id->new ArrayList<>()).add(new Healing(ticks,(float)c.heal()/ticks,0));
         } else if(kind.equals("adrenaline")) {
             var c=GadgetConfig.adrenaline;float cost=(float)(p.getMaxHealth()*c.healthCostPercent()/100);
             if(p.getHealth()<=cost) {p.displayClientMessage(Component.literal("전투자극제를 사용할 체력이 부족합니다."),true);return;}
@@ -84,6 +87,7 @@ public final class GadgetManager {
             modifier(p,Attributes.MOVEMENT_SPEED,SPEED,c.movementBonusPercent()/100);
             modifier(p,Attributes.ATTACK_SPEED,ATTACK,c.attackBonusPercent()/100);
             BOOST.put(p.getUUID(),new Boost(p.level().getGameTime()+Math.max(1,(int)Math.round(c.durationSeconds()*20))));
+            HealCue.stim(p);
         } else return;
         SecondaryRuntime.commit(p,stack);
     }
@@ -182,7 +186,7 @@ public final class GadgetManager {
     }
     public static void clear(ServerPlayer p) {
         SurvivalGadgets.clear(p);
-        cancel(p);HEALING.remove(p.getUUID());BOOST.remove(p.getUUID());
+        cancel(p);if(HEALING.remove(p.getUUID())!=null)HealCue.interrupted(p);BOOST.remove(p.getUUID());
         CombatGadgets.clear(p);
         clearDeployables(p);
         p.getAttribute(Attributes.MOVEMENT_SPEED).removeModifier(SPEED);p.getAttribute(Attributes.ATTACK_SPEED).removeModifier(ATTACK);
@@ -211,10 +215,11 @@ public final class GadgetManager {
     @SubscribeEvent public static void tick(TickEvent.PlayerTickEvent event) {
         if(event.phase!=TickEvent.Phase.END||!(event.player instanceof ServerPlayer p))return;
         var preview=PREVIEW.get(p.getUUID());if(preview!=null&&!validPreview(p,preview))cancel(p);
-        if(!p.isAlive()||p.isSpectator()) {HEALING.remove(p.getUUID());if(PREVIEW.containsKey(p.getUUID()))cancel(p);}
+        if(!p.isAlive()||p.isSpectator()) {if(HEALING.remove(p.getUUID())!=null)HealCue.interrupted(p);if(PREVIEW.containsKey(p.getUUID()))cancel(p);}
         var heals=HEALING.get(p.getUUID());
-        if(heals!=null) {var next=new ArrayList<Healing>();for(var h:heals) {p.heal(h.perTick());if(h.remaining()>1)next.add(new Healing(h.remaining()-1,h.perTick()));}if(next.isEmpty())HEALING.remove(p.getUUID());else HEALING.put(p.getUUID(),next);}
+        if(heals!=null) {var next=new ArrayList<Healing>();for(var h:heals) {HealCue.potion(p,h.elapsed(),h.remaining());p.heal(h.perTick());if(h.remaining()>1)next.add(new Healing(h.remaining()-1,h.perTick(),h.elapsed()+1));}if(next.isEmpty())HEALING.remove(p.getUUID());else HEALING.put(p.getUUID(),next);}
         var boost=BOOST.get(p.getUUID());
+        if(boost!=null&&p.isAlive()&&!p.isSpectator())GadgetAura.stim(p,p.level().getGameTime());
         if(boost!=null&&(p.level().getGameTime()>=boost.end()||!p.isAlive()||p.isSpectator())) {BOOST.remove(p.getUUID());p.getAttribute(Attributes.MOVEMENT_SPEED).removeModifier(SPEED);p.getAttribute(Attributes.ATTACK_SPEED).removeModifier(ATTACK);}
     }
     @SubscribeEvent public static void leave(PlayerEvent.PlayerLoggedOutEvent event) {if(event.getEntity() instanceof ServerPlayer p)clear(p);}

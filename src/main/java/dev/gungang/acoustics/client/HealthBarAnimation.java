@@ -31,11 +31,15 @@ public final class HealthBarAnimation {
             from = current;
             target = next;
             started = seconds;
-            duration = next < current ? 0.12 : 0.35;
+            // Heals fill slower so the green ghost of the restored share stays readable.
+            duration = next < current ? 0.12 : 0.6;
         }
         lastTime = seconds;
         return current;
     }
+
+    /** Where the bar is heading: ahead of the displayed value while a heal is still filling in. */
+    public float target() { return target; }
 
     public float trail(double seconds) {
         float displayed = value(seconds);

@@ -1,0 +1,3 @@
+"Potion Bottle" by Jonathan Pierce (https://sketchfab.com/JonPierce), https://sketchfab.com/3d-models/potion-bottle-45e5d63bbd874a9d859d9ee09704b4c2
+Licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/).
+Modifications: glTF (GLB) converted to OBJ; reoriented upright; scale normalized; textures downsized to PNG; emissive / metallic maps dropped.
