@@ -32,7 +32,7 @@ public final class AirAssault {
         int diveTicks;
         Flight(ServerPlayer p) {
             player=p;level=p.serverLevel();gravity=p.isNoGravity();
-            diveAt=level.getGameTime()+40;hoverY=p.getY()+5;
+            diveAt=level.getGameTime()+20;hoverY=p.getY()+5;
         }
     }
     private static final Map<UUID,Flight> FLIGHTS=new HashMap<>();
@@ -49,8 +49,9 @@ public final class AirAssault {
             for(int i=0;i<48;i++) {
                 double angle=2*Math.PI*i/48;
                 double x=wave.center().x+Math.cos(angle)*radius,z=wave.center().z+Math.sin(angle)*radius;
-                wave.level().sendParticles(ParticleTypes.CLOUD,x,wave.center().y+.15,z,1,.04,.02,.04,.015);
-                if(age<=4&&i%3==0)wave.level().sendParticles(ParticleTypes.CRIT,x,wave.center().y+.25,z,1,.05,.1,.05,.08);
+                double y=surfaceY(wave.level(),x,wave.center().y,z);
+                wave.level().sendParticles(ParticleTypes.CLOUD,x,y+.15,z,1,.04,.02,.04,.015);
+                if(age<=4&&i%3==0)wave.level().sendParticles(ParticleTypes.CRIT,x,y+.25,z,1,.05,.1,.05,.08);
             }
         }
     }
@@ -81,12 +82,23 @@ public final class AirAssault {
             if(p.tickCount%2==0)p.serverLevel().sendParticles(ParticleTypes.FIREWORK,p.getX(),p.getY(),p.getZ(),3,.2,.1,.2,.025);
             return;
         }
-        // Capture the latest facing once, after the freely aimed two-second window.
+        // Capture the latest facing once, after the freely aimed one-second window.
         if(flight.target==null) {
-            // Preserve the look vector's horizontal component: looking down shortens the dive,
-            // looking level reaches the full seven blocks; looking straight down stays in place.
             Vec3 look=p.getLookAngle();
-            flight.target=p.position().add(look.x*7,0,look.z*7);
+            var hit=p.level().clip(new net.minecraft.world.level.ClipContext(p.getEyePosition(),
+                    p.getEyePosition().add(look.scale(15)),net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                    net.minecraft.world.level.ClipContext.Fluid.NONE,p));
+            if(hit.getType()==net.minecraft.world.phys.HitResult.Type.BLOCK) {
+                flight.target=hit.getLocation();
+            } else {
+                Vec3 horizontal=new Vec3(look.x,0,look.z);
+                Vec3 end=p.position().add(horizontal.lengthSqr()<1e-8?Vec3.ZERO:horizontal.normalize().scale(15));
+                var ground=p.level().clip(new net.minecraft.world.level.ClipContext(end,
+                        new Vec3(end.x,p.level().getMinBuildHeight()-1,end.z),net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                        net.minecraft.world.level.ClipContext.Fluid.NONE,p));
+                flight.target=ground.getType()==net.minecraft.world.phys.HitResult.Type.BLOCK?ground.getLocation()
+                        :new Vec3(end.x,p.getY()-5,end.z);
+            }
         }
         if(flight.diveTicks++>0&&grounded(p)&&p.isAlive()) {
             velocity(p,Vec3.ZERO);clear(p);impact(p);return;
@@ -95,8 +107,12 @@ public final class AirAssault {
         // Stop horizontal drive at a wall rather than sliding toward the target indefinitely.
         if(p.horizontalCollision&&flight.diveTicks>1)flight.target=p.position();
         Vec3 offset=new Vec3(flight.target.x-p.getX(),0,flight.target.z-p.getZ());
-        Vec3 forward=offset.length()>1.4?offset.normalize().scale(1.4):offset;
-        velocity(p,new Vec3(forward.x,-1,forward.z));
+        // Follow the slope to the selected landing point instead of hitting the ground early on long dives.
+        double horizontalDistance=offset.length();
+        double drop=Math.max(.1,p.getY()-flight.target.y);
+        double travelTicks=Math.max(1,Math.sqrt(horizontalDistance*horizontalDistance+drop*drop)/2.5);
+        Vec3 forward=offset.scale(1/travelTicks);
+        velocity(p,new Vec3(forward.x,horizontalDistance<.05?-1:-Math.max(.1,drop/travelTicks),forward.z));
         p.serverLevel().sendParticles(ParticleTypes.CLOUD,p.getX(),p.getY()+.8,p.getZ(),2,.15,.2,.15,.02);
     }
 
@@ -116,7 +132,9 @@ public final class AirAssault {
     }
     private static void impact(ServerPlayer p) {
         Vec3 center=p.position();
-        var area=new AABB(center.x-5,center.y-2,center.z-5,center.x+5,center.y+4,center.z+5);
+        // Include the half-block height difference on either side of a slab surface.
+        // Query entity bodies directly: slabs must not shield the area effect above them.
+        var area=new AABB(center.x-5,center.y-2.5,center.z-5,center.x+5,center.y+4.5,center.z+5);
         for(var target:p.serverLevel().getEntitiesOfClass(LivingEntity.class,area,e->enemy(p,e))) {
             double dx=Math.abs(target.getX()-center.x),dz=Math.abs(target.getZ()-center.z);
             if(dx>5||dz>5)continue;
@@ -133,6 +151,11 @@ public final class AirAssault {
         SHOCKWAVES.add(new Shockwave(p.serverLevel(),center,p.level().getGameTime()));
         p.level().playSound(null,p.blockPosition(),net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,
                 net.minecraft.sounds.SoundSource.PLAYERS,1,.8f);
+    }
+    private static double surfaceY(net.minecraft.server.level.ServerLevel level,double x,double y,double z) {
+        var hit=level.clip(new net.minecraft.world.level.ClipContext(new Vec3(x,y+1,z),new Vec3(x,y-1,z),
+                net.minecraft.world.level.ClipContext.Block.COLLIDER,net.minecraft.world.level.ClipContext.Fluid.NONE,null));
+        return hit.getType()==net.minecraft.world.phys.HitResult.Type.BLOCK?hit.getLocation().y:y;
     }
     /** Initial impulse for a ten-block apex under vanilla living-entity gravity and drag. */
     private static double launchVelocity() {

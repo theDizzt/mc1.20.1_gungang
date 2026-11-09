@@ -56,7 +56,9 @@ public final class GungangNetwork {
     /** A TaCZ gun-pack sound for the receiving player only (e.g. tacz:kill for a twin-blades kill). */
     public record KillSound(String sound) { }
     /** Pending status-ailment damage per entity id in the receiver's dimension (purple share of health bars). */
-    public record StatusDamage(int[] ids,float[] amounts) { }
+    public record StatusDamage(int[] ids,float[] amounts,float[] heals) { }
+    /** A heal pack or recovery potion is healing this entity for the next {@code ticks}: its health bar draws the green ghost. */
+    public record HealMark(int entity,int ticks) { }
     public record AssaultMotion(boolean active,double x,double y,double z) { }
     public record AnchorPull(java.util.UUID anchor,boolean active,double x,double y,double z) { }
     public record Emote(int entity,int slot,boolean prop) { }
@@ -101,9 +103,13 @@ public final class GungangNetwork {
                 b->new Las5Shot(b.readVarInt()-1,b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble()),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.Las5Beam.receive(p)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
-        CHANNEL.registerMessage(39,StatusDamage.class,(p,b)->{b.writeVarIntArray(p.ids);b.writeVarInt(p.amounts.length);for(float f:p.amounts)b.writeFloat(f);},
-                b->{var ids=b.readVarIntArray(256);int n=Math.min(256,b.readVarInt());var amounts=new float[n];for(int i=0;i<n;i++)amounts[i]=b.readFloat();return new StatusDamage(ids,amounts);},(p,context)->{
-            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.StatusDamageClient.receive(p.ids(),p.amounts())));ctx.setPacketHandled(true);
+        CHANNEL.registerMessage(39,StatusDamage.class,(p,b)->{b.writeVarIntArray(p.ids);b.writeVarInt(p.amounts.length);for(float f:p.amounts)b.writeFloat(f);b.writeVarInt(p.heals.length);for(float f:p.heals)b.writeFloat(f);},
+                b->{var ids=b.readVarIntArray(256);int n=Math.min(256,b.readVarInt());var amounts=new float[n];for(int i=0;i<n;i++)amounts[i]=b.readFloat();
+                    int h=Math.min(256,b.readVarInt());var heals=new float[h];for(int i=0;i<h;i++)heals[i]=b.readFloat();return new StatusDamage(ids,amounts,heals);},(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.StatusDamageClient.receive(p.ids(),p.amounts(),p.heals())));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(40,HealMark.class,(p,b)->{b.writeVarInt(p.entity);b.writeVarInt(p.ticks);},b->new HealMark(b.readVarInt(),b.readVarInt()),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.StatusDamageClient.mark(p.entity(),p.ticks())));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(38,KillSound.class,(p,b)->b.writeUtf(p.sound,128),b->new KillSound(b.readUtf(128)),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.TaczSounds.play(p.sound())));ctx.setPacketHandled(true);

@@ -32,13 +32,15 @@ public final class GadgetManager {
         for(var player:server.getPlayerList().getPlayers()) {cancel(player);AirAssault.clear(player);}
         PREVIEW.clear();return count;
     }
-    private record Healing(int remaining,float perTick) { }
+    private record Healing(int remaining,float perTick,int elapsed) { }
     private record Boost(long end) { }
     private record Preview(String kind,int slot) { }
     private static final Map<UUID,Preview> PREVIEW=new HashMap<>();
     private static final Map<UUID,List<Healing>> HEALING=new HashMap<>();
     private static final Map<UUID,Boost> BOOST=new HashMap<>();
     private static final Map<UUID,DeployableEntity> PLACED=new HashMap<>();
+    /** Recovery potion health still to come for this player. */
+    public static float pendingHeal(UUID id) {var heals=HEALING.get(id);if(heals==null)return 0;float total=0;for(var h:heals)total+=h.remaining()*h.perTick();return total;}
     public static long boostRemaining(ServerPlayer p) {var boost=BOOST.get(p.getUUID());return boost==null?0:Math.max(0,boost.end()-p.level().getGameTime());}
     private static final UUID SPEED=UUID.fromString("e63b9b9f-7490-4c48-aeeb-fc89f52f1bce"),ATTACK=UUID.fromString("4057aaec-a6fa-4694-b849-a5f16f9a065d");
     public static void track(DeployableEntity entity) {
@@ -50,6 +52,7 @@ public final class GadgetManager {
         if(SurvivalGadgets.jetting(p))return;
         if((kind.equals("landmine")||kind.equals("molotov")||kind.equals("arrow_grenade")||kind.equals("orbital_strike")||kind.equals("bear_trap")||kind.equals("turret"))&&SafeZones.contains(p))return;
         if(!p.isAlive()||p.isSpectator()||LobbyManager.respawning(p.getUUID())||!SecondaryRuntime.ready(p,stack))return;
+        BotLearning.observedAction(p,"secondary");
         if(kind.equals("void_anchor")) {
             if(SafeZones.contains(p))return;
             var spear=GadgetItems.VOID_ANCHOR_ENTITY.get().create(p.serverLevel());if(spear==null)return;
@@ -76,7 +79,7 @@ public final class GadgetManager {
             p.level().playSound(null,p.blockPosition(),net.minecraft.sounds.SoundEvents.SPLASH_POTION_THROW,net.minecraft.sounds.SoundSource.PLAYERS,.7f,1);
         } else if(kind.equals("recovery_potion")) {
             var c=GadgetConfig.recovery;int ticks=Math.max(1,(int)Math.round(c.durationSeconds()*20));
-            HEALING.computeIfAbsent(p.getUUID(),id->new ArrayList<>()).add(new Healing(ticks,(float)c.heal()/ticks));
+            HEALING.computeIfAbsent(p.getUUID(),id->new ArrayList<>()).add(new Healing(ticks,(float)c.heal()/ticks,0));
         } else if(kind.equals("adrenaline")) {
             var c=GadgetConfig.adrenaline;float cost=(float)(p.getMaxHealth()*c.healthCostPercent()/100);
             if(p.getHealth()<=cost) {p.displayClientMessage(Component.literal("전투자극제를 사용할 체력이 부족합니다."),true);return;}
@@ -84,6 +87,7 @@ public final class GadgetManager {
             modifier(p,Attributes.MOVEMENT_SPEED,SPEED,c.movementBonusPercent()/100);
             modifier(p,Attributes.ATTACK_SPEED,ATTACK,c.attackBonusPercent()/100);
             BOOST.put(p.getUUID(),new Boost(p.level().getGameTime()+Math.max(1,(int)Math.round(c.durationSeconds()*20))));
+            HealCue.stim(p);
         } else return;
         SecondaryRuntime.commit(p,stack);
     }
@@ -92,23 +96,30 @@ public final class GadgetManager {
     }
     public static BlockPos target(Player p,double range) {
         var hit=p.pick(range,0,false);
-        if(!(hit instanceof BlockHitResult block)||hit.getType()!=HitResult.Type.BLOCK||block.getDirection()!=Direction.UP)return null;
+        if(!(hit instanceof BlockHitResult block)||hit.getType()!=HitResult.Type.BLOCK)return null;
+        // At shallow aim angles a half slab is hit on its short side before the ray reaches its top.
+        // Resolve those hits to the same top surface instead of suppressing the placement preview entirely.
+        if(block.getDirection()!=Direction.UP&&!(block.getDirection().getAxis().isHorizontal()
+                &&p.level().getBlockState(block.getBlockPos()).getBlock() instanceof net.minecraft.world.level.block.SlabBlock))return null;
         return block.getBlockPos().above();
     }
     public static AABB bounds(BlockPos pos,boolean wall,boolean east) {
         double x=pos.getX()+.5,z=pos.getZ()+.5,y=pos.getY();
         return wall?new AABB(x-(east?.18:1.5),y,z-(east?1.5:.18),x+(east?.18:1.5),y+3,z+(east?1.5:.18)):new AABB(x-.35,y,z-.35,x+.35,y+.15,z+.35);
     }
+    public static AABB bounds(net.minecraft.world.level.Level level,BlockPos pos,boolean wall,boolean east) {
+        return bounds(pos,wall,east).move(0,PlacementSurface.height(level,pos)-pos.getY(),0);
+    }
     public static boolean valid(Player p,BlockPos pos,boolean wall,boolean east) {
         if(!p.isAlive()||p.isSpectator())return false;
         if(!wall&&(SafeZones.contains(p)||pos!=null&&SafeZones.contains(p.level(),pos.getX()+.5,pos.getY(),pos.getZ()+.5)))return false;
         if(pos==null||!p.level().getWorldBorder().isWithinBounds(pos)||pos.getY()<p.level().getMinBuildHeight()||pos.getY()+(wall?3:1)>p.level().getMaxBuildHeight())return false;
-        AABB area=bounds(pos,wall,east);
+        AABB area=bounds(p.level(),pos,wall,east);
         if(!p.level().noCollision(area)||!p.level().getEntities(p,area,e->!e.isSpectator()).isEmpty()||area.intersects(p.getBoundingBox()))return false;
         int width=wall?1:0;
         for(int offset=-width;offset<=width;offset++) {
             var support=pos.offset(east?0:offset,-1,east?offset:0);
-            if(!p.level().getBlockState(support).isFaceSturdy(p.level(),support,Direction.UP))return false;
+            if(!PlacementSurface.supports(p.level(),support.above(),area.minY))return false;
             // Deployables are entities, not block edits: arena adventure mode must allow them.
         }
         return true;
@@ -123,11 +134,11 @@ public final class GadgetManager {
         if(!(stack.getItem() instanceof GadgetItem item)||!item.kind.equals(kind)||!SecondaryRuntime.ready(p,stack)) {cancel(p);return;}
         boolean wall=kind.equals("barrier"),east=p.getDirection().getAxis()==Direction.Axis.X;
         if(kind.equals("turret")) {
-            var pos=target(p,Turrets.config.placementRange());
-            if(!Turrets.valid(p,pos)){p.displayClientMessage(Component.literal("터렛은 평평한 지면의 빈 2×2×2 공간에만 설치할 수 있습니다."),true);return;}
+            var pos=Turrets.target(p,Turrets.config.placementRange());
+            if(!Turrets.valid(p,pos)){p.displayClientMessage(Component.literal("터렛은 블록·반블록 윗면에 설치할 수 있습니다. 위쪽 2×2×2 공간의 블록·물·다른 개체와 안전지대 여부를 확인하세요."),true);return;}
             if(Turrets.owned(p.getUUID())!=null){p.displayClientMessage(Component.literal("터렛은 최대 1개만 설치할 수 있습니다."),true);return;}
             var turret=GadgetItems.TURRET_ENTITY.get().create(p.serverLevel());if(turret==null)return;
-            turret.setPos(pos.getX()+1,pos.getY(),pos.getZ()+1);turret.setYRot(p.getYRot());turret.setup(p);
+            turret.setPos(pos.getX()+1,PlacementSurface.height(p.level(),pos),pos.getZ()+1);turret.setYRot(p.getYRot());turret.setup(p);
             if(!Turrets.claim(turret)){turret.discard();return;}
             if(p.serverLevel().addFreshEntity(turret)){turret.deployment(stack);cancel(p);}
             else turret.discard();
@@ -137,7 +148,7 @@ public final class GadgetManager {
             var pos=target(p,ExtraGadgetConfig.orbital.range());
             if(!valid(p,pos,false,false)) {p.displayClientMessage(Component.literal("이 위치에는 폭격을 지정할 수 없습니다."),true);return;}
             var strike=GadgetItems.ORDNANCE.get().create(p.serverLevel());if(strike==null)return;
-            strike.setPos(pos.getX()+.5,pos.getY(),pos.getZ()+.5);strike.setup(p,true);
+            strike.setPos(pos.getX()+.5,PlacementSurface.height(p.level(),pos),pos.getZ()+.5);strike.setup(p,true);
             if(p.serverLevel().addFreshEntity(strike)) {
                 p.serverLevel().playSound(null,pos,net.minecraft.sounds.SoundEvents.BEACON_ACTIVATE,net.minecraft.sounds.SoundSource.PLAYERS,3,1.2f);
                 SecondaryRuntime.commit(p,stack);cancel(p);
@@ -149,7 +160,7 @@ public final class GadgetManager {
             if(!valid(p,pos,false,false)) {p.displayClientMessage(Component.literal("이 위치에는 설치할 수 없습니다."),true);return;}
             if(BearTraps.count(p.getUUID())>=GadgetConfig.bearTrap.maxPlaced()) {p.displayClientMessage(Component.literal("설치 가능한 베어트랩 개수를 초과했습니다."),true);return;}
             var trap=GadgetItems.BEAR_TRAP_ENTITY.get().create(p.serverLevel());if(trap==null)return;
-            trap.setPos(pos.getX()+.5,pos.getY(),pos.getZ()+.5);trap.setYRot(p.getDirection().toYRot());trap.setup(p);
+            trap.setPos(pos.getX()+.5,PlacementSurface.height(p.level(),pos),pos.getZ()+.5);trap.setYRot(p.getDirection().toYRot());trap.setup(p);
             BearTraps.placed(trap);
             if(p.serverLevel().addFreshEntity(trap)) {
                 p.serverLevel().playSound(null,pos,net.minecraft.sounds.SoundEvents.IRON_TRAPDOOR_OPEN,net.minecraft.sounds.SoundSource.PLAYERS,.9f,.7f);
@@ -163,7 +174,7 @@ public final class GadgetManager {
         long count=DeployableLedger.get(p.server).count(p.getUUID(),wall);
         if(count>=(wall?GadgetConfig.barrier.maxPlaced():GadgetConfig.mine.maxPlaced())) {p.displayClientMessage(Component.literal(wall?"설치 가능한 방벽 개수를 초과했습니다.":"설치 가능한 지뢰 개수를 초과했습니다."),true);return;}
         var entity=GadgetItems.DEPLOYABLE.get().create(p.serverLevel());if(entity==null)return;
-        entity.setPos(pos.getX()+.5,pos.getY(),pos.getZ()+.5);entity.setup(p,wall,east);
+        entity.setPos(pos.getX()+.5,PlacementSurface.height(p.level(),pos),pos.getZ()+.5);entity.setup(p,wall,east);
         if(p.serverLevel().addFreshEntity(entity)) {track(entity);SecondaryRuntime.commit(p,stack);cancel(p);}else entity.discard();
     }
     public static DeployableEntity aimedMine(Player p) {
@@ -182,7 +193,7 @@ public final class GadgetManager {
     }
     public static void clear(ServerPlayer p) {
         SurvivalGadgets.clear(p);
-        cancel(p);HEALING.remove(p.getUUID());BOOST.remove(p.getUUID());
+        cancel(p);if(HEALING.remove(p.getUUID())!=null)HealCue.interrupted(p);BOOST.remove(p.getUUID());
         CombatGadgets.clear(p);
         clearDeployables(p);
         p.getAttribute(Attributes.MOVEMENT_SPEED).removeModifier(SPEED);p.getAttribute(Attributes.ATTACK_SPEED).removeModifier(ATTACK);
@@ -211,10 +222,11 @@ public final class GadgetManager {
     @SubscribeEvent public static void tick(TickEvent.PlayerTickEvent event) {
         if(event.phase!=TickEvent.Phase.END||!(event.player instanceof ServerPlayer p))return;
         var preview=PREVIEW.get(p.getUUID());if(preview!=null&&!validPreview(p,preview))cancel(p);
-        if(!p.isAlive()||p.isSpectator()) {HEALING.remove(p.getUUID());if(PREVIEW.containsKey(p.getUUID()))cancel(p);}
+        if(!p.isAlive()||p.isSpectator()) {if(HEALING.remove(p.getUUID())!=null)HealCue.interrupted(p);if(PREVIEW.containsKey(p.getUUID()))cancel(p);}
         var heals=HEALING.get(p.getUUID());
-        if(heals!=null) {var next=new ArrayList<Healing>();for(var h:heals) {p.heal(h.perTick());if(h.remaining()>1)next.add(new Healing(h.remaining()-1,h.perTick()));}if(next.isEmpty())HEALING.remove(p.getUUID());else HEALING.put(p.getUUID(),next);}
+        if(heals!=null) {var next=new ArrayList<Healing>();for(var h:heals) {HealCue.potion(p,h.elapsed(),h.remaining());p.heal(h.perTick());if(h.remaining()>1)next.add(new Healing(h.remaining()-1,h.perTick(),h.elapsed()+1));}if(next.isEmpty())HEALING.remove(p.getUUID());else HEALING.put(p.getUUID(),next);}
         var boost=BOOST.get(p.getUUID());
+        if(boost!=null&&p.isAlive()&&!p.isSpectator())GadgetAura.stim(p,p.level().getGameTime());
         if(boost!=null&&(p.level().getGameTime()>=boost.end()||!p.isAlive()||p.isSpectator())) {BOOST.remove(p.getUUID());p.getAttribute(Attributes.MOVEMENT_SPEED).removeModifier(SPEED);p.getAttribute(Attributes.ATTACK_SPEED).removeModifier(ATTACK);}
     }
     @SubscribeEvent public static void leave(PlayerEvent.PlayerLoggedOutEvent event) {if(event.getEntity() instanceof ServerPlayer p)clear(p);}

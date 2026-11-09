@@ -494,7 +494,7 @@ public final class PropHuntMatch {
                 eliminate(target,owner);
             }else if(id.endsWith("health_pack")){
                 var config=id.contains("large")?GadgetConfig.largeHealthPack:GadgetConfig.smallHealthPack;
-                if(target.getHealth()<target.getMaxHealth()||StatusCure.ailing(target)){target.heal((float)config.heal());StatusCure.cure(target);m.hazard=server.getTickCount()+(int)Math.ceil(config.cooldownSeconds()*20);}
+                if(target.getHealth()<target.getMaxHealth()||StatusCure.ailing(target)){HealCue.mark(target,HealCue.GHOST_TICKS);target.heal((float)config.heal());StatusCure.cure(target);HealCue.received(target);m.hazard=server.getTickCount()+(int)Math.ceil(config.cooldownSeconds()*20);}
             }else if(contactDamage(prop.state())){
                 // Damaging blocks deal a fixed hit to seekers only (never another hider), at most once a second per disguise.
                 credit(target,owner.getUUID());target.hurt(contactSource(owner,prop.state()),CONTACT_DAMAGE);m.hazard=server.getTickCount()+20;

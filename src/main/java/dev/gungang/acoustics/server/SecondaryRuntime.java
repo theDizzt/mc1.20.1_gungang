@@ -81,6 +81,7 @@ public final class SecondaryRuntime {
         if(SafeZones.contains(entity)&&SafeZones.offensive(stack))return blocked;
         if(!(entity instanceof Player player)||!secondary(stack))return action.get();
         if(!ready(player,stack)&&!(stack.getItem() instanceof GadgetItem))return blocked;
+        BotLearning.observedAction(player,"secondary");
         Scope before=CURRENT.get(),scope=new Scope(stack);CURRENT.set(scope);
         try { return action.get(); }
         finally { CURRENT.set(before); if(before==null)CURRENT.remove(); if(scope.consumed)commit(player,stack); }

@@ -38,10 +38,12 @@ public final class StationEntity extends BlockEntity {
         if(level==null||!availableHealthPack()||entity.getHealth()>=entity.getMaxHealth()&&!StatusCure.ailing(entity))return;
         var block=(StationBlock)getBlockState().getBlock();
         var config=block.kind==StationBlock.Kind.SMALL?GadgetConfig.smallHealthPack:GadgetConfig.largeHealthPack;
-        float before=entity.getHealth();entity.heal((float)config.heal());
+        float before=entity.getHealth();
+        if(entity.getHealth()<entity.getMaxHealth())HealCue.mark(entity,HealCue.GHOST_TICKS);
+        entity.heal((float)config.heal());
         boolean cured=StatusCure.cure(entity);
         if(entity.getHealth()<=before&&!cured)return;
-        if(entity instanceof ServerPlayer player)player.playNotifySound(net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP,net.minecraft.sounds.SoundSource.PLAYERS,.8f,1.2f);
+        if(entity instanceof ServerPlayer)HealCue.received(entity);
         else entity.playSound(net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP,.8f,1.2f);
         readyAt=level.getGameTime()+(long)Math.ceil(config.cooldownSeconds()*20);
         level.setBlock(worldPosition,getBlockState().setValue(StationBlock.COOLING,remaining()>0),3);sync();

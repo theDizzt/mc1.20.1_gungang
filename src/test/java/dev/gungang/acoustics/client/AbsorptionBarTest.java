@@ -26,6 +26,18 @@ class AbsorptionBarTest {
         assertEquals(0, HudHealthBars.compose(0.1f, 0.1f, 0, 0, 0.5f).statusStart(), 0.00001);
         assertEquals(0.6f, HudHealthBars.compose(0.6f, 0.6f, 0, 0).statusStart(), 0.00001);
     }
+    @Test void pendingHealShowsAsGreenGhostAheadOfHealthAndPushesAbsorption() {
+        var layers = HudHealthBars.compose(0.4f, 0.4f, 0, 0, 0, 0.3f);
+        assertEquals(0.7f, layers.healEnd(), 0.00001);
+        assertEquals(HudHealthBars.HEAL, layers.colorAt(0.5f, 0xFFFFFFFF));
+        assertEquals(0x8029353E, layers.colorAt(0.8f, 0xFFFFFFFF));
+        // Never past full health; absorption starts where healing will end.
+        var capped = HudHealthBars.compose(0.9f, 0.9f, 0, 0, 0, 0.5f);
+        assertEquals(1, capped.healEnd(), 0.00001);
+        var bonus = HudHealthBars.compose(0.5f, 0.5f, 4f / 24, 4f / 24, 0, 0.25f);
+        assertEquals(15f / 24, bonus.healEnd(), 0.00001);
+        assertEquals(19f / 24, bonus.absorptionEnd(), 0.00001);
+    }
     @Test void withoutAbsorptionPreservesOriginalHealthAndDamageTrail() {
         var layers = HudHealthBars.compose(0.4f, 0.7f, 0, 0);
         assertEquals(0.4f, layers.health());
