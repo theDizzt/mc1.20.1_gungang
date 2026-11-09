@@ -5,7 +5,7 @@ import java.io.IOException;
 /** Configurations for equipment whose original implementations used fixed constants. */
 public final class ExtraGadgetConfig {
     public record ArrowGrenade(double damage,double projectileRange,double durationSeconds,double cooldownSeconds,int emissionIntervalTicks,double projectileSpeed,double throwSpeed) { }
-    public static ArrowGrenade arrowGrenade=new ArrowGrenade(16,6,12,30,1,1.2,1.1);
+    public static ArrowGrenade arrowGrenade=new ArrowGrenade(16,6,12,30,20,1.2,1.1);
     public record Molotov(double radius,double durationSeconds,int burnSeconds,double cooldownSeconds,double burnDamage) {
         public Molotov(double radius,double duration,int burn,double cooldown){this(radius,duration,burn,cooldown,1);}
     }
@@ -33,7 +33,11 @@ public final class ExtraGadgetConfig {
         load(java.util.Map.of(),true);
     }
     static void load(java.util.Map<String,com.google.gson.JsonObject> overrides,boolean apply)throws IOException {
-        var ag=GadgetConfig.read("arrow_grenade",ArrowGrenade.class,new ArrowGrenade(16,6,12,30,1,1.2,1.1),overrides,apply);
+        var ag=GadgetConfig.read("arrow_grenade",ArrowGrenade.class,new ArrowGrenade(16,6,12,30,20,1.2,1.1),overrides,apply);
+        if(!overrides.containsKey("arrow_grenade")&&ag.emissionIntervalTicks()==1) {
+            ag=new ArrowGrenade(ag.damage(),ag.projectileRange(),ag.durationSeconds(),ag.cooldownSeconds(),20,ag.projectileSpeed(),ag.throwSpeed());
+            if(apply)java.nio.file.Files.writeString(ServerFiles.root().resolve("item/arrow_grenade.json"),ServerFiles.GSON.toJson(ag));
+        }
         GadgetConfig.bounded(ag.damage(),0,10000);GadgetConfig.bounded(ag.projectileRange(),.1,16);GadgetConfig.bounded(ag.durationSeconds(),.05,60);
         GadgetConfig.bounded(ag.cooldownSeconds(),0,86400);GadgetConfig.bounded(ag.emissionIntervalTicks(),1,1200);
         GadgetConfig.bounded(ag.projectileSpeed(),.5,4);GadgetConfig.bounded(ag.throwSpeed(),.1,3);
