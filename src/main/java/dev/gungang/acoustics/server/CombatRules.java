@@ -81,6 +81,8 @@ public final class CombatRules {
     private static final Set<String> PUSH_GUNS=Set.of("bf1:wex");
     /** Victims pushed by a {@link #PUSH_GUNS} bullet, by the game time of that push. */
     private static final Map<LivingEntity,Long> PUSHED=new WeakHashMap<>();
+    private record Wind(Vec3 acceleration,LivingEntity owner) {}
+    private static final Map<LivingEntity,Wind> WIND=new WeakHashMap<>();
     private static boolean pushing;
     private static boolean pushedNow(LivingEntity victim){return PUSHED.getOrDefault(victim,Long.MIN_VALUE)==victim.level().getGameTime();}
     /**
@@ -94,24 +96,27 @@ public final class CombatRules {
         boolean everyone=PUSH_GUNS.contains(gun);
         if(!everyone&&!ALLY_KNOCKBACK_GUNS.contains(gun))return;
         if(!(bullet.getOwner() instanceof LivingEntity owner)||!(target instanceof LivingEntity victim)||victim==owner
-                ||!BotEntity.participant(victim)||LobbyManager.respawning(victim.getUUID())||SafeZones.contains(victim))return;
+                ||!target(victim)||LobbyManager.respawning(victim.getUUID())||SafeZones.contains(victim))return;
         if(!everyone){
             var team=owner.getTeam();
             if(team==null||team.isAllowFriendlyFire()||!owner.isAlliedTo(victim))return;
         }
         if(victim instanceof ServerPlayer p&&CombatGadgets.shieldBlocked(p))return;
         if(everyone&&pushedNow(victim))return;
+        // The wind reaches only windRange blocks from the shooter (item setting wind_blower).
+        if(everyone&&owner.distanceTo(victim)>ExtraGadgetConfig.windBlower.windRange())return;
         if(everyone){
             double wind=1;
             var loadouts=LobbyManager.loaded();
             if(loadouts!=null)for(var weapon:loadouts.primary())if(weapon.itemNbt().contains("bf1:wex")){wind=weapon.windStrength();break;}
+            if(wind<=0)return;
             PUSHED.put(victim,victim.level().getGameTime());
             // Accelerate along the stream without vanilla's vertical hop or halving existing movement.
             Vec3 direction=bullet.getDeltaMovement().normalize();
             if(direction.lengthSqr()<1e-8)direction=owner.getLookAngle();
-            Vec3 motion=victim.getDeltaMovement().add(direction.scale(wind*.1));
-            if(victim instanceof ServerPlayer player)PlayerImpulse.apply(player,motion);
-            else{victim.setDeltaMovement(motion);victim.hasImpulse=true;victim.hurtMarked=true;}
+            // Damage handlers and AI can restore velocity during the hit. Apply after entity ticking instead.
+            WIND.put(victim,new Wind(direction.scale(wind*.1),owner));
+            DamageCredit.wind(victim,owner);
         }
         double strength=strength(bullet);
         if(strength<=0)return;
@@ -152,7 +157,17 @@ public final class CombatRules {
     }
     /** Hits whose knockback never reached the event (another mod skipped it): push here, the way vanilla would. */
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent event){
-        if(event.phase!=TickEvent.Phase.END||PENDING.isEmpty())return;
+        if(event.phase!=TickEvent.Phase.END)return;
+        for(var entry:new ArrayList<>(WIND.entrySet())){
+            var victim=entry.getKey();var wind=entry.getValue();
+            if(!victim.isAlive()||victim.isRemoved()||victim.isSpectator()||LobbyManager.respawning(victim.getUUID())||SafeZones.contains(victim))continue;
+            var motion=victim.getDeltaMovement().add(wind.acceleration());
+            if(victim instanceof ServerPlayer player)PlayerImpulse.apply(player,motion);
+            else{victim.setDeltaMovement(motion);victim.hasImpulse=true;victim.hurtMarked=true;}
+            DamageCredit.wind(victim,wind.owner());
+        }
+        WIND.clear();
+        if(PENDING.isEmpty())return;
         var due=new ArrayList<>(PENDING.entrySet());PENDING.clear();
         for(var entry:due){
             var victim=entry.getKey();var expected=entry.getValue();
@@ -172,6 +187,6 @@ public final class CombatRules {
     private static void report(String kind,String message){
         if(REPORTED.add(kind))com.mojang.logging.LogUtils.getLogger().warn("GunGang knockback: {}",message);
     }
-    @SubscribeEvent public static void stopped(net.minecraftforge.event.server.ServerStoppedEvent event){PENDING.clear();}
+    @SubscribeEvent public static void stopped(net.minecraftforge.event.server.ServerStoppedEvent event){PENDING.clear();WIND.clear();PUSHED.clear();}
     private CombatRules(){}
 }
