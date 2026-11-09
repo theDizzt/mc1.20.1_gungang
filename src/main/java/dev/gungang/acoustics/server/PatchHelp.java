@@ -39,6 +39,10 @@ public final class PatchHelp {
                 + "산출식: 1발 최대 피해 = 피해 × 탄환 수 (전부 명중 시). 실제 명중 수는 거리·탄퍼짐에 따라 줄어듭니다.");
         tacz("bullet.pierce", "용도: 탄환 1개가 맞힐 수 있는 최대 대상 수 (1 = 관통 없음).\n"
                 + "작동: 일렬로 선 적을 이 수만큼 차례로 맞히며, 대상마다 같은 피해가 들어갑니다(추정: 관통으로 피해가 줄지 않음).");
+        tacz("bullet.knockback", "용도: 탄환에 맞은 대상을 쏜 사람 반대쪽으로 밀어내는 세기 (0.01 단위, 0 = 넉백 없음).\n"
+                + "작동: 피해가 들어갈 때 함께 밀립니다. 넉백 저항이 있으면 그만큼 줄어듭니다.\n"
+                + "송풍기·넉백 샷건처럼 아군도 미는 총은 GunGang이 직접 밀어냅니다. 송풍기는 대상마다 틱(0.05초)당 한 번만 밀려 탄환 수와 무관합니다.\n"
+                + "산출식(추정): 순간 속도 ≈ 세기 블록/틱 (0.4 = 맨손 타격 정도). 계속 맞으면 속도 = 이전/2 + 세기 로 쌓여 최대 약 2배까지.");
         tacz("bullet.speed", "용도: 탄속 (초당 블록, 추정).\n"
                 + "작동: 높을수록 먼 표적에 빨리 닿아 리드(예측 사격)가 덜 필요합니다.\n"
                 + "산출식(추정): 최대 사거리 ≈ 탄속 × 탄 수명 (공기저항·중력이 있으면 더 짧음)");
@@ -196,7 +200,29 @@ public final class PatchHelp {
         item("acid_nozzle", "damage", "용도: 산성 분수 안에 있을 때 1회 피해.\n산출식: DPS = 피해 × 20 / 피해 간격(틱)");
         item("arc_thrower", "damage", "용도: 직격 대상의 피해. 주변 대상은 전격 피해를 따로 받습니다.");
         item("katana", "rightClickDamage", "용도: 우클릭 강공격 피해. 맞으면 출혈이 이어집니다.\n산출식: 총 피해 = 우클릭 피해 + 출혈 초당 피해 × 출혈 시간");
-        item("hand_axe", "arcDegrees", "용도: 던질 때 위로 꺾는 각도(°). 0이면 바라보는 방향 그대로 날아갑니다.");
+        // ---- GunGang blocks (전역 tab, /gungang modify block) -------------------------------------------------------
+        item("soundVolume", "용도: 소리 크기 (1 = 기본).");
+        item("soundIntervalTicks", "용도: 위를 걸을 때 소리가 나는 최소 간격(틱, 20틱 = 1초).");
+        item("height", "용도: 분수 물줄기의 높이(블록). 이 높이 안에 있는 대상이 효과를 받습니다.");
+        item("particlesPerSecond", "용도: 초당 입자 수. 보이기만 하며 효과에는 영향이 없습니다(많으면 클라이언트 부하 증가).");
+        for (String pack : List.of("small_health_pack", "large_health_pack")) {
+            item(pack, "heal", "용도: 힐팩 블록을 밟거나 사용했을 때 회복하는 체력. 회복될 양은 체력바에 초록색으로 미리 보입니다.\n산출식: 회복 후 체력 = min(최대 체력, 현재 체력 + 회복량)");
+            item(pack, "cooldownSeconds", "용도: 한 번 쓰인 힐팩이 다시 채워지기까지의 시간(초).");
+        }
+        for (String blast : List.of("uxo", "gas_barrel")) {
+            String what = blast.equals("uxo") ? "불발탄(밟거나 맞히면 터짐)" : "가스통(맞히거나 폭발에 휘말리면 터짐)";
+            item(blast, "damage", "용도: " + what + "이 터질 때 반경 안 모두에게 주는 피해. 아군·적을 가리지 않습니다.\n"
+                    + "작동: 반경 안이면 거리와 상관없이 같은 피해이고, 이어서 전역 '폭발 피해 배수'가 곱해집니다. 주변 불발탄·가스통·금 간 벽도 연쇄로 맞습니다.\n"
+                    + "산출식: 받는 피해 = 피해 × 전역 폭발 배수");
+            item(blast, "radius", "용도: 폭발 피해가 닿는 반경(블록). 반경 안이면 모두 같은 피해를 받습니다.");
+            item(blast, "respawnSeconds", "용도: 터진 뒤 다시 생기기까지의 시간(초).");
+        }
+        item("puddle", "soundVolume", "용도: 물웅덩이를 밟을 때 나는 소리 크기 (1 = 기본). 클수록 멀리서도 발소리가 들립니다.");
+        item("acid", "poisonSeconds", "용도: 산성 용액에 닿았을 때 걸리는 독의 지속 시간(초). 닿아 있는 동안 계속 갱신됩니다.");
+        item("acid", "amplifier", "용도: 걸리는 독의 단계(0 = I). 높을수록 독 피해가 자주 들어갑니다.\n산출식(추정): 독 피해 간격 ≈ 25 / 2^단계 틱");
+        item("acid_nozzle", "damage", "용도: 산성 분수 물줄기 안에 있을 때 한 번에 받는 피해. 아군·적을 가리지 않습니다.\n산출식: DPS = 피해 × 20 / 피해 간격(틱)");
+        item("acid_nozzle", "damageIntervalTicks", "용도: 산성 분수의 피해 간격(틱, 20틱 = 1초).\n산출식: DPS = 피해 × 20 / 피해 간격");
+        item("hand_axe", "arcDegrees","용도: 던질 때 위로 꺾는 각도(°). 0이면 바라보는 방향 그대로 날아갑니다.");
     }
 
     /** Hover help of a patch row, or "" when there is none. {@code setting} is the item effect file behind the weapon (or null). */
@@ -212,6 +238,8 @@ public final class PatchHelp {
         if (key.startsWith("item:")) {
             String field = key.substring(5);
             String text = setting == null ? null : ITEM_OF.get(setting + "." + field);
+            if (text == null && setting != null && setting.startsWith("cracked_") && field.equals("health"))
+                text = "용도: 금 간 블록의 체력. 총알·폭발 피해가 쌓여 0이 되면 부서지고, 경기(맵)가 다시 시작되면 복구됩니다.\n산출식: 부수는 데 필요한 탄 수 ≈ 체력 / 1발 피해";
             if (text == null) text = ITEM.get(field);
             String file = setting == null ? "" : "\n설정 파일: item/" + setting + ".json · " + field;
             return (text == null ? "용도: 아이템 효과 설정 " + field + " 값." : text) + file;

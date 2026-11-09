@@ -16,12 +16,15 @@ public final class TaczGunFile {
     }
     /** Patchable TaCZ fields with their Korean label, integer flag and accepted range. */
     public record Field(String path, String label, boolean integer, double min, double max) { }
+    /** Knockback strength: edited in steps of 0.01. */
+    static final String KNOCKBACK = "bullet.knockback";
     public static final List<Field> FIELDS = List.of(
             new Field("bullet.damage", "기본 피해", false, 0, 10000),
             new Field("rpm", "연사 속도 (RPM)", true, 1, 6000),
             new Field("ammo_amount", "탄창 용량", true, 1, Integer.MAX_VALUE),
             new Field("bullet.bullet_amount", "발당 탄환 수 (산탄)", true, 1, 256),
             new Field("bullet.pierce", "관통 수", true, 0, 1000),
+            new Field("bullet.knockback", "넉백 강도 (0.01 단위)", false, 0, 100),
             new Field("bullet.speed", "탄속", false, 0, 10000),
             new Field("bullet.life", "탄 수명 (초)", false, 0, 3600),
             new Field("bullet.extra_damage.head_shot_multiplier", "헤드샷 배수", false, 0, 100),
@@ -199,9 +202,10 @@ public final class TaczGunFile {
             try {
                 var exact = new java.math.BigDecimal(text);
                 if (field.integer()) exact.intValueExact();
+                if (field.path().equals(KNOCKBACK) && exact.stripTrailingZeros().scale() > 2) throw new ArithmeticException("0.01 단위");
                 number = exact.doubleValue();
             } catch (ArithmeticException | NumberFormatException invalid) {
-                throw new IllegalArgumentException(field.label() + ": " + (field.integer() ? "정수" : "숫자") + "를 입력하세요.");
+                throw new IllegalArgumentException(field.label() + ": " + (field.integer() ? "정수" : field.path().equals(KNOCKBACK) ? "0.01 단위 숫자" : "숫자") + "를 입력하세요.");
             }
             if (!Double.isFinite(number) || number < field.min() || number > field.max())
                 throw new IllegalArgumentException(field.label() + ": " + format(field.min()) + "~" + format(field.max()) + " 범위로 입력하세요.");

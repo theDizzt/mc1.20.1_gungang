@@ -34,6 +34,25 @@ public final class WeaponPatch {
     public static final String PRIMARY = "weapon", SECONDARY = "secondary", GENERAL = "general";
     /** The 전역 설정 tab's settings (item effect files). */
     private static final Map<String, String> GENERAL_SETTINGS = Map.of("health_regeneration", "체력 재생", "combat", "전투");
+    /** GunGang block settings ({@code /gungang modify block}) listed in the same tab, after the item ones, by name. */
+    private static final Map<String, String> BLOCK_SETTINGS = blockSettings();
+    private static Map<String, String> blockSettings() {
+        var names = new LinkedHashMap<String, String>();
+        names.put("small_health_pack", "블록 · 소형 힐팩"); names.put("large_health_pack", "블록 · 대형 힐팩");
+        names.put("uxo", "블록 · 불발탄"); names.put("gas_barrel", "블록 · 가스통");
+        names.put("acid", "블록 · 산성 용액"); names.put("acid_nozzle", "블록 · 산성 분수 노즐"); names.put("nozzle", "블록 · 물 분수 노즐"); names.put("puddle", "블록 · 물웅덩이");
+        names.put("cracked_oak_planks", "블록 · 금 간 참나무 판자"); names.put("cracked_glass", "블록 · 금 간 유리"); names.put("cracked_glass_pane", "블록 · 금 간 유리판");
+        var colors = Map.ofEntries(Map.entry("white", "흰색"), Map.entry("orange", "주황색"), Map.entry("magenta", "자홍색"), Map.entry("light_blue", "하늘색"),
+                Map.entry("yellow", "노란색"), Map.entry("lime", "연두색"), Map.entry("pink", "분홍색"), Map.entry("gray", "회색"), Map.entry("light_gray", "회백색"),
+                Map.entry("cyan", "청록색"), Map.entry("purple", "보라색"), Map.entry("blue", "파란색"), Map.entry("brown", "갈색"), Map.entry("green", "초록색"),
+                Map.entry("red", "빨간색"), Map.entry("black", "검은색"));
+        for (var color : net.minecraft.world.item.DyeColor.values())
+            names.put("cracked_" + color.getName() + "_concrete", "블록 · 금 간 " + colors.getOrDefault(color.getName(), color.getName()) + " 콘크리트");
+        return Collections.unmodifiableMap(names);
+    }
+    /** The settings kind behind a 전역 tab entry: "block" or "item". */
+    private static String generalKind(String id) { return BLOCK_SETTINGS.containsKey(id) ? "block" : "item"; }
+    private static String generalName(String id) { return BLOCK_SETTINGS.getOrDefault(id, GENERAL_SETTINGS.get(id)); }
     private static final String GENERAL_CATEGORY = "전역";
     private static final Map<String, String> ELEMENT_LABELS = Map.of(
             "elements.burnDamage", "화상 피해 (1회당)", "elements.witherDamage", "위더 피해 (1회당)",
@@ -68,7 +87,10 @@ public final class WeaponPatch {
             Map.entry("arcRadius", "전격 반경 (블록)"), Map.entry("glowSeconds", "발광 시간 (초)"),
             Map.entry("tier1Damage", "콤보 1단 피해"), Map.entry("tier2Damage", "콤보 2단 피해"), Map.entry("tier3Damage", "콤보 3단 피해"),
             Map.entry("tier4Damage", "콤보 4단 피해"), Map.entry("tier5Damage", "콤보 5단 피해 (최대)"),
-            Map.entry("guardReductionPercent", "방어 피해 경감 (%)"), Map.entry("guardAngle", "방어 각도 (정면, °)"));
+            Map.entry("guardReductionPercent", "방어 피해 경감 (%)"), Map.entry("guardAngle", "방어 각도 (정면, °)"),
+            Map.entry("respawnSeconds", "다시 생기는 시간 (초)"), Map.entry("soundVolume", "소리 크기"), Map.entry("soundIntervalTicks", "발소리 간격 (틱)"),
+            Map.entry("poisonSeconds", "독 시간 (초)"), Map.entry("amplifier", "효과 단계 (0=I)"), Map.entry("height", "높이 (블록)"),
+            Map.entry("particlesPerSecond", "초당 입자 수"), Map.entry("damageIntervalTicks", "피해 간격 (틱)"));
     private static final Map<String, String> LABELS = Map.ofEntries(
             Map.entry("name", "이름"), Map.entry("category", "분류"), Map.entry("maxHealth", "최대 체력"), Map.entry("movementSpeed", "이동 속도 (%)"),
             Map.entry("description", "표시 · 설명 (줄바꿈 \\n)"), Map.entry("usage", "표시 · 사용방법 (줄바꿈 \\n)"), Map.entry("releaseDate", "출시일 (yyyy-MM-dd)"),
@@ -151,13 +173,16 @@ public final class WeaponPatch {
         for (var w : loadouts.primary()) entries.add(new Entry(w.id(), w.name(), w.category(), weight(w), w.movementSpeed(), PRIMARY));
         for (var w : loadouts.secondary()) entries.add(new Entry(w.id(), w.name(), w.category(), weight(w), w.movementSpeed(), SECONDARY));
         for (var setting : new TreeMap<>(GENERAL_SETTINGS).entrySet()) entries.add(new Entry(setting.getKey(), setting.getValue(), GENERAL_CATEGORY, null, 100, GENERAL));
+        for (var setting : BLOCK_SETTINGS.entrySet()) entries.add(new Entry(setting.getKey(), setting.getValue(), GENERAL_CATEGORY, null, 100, GENERAL));
         if (kind.equals(GENERAL)) {
-            String id = GENERAL_SETTINGS.containsKey(requested) ? requested : new TreeMap<>(GENERAL_SETTINGS).firstKey();
+            String id = GENERAL_SETTINGS.containsKey(requested) || BLOCK_SETTINGS.containsKey(requested) ? requested : new TreeMap<>(GENERAL_SETTINGS).firstKey();
+            String settings = generalKind(id);
             var rows = new ArrayList<Row>();
-            for (var field : ConfigModify.editable("item", id).entrySet())
-                rows.add(new Row("item:" + field.getKey(), ITEM_LABELS.getOrDefault(field.getKey(), field.getKey()), "general", ConfigModify.numeric("item", id, field.getKey()), number(text(field.getValue()))));
+            for (var field : ConfigModify.editable(settings, id).entrySet())
+                rows.add(new Row("item:" + field.getKey(), ITEM_LABELS.getOrDefault(field.getKey(), field.getKey()), settings.equals("block") ? "block" : "general",
+                        ConfigModify.numeric(settings, id, field.getKey()), number(text(field.getValue()))));
             rows.replaceAll(row -> row.withHelp(PatchHelp.of(row.key(), id)));
-            var view = new View(entries, id, GENERAL_SETTINGS.get(id), "", "", rows, message, error, LobbyManager.phase(), weightMultiplier(), kind);
+            var view = new View(entries, id, generalName(id), "", "", rows, message, error, LobbyManager.phase(), weightMultiplier(), kind);
             GungangNetwork.send(player, new GungangNetwork.WeaponPatchView(ServerFiles.GSON.toJson(view)));
             return;
         }
@@ -346,7 +371,7 @@ public final class WeaponPatch {
     }
     /** 전역 설정 tab: item effect settings such as health_regeneration (lobby only, like /gungang modify item). */
     private static String applyGeneral(ServerPlayer player, String id, Map<String, String> changes) throws Exception {
-        if (!GENERAL_SETTINGS.containsKey(id)) throw new IllegalArgumentException("해당 설정이 없습니다: " + id);
+        if (!GENERAL_SETTINGS.containsKey(id) && !BLOCK_SETTINGS.containsKey(id)) throw new IllegalArgumentException("해당 설정이 없습니다: " + id);
         if (changes.isEmpty()) throw new IllegalArgumentException("변경한 항목이 없습니다.");
         var item = new LinkedHashMap<String, String>();
         for (var change : changes.entrySet()) {
@@ -354,9 +379,9 @@ public final class WeaponPatch {
             if (!key.startsWith("item:") || value.length() > 200) throw new IllegalArgumentException("알 수 없는 항목: " + key);
             item.put(key.substring(5), value);
         }
-        ConfigModify.apply("item", id, item);
+        ConfigModify.apply(generalKind(id), id, item);
         LogUtils.getLogger().info("GunGang general setting patch by {}: {} {}", player.getGameProfile().getName(), id, changes);
-        return "전역 설정 저장: " + GENERAL_SETTINGS.get(id) + " · " + item.size() + "개 항목";
+        return "전역 설정 저장: " + generalName(id) + " · " + item.size() + "개 항목";
     }
     /** The weapon's TaCZ weight; a data file without the field weighs 0 kg, as TaCZ reads it. */
     private static Double weight(Loadouts.Weapon weapon) {
