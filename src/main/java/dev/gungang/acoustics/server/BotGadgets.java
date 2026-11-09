@@ -216,8 +216,8 @@ final class BotGadgets {
         bot.swing(InteractionHand.OFF_HAND);return true;
     }
     private static boolean placeTrap(BotEntity bot,ServerLevel level,boolean bear) {
-        var pos=bot.blockPosition();
-        if(!level.getBlockState(pos.below()).isFaceSturdy(level,pos.below(),Direction.UP))return false;
+        var pos=BlockPos.containing(bot.getX(),Math.ceil(bot.getY()-1e-6),bot.getZ());
+        if(!PlacementSurface.supports(level,pos,PlacementSurface.height(level,pos)))return false;
         if(SafeZones.contains(level,pos.getX()+.5,pos.getY(),pos.getZ()+.5))return false;
         // Spread traps out instead of stacking them on one spot of the route.
         if(!level.getEntitiesOfClass(net.minecraft.world.entity.Entity.class,new AABB(pos).inflate(6),
@@ -225,7 +225,7 @@ final class BotGadgets {
         if(bear) {
             if(BearTraps.count(bot.getUUID())>=GadgetConfig.bearTrap.maxPlaced())return false;
             var trap=GadgetItems.BEAR_TRAP_ENTITY.get().create(level);if(trap==null)return false;
-            trap.setPos(pos.getX()+.5,pos.getY(),pos.getZ()+.5);trap.setYRot(bot.getDirection().toYRot());trap.setup(bot);
+            trap.setPos(pos.getX()+.5,PlacementSurface.height(level,pos),pos.getZ()+.5);trap.setYRot(bot.getDirection().toYRot());trap.setup(bot);
             BearTraps.placed(trap);if(!level.addFreshEntity(trap)) {trap.discard();return false;}
             level.playSound(null,pos,SoundEvents.IRON_TRAPDOOR_OPEN,SoundSource.PLAYERS,.9f,.7f);return true;
         }
@@ -236,17 +236,17 @@ final class BotGadgets {
         if(DeployableLedger.get(level.getServer()).count(bot.getUUID(),true)>=GadgetConfig.barrier.maxPlaced())return false;
         Vec3 d=target.position().subtract(bot.position());double flat=Math.max(1e-4,d.horizontalDistance());
         boolean east=Math.abs(d.x)>Math.abs(d.z);
-        var pos=BlockPos.containing(bot.getX()+d.x/flat*2,bot.getY(),bot.getZ()+d.z/flat*2);
-        if(!level.noCollision(GadgetManager.bounds(pos,true,east))||SafeZones.contains(level,pos.getX()+.5,pos.getY(),pos.getZ()+.5))return false;
+        var pos=BlockPos.containing(bot.getX()+d.x/flat*2,Math.ceil(bot.getY()-1e-6),bot.getZ()+d.z/flat*2);
+        if(!level.noCollision(GadgetManager.bounds(level,pos,true,east))||SafeZones.contains(level,pos.getX()+.5,pos.getY(),pos.getZ()+.5))return false;
         for(int offset=-1;offset<=1;offset++) {
             var support=pos.offset(east?0:offset,-1,east?offset:0);
-            if(!level.getBlockState(support).isFaceSturdy(level,support,Direction.UP))return false;
+            if(!PlacementSurface.supports(level,support.above(),PlacementSurface.height(level,pos)))return false;
         }
         return deploy(bot,level,pos,true,east);
     }
     private static boolean deploy(BotEntity bot,ServerLevel level,BlockPos pos,boolean wall,boolean east) {
         var entity=GadgetItems.DEPLOYABLE.get().create(level);if(entity==null)return false;
-        entity.setPos(pos.getX()+.5,pos.getY(),pos.getZ()+.5);entity.setup(bot,wall,east);
+        entity.setPos(pos.getX()+.5,PlacementSurface.height(level,pos),pos.getZ()+.5);entity.setup(bot,wall,east);
         if(!level.addFreshEntity(entity)) {entity.discard();return false;}
         GadgetManager.track(entity);return true;
     }
@@ -303,10 +303,10 @@ final class BotGadgets {
     private boolean placeTurret(BotEntity bot,ServerLevel level,net.minecraft.world.entity.LivingEntity target){
         if(!bot.onGround()||Turrets.owned(bot.getUUID())!=null||target==null)return false;
         for(var direction:Direction.Plane.HORIZONTAL){
-            var pos=bot.blockPosition().relative(direction,3);
+            var pos=BlockPos.containing(bot.getX(),Math.ceil(bot.getY()-1e-6),bot.getZ()).relative(direction,3);
             if(!Turrets.valid(bot,pos))continue;
             var turret=GadgetItems.TURRET_ENTITY.get().create(level);if(turret==null)return false;
-            turret.setPos(pos.getX()+1,pos.getY(),pos.getZ()+1);turret.setYRot(bot.getYRot());turret.setup(bot);
+            turret.setPos(pos.getX()+1,PlacementSurface.height(level,pos),pos.getZ()+1);turret.setYRot(bot.getYRot());turret.setup(bot);
             if(!Turrets.claim(turret)){turret.discard();return false;}
             if(!level.addFreshEntity(turret)){turret.discard();return false;}
             turret.deployment(stack);bot.swing(InteractionHand.OFF_HAND);return true;
