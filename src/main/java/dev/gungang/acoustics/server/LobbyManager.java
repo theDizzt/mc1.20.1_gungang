@@ -913,6 +913,39 @@ public final class LobbyManager {
         if(!enabled||self==null||!Set.of("ALPHA","BRAVO").contains(self.team)||selectedMode.equals("FREE_FOR_ALL")||duplicates(primary))return false;
         return teamWeaponTaken(player,self.team,primary,id);
     }
+    /** Weapon id to the teammate (or bot) holding it, for the loadout screen; empty when duplicates are allowed. */
+    private static Map<String,String> takenWeapons(UUID player,boolean primary){
+        var result=new LinkedHashMap<String,String>();var self=PLAYERS.get(player);
+        if(loadouts==null||!enabled||self==null||!Set.of("ALPHA","BRAVO").contains(self.team)||selectedMode.equals("FREE_FOR_ALL")||duplicates(primary))return result;
+        PLAYERS.forEach((id,e)->{
+            if(id.equals(player)||!e.team.equals(self.team))return;
+            var free=FREE_SELECTION.get(id);
+            String choice=phase.equals("LOBBY")?(free==null?"":free[primary?0:1]):primary?e.primary:e.secondary;
+            if(choice==null||choice.isEmpty())return;
+            var other=server.getPlayerList().getPlayer(id);
+            result.putIfAbsent(choice,other==null?"팀원":ProgressionService.name(other));
+        });
+        if(!phase.equals("LOBBY"))for(var weapon:primary?catalog().primary():catalog().secondary()){
+            if(result.containsKey(weapon.id()))continue;
+            var bot=BotManager.weaponHolder(player,self.team,primary,weapon.id());
+            if(bot!=null)result.put(weapon.id(),BotManager.name(bot));
+        }
+        return result;
+    }
+    /** Re-sends the loadout state to this player's teammates so their screens mark the weapons now taken. */
+    private static void refreshTeammates(ServerPlayer p){
+        var self=PLAYERS.get(p.getUUID());if(self==null)return;
+        PLAYERS.forEach((id,e)->{
+            if(id.equals(p.getUUID())||!e.team.equals(self.team))return;
+            var other=server.getPlayerList().getPlayer(id);if(other!=null)equipment(other,false);
+        });
+    }
+    /** A player's chosen primary and secondary weapon ids ("" when none), or null outside the lobby roster. */
+    static String[] weapons(UUID id){
+        var e=PLAYERS.get(id);if(e==null)return null;
+        if(phase.equals("LOBBY")){var free=FREE_SELECTION.get(id);return free==null?new String[]{"",""}:free.clone();}
+        return new String[]{e.primary==null?"":e.primary,e.secondary==null?"":e.secondary};
+    }
     static boolean teamWeaponTaken(UUID player,String team,boolean primary,String id){
         if(selectedMode.equals("FREE_FOR_ALL")||duplicates(primary))return false;
         if(!phase.equals("LOBBY")&&BotManager.weaponTaken(player,team,primary,id))return true;
@@ -984,7 +1017,7 @@ public final class LobbyManager {
             giveSlot9(p);
             String[] choice=FREE_SELECTION.computeIfAbsent(p.getUUID(),ignored->new String[]{"",""});
             choice[slot==0?0:1]=id;
-            equipment(p,true); return;
+            equipment(p,true); refreshTeammates(p); return;
         }
         boolean found = false;
         for (int i = 0; i < p.getInventory().getContainerSize(); i++) { var item = p.getInventory().getItem(i); if (issued(item) && item.getTag().getInt(TAG) == slot) found = true; }
@@ -996,7 +1029,7 @@ public final class LobbyManager {
         grant(p, weapon, slot, false);
         giveSlot9(p);
         Entry e = PLAYERS.get(p.getUUID()); if (slot == 0) e.primary = id; else e.secondary = id;
-        equipment(p, true);
+        equipment(p, true); refreshTeammates(p);
     }
     private static void equipment(ServerPlayer p, boolean show) {
         var e = PLAYERS.get(p.getUUID());
@@ -1017,8 +1050,9 @@ public final class LobbyManager {
                 phase.equals("LOBBY") ? choice[0] : e == null ? "" : e.primary,
                 phase.equals("LOBBY") ? choice[1] : e == null ? "" : e.secondary,
                 RESPAWNING.containsKey(p.getUUID()) ? Math.max(0,(RESPAWNING.get(p.getUUID()).deadline()-server.getTickCount()+19)/20) : phase.equals("PREPARING") ? Math.max(0, (deadline - server.getTickCount() + 19) / 20) : 0, show && allowed ? catalog().view() : null,
-                phase.equals("RUNNING") && allowed && inSpawn(p), record == null ? List.of() : record.presets(), record == null ? 0 : record.defaultPreset());
-        var status=new EquipmentSnapshot(snapshot.allowed(),false,snapshot.team(),snapshot.primary(),snapshot.secondary(),snapshot.preparationSeconds(),null,snapshot.spawnHint(),snapshot.presets(),snapshot.defaultPreset());
+                phase.equals("RUNNING") && allowed && inSpawn(p), record == null ? List.of() : record.presets(), record == null ? 0 : record.defaultPreset(),
+                takenWeapons(p.getUUID(), true), takenWeapons(p.getUUID(), false));
+        var status=new EquipmentSnapshot(snapshot.allowed(),false,snapshot.team(),snapshot.primary(),snapshot.secondary(),snapshot.preparationSeconds(),null,snapshot.spawnHint(),snapshot.presets(),snapshot.defaultPreset(),snapshot.takenPrimary(),snapshot.takenSecondary());
         if (!show && status.equals(LAST_EQUIPMENT.get(p.getUUID()))) return;
         LAST_EQUIPMENT.put(p.getUUID(),status);
         GungangNetwork.send(p, new GungangNetwork.Equipment(ServerFiles.GSON.toJson(snapshot)));

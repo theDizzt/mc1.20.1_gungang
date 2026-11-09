@@ -93,7 +93,10 @@ final class LoadoutScreen extends ArenaScreen {
             boolean worn=equipped.equals(weapon.id());
             var label=Component.empty();
             if(worn)label.append(Component.literal("● ").withStyle(net.minecraft.ChatFormatting.GOLD));
-            label.append(Component.literal(weapon.name()).withStyle(worn?net.minecraft.ChatFormatting.GOLD:net.minecraft.ChatFormatting.WHITE));
+            String holder=state.takenBy(primary,weapon.id());
+            if(holder!=null)label.append(Component.literal("선점 ").withStyle(net.minecraft.ChatFormatting.RED,net.minecraft.ChatFormatting.BOLD));
+            label.append(Component.literal(weapon.name()).withStyle(worn?net.minecraft.ChatFormatting.GOLD:holder!=null?net.minecraft.ChatFormatting.GRAY:net.minecraft.ChatFormatting.WHITE));
+            if(holder!=null)label.append(Component.literal(" · "+holder).withStyle(net.minecraft.ChatFormatting.RED));
             if(ReleaseDateText.upcoming(weapon.releaseDate()))label.append(Component.literal(" ["+ReleaseDateText.UPCOMING+"]").withStyle(net.minecraft.ChatFormatting.AQUA));
             // The category is drawn right-aligned over the reserved padding in render().
             listButton(label,x,85+(i-page)*27,list-6,24,true,
@@ -102,11 +105,15 @@ final class LoadoutScreen extends ArenaScreen {
         initActions(x,w,list);
     }
     private static final int VIEW_BUTTON=22;
+    /** Weapons a teammate already holds while duplicates are off. */
+    private static final int TAKEN=0xFFE05555;
     private void initActions(int x,int w,int list){
         button("랜덤 무기",x,height-48,list-6,22,state.allowed(),TacticalStyle.GOLD,()->{followRandom=true;LobbyClient.action("randomLoadout","","");});
         boolean worn=selected().id().equals(primary?state.primary():state.secondary());
         Runnable equip=()->LobbyClient.action(primary?"primary":"secondary",selected().id(),"");
-        if(worn)button("장착 중인 무기",detailX(),height-48,Math.max(40,w-list-82),22,state.allowed(),ACCENT,equip);
+        String holder=state.takenBy(primary,selected().id());
+        if(holder!=null&&!worn)colorButton("선점됨 · "+holder,detailX(),height-48,Math.max(40,w-list-82),22,false,TAKEN,equip);
+        else if(worn)button("장착 중인 무기",detailX(),height-48,Math.max(40,w-list-82),22,state.allowed(),ACCENT,equip);
         else colorButton("선택한 무기 장착",detailX(),height-48,Math.max(40,w-list-82),22,state.allowed(),ACCENT,equip);
         closeButton(x+w-64,height-48,64,22);
     }
@@ -195,6 +202,8 @@ final class LoadoutScreen extends ArenaScreen {
         TacticalStyle.band(g,dx,85,right,18,ACCENT,PANEL);
         int tagX=right-6;
         if(worn){String tag="장착 중";tagX-=font.width(tag)+8;badge(g,tag,tagX,89,ACCENT);tagX-=4;}
+        String holder=worn?null:state.takenBy(primary,weapon.id());
+        if(holder!=null){String tag="선점됨 · "+holder;tagX-=font.width(tag)+8;badge(g,tag,tagX,89,TAKEN);tagX-=4;}
         if(ReleaseDateText.upcoming(weapon.releaseDate())){String tag=ReleaseDateText.UPCOMING;tagX-=font.width(tag)+8;badge(g,tag,tagX,89,0xFF5FC8E0);tagX-=4;}
         var title=Component.literal(weapon.name()).withStyle(worn?net.minecraft.ChatFormatting.GOLD:net.minecraft.ChatFormatting.WHITE)
                 .append(Component.literal(" [id: "+weapon.id()+"]").withStyle(s->s.withColor(0xC8B060)));
@@ -367,6 +376,17 @@ final class LoadoutScreen extends ArenaScreen {
             g.fill(cx+1,y+tile-9,cx+tile-1,y+tile-1,0x99000000);
             String name=font.plainSubstrByWidth(weapon.name(),Math.max(1,(int)((tile-5)/nameScale)));
             small(g,name,cx+3,y+tile-7,nameScale,worn?TacticalStyle.GOLD:INK);
+            String holder=state.takenBy(primary,weapon.id());
+            if(holder!=null&&!worn){
+                // A teammate already holds it (duplicates off): dim the tile, red frame and a "선점됨" tag with the holder.
+                g.fill(cx+1,y+1,cx+tile-1,y+tile-9,0xA0101418);
+                if(!picked){g.fill(cx,y,cx+tile,y+1,TAKEN);g.fill(cx,y+tile-1,cx+tile,y+tile,TAKEN);g.fill(cx,y,cx+1,y+tile,TAKEN);g.fill(cx+tile-1,y,cx+tile,y+tile,TAKEN);}
+                int mid=y+(tile-9)/2;
+                g.fill(cx+1,mid-6,cx+tile-1,mid+7,0xCC5A1414);
+                g.drawCenteredString(font,"선점됨",cx+tile/2,mid-4,0xFFFF8A8A);
+                String who=font.plainSubstrByWidth(holder,Math.max(1,(int)((tile-6)/.6f)));
+                small(g,who,cx+tile/2f-font.width(who)*.3f,mid+8,.6f,0xFFFFC4C4);
+            }
             g.pose().popPose();
         }
         g.flush();g.disableScissor();

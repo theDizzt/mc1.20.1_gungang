@@ -26,7 +26,6 @@
     "MineOutlineMixin",
     "FontTextureMixin",
     "FontPixelSnapMixin",
-    "MaruFontWeightMixin",
     "EffectColorAccessor",
     "EntityWaterAccessor",
     "ConduitStateAccessor",

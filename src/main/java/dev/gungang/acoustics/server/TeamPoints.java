@@ -64,11 +64,22 @@ public final class TeamPoints {
             if(!body.isAlive()||body.isSpectator())continue;
             String team=body instanceof ServerPlayer p?LobbyManager.team(p.getUUID()):BotManager.side(body);
             if(!TeamPointState.validTeam(team))continue;
-            result.computeIfAbsent(team,t->new ArrayList<>()).add(new TeamPointState.Vital(body.getUUID(),half(body.getHealth()),half(body.getMaxHealth()),half(body.getAbsorptionAmount())));
+            String[] weapons=body instanceof ServerPlayer p?LobbyManager.weapons(p.getUUID()):BotManager.weapons(body);
+            if(weapons==null)weapons=new String[]{"",""};
+            result.computeIfAbsent(team,t->new ArrayList<>()).add(new TeamPointState.Vital(body.getUUID(),half(body.getHealth()),half(body.getMaxHealth()),half(body.getAbsorptionAmount()),
+                    weapons[0],weapons[1],held(body.getMainHandItem())));
         }
         return result;
     }
     private static float half(float value){return Math.round(value*2)/2f;}
+    /** Ammo and heat counters change every shot; without them the held item only resends when it really changes. */
+    private static final List<String> VOLATILE=List.of("GunCurrentAmmoCount","HasBulletInBarrel","GunGangCooldownTicks","GunGangCooldownUntil","GunGangCooldownEnd");
+    static String held(net.minecraft.world.item.ItemStack stack){
+        if(stack.isEmpty())return "";
+        var copy=stack.copyWithCount(1);
+        if(copy.getTag()!=null){for(var key:VOLATILE)copy.getTag().remove(key);if(copy.getTag().isEmpty())copy.setTag(null);}
+        return copy.save(new net.minecraft.nbt.CompoundTag()).toString();
+    }
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent event) {
         if(event.phase!=TickEvent.Phase.END)return;
         var server=event.getServer();refresh(server);sync(server);

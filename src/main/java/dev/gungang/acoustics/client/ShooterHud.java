@@ -77,9 +77,11 @@ public final class ShooterHud {
         float fraction = HudHealth.fraction(health, maximum);
         int color = fraction <= 0.25f ? 0xFFFF9292 : fraction <= 0.5f ? 0xFFFFDC98 : 0xFFF5F5F0;
         String value = HudHealth.label(health, maximum,player.getAbsorptionAmount());
-        String mode = mc.gameMode != null && mc.gameMode.getPlayerMode() != net.minecraft.world.level.GameType.SURVIVAL
+        // The combo counter takes the place of the game mode label (and keeps its space reserved while enabled).
+        boolean combo = ComboHud.enabled();
+        String mode = !combo && mc.gameMode != null && mc.gameMode.getPlayerMode() != net.minecraft.world.level.GameType.SURVIVAL
                 ? net.minecraft.network.chat.Component.translatable("gameMode." + mc.gameMode.getPlayerMode().getName()).getString() : "";
-        int sideSpace = mode.isEmpty() ? 8 : Math.round(mc.font.width(mode) * 1.25f) + 12;
+        int sideSpace = combo ? ComboHud.reservedWidth() : mode.isEmpty() ? 8 : Math.round(mc.font.width(mode) * 1.25f) + 12;
         int barWidth = Math.min(HEALTH_WIDTH, Math.max(4, screenWidth - sideSpace * 2));
         int barX = (screenWidth - barWidth) / 2;
         int barY = Math.max(0, screenHeight - HEALTH_HEIGHT - AcousticConfig.HUD_OFFSET_Y.get());
@@ -147,6 +149,10 @@ public final class ShooterHud {
         }
         if (player.getAbsorptionAmount() > 0) {
             HudText.draw(graphics, "+" + HudHealth.number(player.getAbsorptionAmount()), x + 3, y + 50, 56, 0xFFFFD36B);
+        }
+        if (combo) {
+            int comboX = barX + barWidth + 6;
+            ComboHud.render(graphics, comboX, barY, HEALTH_HEIGHT, screenWidth - comboX - 4);
         }
         if (!mode.isEmpty()) {
             int modeX = barX + barWidth + 6;
