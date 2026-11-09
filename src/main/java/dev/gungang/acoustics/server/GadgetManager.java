@@ -96,23 +96,30 @@ public final class GadgetManager {
     }
     public static BlockPos target(Player p,double range) {
         var hit=p.pick(range,0,false);
-        if(!(hit instanceof BlockHitResult block)||hit.getType()!=HitResult.Type.BLOCK||block.getDirection()!=Direction.UP)return null;
+        if(!(hit instanceof BlockHitResult block)||hit.getType()!=HitResult.Type.BLOCK)return null;
+        // At shallow aim angles a half slab is hit on its short side before the ray reaches its top.
+        // Resolve those hits to the same top surface instead of suppressing the placement preview entirely.
+        if(block.getDirection()!=Direction.UP&&!(block.getDirection().getAxis().isHorizontal()
+                &&p.level().getBlockState(block.getBlockPos()).getBlock() instanceof net.minecraft.world.level.block.SlabBlock))return null;
         return block.getBlockPos().above();
     }
     public static AABB bounds(BlockPos pos,boolean wall,boolean east) {
         double x=pos.getX()+.5,z=pos.getZ()+.5,y=pos.getY();
         return wall?new AABB(x-(east?.18:1.5),y,z-(east?1.5:.18),x+(east?.18:1.5),y+3,z+(east?1.5:.18)):new AABB(x-.35,y,z-.35,x+.35,y+.15,z+.35);
     }
+    public static AABB bounds(net.minecraft.world.level.Level level,BlockPos pos,boolean wall,boolean east) {
+        return bounds(pos,wall,east).move(0,PlacementSurface.height(level,pos)-pos.getY(),0);
+    }
     public static boolean valid(Player p,BlockPos pos,boolean wall,boolean east) {
         if(!p.isAlive()||p.isSpectator())return false;
         if(!wall&&(SafeZones.contains(p)||pos!=null&&SafeZones.contains(p.level(),pos.getX()+.5,pos.getY(),pos.getZ()+.5)))return false;
         if(pos==null||!p.level().getWorldBorder().isWithinBounds(pos)||pos.getY()<p.level().getMinBuildHeight()||pos.getY()+(wall?3:1)>p.level().getMaxBuildHeight())return false;
-        AABB area=bounds(pos,wall,east);
+        AABB area=bounds(p.level(),pos,wall,east);
         if(!p.level().noCollision(area)||!p.level().getEntities(p,area,e->!e.isSpectator()).isEmpty()||area.intersects(p.getBoundingBox()))return false;
         int width=wall?1:0;
         for(int offset=-width;offset<=width;offset++) {
             var support=pos.offset(east?0:offset,-1,east?offset:0);
-            if(!p.level().getBlockState(support).isFaceSturdy(p.level(),support,Direction.UP))return false;
+            if(!PlacementSurface.supports(p.level(),support.above(),area.minY))return false;
             // Deployables are entities, not block edits: arena adventure mode must allow them.
         }
         return true;
@@ -127,11 +134,11 @@ public final class GadgetManager {
         if(!(stack.getItem() instanceof GadgetItem item)||!item.kind.equals(kind)||!SecondaryRuntime.ready(p,stack)) {cancel(p);return;}
         boolean wall=kind.equals("barrier"),east=p.getDirection().getAxis()==Direction.Axis.X;
         if(kind.equals("turret")) {
-            var pos=target(p,Turrets.config.placementRange());
-            if(!Turrets.valid(p,pos)){p.displayClientMessage(Component.literal("터렛은 평평한 지면의 빈 2×2×2 공간에만 설치할 수 있습니다."),true);return;}
+            var pos=Turrets.target(p,Turrets.config.placementRange());
+            if(!Turrets.valid(p,pos)){p.displayClientMessage(Component.literal("터렛은 블록·반블록 윗면에 설치할 수 있습니다. 위쪽 2×2×2 공간의 블록·물·다른 개체와 안전지대 여부를 확인하세요."),true);return;}
             if(Turrets.owned(p.getUUID())!=null){p.displayClientMessage(Component.literal("터렛은 최대 1개만 설치할 수 있습니다."),true);return;}
             var turret=GadgetItems.TURRET_ENTITY.get().create(p.serverLevel());if(turret==null)return;
-            turret.setPos(pos.getX()+1,pos.getY(),pos.getZ()+1);turret.setYRot(p.getYRot());turret.setup(p);
+            turret.setPos(pos.getX()+1,PlacementSurface.height(p.level(),pos),pos.getZ()+1);turret.setYRot(p.getYRot());turret.setup(p);
             if(!Turrets.claim(turret)){turret.discard();return;}
             if(p.serverLevel().addFreshEntity(turret)){turret.deployment(stack);cancel(p);}
             else turret.discard();
@@ -141,7 +148,7 @@ public final class GadgetManager {
             var pos=target(p,ExtraGadgetConfig.orbital.range());
             if(!valid(p,pos,false,false)) {p.displayClientMessage(Component.literal("이 위치에는 폭격을 지정할 수 없습니다."),true);return;}
             var strike=GadgetItems.ORDNANCE.get().create(p.serverLevel());if(strike==null)return;
-            strike.setPos(pos.getX()+.5,pos.getY(),pos.getZ()+.5);strike.setup(p,true);
+            strike.setPos(pos.getX()+.5,PlacementSurface.height(p.level(),pos),pos.getZ()+.5);strike.setup(p,true);
             if(p.serverLevel().addFreshEntity(strike)) {
                 p.serverLevel().playSound(null,pos,net.minecraft.sounds.SoundEvents.BEACON_ACTIVATE,net.minecraft.sounds.SoundSource.PLAYERS,3,1.2f);
                 SecondaryRuntime.commit(p,stack);cancel(p);
@@ -153,7 +160,7 @@ public final class GadgetManager {
             if(!valid(p,pos,false,false)) {p.displayClientMessage(Component.literal("이 위치에는 설치할 수 없습니다."),true);return;}
             if(BearTraps.count(p.getUUID())>=GadgetConfig.bearTrap.maxPlaced()) {p.displayClientMessage(Component.literal("설치 가능한 베어트랩 개수를 초과했습니다."),true);return;}
             var trap=GadgetItems.BEAR_TRAP_ENTITY.get().create(p.serverLevel());if(trap==null)return;
-            trap.setPos(pos.getX()+.5,pos.getY(),pos.getZ()+.5);trap.setYRot(p.getDirection().toYRot());trap.setup(p);
+            trap.setPos(pos.getX()+.5,PlacementSurface.height(p.level(),pos),pos.getZ()+.5);trap.setYRot(p.getDirection().toYRot());trap.setup(p);
             BearTraps.placed(trap);
             if(p.serverLevel().addFreshEntity(trap)) {
                 p.serverLevel().playSound(null,pos,net.minecraft.sounds.SoundEvents.IRON_TRAPDOOR_OPEN,net.minecraft.sounds.SoundSource.PLAYERS,.9f,.7f);
@@ -167,7 +174,7 @@ public final class GadgetManager {
         long count=DeployableLedger.get(p.server).count(p.getUUID(),wall);
         if(count>=(wall?GadgetConfig.barrier.maxPlaced():GadgetConfig.mine.maxPlaced())) {p.displayClientMessage(Component.literal(wall?"설치 가능한 방벽 개수를 초과했습니다.":"설치 가능한 지뢰 개수를 초과했습니다."),true);return;}
         var entity=GadgetItems.DEPLOYABLE.get().create(p.serverLevel());if(entity==null)return;
-        entity.setPos(pos.getX()+.5,pos.getY(),pos.getZ()+.5);entity.setup(p,wall,east);
+        entity.setPos(pos.getX()+.5,PlacementSurface.height(p.level(),pos),pos.getZ()+.5);entity.setup(p,wall,east);
         if(p.serverLevel().addFreshEntity(entity)) {track(entity);SecondaryRuntime.commit(p,stack);cancel(p);}else entity.discard();
     }
     public static DeployableEntity aimedMine(Player p) {

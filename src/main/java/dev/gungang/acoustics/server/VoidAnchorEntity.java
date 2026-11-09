@@ -48,7 +48,7 @@ public final class VoidAnchorEntity extends LivingEntity {
             }
             var hit=level.clip(new ClipContext(position(),position().add(step),ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,this));
             if(hit.getType()==HitResult.Type.BLOCK) {
-                setPos(hit.getLocation().add(Vec3.atLowerCornerOf(hit.getDirection().getNormal()).scale(.03)));
+                setPos(PlacementSurface.anchorImpact(level,hit));
                 entityData.set(PLANTED,true);expires=level.getGameTime()+120;setXRot(0);xRotO=0;
                 level.playSound(null,blockPosition(),net.minecraft.sounds.SoundEvents.TRIDENT_HIT_GROUND,net.minecraft.sounds.SoundSource.PLAYERS,1,.7f);
                 acquire(level);
@@ -88,13 +88,29 @@ public final class VoidAnchorEntity extends LivingEntity {
         return team.isEmpty()||e.getTeam()==null||!team.equals(e.getTeam().getName());
     }
     private void acquire(ServerLevel level) {
-        var target=level.getEntitiesOfClass(LivingEntity.class,getBoundingBox().inflate(10),e->enemy(e)&&e.distanceToSqr(this)<=100&&!e.isPassenger()&&!e.getPersistentData().hasUUID(TETHER))
-                .stream().min(Comparator.comparingDouble(e->e.distanceToSqr(this))).orElse(null);
-        if(target==null) {explode(1);return;}
+        var nearby=level.getEntitiesOfClass(LivingEntity.class,getBoundingBox().inflate(10),e->enemy(e)&&targetDistance(e)<=100);
+        // An enemy that cannot currently be pulled is not the same as an empty area.
+        if(nearby.isEmpty()) {explode(1);return;}
+        var target=nearby.stream().filter(e->!e.isPassenger()&&!tethered(level,e))
+                .min(Comparator.comparingDouble(this::targetDistance)).orElse(null);
+        if(target==null)return;
         if(target instanceof ServerPlayer p) {AirAssault.clear(p);SurvivalGadgets.stopJet(p);}
         victim=target.getUUID();pulled=target;victimGravity=target.isNoGravity();
         target.getPersistentData().putUUID(TETHER,getUUID());
 
+    }
+    private double targetDistance(LivingEntity target) {
+        // Measure to the body, not just its feet: slabs/steps must not push a nearby target outside the radius.
+        Vec3 center=getBoundingBox().getCenter();var box=target.getBoundingBox();
+        return center.distanceToSqr(Math.max(box.minX,Math.min(box.maxX,center.x)),
+                Math.max(box.minY,Math.min(box.maxY,center.y)),Math.max(box.minZ,Math.min(box.maxZ,center.z)));
+    }
+    private boolean tethered(ServerLevel level,LivingEntity target) {
+        var tag=target.getPersistentData();if(!tag.hasUUID(TETHER))return false;
+        var entity=level.getEntity(tag.getUUID(TETHER));
+        if(entity instanceof VoidAnchorEntity anchor&&anchor.isAlive()&&!anchor.isRemoved()
+                &&target.getUUID().equals(anchor.victim)&&level.getGameTime()<anchor.expires)return true;
+        tag.remove(TETHER);return false;
     }
     private void release() {
         LivingEntity target=pulled;

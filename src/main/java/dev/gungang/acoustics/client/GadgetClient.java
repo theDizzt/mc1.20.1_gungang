@@ -16,6 +16,8 @@ public final class GadgetClient {
     private static String preview="";
     private static double range=5;
     private static boolean armed;
+    private static int holdTicks;
+    private static boolean holdSent;
     private static String expected="";
     private static int previewSlot=-1;
     /** Only an H macro preview may keep going once the item is back in the offhand; a main-hand one ends when the item leaves that hand. */
@@ -32,7 +34,7 @@ public final class GadgetClient {
     }
     public static boolean placing() {return !preview.isEmpty()&&valid(preview);}
     public static void cancel() {
-        preview="";expected="";armed=false;
+        preview="";expected="";armed=false;holdTicks=0;
         if(Minecraft.getInstance().getConnection()!=null)LobbyClient.action("cancelplace","","");
     }
     @SubscribeEvent public static void movement(MovementInputUpdateEvent e) {
@@ -49,6 +51,16 @@ public final class GadgetClient {
     @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut e) {preview="";expected="";previewSlot=-1;SurvivalGadgets.clearClient();}
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent e) {
         var mc=Minecraft.getInstance();
+        if(e.phase==TickEvent.Phase.END) {
+            if(!OffhandMacro.placementDown()) {holdTicks=0;holdSent=false;}
+            else if(placing()&&mc.isWindowActive()&&!mc.isPaused()&&!mc.options.keyAttack.isDown()&&!holdSent) {
+                var pos=preview.equals("turret")?Turrets.target(mc.player,range):GadgetManager.target(mc.player,range);
+                boolean allowed=preview.equals("turret")?Turrets.valid(mc.player,pos)
+                        :GadgetManager.valid(mc.player,pos,preview.equals("barrier"),mc.player.getDirection().getAxis()==Direction.Axis.X);
+                if(!allowed)holdTicks=0;
+                else if(++holdTicks>=10) {holdSent=true;LobbyClient.action("place","","");}
+            } else holdTicks=0;
+        }
         if(!expected.isEmpty()&&!valid(expected))cancel();
         // A gun in the main hand can swallow the attack click before it reaches click() below.
         else if(placing()&&mc.options.keyAttack.isDown())cancel();
@@ -66,20 +78,20 @@ public final class GadgetClient {
     }
     @SubscribeEvent public static void hint(RenderGuiEvent.Post e) {
         if(preview.isEmpty())return;var mc=Minecraft.getInstance();if(mc.screen!=null||mc.options.hideGui||!HudVisibility.enabled())return;
-        String text="우클릭 설치 · 좌클릭/보조 손 키 취소";var g=e.getGuiGraphics();
+        String text="G 길게 눌러 설치 · 우클릭 설치 · 좌클릭/H 취소";var g=e.getGuiGraphics();
         g.drawString(mc.font,text,(g.guiWidth()-mc.font.width(text))/2,g.guiHeight()/2+25,0xFFFFFFFF,true);
     }
     @SubscribeEvent public static void world(RenderLevelStageEvent e) {
         if(preview.isEmpty()||e.getStage()!=RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS)return;
         var mc=Minecraft.getInstance();if(mc.player==null)return;
-        var pos=GadgetManager.target(mc.player,range);if(pos==null)return;
+        var pos=preview.equals("turret")?Turrets.target(mc.player,range):GadgetManager.target(mc.player,range);if(pos==null)return;
         boolean wall=preview.equals("barrier"),east=mc.player.getDirection().getAxis()==Direction.Axis.X;
         boolean turret=preview.equals("turret");
         boolean valid=turret?Turrets.valid(mc.player,pos):GadgetManager.valid(mc.player,pos,wall,east);
         var pose=e.getPoseStack();var camera=e.getCamera().getPosition();
         pose.pushPose();pose.translate(-camera.x,-camera.y,-camera.z);
         var buffers=mc.renderBuffers().bufferSource();
-        LevelRenderer.renderLineBox(pose,buffers.getBuffer(RenderType.lines()),turret?Turrets.bounds(pos):GadgetManager.bounds(pos,wall,east),valid?.25f:1,valid?1:.2f,.3f,1);
+        LevelRenderer.renderLineBox(pose,buffers.getBuffer(RenderType.lines()),turret?Turrets.bounds(mc.level,pos):GadgetManager.bounds(mc.level,pos,wall,east),valid?.25f:1,valid?1:.2f,.3f,1);
         buffers.endBatch(RenderType.lines());pose.popPose();
     }
     private GadgetClient() { }
