@@ -154,171 +154,88 @@ public final class PropAbilities {
         String label(){return title+" ("+subtitle+")";}
     }
     static final List<Song> SONGS=List.of(
-            // Generated from docs/PROP-155-SONGS.md: the original openings, then game arrangements (variations,
-            // bridges and a reprise) that are not note-for-note transcriptions of the scores.
+            // Generated from docs/PROP-155-SONGS.md: passages taken from the original scores, without invented
+            // variations or bridges, so lengths differ by song.
             new Song("Mozart, Piano Sonata No.16 In C Major, K.545","소나타 파실레",notes("C5 E5 G5 B4 C5 D5 C5 A5 G5 C6 G5 F5 E5 F5 E5 A4 "
                     +"B4 C5 D5 E5 F5 G5 A5 G5 F5 E5 D5 C5 B4 A4 G4 A4 "
                     +"B4 C5 D5 E5 F5 G5 F5 E5 D5 C5 B4 A4 G4 F4 G4 A4 "
                     +"B4 C5 D5 E5 F5 E5 D5 C5 B4 A4 G4 F4 E4 F4 G4 A4 "
-                    +"B4 C5 D5 E5 D5 C5 B4 A4 G4 F4 E4 C5 E5 G5 C6 B5 "
-                    +"A5 G5 F5 E5 D5 C5 B4 A4 G4 F4 E4 F4 G4 A4 B4 C5 "
-                    +"D5 E5 F5 G5 A5 G5 F5 E5 D5 C5 G4 A4 B4 C5 E5 D5 "
-                    +"C5 B4 A4 C5 E5 G5 B4 C5 D5 C5 A5 G5 C6 G5 F5 E5 "
-                    +"F5 E5 A4 B4 C5 D5 E5 F5 G5 A5 G5 E5 D5 C5 B4 C5 "
-                    +"D5 E5 C5 G4 C5")),
+                    +"B4 C5 D5 E5 D5 C5 B4 A4 G4 F4 E4")),
             new Song("Beethoven, Bagatelle No.25 In A Minor, WoO 59","엘리제를 위하여",notes("E5 D#5 E5 D#5 E5 B4 D5 C5 A4 C4 E4 A4 B4 E4 G#4 B4 "
                     +"C5 E4 E5 D#5 E5 D#5 E5 B4 D5 C5 A4 C4 E4 A4 B4 E4 "
                     +"C5 B4 A4 B4 C5 D5 E5 G4 F5 E5 D5 F4 E5 D5 C5 E4 "
-                    +"D5 C5 B4 E4 E5 E5 E6 D#5 E5 D#5 E5 D#5 E5 D#5 E5 D#5 "
-                    +"E5 B4 D5 C5 A4 C4 E4 A4 B4 E4 C5 B4 A4 A4 E5 A5 "
-                    +"B5 C6 B5 A5 G5 F5 E5 D5 C5 B4 A4 G#4 B4 E5 D#5 E5 "
-                    +"F5 E5 D5 C5 B4 C5 D5 E5 F5 E5 D5 C5 B4 A4 E4 A4 "
-                    +"C5 B4 A4 E5 D#5 E5 E5 D#5 E5 D#5 E5 B4 D5 C5 A4 C4 "
-                    +"E4 A4 B4 E4 G#4 B4 C5 E4 E5 D#5 E5 D#5 E5 B4 E5 D#5 "
-                    +"E5 B4 D5 C5 A4 C4 E4 A4")),
-            new Song("Pachelbel, Canon In D Major, P.37","파헬벨 카논",notes("D5 C#5 D5 D4 C#4 A4 E4 F#4 D4 D5 C#5 B4 C#5 F#5 A5 B5 "
-                    +"G5 F#5 E5 G5 F#5 E5 D5 C#5 B4 A4 G4 F#4 E4 G4 F#4 E4 "
-                    +"D4 E4 F#4 G4 A4 E4 A4 G4 F#4 B4 A4 G4 A4 G4 F#4 E4 "
-                    +"D4 B3 B4 C#5 D5 C#5 B4 A4 G4 F#4 E4 B4 A4 B4 A4 G4 "
-                    +"D5 C#5 B4 A4 G4 F#4 G4 B4 F#5 A4 D5 F#5 B5 D6 B5 C#6 "
-                    +"F#5 E5 D5 C#5 B4 A4 B4 C#5 D5 C#5 B4 A4 G4 F#4 E4 D4 "
-                    +"F#4 A4 D5 A4 F#4 E4 D4 D5 C#5 D5 D4 C#4 A4 E4 F#4 D4 "
-                    +"D5 C#5 B4 C#5 F#5 A5 B5 G5 F#5 E5 G5 F#5 E5 D5 C#5 A4 "
-                    +"F#4 D4 F#4 A4 D5 C#5 D5")),
+                    +"D5 C5 B4 E4 E5 E6 D#5 E5 D#5 E5 D#5 E5 B4 D5 C5 A4 "
+                    +"C4 E4 A4 B4 E4 C5 B4 A4")),
+            new Song("Pachelbel, Canon In D Major, P.37","파헬벨 카논",notes("D5 C#5 B4 A4 G4 F#4 G4 B4 F#4 A3 D4 F#4 B4 D5 B4 C#5 "
+                    +"F#5 E5 D5 C#5 B4 A4 B4 C#5 C#5 D5 C#5 D5 D4 C#4 A4 E4 "
+                    +"F#4 D4 D5 C#5 B4 C#5 F#4 A4 B4 G4 F#4 E4 G4 F#4 E4 D4 "
+                    +"C#5 B4 A4 G4 F#4 E4 G4 F#4 E4 D4")),
             new Song("Schubert, Die Forelle, D.550","송어",notes("A4 D5 D5 F#5 F#5 D5 A4 A4 A4 A4 E5 D5 C#5 B4 A4 A4 "
                     +"D5 D5 F#5 F#5 D5 A4 D5 C#5 B4 C#5 D5 G#4 A4 A4 C#5 C#5 "
                     +"D5 C#5 B4 C#5 D5 A4 D5 C#5 C#5 C#5 G5 E5 C#5 D5 D5 B4 "
-                    +"B4 B4 D5 D5 A4 A4 A4 A4 E5 C#5 D5 D5 D5 D5 F#5 F#5 "
-                    +"D5 A4 A4 A4 A4 E5 D5 C#5 B4 A4 D5 D5 F#5 F#5 D5 A4 "
-                    +"D5 C#5 B4 C#5 D5 G#4 A4 A4 B4 B4 B4 D5 D5 A4 A4 A4 "
-                    +"A4 E5 C#5 D5 A4 D5 D5 F#5 F#5 D5 A4 A4 A4 A4 E5 D5 "
-                    +"C#5 B4 A4 A4 D5 D5 F#5 F#5 D5 A4 D5 C#5 A4 D5 D5 F#5 "
-                    +"D5 A4 D5")),
+                    +"B4 B4 D5 D5 A4 A4 A4 A4 E5 C#5 D5 D5 C#5 B4 B4 B4 "
+                    +"D5 C#5 E5 D5 A4 A4 A4 A4 E5 C#5 D5")),
             new Song("Chopin, Etude In G Flat Major, Op.25 No.9","나비",notes("Bb4 Bb5 Cb6 C6 Db5 Db6 Eb6 Db6 Gb4 Gb5 Ab5 A5 Bb4 Bb5 Cb6 Bb5 "
                     +"Eb4 Eb5 E5 F5 Gb4 Gb5 F5 Gb5 Ab4 Ab5 Bb5 Ab5 Ab4 Ab5 Bb5 Cb6 "
-                    +"Bb4 Gb5 Bb5 Db6 Cb6 Bb5 Ab5 Gb5 F5 Gb5 Ab5 Bb5 Cb6 Db6 Eb6 Db6 "
-                    +"Cb6 Bb5 Ab5 Gb5 Eb5 Gb5 Bb5 Db6 F6 Eb6 Db6 Cb6 Bb5 Ab5 Gb5 F5 "
-                    +"Eb5 F5 Gb5 Ab5 Bb5 Cb6 Db6 Eb6 Bb4 Bb5 Cb6 C6 Db5 Db6 Eb6 Db6 "
-                    +"Gb4 Gb5 Ab5 A5 Bb4 Bb5 Cb6 Bb5 Eb4 Eb5 E5 F5 Gb4 Gb5 F5 Gb5 "
-                    +"Ab4 Ab5 Bb5 Ab5 Ab4 Ab5 Bb5 Cb6 Ab5 Gb5 F5 Eb5 Db5 Bb4 Gb4 Bb4")),
-            new Song("Beethoven, Piano Sonata No.14 In C Sharp Minor, Op.27 No.2","월광",notes("C#3 G#3 C#4 E4 G#3 C#4 E4 G#3 C#4 E4 G#3 C#4 E4 B2 G#3 C#4 "
-                    +"E4 G#3 C#4 E4 A2 A3 C#4 E4 F#2 A3 D4 F#4 G#2 G#3 C4 F#4 "
-                    +"G#3 C#4 E4 G#3 C#4 D#4 F#3 C4 D#4 C#3 E3 G#3 C#4 G#4 G#4 G#4 "
-                    +"G#4 G#4 G#4 A4 G#4 F#4 B4 E4 G#4 G#4 G#4 G#4 G#4 G#4 A4 G#4 "
-                    +"F#4 B4 E4 C#3 G#3 C#4 E4 C#3 G#3 C#4 E4 B2 G#3 D#4 F#4 B2 "
-                    +"G#3 D#4 F#4 A2 E3 C#4 E4 A2 E3 C#4 E4 G#2 D#3 C4 F#4 G#2 "
-                    +"D#3 C4 F#4 C#3 G#3 C#4 E4 G#3 C#4 E4 G#4 C#3 G#3 C#4 E4 G#3 "
-                    +"C#4 E4 G#3 C#4 E4 G#3 C#4 E4 B2 G#3 C#4 E4 G#3 C#4 E4 A2 "
-                    +"A3 C#4 E4 C#4 G#3 C#4 E4 G#4 E4 C#4")),
+                    +"Gb5 Bb4 Cb6 C6 Db5 Db6 Eb6 Db6 Eb5 Gb4 Ab5 A5 Bb4 Bb5 Cb6 Bb5 "
+                    +"Cb5 Eb4 E5 F5 Gb4 Gb5 F5 Gb5 Ab4 Ab5 Bb5 Ab5 Gb4 Gb5 F5 Gb5")),
+            new Song("Beethoven, Piano Sonata No.14 In C Sharp Minor, Op.27 No.2","월광",notes("G#3 C#4 E4 G#3 C#4 E4 G#3 C#4 E4 G#3 C#4 E4 G#3 C#4 E4 G#3 "
+                    +"C#4 E4 G#3 C#4 E4 G#3 C#4 E4 B3 C#4 E4 B3 C#4 E4 B3 C#4 "
+                    +"E4 B3 C#4 E4 A3 C#4 E4 A3 C#4 E4 A3 C#4 E4 A3 C#4 E4 "
+                    +"F#3 A3 D4 F#3 A3 D4 F#3 A3 D4 F#3 A3 D4 G#3 C4 F#4 G#3 "
+                    +"C4 F#4 G#3 C4 F#4 G#3 C4 F#4")),
             new Song("Chopin, Etude In G Flat Major, Op.10 No.5","흑건",notes("Gb6 Bb6 Db6 Gb6 Eb6 Gb6 Db6 Gb6 Bb5 Db6 Gb5 Bb5 Gb5 Bb5 Db5 Gb5 "
                     +"Eb5 Gb5 Db5 Gb5 Bb4 Db5 Gb4 Bb4 Db4 Db5 Ab4 Db5 Ab4 Ab5 Ab4 Ab5 "
-                    +"Eb5 Ab5 Eb5 Eb6 Eb5 Eb6 Ab5 Eb6 Ab5 Ab6 Ab5 Ab6 Db6 Ab6 Db6 Db7 "
-                    +"Gb5 Bb5 Db6 Eb6 Gb6 Eb6 Db6 Bb5 Ab5 Gb5 Eb5 Db5 Gb5 Bb5 Db6 Gb6 "
-                    +"Bb6 Gb6 Eb6 Db6 Bb5 Gb5 Eb5 Db5 Gb5 Ab5 Bb5 Db6 Eb6 Gb6 Ab6 Gb6 "
-                    +"F6 Eb6 Db6 Cb6 Bb5 Ab5 Gb5 Eb5 Gb6 Bb6 Db6 Gb6 Eb6 Gb6 Db6 Gb6 "
-                    +"Bb5 Db6 Gb5 Bb5 Gb5 Bb5 Db5 Gb5 Eb5 Gb5 Db5 Gb5 Bb4 Db5 Gb4 Bb4 "
-                    +"Db4 Db5 Ab4 Db5 Ab4 Ab5 Db6 Bb5 Gb5 Eb5 Db5 Bb4 Gb4")),
+                    +"Eb5 Ab5 Eb5 Eb6 Eb5 Eb6 Ab5 Eb6 Ab5 Ab6 Ab5 Ab6 Db6 Ab6 Db6 Db7")),
             new Song("Mozart, 12 Variations On \"Ah, Vous Dirai-Je, Maman\", K.265","작은 별",notes("C5 C5 G5 G5 A5 A5 G5 F5 F5 E5 E5 D5 D5 C5 G5 G5 "
                     +"F5 F5 E5 E5 D5 G5 G5 F5 F5 E5 E5 D5 C5 C5 G5 G5 "
-                    +"A5 A5 G5 F5 F5 E5 E5 D5 D5 C5 C5 D5 E5 F5 G5 G5 "
-                    +"G5 A5 G5 F5 E5 D5 C5 G4 C5 E5 G5 A5 G5 F5 E5 D5 "
-                    +"C5 C5 E5 G5 C6 B5 A5 G5 F5 E5 D5 C5 D5 E5 F5 G5 "
-                    +"E5 D5 C5 C5 C5 G5 G5 A5 A5 G5 F5 F5 E5 E5 D5 D5 "
-                    +"C5 G5 G5 F5 F5 E5 E5 D5 G5 G5 F5 F5 E5 E5 D5 C5 "
-                    +"C5 G5 F5 E5 D5 C5 C5")),
+                    +"A5 A5 G5 F5 F5 E5 E5 D5 D5 C5")),
             new Song("Brahms, Hungarian Dance No.5, WoO 1","헝가리 무곡 제5번",notes("E5 D5 E5 D5 F5 E5 B4 C5 A4 E5 D5 E5 F5 A5 G5 E5 "
                     +"F5 D5 F5 E5 F5 E5 E5 D5 B4 C5 B4 F5 E5 F5 E5 E5 "
-                    +"B4 B4 D5 C5 A4 A4 C5 E5 A5 G5 F5 E5 D5 C5 B4 A4 "
-                    +"B4 C5 D5 E5 F5 E5 D5 C5 B4 A4 E5 F5 E5 D5 E5 F5 "
-                    +"A5 G5 F5 E5 D5 C5 B4 A4 C5 D5 E5 F5 E5 E5 D5 E5 "
-                    +"D5 F5 E5 B4 C5 A4 E5 D5 E5 F5 A5 G5 E5 F5 D5 F5 "
-                    +"E5 F5 E5 E5 D5 B4 C5 B4 F5 E5 F5 E5 D5 C5 B4 A4 "
-                    +"E5 A4")),
+                    +"B4 B4 D5 C5 A4")),
             new Song("Mozart, Piano Sonata No.11 In A Major, K.331","터키 행진곡",notes("B4 A4 G#4 A4 C5 D5 C5 B4 C5 E5 F5 E5 D#5 E5 B5 A5 "
-                    +"G#5 A5 B5 A5 G#5 A5 C6 A5 C6 B5 A5 G5 A5 B5 A5 G5 "
-                    +"A5 B5 A5 G5 F#5 E5 E5 F5 G5 G5 A5 G5 F5 E5 D5 E5 "
-                    +"F5 A5 G#5 A5 B5 C6 B5 A5 G#5 A5 E5 A5 C6 B5 A5 G#5 "
-                    +"E5 F5 E5 D5 C5 B4 A4 B4 C5 D5 E5 E5 F5 E5 D#5 E5 "
-                    +"B4 C5 D5 E5 F5 E5 D5 C5 B4 A4 B4 A4 G#4 A4 C5 D5 "
-                    +"C5 B4 C5 E5 F5 E5 D#5 E5 B5 A5 G#5 A5 B5 A5 G#5 A5 "
-                    +"C6 A5 C6 B5 A5 G5 A5 B5 C5 B4 A4 G#4 A4 E5 A4")),
+                    +"G#5 A5 B5 A5 G#5 A5 C6 A5 C6 B5 A5 G#5 A5 B5 A5 G#5 "
+                    +"A5 C6 A5 C6 B5 A5 G#5 F#5 E5 B4 A4 G#4 A4 C5 D5 C5 "
+                    +"B4 C5 E5 F5 E5 D#5 E5 B5 A5 G#5 A5 B5 A5 G#5 A5 C6 "
+                    +"A5 C6 B5 A5 G#5 A5 E5")),
             new Song("Necke, Csikos Post, Op.222","크시코스의 우편마차",notes("B5 F#5 B5 B5 G5 B5 B5 D#5 F#5 B5 E6 E5 F#5 G5 B5 C6 "
-                    +"E6 B5 A5 E5 F#5 G5 E5 G5 B5 F#5 D#5 F#5 B5 G5 F#5 E5 "
-                    +"E5 G5 B5 E6 D6 C6 B5 A5 G5 F#5 E5 D#5 E5 F#5 G5 B5 "
-                    +"B5 A5 G5 F#5 E5 F#5 G5 A5 B5 C6 B5 A5 G5 F#5 E5 D#5 "
-                    +"E5 G5 B5 E6 B5 G5 F#5 E5 B5 F#5 B5 B5 G5 B5 B5 D#5 "
-                    +"F#5 B5 E6 E5 F#5 G5 B5 C6 E6 B5 A5 E5 F#5 G5 E5 G5 "
-                    +"B5 F#5 D#5 F#5 B5 G5 F#5 E5 B5 A5 G5 F#5 E5 B4 E5")),
+                    +"E6 B5 A5 E5 F#5 G5 E5 G5 B5 F#5 D#5 F#5 B5 G5 F#5 E5")),
             new Song("Dvorak, Humoresque No.7, Op.101","유모레스크",notes("C4 D4 C4 D4 E4 G4 A4 G4 A4 B4 D5 C5 B4 D5 C5 A4 "
-                    +"G4 G4 C5 D4 G4 C4 C4 D4 C4 D4 E4 G4 A4 G4 F4 E4 "
-                    +"D4 C4 E4 G4 C5 B4 A4 G4 F4 E4 D4 C4 G4 G4 C5 E5 "
-                    +"D5 C5 B4 A4 G4 F4 E4 D4 C4 E4 G4 A4 G4 E4 C4 D4 "
-                    +"C4 D4 E4 G4 A4 G4 A4 B4 D5 C5 B4 D5 C5 A4 G4 G4 "
-                    +"C5 D4 G4 C4 C4 D4 C4 D4 E4 G4 A4 G4 A4 B4 G4 F4 "
-                    +"E4 D4 C4 G4 C4")),
+                    +"G4 G4 C5 D4 G4 C4")),
             new Song("Russian Folk Song, Korobeiniki","방물장수들",notes("E5 B4 C5 D5 C5 B4 A4 A4 C5 E5 D5 C5 B4 C5 D5 E5 "
                     +"C5 A4 A4 D5 F5 A5 G5 F5 E5 C5 E5 D5 C5 B4 B4 C5 "
-                    +"D5 E5 C5 A4 A4 A4 B4 C5 D5 E5 E5 D5 C5 B4 C5 D5 "
-                    +"E5 C5 A4 B4 C5 D5 F5 A5 G5 F5 E5 D5 C5 B4 A4 G#4 "
-                    +"A4 B4 C5 D5 E5 C5 A4 A4 C5 E5 A5 G5 F5 E5 B4 C5 "
-                    +"D5 C5 B4 A4 A4 C5 E5 D5 C5 B4 C5 D5 E5 C5 A4 A4 "
-                    +"D5 F5 A5 G5 F5 E5 C5 E5 D5 C5 B4 E5 D5 C5 B4 A4 "
-                    +"E5 A4")),
-            new Song("J. Strauss I, Radetzky March, Op.228","라데츠키 행진곡",notes("D5 D5 D5 D5 D5 D5 F#5 E5 D5 C#5 B4 A#4 B4 C#5 D5 E5 "
-                    +"A4 F#5 F5 F#5 F#5 F5 F#5 F#5 F5 F#5 E5 D5 F#5 F5 F#5 F#5 "
-                    +"F5 F#5 D5 F#5 A5 A5 F#5 E5 D5 C#5 D5 E5 F#5 A5 F#5 E5 "
-                    +"D5 A4 D5 D5 D5 F#5 E5 D5 C#5 B4 A#4 B4 C#5 D5 E5 F#5 "
-                    +"G5 A5 F#5 E5 D5 C#5 D5 A4 D5 D5 D5 D5 D5 D5 D5 F#5 "
-                    +"E5 D5 C#5 B4 A#4 B4 C#5 D5 E5 A4 F#5 F5 F#5 F#5 F5 F#5 "
-                    +"F#5 F5 F#5 E5 D5 F#5 F5 F#5 F#5 A5 F#5 E5 D5 C#5 D5")),
-            new Song("Offenbach, Orpheus In The Underworld: Infernal Galop","캉캉",notes("G4 D4 D4 A4 C5 B4 A4 D5 D5 D5 E5 B4 C5 A4 A4 A4 "
-                    +"C5 B4 A4 G4 G5 F#5 E5 D5 C5 B4 A4 G4 D4 D4 A4 C5 "
-                    +"B4 A4 D5 G4 B4 D5 G5 F#5 E5 D5 C5 B4 A4 G4 A4 B4 "
-                    +"C5 D5 E5 F#5 G5 A5 G5 F#5 E5 D5 C5 B4 A4 G4 D4 G4 "
-                    +"B4 D5 G5 B5 A5 G5 F#5 E5 D5 C5 B4 G4 D4 D4 A4 C5 "
-                    +"B4 A4 D5 D5 D5 E5 B4 C5 A4 A4 A4 C5 B4 A4 G4 G5 "
-                    +"F#5 E5 D5 C5 B4 A4 G4 D4 D4 G5 F#5 E5 D5 C5 B4 A4 "
-                    +"G4")),
+                    +"D5 E5 C5 A4 A4")),
+            new Song("J. Strauss I, Radetzky March, Op.228","라데츠키 행진곡",notes("F#5 E#5 F#5 F#5 E#5 F#5 F#5 E#5 F#5 E5 D5 F#5 E#5 F#5 F#5 E#5 "
+                    +"F#5 E#5 F#5 F#5 E#5 F#5 B5 A5 A5 F#5 G5 B5 A5 A5 E5 F#5 "
+                    +"B5 A5 A5 F#5 E5 C#6 D6 B5 C#6 A5 G#5 A5 B5 A5 G5 F#5 "
+                    +"E#5 F#5 F#5 E#5 F#5 E5 D5 F#5 E#5 F#5 F#5 E#5 F#5 E#5 F#5 B5 "
+                    +"A5 A5 F#5 G#5 F#5 E5 E5 D5 C#6 B5 A5 G5 F#5 E5 D5 D5 "
+                    +"D5")),
+            new Song("Offenbach, Orpheus In The Underworld: Infernal Galop","캉캉",notes("C5 D5 F5 E5 D5 G5 G5 G5 A5 E5 F5 D5 D5 D5 F5 E5 "
+                    +"D5 C5 C6 B5 A5 G5 F5 E5 D5 C5 D5 F5 E5 D5 G5 G5 "
+                    +"G5 A5 E5 F5 D5 D5 D5 F5 E5 D5 C5 G5 D5 E5 C5")),
             new Song("Vivaldi, Violin Concerto In G Minor, Op.8 No.2, RV 315","사계 중 여름 3악장",notes("D5 C5 Bb4 A4 G4 F#4 E4 D4 C4 Bb3 A3 G3 G3 G3 G3 G3 "
                     +"G3 G3 G3 G3 G3 G3 G3 G3 G5 F5 Eb5 D5 C5 Bb4 A4 G4 "
-                    +"F4 Eb4 D4 C4 C4 C4 C4 C4 C4 C4 C4 C4 C4 C4 C4 G4 "
-                    +"G4 G4 G4 G4 G4 G4 G4 G4 G5 F5 Eb5 D5 C5 Bb4 A4 G4 "
-                    +"G4 G4 G4 C5 Bb5 A5 G5 F5 Eb5 D5 C5 Bb4 A4 G4 F4 Eb4 "
-                    +"D4 C4 C4 C4 C4 G4 F#4 G4 A4 Bb4 C5 D5 D5 C5 Bb4 A4 "
-                    +"G4 F#4 E4 D4 C4 Bb3 A3 G3 G3 G3 G3 G3 G3 G3 G3 G3 "
-                    +"G3 G3 G3 G3 G5 F5 Eb5 D5 C5 Bb4 G5 F5 Eb5 D5 C5 Bb4 "
-                    +"A4 G4")),
+                    +"F4 Eb4 D4 C4 C4 C4 C4 C4 C4 C4 C4 C4 C4 C4 C4 C4 "
+                    +"Bb5 A5 G5 F5 Eb5 D5 C5 Bb4 A4 G4 F4 Eb4 Eb4 Eb4 Eb4 Eb4 "
+                    +"Eb4 Eb4 Eb4 Eb4 Eb4 Eb4 Eb4 Eb4 D6 C6 Bb5 A5 G5 F#5 E5 D5 "
+                    +"C5 Bb4 A4 G4 G4 G4 G4 G4 G4 G4 G4 G4 G4 G4 G4")),
             new Song("Saint-Saens, The Carnival Of The Animals: XIV. Finale","동물의 사육제 피날레",notes("D5 D5 D5 D5 D5 E5 D#5 E5 A5 G5 F5 E5 D5 D5 D5 D5 "
-                    +"D5 E5 D#5 E5 A5 G5 F5 E5 D5 D5 D5 D5 E5 D#5 E5 F5 "
-                    +"G5 A5 G5 F5 E5 D5 C5 D5 E5 F5 G5 A5 B5 C6 B5 A5 "
-                    +"G5 F5 E5 D5 E5 D#5 E5 A5 G5 F5 E5 D5 D5 D5 D5 D5 "
-                    +"D5 D5 D5 D5 E5 D#5 E5 A5 G5 F5 E5 D5 D5 D5 D5 D5 "
-                    +"E5 D#5 E5 A5 G5 F5 E5 D5 D5 D5 D5 D5 E5 D#5 E5 A5 "
-                    +"G5 F5 E5 D5 C5 D5")),
+                    +"D5 E5 D#5 E5 A5 G5 F5 E5")),
             new Song("Tchaikovsky, The Nutcracker, Op.71: Waltz Of The Flowers","꽃의 왈츠",notes("G4 B4 D5 E5 D5 D5 G4 B4 D5 G5 F5 F5 B4 D5 F5 A5 "
-                    +"E5 G5 F5 F5 C#5 E5 D5 D5 A4 C5 B4 A4 G4 G4 B4 D5 "
-                    +"G5 A5 G5 F#5 E5 D5 B4 D5 G5 F#5 E5 D5 C5 B4 A4 G4 "
-                    +"B4 D5 G5 A5 B5 A5 G5 F#5 E5 D5 C5 B4 A4 B4 D5 F#5 "
-                    +"G5 A5 G5 F#5 E5 G4 B4 D5 E5 D5 D5 G4 B4 D5 G5 F5 "
-                    +"F5 B4 D5 F5 A5 E5 G5 F5 F5 C#5 E5 D5 D5 A4 C5 B4 "
-                    +"A4 G4 G4 B4 D5 B4 A4 G4 D5 B4 G4")),
+                    +"E5 G5 F5 F5 C#5 E5 D5 D5 A4 C5 B4 A4 G4")),
             new Song("Vivaldi, Violin Concerto In F Minor, Op.8 No.4, RV 297","사계 중 겨울 1악장",notes("C5 C6 C6 G5 G5 Eb5 Eb5 C5 C5 C6 C6 G5 G5 Eb5 Eb5 C5 "
                     +"C5 C6 Bb5 Ab5 G5 F5 Eb5 D5 C5 C6 Bb5 Ab5 G5 F5 Eb5 D5 "
-                    +"F5 E5 F5 G5 F5 G5 E5 F5 G5 F5 G5 Ab5 G5 Ab5 F5 G5 "
-                    +"Ab5 G5 Ab5 Bb5 Ab5 Bb5 G5 Ab5 Bb5 Ab5 Bb5 C6 Bb5 C6 Ab5 Bb5 "
-                    +"C5 C6 Bb5 Ab5 G5 F5 Eb5 D5 C5 Bb4 Ab4 G4 F4 G4 Ab4 Bb4 "
-                    +"C5 Eb5 G5 C6 Bb5 Ab5 G5 F5 E5 F5 G5 Ab5 G5 F5 E5 F5 "
-                    +"G5 Ab5 Bb5 C6 Bb5 Ab5 G5 F5 E5 F5 C5 C6 C6 G5 G5 Eb5 "
-                    +"Eb5 C5 C5 C6 C6 G5 G5 Eb5 Eb5 C5 C5 C6 Bb5 Ab5 G5 F5 "
-                    +"Eb5 D5 F5 E5 F5 G5 Ab5 G5 F5")),
+                    +"C5 G4 C5 Eb5 C5 G4 C5 Eb5 C5 G4 C5 Eb5 C5 G4 C5 Eb5 "
+                    +"C5 C5 Eb5 Eb6 Eb6 C6 C6 G5 G5 Eb5 Eb5 Eb6 Eb6 C6 C6 G5 "
+                    +"G5 Eb5 Eb5 Eb6 D6 C6 B5 A5 G5 F5 Eb5 Eb6 D6 C6 B5 A5 "
+                    +"G5 F5 Eb5 C5 Eb5 G5 Eb5 C5 Eb5 G5 Eb5 C5 Eb5 G5 Eb5 C5 "
+                    +"Eb5 G5 Eb5 Eb5")),
             new Song("J. Strauss II, On The Beautiful Blue Danube, Op.314","아름답고 푸른 도나우",notes("D4 D4 F#4 A4 A4 A5 A5 F#5 F#5 D4 D4 F#4 A4 A4 A5 A5 "
                     +"G5 G5 C#4 C#4 E4 B4 B4 B5 B5 G5 G5 C#4 C#4 E4 B4 B4 "
-                    +"B5 B5 F#5 F#5 D4 D4 F#4 A4 D5 D6 D6 B5 B5 D4 F#4 A4 "
-                    +"D5 D6 D6 C#6 C#6 C#4 E4 B4 B4 B5 B5 G5 G5 C#4 E4 B4 "
-                    +"B4 B5 B5 F#5 F#5 D4 F#4 A4 D5 D6 B5 A5 F#5 D4 D4 F#4 "
-                    +"A4 A4 A5 A5 F#5 F#5 D4 D4 F#4 A4 A4 A5 A5 G5 G5 C#4 "
-                    +"C#4 E4 B4 B4 B5 B5 G5 G5 C#4 C#4 E4 A5 F#5 E5 D5 A4 "
-                    +"F#4 D4")));
+                    +"B5 B5 F#5 F#5 D4 D4 F#4 A4 D5 D6 D6 A5 A5 D4 D4 F#4 "
+                    +"A4 D5 D6 D6 B5 B5 E4 E4 G4 B4 B4 B4 G#4 A4 F#5 F#5 "
+                    +"D5 F#4 F#4 E4 B4 A4 D4 D5 D5 D5")));
     /** Space-separated note names (C4, F#5, Bb3, Cb6 ...) as semitones from F#4. */
     static int[] notes(String text){
         var parts=text.trim().split("\\s+");var out=new int[parts.length];

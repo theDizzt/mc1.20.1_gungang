@@ -18,16 +18,25 @@ final class HudHealthBars {
      * and the easing hides the frame or two between the health update and the pending-amount packet.
      */
     private static final class Edges {
+        /** A rise of the green end larger than this share of the bar is a new heal and appears without easing. */
+        private static final float HEAL_JUMP = .03f;
         private float healEnd, statusStart;
         private double last = -1;
-        void update(float healGoal, float statusGoal, double seconds) {
+        /**
+         * {@code healing} / {@code ailing}: whether a gadget heal or a status ailment is running. Without one the edge
+         * sits exactly on health, so plain damage (explosions, shocks, gunfire) and natural regeneration, which only
+         * animate the bar, never show a purple or green band.
+         */
+        void update(float health, float healGoal, boolean healing, float statusGoal, boolean ailing, double seconds) {
             double dt = seconds - last;
-            if (last < 0 || dt < 0 || dt > 1) { healEnd = healGoal; statusStart = statusGoal; }
-            else {
-                float k = (float) (1 - Math.exp(-dt * 14));
-                healEnd += (healGoal - healEnd) * k;
-                statusStart += (statusGoal - statusStart) * k;
-            }
+            boolean reset = last < 0 || dt < 0 || dt > 1;
+            float k = reset ? 1 : (float) (1 - Math.exp(-dt * 14));
+            // Green shows how far a heal pack / recovery potion will take health. A heal pack's jump shows its full
+            // amount at once; small steps (a potion tick landing a packet before its pending amount) ease. When
+            // health drops the end follows at once, so the damage trail keeps its own grey instead of turning green.
+            healEnd = !healing ? health : healGoal < healEnd || healGoal - healEnd > HEAL_JUMP ? healGoal
+                    : healEnd + (healGoal - healEnd) * k;
+            statusStart = !ailing ? health : statusStart + (statusGoal - statusStart) * k;
             last = seconds;
         }
     }
@@ -75,11 +84,12 @@ final class HudHealthBars {
         var healthAnimation = ANIMATIONS.get(entity);
         float target = healthAnimation == null ? health : healthAnimation.target();
         // Green only for heal packs and the recovery potion; natural regeneration fills the bar plainly.
-        float healGoal = StatusDamageClient.gadgetHealing(entity)
-                ? Math.min(1, Math.max(health, target) + StatusDamageClient.pendingHeal(entity) / maximum) : health;
-        float statusGoal = Math.min(health, target - StatusDamageClient.pending(entity) / maximum);
+        boolean healing = StatusDamageClient.gadgetHealing(entity);
+        float healGoal = Math.min(1, Math.max(health, target) + StatusDamageClient.pendingHeal(entity) / maximum);
+        float pending = StatusDamageClient.pending(entity);
+        float statusGoal = Math.min(health, target - pending / maximum);
         var edges = EDGES.computeIfAbsent(entity, ignored -> new Edges());
-        edges.update(healGoal, statusGoal, seconds);
+        edges.update(health, healGoal, healing, statusGoal, pending > 0, seconds);
         return compose(health, trail(entity, partialTick), ratio, trailRatio,
                 Math.max(0, health - edges.statusStart), Math.max(0, edges.healEnd - health));
     }

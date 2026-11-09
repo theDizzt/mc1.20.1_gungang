@@ -71,6 +71,23 @@ public final class CombatRules {
             return Math.max(0,bulletKnockback.getFloat(direct));
         }catch(ReflectiveOperationException|RuntimeException|LinkageError unavailable){bulletKnockbackMissing=true;return HIT_STRENGTH;}
     }
+    /** Guns whose bullets also knock teammates back (friendly fire blocks the damage, and with it vanilla's push). */
+    private static final Set<String> ALLY_KNOCKBACK_GUNS=Set.of("zeta:sg225sp");
+    /**
+     * A knockback gun's bullet hitting a teammate: pushes them by the bullet's knockback, away from the shooter, as an
+     * enemy hit would. Only where the team blocks friendly fire; otherwise the hit itself pushes.
+     */
+    public static void allyKnockback(net.minecraft.world.entity.projectile.Projectile bullet,Entity target){
+        if(bullet.level().isClientSide||!(bullet instanceof Las5Damage.BulletAccess access)
+                ||!ALLY_KNOCKBACK_GUNS.contains(String.valueOf(access.getGunId())))return;
+        if(!(bullet.getOwner() instanceof LivingEntity owner)||!(target instanceof LivingEntity victim)||victim==owner
+                ||!BotEntity.participant(victim)||LobbyManager.respawning(victim.getUUID())||SafeZones.contains(victim))return;
+        var team=owner.getTeam();
+        if(team==null||team.isAllowFriendlyFire()||!owner.isAlliedTo(victim))return;
+        if(victim instanceof ServerPlayer p&&CombatGadgets.shieldBlocked(p))return;
+        double strength=strength(bullet);
+        if(strength>0)victim.knockback(strength,owner.getX()-victim.getX(),owner.getZ()-victim.getZ());
+    }
     @SubscribeEvent(priority=EventPriority.LOWEST) public static void hit(LivingDamageEvent event){
         var victim=event.getEntity();
         if(event.isCanceled()||event.getAmount()<=0||victim.level().isClientSide||quiet()||!guarded(victim))return;

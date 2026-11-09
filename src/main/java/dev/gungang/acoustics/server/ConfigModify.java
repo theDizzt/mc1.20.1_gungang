@@ -175,12 +175,18 @@ public final class ConfigModify {
     static boolean attackSpeedOnly(String kind,Map<String,String> changes){
         return kind.equals("item")&&!changes.isEmpty()&&ATTACK_SPEED_ITEM_FIELDS.containsAll(changes.keySet());
     }
-    static Map<String,JsonPrimitive> apply(String kind,String id,Map<String,String> changes)throws Exception{
+    static Map<String,JsonPrimitive> apply(String kind,String id,Map<String,String> changes)throws Exception{return apply(kind,id,changes,Map.of());}
+    /**
+     * {@link #apply} plus whole top-level values replaced before validation, for edits that change a list's length
+     * (a secondary's display stats gaining or losing rows), which single-field edits cannot express.
+     */
+    static Map<String,JsonPrimitive> apply(String kind,String id,Map<String,String> changes,Map<String,JsonElement> replaced)throws Exception{
         // Attack timing alone reloads only the item settings, so it is applied live like primary weapons.
         boolean speed=attackSpeedOnly(kind,changes),live=kind.equals("weapon")||speed;
         if(!live)LobbyManager.requireMapEditing();
         var target=target(kind,id);var candidate=target.original.deepCopy();var parsed=new LinkedHashMap<String,JsonPrimitive>();
         for(var change:changes.entrySet()){var value=parse(change.getValue(),fieldType(target,change.getKey()));set(candidate,target.effective,change.getKey(),value);parsed.put(change.getKey(),value);}
+        for(var whole:replaced.entrySet()){if(whole.getKey().contains("."))throw new IllegalArgumentException("잘못된 항목: "+whole.getKey());candidate.add(whole.getKey(),whole.getValue().deepCopy());}
         validate(target,candidate);
         String after=ServerFiles.GSON.toJson(candidate)+"\n";if(after.getBytes(StandardCharsets.UTF_8).length>65536)throw new IllegalArgumentException("설정 파일은 64 KiB 이하여야 합니다.");
         String before=Files.exists(target.path)?Files.readString(target.path,StandardCharsets.UTF_8):null;
