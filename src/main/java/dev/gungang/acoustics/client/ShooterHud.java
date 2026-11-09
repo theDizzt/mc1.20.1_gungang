@@ -110,7 +110,10 @@ public final class ShooterHud {
         float displayed = layers.absorptionEnd();
         float filled = (barWidth - 2) * displayed;
         HudHealthBars.render(graphics, barX + 1, barY + 1, barWidth - 2, HEALTH_HEIGHT - 2, layers, color);
-        HudHealthBars.stripes(graphics, barX + 1, barY + 1, barWidth - 2, HEALTH_HEIGHT - 2, displayed, (player.tickCount + partialTick) / 20.0);
+        // No stripes over the green heal ghost: they would read as filled health.
+        double stripeTime = (player.tickCount + partialTick) / 20.0;
+        HudHealthBars.stripes(graphics, barX + 1, barY + 1, barWidth - 2, HEALTH_HEIGHT - 2, 0, layers.health(), stripeTime);
+        HudHealthBars.stripes(graphics, barX + 1, barY + 1, barWidth - 2, HEALTH_HEIGHT - 2, layers.healEnd(), displayed, stripeTime);
         finish(graphics, barX + 1, barY + 1, barWidth - 2, HEALTH_HEIGHT - 2, displayed);
         PropAbilityHud.jump(graphics, barX, barY - 3, barWidth, partialTick);
         int airPercent = Math.round(100f * Math.max(0, Math.min(player.getMaxAirSupply(), player.getAirSupply()))
