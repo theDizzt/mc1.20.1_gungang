@@ -34,6 +34,9 @@ public final class WeaponPatchScreen extends ArenaScreen {
     private static final Object WEIGHT = new Object();
     private int scroll, listScroll;
     private boolean waiting;
+    /** The row whose ? mark is under the cursor this frame (its help is drawn last, above the widgets). */
+    private WeaponPatch.Row hoverHelp;
+    private static final int HELP_W = 300;
 
     private WeaponPatchScreen(WeaponPatch.View view) { super("무기 실시간 패치"); this.view = view; resetCurve(); }
 
@@ -244,6 +247,36 @@ public final class WeaponPatchScreen extends ArenaScreen {
         g.pose().popPose();
     }
 
+    /** The hovered row's help: purpose, mechanism and formula, then (damage rows of a TaCZ gun) the live estimate. */
+    private void helpTooltip(GuiGraphics g, int mx, int my) {
+        var row = hoverHelp;
+        if (row == null) return;
+        String text = row.help();
+        if (PatchHelp.ESTIMATED.contains(row.key())) {
+            var values = new HashMap<String, Double>();
+            for (String key : PatchHelp.ESTIMATED) { double v = typed(key, Double.NaN); if (Double.isFinite(v)) values.put(key, v); }
+            String estimate = PatchHelp.estimate(values, PatchHelp.REFERENCE_HEALTH);
+            if (!estimate.isEmpty()) text += "\n" + estimate;
+        }
+        var lines = new ArrayList<net.minecraft.util.FormattedCharSequence>();
+        var colors = new ArrayList<Integer>();
+        boolean estimate = false;
+        for (String line : text.split("\n")) {
+            if (line.startsWith("──")) estimate = true;
+            int color = estimate ? line.startsWith("※") ? DIM : line.startsWith("──") ? READY : INK
+                    : line.startsWith("산출식") ? 0xFF66B3FF : line.startsWith("용도") ? INK : MUTED;
+            for (var part : font.split(Component.literal(line), HELP_W)) { lines.add(part); colors.add(color); }
+        }
+        int tw = HELP_W + 8, th = lines.size() * 10 + 6;
+        int tx = Math.max(4, Math.min(mx + 12, width - tw - 4));
+        int ty = my + 12 + th > height - 4 ? Math.max(4, my - 8 - th) : my + 12;
+        g.pose().pushPose(); g.pose().translate(0, 0, 400);
+        g.fill(tx, ty, tx + tw, ty + th, 0xF0101418);
+        g.fill(tx, ty, tx + tw, ty + 1, ACCENT);
+        for (int i = 0; i < lines.size(); i++) g.drawString(font, lines.get(i), tx + 4, ty + 4 + i * 10, colors.get(i), false);
+        g.pose().popPose();
+    }
+
     /** "weapon" or "secondary"; views from an older server are primaries. */
     private static String kind(String kind) { return WeaponPatch.SECONDARY.equals(kind) || WeaponPatch.GENERAL.equals(kind) ? kind : WeaponPatch.PRIMARY; }
     private static String kind(WeaponPatch.View view) { return kind(view.kind()); }
@@ -393,7 +426,7 @@ public final class WeaponPatchScreen extends ArenaScreen {
         shell(g, view.name() + " · " + gun + file + (view.phase().equals("LOBBY") ? "" : " · 경기 중 패치"));
         int x = formX(), w = formW();
         g.enableScissor(x - 2, TOP - 2, x + w + 2, viewBottom());
-        graphRect = null;
+        graphRect = null; hoverHelp = null;
         for (int i = 0; i < lines.size(); i++) {
             int y = TOP + i * ROW - scroll;
             // The graph spans several rows, so it is drawn while any of them is visible.
@@ -417,7 +450,15 @@ public final class WeaponPatchScreen extends ArenaScreen {
             }
             var row = (WeaponPatch.Row) lines.get(i);
             boolean changed = changed(row);
-            g.drawString(font, font.plainSubstrByWidth((changed ? "* " : "") + row.label(), boxX() - x - 12), x + 7, y + 5, changed ? ACCENT : INK, false);
+            boolean help = row.help() != null && !row.help().isEmpty();
+            g.drawString(font, font.plainSubstrByWidth((changed ? "* " : "") + row.label(), boxX() - x - (help ? 24 : 12)), x + 7, y + 5, changed ? ACCENT : INK, false);
+            if (help) {
+                int qx = boxX() - 14;
+                boolean over = mx >= qx - 3 && mx < qx + 9 && my >= Math.max(TOP, y + 1) && my < Math.min(viewBottom(), y + 17);
+                if (over) hoverHelp = row;
+                g.fill(qx - 2, y + 3, qx + 8, y + 15, over ? 0x60FFFFFF : 0x24FFFFFF);
+                g.drawString(font, "?", qx + 1, y + 5, over ? INK : MUTED, false);
+            }
             String note = changed ? "기존 " + row.value() : "";
             g.drawString(font, font.plainSubstrByWidth(note, x + w - boxX() - BOX - 6), boxX() + BOX + 6, y + 5, MUTED, false);
         }
@@ -434,9 +475,10 @@ public final class WeaponPatchScreen extends ArenaScreen {
         else if (waiting) g.drawString(font, "서버에 적용하는 중...", listX(), statusY, MUTED, false);
         else if (count > 0) g.drawString(font, secondary() ? "변경 " + count + "개 · 로비에서 적용하면 저장되고 다음 지급부터 반영됩니다." : "변경 " + count + "개 · 실시간 적용을 누르면 저장 후 바로 반영됩니다.", listX(), statusY, ACCENT, false);
         else if (view.message() != null && !view.message().isEmpty()) g.drawString(font, font.plainSubstrByWidth(view.message(), statusW), listX(), statusY, READY, false);
-        else g.drawString(font, "휠로 스크롤 · 빈칸/회색 글씨는 현재값", listX(), statusY, DIM, false);
+        else g.drawString(font, "휠로 스크롤 · 빈칸/회색 글씨는 현재값 · ? 에 커서를 올리면 설명과 산출식", listX(), statusY, DIM, false);
         super.render(g, mx, my, partial);
         graphTooltip(g, mx, my);
+        helpTooltip(g, mx, my);
         // Each weapon's TaCZ weight beside its name; a non-zero weight slows the player on top of GunGang's speed.
         g.enableScissor(listX(), listTop(), listX() + LIST, viewBottom());
         var weapons = listed();
