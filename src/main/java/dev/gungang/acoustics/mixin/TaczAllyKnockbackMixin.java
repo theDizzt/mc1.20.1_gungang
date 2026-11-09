@@ -11,12 +11,12 @@ import org.spongepowered.asm.mixin.injection.Coerce;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** Friendly fire stops a TaCZ hit inside {@code hurt}, before any push; knockback guns still push teammates. */
+/** Friendly fire (or zero damage) stops a TaCZ hit inside {@code hurt}, before any push; knockback guns still push. */
 @Pseudo
 @Mixin(targets="com.tacz.guns.entity.EntityKineticBullet",remap=false)
 public abstract class TaczAllyKnockbackMixin {
     @Inject(method="onHitEntity",at=@At("HEAD"),require=0)
     private void gungang$allyKnockback(@Coerce EntityHitResult result,Vec3 start,Vec3 end,CallbackInfo ci) {
-        CombatRules.allyKnockback((Projectile)(Object)this,result.getEntity());
+        CombatRules.gunKnockback((Projectile)(Object)this,result.getEntity());
     }
 }

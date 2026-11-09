@@ -17,6 +17,9 @@ class PatchHelpTest {
         assertTrue(PatchHelp.of("item:delaySeconds", "orbital_strike").contains("폭격"));
         assertTrue(PatchHelp.of("item:delaySeconds", "orbital_strike").endsWith("item/orbital_strike.json · delaySeconds"));
         assertTrue(PatchHelp.of("gg:stats.3.value", null).contains("표시 전용"));
+        assertTrue(PatchHelp.of("item:health", "cracked_red_concrete").contains("금 간 블록"));
+        assertTrue(PatchHelp.of("item:damage", "uxo").contains("불발탄"));
+        assertTrue(PatchHelp.of("item:heal", "small_health_pack").contains("힐팩"));
     }
     @Test void estimatesShotgunDamage() {
         String text = PatchHelp.estimate(Map.of("tacz:bullet.damage", 30.0, "tacz:rpm", 240.0, "tacz:bullet.bullet_amount", 15.0,

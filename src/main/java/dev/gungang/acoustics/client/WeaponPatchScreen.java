@@ -23,6 +23,7 @@ public final class WeaponPatchScreen extends ArenaScreen {
             Map.entry("item", "아이템 효과 · 실제 성능 (item 설정, 쿨타임은 이 값이 우선)"),
             Map.entry("element", "속성 피해 · 화상/위더/독 1회당 피해, 폭발 배수"),
             Map.entry("general", "전역 설정 · 로비에서 적용, 즉시 반영"),
+            Map.entry("block", "GunGang 블록 능력치 · 로비에서 적용, 즉시 반영"),
             Map.entry("tacz", "TaCZ 총기 데이터 · 실제 성능 (총기팩 파일)"));
     /** Tab row above the weapon list. */
     private static final int TABS = 22;

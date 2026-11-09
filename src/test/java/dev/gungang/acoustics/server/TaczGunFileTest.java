@@ -67,4 +67,13 @@ class TaczGunFileTest {
         assertThrows(IllegalArgumentException.class, () -> file.patched(Map.of("ammo", "1")));
         assertThrows(IllegalArgumentException.class, () -> file.patched(Map.of("bullet.damage", "abc")));
     }
+    @Test void editsKnockbackInHundredths() {
+        var file = TaczGunFile.parse(Path.of("wex_data.json"), "{\n  \"bullet\": {\n    \"damage\": 0,\n    \"knockback\": 1\n  }\n}");
+        assertTrue(file.editable().containsKey("bullet.knockback"));
+        var patched = TaczGunFile.parse(Path.of("wex_data.json"), file.patched(Map.of("bullet.knockback", "1.25")));
+        assertEquals("1.25", patched.values().get("bullet.knockback").text());
+        assertEquals(file.source(), file.patched(Map.of("bullet.knockback", "1.00")));
+        assertThrows(IllegalArgumentException.class, () -> file.patched(Map.of("bullet.knockback", "1.255")));
+        assertThrows(IllegalArgumentException.class, () -> file.patched(Map.of("bullet.knockback", "-0.01")));
+    }
 }
