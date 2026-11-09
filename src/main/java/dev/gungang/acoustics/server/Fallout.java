@@ -82,7 +82,7 @@ public final class Fallout {
                     level.sendParticles(GREEN,c.x+Math.cos(angle)*r,c.y+level.random.nextDouble()*Math.min(2.5,radius),c.z+Math.sin(angle)*r,1,0,.05,0,0);
                 }
             }
-            for(var body:level.getEntitiesOfClass(LivingEntity.class,new AABB(c,c).inflate(radius+2),BotEntity::participant))
+            for(var body:level.getEntitiesOfClass(LivingEntity.class,new AABB(c,c).inflate(radius+2),CombatRules::target))
                 if(!inside.containsKey(body)&&!SafeZones.contains(body)&&inside(body,zone,radius))inside.put(body,zone);
         }
         for(var entry:inside.entrySet()){

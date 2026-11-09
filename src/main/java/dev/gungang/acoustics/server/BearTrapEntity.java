@@ -49,7 +49,7 @@ public final class BearTrapEntity extends Entity {
         level().getEntitiesOfClass(LivingEntity.class,box,this::enemy).stream().findFirst().ifPresent(this::spring);
     }
     private boolean enemy(LivingEntity e) {
-        if(!(e instanceof Player||e instanceof BotEntity)||!e.isAlive()||e.isSpectator()||e.getUUID().equals(owner())||LobbyManager.respawning(e.getUUID()))return false;
+        if(!(e instanceof Player||e instanceof BotEntity||CombatRules.npcTarget(e))||!e.isAlive()||e.isSpectator()||e.getUUID().equals(owner())||LobbyManager.respawning(e.getUUID()))return false;
         if(e instanceof Player p&&(p.isCreative()||FreeForAllMatch.blocked(p)))return false;
         // Teammates never trigger it; outside team modes everyone but the owner does.
         return team().isEmpty()||e.getTeam()==null||!team().equals(e.getTeam().getName());

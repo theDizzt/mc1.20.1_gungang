@@ -1,0 +1,3 @@
+"Jetpack - minecraft" by ollypop567 (https://sketchfab.com/ollypop567), https://sketchfab.com/3d-models/jetpack-minecraft-7100d58c3c694b15bd3893d10a4cd2e3
+Licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/).
+Modifications: glTF (GLB) converted to OBJ; scale normalized; textures exported to PNG.

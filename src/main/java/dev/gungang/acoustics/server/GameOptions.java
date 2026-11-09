@@ -115,7 +115,8 @@ public record GameOptions(Common common,Control control,Normandy normandy,PropHu
      * every {@code rotationSeconds} the primary and secondary change at random, chosen first-come from as many
      * offers as the team has members (free-for-all: as many as there are players), opened {@code choiceSeconds}
      * before each change and right as the match begins. MELEE (근접전): picked like CLASSIC, but the only primaries are
-     * 16 sledgehammer, 28 rapier, 29 katana and 88 karambit ({@link Loadouts#melee()}).
+     * 16 sledgehammer, 28 rapier, 29 katana and 88 karambit ({@link Loadouts#melee()}), pistols are not offered as
+     * secondaries, and duplicate weapons in a team are always allowed.
      */
     public enum WeaponMode { CLASSIC, RANDOM, MELEE }
     /** 랜덤 무기 defaults: a 15-minute match, a change every 3 minutes, the choice opening 15 seconds before. */

@@ -17,7 +17,7 @@ public final class ClientSetup {
     @SubscribeEvent public static void layers(net.minecraftforge.client.event.EntityRenderersEvent.AddLayers event) {
         for(String skin:event.getSkins()) {
             net.minecraft.client.renderer.entity.player.PlayerRenderer renderer=event.getSkin(skin);
-            if(renderer!=null)renderer.addLayer(new ShieldRenderLayer(renderer));
+            if(renderer!=null){renderer.addLayer(new ShieldRenderLayer(renderer));renderer.addLayer(new JetpackBackLayer<>(renderer));}
         }
     }
     @SubscribeEvent public static void renderers(net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event) {

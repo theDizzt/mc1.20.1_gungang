@@ -15,7 +15,10 @@ import net.minecraft.server.level.ServerPlayer;
  */
 public final class WeaponPatch {
     /** Rows of the screen. {@code key} is {@code gg:<field>} or {@code tacz:<path>}. */
-    public record Row(String key, String label, String group, boolean numeric, String value) { }
+    public record Row(String key, String label, String group, boolean numeric, String value, String help) {
+        public Row(String key, String label, String group, boolean numeric, String value) { this(key, label, group, numeric, value, null); }
+        Row withHelp(String text) { return new Row(key, label, group, numeric, value, text); }
+    }
     /** {@code weight} is the TaCZ gun weight in kg (null: not a TaCZ gun or its data file was not found); {@code kind}: "weapon" or "secondary". */
     public record Entry(String id, String name, String category, Double weight, double movementSpeed, String kind) { }
     /** {@code falloff}: the TaCZ gun's current damage_adjust bands {distance (-1: open-ended), damage}; null when not a TaCZ gun. */
@@ -31,12 +34,35 @@ public final class WeaponPatch {
     public static final String PRIMARY = "weapon", SECONDARY = "secondary", GENERAL = "general";
     /** The 전역 설정 tab's settings (item effect files). */
     private static final Map<String, String> GENERAL_SETTINGS = Map.of("health_regeneration", "체력 재생", "combat", "전투");
+    /** GunGang block settings ({@code /gungang modify block}) listed in the same tab, after the item ones, by name. */
+    private static final Map<String, String> BLOCK_SETTINGS = blockSettings();
+    private static Map<String, String> blockSettings() {
+        var names = new LinkedHashMap<String, String>();
+        names.put("small_health_pack", "블록 · 소형 힐팩"); names.put("large_health_pack", "블록 · 대형 힐팩");
+        names.put("uxo", "블록 · 불발탄"); names.put("gas_barrel", "블록 · 가스통");
+        names.put("acid", "블록 · 산성 용액"); names.put("acid_nozzle", "블록 · 산성 분수 노즐"); names.put("nozzle", "블록 · 물 분수 노즐"); names.put("puddle", "블록 · 물웅덩이");
+        names.put("cracked_oak_planks", "블록 · 금 간 참나무 판자"); names.put("cracked_glass", "블록 · 금 간 유리"); names.put("cracked_glass_pane", "블록 · 금 간 유리판");
+        var colors = Map.ofEntries(Map.entry("white", "흰색"), Map.entry("orange", "주황색"), Map.entry("magenta", "자홍색"), Map.entry("light_blue", "하늘색"),
+                Map.entry("yellow", "노란색"), Map.entry("lime", "연두색"), Map.entry("pink", "분홍색"), Map.entry("gray", "회색"), Map.entry("light_gray", "회백색"),
+                Map.entry("cyan", "청록색"), Map.entry("purple", "보라색"), Map.entry("blue", "파란색"), Map.entry("brown", "갈색"), Map.entry("green", "초록색"),
+                Map.entry("red", "빨간색"), Map.entry("black", "검은색"));
+        for (var color : net.minecraft.world.item.DyeColor.values())
+            names.put("cracked_" + color.getName() + "_concrete", "블록 · 금 간 " + colors.getOrDefault(color.getName(), color.getName()) + " 콘크리트");
+        return Collections.unmodifiableMap(names);
+    }
+    /** The settings kind behind a 전역 tab entry: "block" or "item". */
+    private static String generalKind(String id) { return BLOCK_SETTINGS.containsKey(id) ? "block" : "item"; }
+    private static String generalName(String id) { return BLOCK_SETTINGS.getOrDefault(id, GENERAL_SETTINGS.get(id)); }
     private static final String GENERAL_CATEGORY = "전역";
     private static final Map<String, String> ELEMENT_LABELS = Map.of(
             "elements.burnDamage", "화상 피해 (1회당)", "elements.witherDamage", "위더 피해 (1회당)",
             "elements.poisonDamage", "독 피해 (1회당)", "elements.explosionMultiplier", "폭발 피해 배수 (이 무기 · 전역 배수에 곱함)");
     /** Secondary weapon-file fields shown, in order (stats.N.value rows follow, labelled by their stat name). */
-    private static final List<String> SECONDARY_FIELDS = List.of("name", "category", "cooldownSeconds", "plantSeconds", "fuseSeconds", "defuseSeconds");
+    private static final List<String> SECONDARY_FIELDS = List.of("name", "category", "cooldownSeconds", "plantSeconds", "fuseSeconds", "defuseSeconds", "releaseDate", "description", "usage");
+    /** Display stat rows of a secondary ({@code stats.N.name} / {@code stats.N.value}); blank rows after them add new ones. */
+    private static final java.util.regex.Pattern STAT_KEY = java.util.regex.Pattern.compile("stats\\.(\\d+)\\.(name|value)");
+    /** Empty stat rows offered after a secondary's own (to add display lines), and the most a weapon may have. */
+    private static final int NEW_STATS = 2, MAX_STATS = 12;
     /** Max health and movement speed are not edited for secondaries: neither offered nor accepted. */
     private static final Set<String> SECONDARY_HIDDEN = Set.of("maxHealth", "movementSpeed");
     private static final Map<String, String> SECONDARY_LABELS = Map.of("cooldownSeconds", "쿨타임 (초)", "plantSeconds", "설치 시간 (초)", "fuseSeconds", "폭발 시간 (초)", "defuseSeconds", "해체 시간 (초)");
@@ -61,7 +87,10 @@ public final class WeaponPatch {
             Map.entry("arcRadius", "전격 반경 (블록)"), Map.entry("glowSeconds", "발광 시간 (초)"),
             Map.entry("tier1Damage", "콤보 1단 피해"), Map.entry("tier2Damage", "콤보 2단 피해"), Map.entry("tier3Damage", "콤보 3단 피해"),
             Map.entry("tier4Damage", "콤보 4단 피해"), Map.entry("tier5Damage", "콤보 5단 피해 (최대)"),
-            Map.entry("guardReductionPercent", "방어 피해 경감 (%)"), Map.entry("guardAngle", "방어 각도 (정면, °)"));
+            Map.entry("guardReductionPercent", "방어 피해 경감 (%)"), Map.entry("guardAngle", "방어 각도 (정면, °)"),
+            Map.entry("respawnSeconds", "다시 생기는 시간 (초)"), Map.entry("soundVolume", "소리 크기"), Map.entry("soundIntervalTicks", "발소리 간격 (틱)"),
+            Map.entry("poisonSeconds", "독 시간 (초)"), Map.entry("amplifier", "효과 단계 (0=I)"), Map.entry("height", "높이 (블록)"),
+            Map.entry("particlesPerSecond", "초당 입자 수"), Map.entry("damageIntervalTicks", "피해 간격 (틱)"));
     private static final Map<String, String> LABELS = Map.ofEntries(
             Map.entry("name", "이름"), Map.entry("category", "분류"), Map.entry("maxHealth", "최대 체력"), Map.entry("movementSpeed", "이동 속도 (%)"),
             Map.entry("description", "표시 · 설명 (줄바꿈 \\n)"), Map.entry("usage", "표시 · 사용방법 (줄바꿈 \\n)"), Map.entry("releaseDate", "출시일 (yyyy-MM-dd)"),
@@ -144,12 +173,16 @@ public final class WeaponPatch {
         for (var w : loadouts.primary()) entries.add(new Entry(w.id(), w.name(), w.category(), weight(w), w.movementSpeed(), PRIMARY));
         for (var w : loadouts.secondary()) entries.add(new Entry(w.id(), w.name(), w.category(), weight(w), w.movementSpeed(), SECONDARY));
         for (var setting : new TreeMap<>(GENERAL_SETTINGS).entrySet()) entries.add(new Entry(setting.getKey(), setting.getValue(), GENERAL_CATEGORY, null, 100, GENERAL));
+        for (var setting : BLOCK_SETTINGS.entrySet()) entries.add(new Entry(setting.getKey(), setting.getValue(), GENERAL_CATEGORY, null, 100, GENERAL));
         if (kind.equals(GENERAL)) {
-            String id = GENERAL_SETTINGS.containsKey(requested) ? requested : new TreeMap<>(GENERAL_SETTINGS).firstKey();
+            String id = GENERAL_SETTINGS.containsKey(requested) || BLOCK_SETTINGS.containsKey(requested) ? requested : new TreeMap<>(GENERAL_SETTINGS).firstKey();
+            String settings = generalKind(id);
             var rows = new ArrayList<Row>();
-            for (var field : ConfigModify.editable("item", id).entrySet())
-                rows.add(new Row("item:" + field.getKey(), ITEM_LABELS.getOrDefault(field.getKey(), field.getKey()), "general", ConfigModify.numeric("item", id, field.getKey()), number(text(field.getValue()))));
-            var view = new View(entries, id, GENERAL_SETTINGS.get(id), "", "", rows, message, error, LobbyManager.phase(), weightMultiplier(), kind);
+            for (var field : ConfigModify.editable(settings, id).entrySet())
+                rows.add(new Row("item:" + field.getKey(), ITEM_LABELS.getOrDefault(field.getKey(), field.getKey()), settings.equals("block") ? "block" : "general",
+                        ConfigModify.numeric(settings, id, field.getKey()), number(text(field.getValue()))));
+            rows.replaceAll(row -> row.withHelp(PatchHelp.of(row.key(), id)));
+            var view = new View(entries, id, generalName(id), "", "", rows, message, error, LobbyManager.phase(), weightMultiplier(), kind);
             GungangNetwork.send(player, new GungangNetwork.WeaponPatchView(ServerFiles.GSON.toJson(view)));
             return;
         }
@@ -180,8 +213,8 @@ public final class WeaponPatch {
                 var data = TaczGunFile.find(gun);
                 file = packs().relativize(data.path()).toString().replace('\\', '/');
                 for (var field : data.editable().values())
-                    rows.add(new Row("tacz:" + field.path(), field.label(), "tacz", true, data.values().get(field.path()).text()));
-                if (data.values().containsKey("bullet.damage")) falloff = data.falloff();
+                    rows.add(new Row("tacz:" + field.path(), field.label(), "tacz", true, data.current(field.path())));
+                if (data.current("bullet.damage") != null) falloff = data.falloff();
             } catch (IllegalArgumentException missing) { file = "! " + missing.getMessage(); }
         }
         String melee = meleeId(weapon);
@@ -194,6 +227,8 @@ public final class WeaponPatch {
             } catch (IllegalArgumentException missing) { file = "! " + missing.getMessage(); }
         }
         speedFirst(rows);
+        String setting = itemSetting(weapon);
+        rows.replaceAll(row -> row.withHelp(PatchHelp.of(row.key(), setting)));
         var view = new View(entries, id, weapon.name(), gun, file, rows, message, error, LobbyManager.phase(), weightMultiplier(), kind, falloff);
         GungangNetwork.send(player, new GungangNetwork.WeaponPatchView(ServerFiles.GSON.toJson(view)));
     }
@@ -207,7 +242,7 @@ public final class WeaponPatch {
         var speed = new ArrayList<Row>();
         for (var it = rows.iterator(); it.hasNext(); ) {
             var row = it.next();
-            if (attackSpeed(row.key())) { speed.add(new Row(row.key(), row.label(), "speed", row.numeric(), row.value())); it.remove(); }
+            if (attackSpeed(row.key())) { speed.add(new Row(row.key(), row.label(), "speed", row.numeric(), row.value(), row.help())); it.remove(); }
         }
         rows.addAll(0, speed);
     }
@@ -229,11 +264,18 @@ public final class WeaponPatch {
     /** Weapon-file fields, then the item effect settings (when it is a GunGang item). TaCZ rows are added by the caller. */
     private static void secondaryRows(String id, Loadouts.Weapon weapon, List<Row> rows) throws Exception {
         var fields = ConfigModify.editable(SECONDARY, id);
-        for (String key : SECONDARY_FIELDS) if (fields.containsKey(key))
-            rows.add(new Row("gg:" + key, SECONDARY_LABELS.getOrDefault(key, LABELS.getOrDefault(key, key)), "secondary", ConfigModify.numeric(SECONDARY, id, key), number(text(fields.get(key)))));
-        for (var field : fields.entrySet()) {
-            var stat = field.getKey().matches("stats\\.\\d+\\.value") ? fields.get(field.getKey().replace(".value", ".name")) : null;
-            if (stat != null) rows.add(new Row("gg:" + field.getKey(), "표시 · " + text(stat), "display", false, text(field.getValue())));
+        for (String key : SECONDARY_FIELDS) if (fields.containsKey(key)) {
+            boolean multiline = MULTILINE.contains(key);
+            rows.add(new Row("gg:" + key, SECONDARY_LABELS.getOrDefault(key, LABELS.getOrDefault(key, key)), multiline ? "display" : "secondary",
+                    ConfigModify.numeric(SECONDARY, id, key), multiline ? escapeLines(text(fields.get(key))) : number(text(fields.get(key)))));
+        }
+        // Display stats on the loadout card: name and value of each, then blank rows to add more (clear both to remove one).
+        var stats = weapon.stats();
+        for (int i = 0; i < Math.min(MAX_STATS, stats.size() + NEW_STATS); i++) {
+            boolean exists = i < stats.size();
+            String label = exists ? "표시 항목 " + (i + 1) : "새 표시 항목";
+            rows.add(new Row("gg:stats." + i + ".name", label + " · 이름 (이름·값 비우면 삭제)", "display", false, exists ? stats.get(i).name() : ""));
+            rows.add(new Row("gg:stats." + i + ".value", label + " · 값", "display", false, exists ? stats.get(i).value() : ""));
         }
         for (String key : ConfigModify.ELEMENT_FIELDS) if (fields.containsKey(key) && !fields.get(key).isJsonNull())
             rows.add(new Row("gg:" + key, ELEMENT_LABELS.get(key), "element", true, number(text(fields.get(key)))));
@@ -258,8 +300,9 @@ public final class WeaponPatch {
         String falloff = null;
         for (var change : changes.entrySet()) {
             String key = change.getKey(), value = change.getValue() == null ? "" : change.getValue();
-            if (value.length() > (key.equals(FALLOFF) ? 1000 : 200)) throw new IllegalArgumentException("값이 너무 깁니다: " + key);
-            if (key.startsWith("gg:")) gear.put(key.substring(3), value);
+            boolean multiline = key.startsWith("gg:") && MULTILINE.contains(key.substring(3));
+            if (value.length() > (key.equals(FALLOFF) || multiline ? 1000 : 200)) throw new IllegalArgumentException("값이 너무 깁니다: " + key);
+            if (key.startsWith("gg:")) gear.put(key.substring(3), multiline ? unescapeLines(value) : value);
             else if (key.startsWith("item:")) item.put(key.substring(5), value);
             else if (key.equals(FALLOFF)) falloff = value;
             else if (key.startsWith("tacz:")) tacz.put(key.substring(5), value);
@@ -269,6 +312,7 @@ public final class WeaponPatch {
         // Attack speed item fields alone are live; everything else in the secondary files waits for the lobby.
         if (!gear.isEmpty() || !item.isEmpty() && !ConfigModify.attackSpeedOnly("item", item)) LobbyManager.requireMapEditing();
         var fields = ConfigModify.editable(SECONDARY, id);
+        var stats = stats(weapon, gear);
         for (String field : gear.keySet()) if (!fields.containsKey(field) || SECONDARY_HIDDEN.contains(field)) throw new IllegalArgumentException("수정할 수 없는 항목: " + field);
         String setting = itemSetting(weapon);
         if (!item.isEmpty() && setting == null) throw new IllegalArgumentException("이 보조무기에는 아이템 효과 설정이 없습니다.");
@@ -287,16 +331,47 @@ public final class WeaponPatch {
             meleePatched = meleeData.patched(melee); // throws before anything is saved
         }
         var done = new ArrayList<String>();
-        if (!gear.isEmpty()) { ConfigModify.apply(SECONDARY, id, gear); done.add("장비 " + gear.size() + "개"); }
+        if (!gear.isEmpty() || stats != null) {
+            ConfigModify.apply(SECONDARY, id, gear, stats == null ? Map.of() : Map.of("stats", stats));
+            done.add("장비 " + gear.size() + "개" + (stats != null ? " · 표시 항목 " + stats.size() + "줄" : ""));
+        }
         if (!item.isEmpty()) { ConfigModify.apply("item", setting, item); done.add("아이템 효과 " + item.size() + "개"); }
         if (data != null) { writeTacz(player, data, patched); done.add("TaCZ " + tacz.size() + "개" + (falloff != null ? " · 거리별 피해 자동 채움" : "")); }
         if (meleeData != null) { writeTacz(player, meleeData, meleePatched); done.add("근접 " + melee.size() + "개"); }
         LogUtils.getLogger().info("GunGang secondary patch by {}: {} {}", player.getGameProfile().getName(), id, changes);
         return "패치 완료: " + weapon.name() + " · " + String.join(", ", done) + " · 다음 지급·장비 선택부터 적용됩니다.";
     }
+    /**
+     * Takes the {@code stats.N.name/value} edits out of {@code gear} and returns the secondary's whole new stats list
+     * (null when none was edited). A row whose name and value are both blank is dropped; a half-filled row is refused.
+     */
+    private static com.google.gson.JsonArray stats(Loadouts.Weapon weapon, Map<String, String> gear) {
+        var names = new TreeMap<Integer, String>(); var values = new TreeMap<Integer, String>();
+        for (var it = gear.entrySet().iterator(); it.hasNext(); ) {
+            var change = it.next(); var match = STAT_KEY.matcher(change.getKey());
+            if (!match.matches()) continue;
+            int index = Integer.parseInt(match.group(1));
+            if (index >= MAX_STATS) throw new IllegalArgumentException("표시 항목은 최대 " + MAX_STATS + "개입니다.");
+            (match.group(2).equals("name") ? names : values).put(index, change.getValue().strip());
+            it.remove();
+        }
+        if (names.isEmpty() && values.isEmpty()) return null;
+        var current = weapon.stats();
+        int size = Math.max(current.size(), Math.max(names.isEmpty() ? 0 : names.lastKey() + 1, values.isEmpty() ? 0 : values.lastKey() + 1));
+        var out = new com.google.gson.JsonArray();
+        for (int i = 0; i < size; i++) {
+            String name = names.getOrDefault(i, i < current.size() ? current.get(i).name() : "");
+            String value = values.getOrDefault(i, i < current.size() ? current.get(i).value() : "");
+            if (name.isEmpty() && value.isEmpty()) continue;
+            if (name.isEmpty() || value.isEmpty()) throw new IllegalArgumentException("표시 항목 " + (i + 1) + ": 이름과 값을 모두 입력하세요 (둘 다 비우면 삭제).");
+            if (name.length() > 24 || value.length() > 40) throw new IllegalArgumentException("표시 항목 " + (i + 1) + ": 이름은 24자, 값은 40자 이하여야 합니다.");
+            var row = new com.google.gson.JsonObject(); row.addProperty("name", name); row.addProperty("value", value); out.add(row);
+        }
+        return out;
+    }
     /** 전역 설정 tab: item effect settings such as health_regeneration (lobby only, like /gungang modify item). */
     private static String applyGeneral(ServerPlayer player, String id, Map<String, String> changes) throws Exception {
-        if (!GENERAL_SETTINGS.containsKey(id)) throw new IllegalArgumentException("해당 설정이 없습니다: " + id);
+        if (!GENERAL_SETTINGS.containsKey(id) && !BLOCK_SETTINGS.containsKey(id)) throw new IllegalArgumentException("해당 설정이 없습니다: " + id);
         if (changes.isEmpty()) throw new IllegalArgumentException("변경한 항목이 없습니다.");
         var item = new LinkedHashMap<String, String>();
         for (var change : changes.entrySet()) {
@@ -304,9 +379,9 @@ public final class WeaponPatch {
             if (!key.startsWith("item:") || value.length() > 200) throw new IllegalArgumentException("알 수 없는 항목: " + key);
             item.put(key.substring(5), value);
         }
-        ConfigModify.apply("item", id, item);
+        ConfigModify.apply(generalKind(id), id, item);
         LogUtils.getLogger().info("GunGang general setting patch by {}: {} {}", player.getGameProfile().getName(), id, changes);
-        return "전역 설정 저장: " + GENERAL_SETTINGS.get(id) + " · " + item.size() + "개 항목";
+        return "전역 설정 저장: " + generalName(id) + " · " + item.size() + "개 항목";
     }
     /** The weapon's TaCZ weight; a data file without the field weighs 0 kg, as TaCZ reads it. */
     private static Double weight(Loadouts.Weapon weapon) {
@@ -400,9 +475,9 @@ public final class WeaponPatch {
         catch (RuntimeException malformed) { throw new IllegalArgumentException("거리별 피해 설정을 읽을 수 없습니다."); }
         if (curve == null) throw new IllegalArgumentException("거리별 피해 설정이 비어 있습니다.");
         var edited = TaczGunFile.parse(data.path(), patched);
-        var base = edited.values().get("bullet.damage");
-        if (base == null || !base.number()) throw new IllegalArgumentException("기본 피해(bullet.damage)가 없는 총기입니다.");
-        return edited.withFalloff(curve.bands(Double.parseDouble(base.text())));
+        String base = edited.current("bullet.damage");
+        if (base == null || !new TaczGunFile.Value("", base, 0, 0).number()) throw new IllegalArgumentException("기본 피해(bullet.damage)가 없는 총기입니다.");
+        return edited.withFalloff(curve.bands(Double.parseDouble(base)));
     }
     /** Backs the original pack file up once, writes the patch, and has TaCZ re-read (and re-sync) its packs. */
     private static void writeTacz(ServerPlayer player, TaczGunFile data, String patched) throws Exception {

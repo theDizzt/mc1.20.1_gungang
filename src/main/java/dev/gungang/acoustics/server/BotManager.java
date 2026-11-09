@@ -212,8 +212,16 @@ public final class BotManager {
                 .filter(BotManager::supportedPrimary).findFirst()
                 .orElseThrow(()->new IllegalArgumentException("봇 주무기는 TaCZ 총기·활·석궁·컴파운드 보우·근접 무기여야 합니다. /gungang bot weapon <주무기 ID>"));
     }
-    static boolean weaponTaken(UUID player,String team,boolean primary,String id){
-        return agents.stream().anyMatch(a->!a.id.equals(player)&&a.team.equals(team)&&(primary?a.weapon:a.secondary)!=null&&(primary?a.weapon:a.secondary).id().equals(id));
+    static boolean weaponTaken(UUID player,String team,boolean primary,String id){return weaponHolder(player,team,primary,id)!=null;}
+    /** The bot on this team (other than player) holding the weapon, or null. */
+    static UUID weaponHolder(UUID player,String team,boolean primary,String id){
+        return agents.stream().filter(a->!a.id.equals(player)&&a.team.equals(team)&&(primary?a.weapon:a.secondary)!=null&&(primary?a.weapon:a.secondary).id().equals(id))
+                .map(a->a.id).findFirst().orElse(null);
+    }
+    /** A bot's chosen primary and secondary weapon ids ("" when none), or null for a body no bot owns. */
+    static String[] weapons(net.minecraft.world.entity.Entity body){
+        var a=agent(body);if(a==null)return null;
+        return new String[]{a.weapon==null?"":a.weapon.id(),a.secondary==null?"":a.secondary.id()};
     }
     static void prepare(MinecraftServer s,ArenaMap map){
         close();server=s;arena=map;workNanos=workSamples=maxWorkNanos=0;

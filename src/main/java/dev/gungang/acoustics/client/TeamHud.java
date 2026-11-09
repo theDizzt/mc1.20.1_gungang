@@ -194,7 +194,7 @@ public final class TeamHud {
         Integer level = PlayerLevels.level(member.id());
         if (level != null) LevelEmblem.draw(g, level, x + 34, y + 1, 12);
         int nameX = level != null ? x + 49 : x + 34;
-        HudText.draw(g, member.name(), nameX, y + 1, x + 114 - nameX, 0xFFFFFFFF);
+        HudText.drawFit(g, member.name(), nameX, y + 1, x + 114 - nameX, 0xFFFFFFFF);
         ShooterHud.card(g, x + 34, y + 16, 80, 14, ShooterHud.BAR_EDGE, BAR_TRACK, 0);
         ShooterHud.card(g, x + 118, y + 8, 22, 22, ShooterHud.EDGE, SLOT_SURFACE, 0);
         if (p != null) {
@@ -225,7 +225,20 @@ public final class TeamHud {
         } else {
             HudText.draw(g, "--", x + 36, y + 18, 76, 0xFFAAAAAA);
         }
-        if (p == null) disguise(g, member.id(), x + 118, y + 8);
+        if (p == null && !disguise(g, member.id(), x + 118, y + 8)) {
+            // Out of tracking range: the held item the server reports.
+            var held = TeamPointHud.held(member.id());
+            if (!held.isEmpty()) g.renderItem(held, x + 121, y + 11);
+        }
+        if (PropHuntClient.disguiseOf(member.id()) == null && AcousticConfig.TEAM_WEAPON_NUMBERS.get()) {
+            g.pose().pushPose(); g.pose().translate(0, 0, 180);
+            String[] weapons = TeamPointHud.weapons(member.id());
+            if (weapons != null) {
+                if (!weapons[0].isEmpty()) HudText.smallNumber(g, weapons[0], x + 139, y + 9, .62f, PRIMARY_NUMBER);
+                if (!weapons[1].isEmpty()) HudText.smallNumber(g, weapons[1], x + 139, y + 23, .62f, SECONDARY_NUMBER);
+            }
+            g.pose().popPose();
+        }
     }
 
     /**
@@ -247,9 +260,14 @@ public final class TeamHud {
             g.pose().pushPose(); g.pose().translate(slotX + 14, y + 3, 180); g.pose().scale(.8f, .8f, 1);
             HudText.drawNumber(g, HudText.number(dev.gungang.acoustics.server.PropCatalog.number(row.block())), 0, 0, 0xFFFFFFFF);
             g.pose().popPose();
-        } else if (p != null && !p.getMainHandItem().isEmpty()) {
-            g.pose().pushPose(); g.pose().translate(slotX, y, 0); g.pose().scale(.75f, .75f, 1);
-            g.renderItem(p.getMainHandItem(), 0, 0); g.pose().popPose();
+        } else {
+            // Out of tracking range (p == null): the held item the server reports, so a far teammate keeps their weapon.
+            var held = p != null ? p.getMainHandItem() : TeamPointHud.held(member.id());
+            if (!held.isEmpty()) {
+                g.pose().pushPose(); g.pose().translate(slotX, y, 0); g.pose().scale(.75f, .75f, 1);
+                g.renderItem(held, 0, 0); g.pose().popPose();
+            }
+            if (AcousticConfig.TEAM_WEAPON_NUMBERS.get()) weaponNumbers(g, member.id(), slotX + 14, y);
         }
         int barY = y + 16;
         // Drop shadow one pixel down-right, only where it shows past the bar; then the track (its frame comes last).
@@ -277,6 +295,20 @@ public final class TeamHud {
             HudText.healthNumber(g, label, left, y + 23, barW + 20, 9, 0xFFFFFFFF, 0.78f);
         }
         else HudText.draw(g, "--", left, y + 23, barW, 0xFFAAAAAA);
+    }
+
+    static final int PRIMARY_NUMBER = 0xFFFFFFFF, SECONDARY_NUMBER = 0xFFFFD84A;
+    /**
+     * Where a hider's block number goes: the chosen primary weapon number (white) on top and the secondary (yellow)
+     * below, each with the number font's translucent black shadow.
+     */
+    private static void weaponNumbers(GuiGraphics g, UUID id, int x, int y) {
+        String[] weapons = TeamPointHud.weapons(id);
+        if (weapons == null) return;
+        g.pose().pushPose(); g.pose().translate(x, y, 180); g.pose().scale(.62f, .62f, 1);
+        if (!weapons[0].isEmpty()) HudText.drawNumber(g, HudText.number(weapons[0]), 0, 0, PRIMARY_NUMBER);
+        if (!weapons[1].isEmpty()) HudText.drawNumber(g, HudText.number(weapons[1]), 0, 10, SECONDARY_NUMBER);
+        g.pose().popPose();
     }
 
     /** A frame half a GUI pixel thick around (x, y, w, h). */

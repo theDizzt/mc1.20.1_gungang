@@ -42,6 +42,8 @@ TaCZ를 함께 개발 실행하려면 공식 배포 파일을 `.cache/compat/tac
 
 ### 검증 및 한계
 
+2026-11-09 (u329) GUNGANG 폰트 기본값·공격 콤보·선점 무기·팀원 무기 번호: `font/gungang_hangul.ttf`(GUNGANG + 물마루 한글, OFL 1.1)를 기본 프리셋 `GUNGANG`(크기 9)으로 추가하고 Galmuri11 Bold는 `GALMURI` 프리셋으로 남겼습니다. MaruMinya 프리셋·`MaruFontWeightMixin`·번들을 제거했습니다(`FontPreset`, `FontPack`). 체력바 오른쪽 게임 모드명 자리에 공격 콤보를 그립니다(`ComboHud`; 서버 `ComboHits`가 `LivingDamageEvent` LOWEST에서 `DamageCredit.attacker` 기준 실제 체력 감소량을 패킷 41 `ComboHit`로 공격자에게 전송, 3초 창, 옵션 `comboHud`). 중복 금지 시 `EquipmentSnapshot.takenPrimary/takenSecondary`(무기 ID → 팀원·봇 이름)로 무기 선택 화면에 선점 표시를 하고, 무기를 고르면 같은 팀원에게 장비 상태를 다시 보냅니다. 팀 정보 `TeamPointState.Vital`에 주/보조무기 ID와 손에 든 아이템(SNBT, 탄약·쿨타임 태그 제외)을 더해, 추적 범위 밖 팀원의 무기와 팀원 무기 번호(옵션 `teamWeaponNumbers`)를 표시합니다.
+
 2026-11-07 (u274) 숨바꼭질 155번 노트블록 곡 악보 교체: 모차르트 피아노 소나타 16번(주제 4마디 + 오르내리는 음계 4마디, 75음), 파헬벨 카논(4분음표·8분음표 선율, 48음), 쇼팽 나비 에튀드(첫 옥타브 음형, 32음), 쇼팽 흑건(오른손 첫 흑건 음형, 48음, 최고음 Db7)을 제공받은 악보 그대로 넣었습니다. 모두 넓어진 음역(F#1~F#7) 안입니다.
 
 2026-11-07 (u273) 금색 게이지 공용화·호위 수레 피격 판정: 경험치 바 그리기를 `TacticalStyle.goldGauge`로 옮기고 무기 선택 화면 능력치 막대(`statPanel`, 이전 `TacticalStyle.meter`)도 같은 게이지를 씁니다. 능력치 막대는 무기를 바꾸면 이름별로 새 값까지 부드럽게 바뀝니다. 게이지 트랙(`0x7023241D`)과 외곽선(`0x50000000`)을 반투명으로 바꿔 뒤 화면이 비칩니다. 호위 수레가 대각선으로 돌면 축 정렬 바운딩 박스가 모델(3×5)보다 훨씬 커지는데(약 5.7×5.7), 바닐라 `ProjectileUtil.getEntityHitResult`는 박스에 먼저 들어간 엔티티를 고르므로 수레 박스의 빈 모서리에 선 플레이어가 수레에 가려져 화살·투척물이 수레에 막히던 문제를 고쳤습니다. `EscortProjectileHitMixin`이 수레 모델 명중 지점과 수레를 뺀 가장 가까운 엔티티의 진입 지점을 비교해 더 가까운 쪽을 돌려줍니다(조준 선택용 오버로드도 동일). 복합궁 화살 조각(`ArrowFragmentEntity`)의 겹침 판정도 수레는 바운딩 박스 대신 모델 안(`EscortCart.modelContains`)일 때만 맞습니다. TaCZ 총알은 엔티티마다 실제 명중 거리를 비교하므로 기존 `TaczCartHitMixin`으로 이미 모델 기준입니다. 바닐라 노트블럭 음역을 6옥타브(F#1~F#7)로 넓혔습니다(`NoteBlockRangeMixin`, `NoteRange`). [NoteBlockMaster](https://github.com/IONayrus/NoteBlockMaster)의 원리(클라이언트 음높이 제한 해제, 넓은 음 범위)를 참고했지만 GPLv3라 코드는 가져오지 않고 새로 작성했습니다. 바닐라 `note`(0~24)는 그대로 두고 `octave`(0~4, 기본 2) 상태를 추가해 기존 월드·회로와 호환되며, `use`를 HEAD에서 대체해 우클릭 반음 위·웅크리고 빈손 우클릭 반음 아래와 액션바 음 이름을 처리하고(Forge `onNoteChange` 이벤트 유지), `triggerEvent`의 `getPitchFromNote`를 리다이렉트해 0.125~8배로 연주합니다. 클라이언트 `SoundEngineMixin`의 음높이 제한 해제 대상에 `minecraft:block.note_block.*`을 추가했습니다. 숨바꼭질 155번 노트블록 변신의 곡 연주도 블록 상태를 바닐라 2옥타브로 잘라 저장하던 것을 넓어진 음역(`NoteRange.withSemitone`, `octave` 포함)으로 저장해, 변신 블록의 상태가 실제로 연주한 음과 같아졌습니다(수록 7곡은 F#2~F#6이라 잘리는 음 없음). `compileJava` 통과, 게임 내 확인은 하지 않았습니다.
@@ -156,9 +158,9 @@ TaCZ 클래스 및 하위 클래스 인식, 언덕 위 머리 노출·어깨 부
 `config/gungang/fonts`에 TTF를 넣으면 파일명 순으로 첫 파일을 선택한다. `fontFile`에는 경로가 아닌
 파일명만 지정할 수 있다. 외부 TTF를 읽고 형식을 확인한 뒤 메모리에 보관해 해당
 리소스 재로딩 동안 같은 데이터를 제공한다. F3+T로 파일 추가·교체를 반영한다.
-외부 글리프가 없으면 내장 Galmuri11 Bold 공급자를 사용하며, 읽기 실패 시에도 내장 폰트로 복원한다.
+외부 글리프가 없으면 내장 GUNGANG → Galmuri11 Bold 공급자를 사용하며, 읽기 실패 시에도 내장 GUNGANG으로 복원한다.
 
-내장 Galmuri11 Bold 폰트는 논리 크기 9를 유지하면서 기본 6배 해상도로 글리프를 생성한다.
+내장 폰트(GUNGANG·Galmuri11 Bold)는 논리 크기 9를 유지하면서 기본 6배 해상도로 글리프를 생성한다.
 폰트 탭의 `fontOversample`로 1~8배를 선택하며, `fontSmoothing`으로 선형 필터링을
 켜거나 끈다. 저장 시 리소스를 다시 불러오고 내장 팩의 폰트 정의를 설정값으로 생성한다.
 이전 3배 설정에 비해 각 축의 해상도는 2배, 글리프 픽셀 면적은 약 4배이며,

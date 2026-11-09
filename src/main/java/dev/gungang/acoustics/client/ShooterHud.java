@@ -65,7 +65,7 @@ public final class ShooterHud {
         TeamPointHud.badge(graphics,player.getUUID(),x+3,y+5,56);
         int detailX = x + 68;
         if (!watching) ProgressionHud.draw(graphics,detailX,y+7,WIDTH-68);
-        HudText.draw(graphics, player instanceof net.minecraft.world.entity.player.Player named ? ClientNames.of(named) : player.getName().getString(), detailX, y + 19, WIDTH - 68, 0xFFFFFFFF);
+        HudText.drawFit(graphics, player instanceof net.minecraft.world.entity.player.Player named ? ClientNames.of(named) : player.getName().getString(), detailX, y + 19, WIDTH - 68, 0xFFFFFFFF);
         // Slot 1 is always inventory index 0, independent of the player's selected slot.
         if (player instanceof net.minecraft.world.entity.player.Player self && !watching)
             slot(graphics, self.getInventory().getItem(0), detailX, y + 32, self.getInventory().selected == 0, team);
@@ -77,9 +77,11 @@ public final class ShooterHud {
         float fraction = HudHealth.fraction(health, maximum);
         int color = fraction <= 0.25f ? 0xFFFF9292 : fraction <= 0.5f ? 0xFFFFDC98 : 0xFFF5F5F0;
         String value = HudHealth.label(health, maximum,player.getAbsorptionAmount());
-        String mode = mc.gameMode != null && mc.gameMode.getPlayerMode() != net.minecraft.world.level.GameType.SURVIVAL
+        // The combo counter takes the place of the game mode label (and keeps its space reserved while enabled).
+        boolean combo = ComboHud.enabled();
+        String mode = !combo && mc.gameMode != null && mc.gameMode.getPlayerMode() != net.minecraft.world.level.GameType.SURVIVAL
                 ? net.minecraft.network.chat.Component.translatable("gameMode." + mc.gameMode.getPlayerMode().getName()).getString() : "";
-        int sideSpace = mode.isEmpty() ? 8 : Math.round(mc.font.width(mode) * 1.25f) + 12;
+        int sideSpace = combo ? ComboHud.reservedWidth() : mode.isEmpty() ? 8 : Math.round(mc.font.width(mode) * 1.25f) + 12;
         int barWidth = Math.min(HEALTH_WIDTH, Math.max(4, screenWidth - sideSpace * 2));
         int barX = (screenWidth - barWidth) / 2;
         int barY = Math.max(0, screenHeight - HEALTH_HEIGHT - AcousticConfig.HUD_OFFSET_Y.get());
@@ -108,7 +110,10 @@ public final class ShooterHud {
         float displayed = layers.absorptionEnd();
         float filled = (barWidth - 2) * displayed;
         HudHealthBars.render(graphics, barX + 1, barY + 1, barWidth - 2, HEALTH_HEIGHT - 2, layers, color);
-        HudHealthBars.stripes(graphics, barX + 1, barY + 1, barWidth - 2, HEALTH_HEIGHT - 2, displayed, (player.tickCount + partialTick) / 20.0);
+        // No stripes over the green heal ghost: they would read as filled health.
+        double stripeTime = (player.tickCount + partialTick) / 20.0;
+        HudHealthBars.stripes(graphics, barX + 1, barY + 1, barWidth - 2, HEALTH_HEIGHT - 2, 0, layers.health(), stripeTime);
+        HudHealthBars.stripes(graphics, barX + 1, barY + 1, barWidth - 2, HEALTH_HEIGHT - 2, layers.healEnd(), displayed, stripeTime);
         finish(graphics, barX + 1, barY + 1, barWidth - 2, HEALTH_HEIGHT - 2, displayed);
         PropAbilityHud.jump(graphics, barX, barY - 3, barWidth, partialTick);
         int airPercent = Math.round(100f * Math.max(0, Math.min(player.getMaxAirSupply(), player.getAirSupply()))
@@ -147,6 +152,10 @@ public final class ShooterHud {
         }
         if (player.getAbsorptionAmount() > 0) {
             HudText.draw(graphics, "+" + HudHealth.number(player.getAbsorptionAmount()), x + 3, y + 50, 56, 0xFFFFD36B);
+        }
+        if (combo) {
+            int comboX = barX + barWidth + 6;
+            ComboHud.render(graphics, comboX, barY, HEALTH_HEIGHT, screenWidth - comboX - 4);
         }
         if (!mode.isEmpty()) {
             int modeX = barX + barWidth + 6;
