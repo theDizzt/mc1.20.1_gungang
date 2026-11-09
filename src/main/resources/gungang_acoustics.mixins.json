@@ -8,6 +8,7 @@
   "mixins": ["AirAssaultMotionMixin", "PropBulletClipMixin", "RapierDashMixin", "PropTargetMixin", "PropCollisionMixin", "SpawnGateEffectMixin", "MapSnowAccumulationMixin", "AcidLoggedStateMixin", "AcidLoggedFluidMixin", "AcidLoggedShapeMixin", "TaczDamageMixin", "TaczHeatScriptMixin", "TaczNpcPassMixin", "TaczAllyKnockbackMixin", "SecondaryItemUseMixin", "SecondaryCooldownMixin", "TacticalCooldownMixin", "FoodRegenerationMixin", "PeacefulRegenerationMixin", "PlayerKnockbackMixin", "RegenerationEffectMixin", "OrdnanceFriendlyFireMixin", "JetpackStepMixin", "BombSpectatorCameraMixin", "BombSpectatorTeleportMixin", "HolidayGiftMixin", "EscortLadderMixin", "EscortProjectileHitMixin", "TaczCartHitMixin", "TaczCartStopMixin", "MeleeConeTargetMixin", "MeleeAttackMixin", "SecretCollisionMixin", "NoteBlockRangeMixin", "ExplosionAccessor"],
   "client": [
     "TaczWindDisplayMixin",
+    "TaczWindBulletHoleMixin",
     "RapierOffhandLayerMixin",
     "TitleScreenMixin",
     "TitleMenuButtonMixin",

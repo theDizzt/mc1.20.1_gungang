@@ -101,6 +101,18 @@ public final class CombatRules {
         }
         if(victim instanceof ServerPlayer p&&CombatGadgets.shieldBlocked(p))return;
         if(everyone&&pushedNow(victim))return;
+        if(everyone){
+            double wind=1;
+            var loadouts=LobbyManager.loaded();
+            if(loadouts!=null)for(var weapon:loadouts.primary())if(weapon.itemNbt().contains("bf1:wex")){wind=weapon.windStrength();break;}
+            PUSHED.put(victim,victim.level().getGameTime());
+            // Accelerate along the stream without vanilla's vertical hop or halving existing movement.
+            Vec3 direction=bullet.getDeltaMovement().normalize();
+            if(direction.lengthSqr()<1e-8)direction=owner.getLookAngle();
+            Vec3 motion=victim.getDeltaMovement().add(direction.scale(wind*.1));
+            if(victim instanceof ServerPlayer player)PlayerImpulse.apply(player,motion);
+            else{victim.setDeltaMovement(motion);victim.hasImpulse=true;victim.hurtMarked=true;}
+        }
         double strength=strength(bullet);
         if(strength<=0)return;
         if(everyone)PUSHED.put(victim,victim.level().getGameTime());
