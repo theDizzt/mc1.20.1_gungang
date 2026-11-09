@@ -1,0 +1,12 @@
+newmtl material_0
+Kd 1 1 1
+map_Kd gungang:item/jetpack_0
+newmtl material_1
+Kd 1 1 1
+map_Kd gungang:item/jetpack_1
+newmtl material_2
+Kd 1 1 1
+map_Kd gungang:item/jetpack_2
+newmtl material_3
+Kd 1 1 1
+map_Kd gungang:item/jetpack_3
