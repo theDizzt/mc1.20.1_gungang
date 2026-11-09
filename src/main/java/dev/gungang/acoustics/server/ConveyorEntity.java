@@ -12,6 +12,8 @@ import net.minecraft.world.level.block.state.properties.Half;
 import net.minecraft.world.phys.*;
 
 public final class ConveyorEntity extends BlockEntity {
+    /** Riders wider than this would reach past a bend's cell on the curved centreline (0.5 - 0.125 inset, times two). */
+    private static final double WIDE=.74;
     int speed=10;
     boolean initialized;
     public ConveyorEntity(BlockPos p,BlockState s){super(MotionBlocks.CONVEYOR_ENTITY.get(),p,s);}
@@ -34,9 +36,20 @@ public final class ConveyorEntity extends BlockEntity {
             var ports=ConveyorBlock.ports(state.getValue(ConveyorBlock.SHAPE));
             var out=ConveyorBlock.output(state);var in=ports[0]==out?ports[1]:ports[0];
             double x=entity.getX()-pos.getX()-.5,z=entity.getZ()-pos.getZ()-.5;
+            double travel=.1*belt.speed/10d;
+            if(in.getAxis()!=out.getAxis()&&entity.getBbWidth()>WIDE){
+                // A wide rider (a block-sized prop) cutting the curve pushes its box into the cells beside the bend and
+                // wedges there. It takes the belt's L instead: in to the cell centre, then out, staying centred on each arm.
+                double sIn=x*in.getStepX()+z*in.getStepZ(),sOut=x*out.getStepX()+z*out.getStepZ(),half=travel*.5;
+                double alongIn,alongOut;
+                if(sIn>1e-4){double step=Math.min(travel,sIn);alongIn=-step;alongOut=travel>step?travel-step:net.minecraft.util.Mth.clamp(-sOut,-half,half);}
+                else{alongOut=travel;alongIn=net.minecraft.util.Mth.clamp(-sIn,-half,half);}
+                entity.move(MoverType.SELF,new Vec3(alongIn*in.getStepX()+alongOut*out.getStepX(),0,alongIn*in.getStepZ()+alongOut*out.getStepZ()));
+                entity.setOnGround(true);
+                continue;
+            }
             double nearest=0,best=Double.MAX_VALUE;
             for(int i=0;i<=32;i++){double t=i/32d;var p=MotionRules.point(in.getStepX(),in.getStepZ(),out.getStepX(),out.getStepZ(),t);double d=(x-p[0])*(x-p[0])+(z-p[1])*(z-p[1]);if(d<best){best=d;nearest=t;}}
-            double travel=.1*belt.speed/10d;
             // Advance along the tangent and gently center the rider, including on corners.
             double dx=-(1-nearest)*in.getStepX()+nearest*out.getStepX(),dz=-(1-nearest)*in.getStepZ()+nearest*out.getStepZ();
             double length=Math.sqrt(dx*dx+dz*dz);dx/=length;dz/=length;
