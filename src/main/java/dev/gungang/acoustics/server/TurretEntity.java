@@ -51,7 +51,7 @@ public final class TurretEntity extends LivingEntity {
         entityData.set(CAPACITY,Turrets.config.capacity());entityData.set(AMMO,capacity());entityData.set(RELOAD_RANGE,(float)Turrets.config.reloadRange());
         getAttribute(Attributes.MAX_HEALTH).setBaseValue(Turrets.config.health());setHealth(getMaxHealth());entityData.set(AIM,getYRot());
     }
-    public BlockPos anchor(){return BlockPos.containing(getX()-1,getY(),getZ()-1);}
+    public BlockPos anchor(){return BlockPos.containing(getX()-1,Math.ceil(getY()-1e-6),getZ()-1);}
     void keepReloading(){if(repairing){reloadFraction=0;}repairing=false;reloadUntil=level().getGameTime()+15;}
     void keepRepairing(){if(!repairing){reloadFraction=0;}repairing=true;reloadUntil=level().getGameTime()+15;}
     void stopReload(){reloadUntil=0;reloadFraction=0;repairing=false;}
@@ -68,7 +68,7 @@ public final class TurretEntity extends LivingEntity {
             }
             return;
         }
-        if(owner()==null||Turrets.owned(owner())!=this||!Turrets.supported(level(),anchor())){discard();return;}
+        if(owner()==null||Turrets.owned(owner())!=this||!Turrets.supported(level(),anchor())||Math.abs(PlacementSurface.height(level(),anchor())-getY())>1e-5){discard();return;}
         var ownerEntity=ownerEntity();
         // Death and the spectator respawn camera must not retire the owner's slot.
         // Explicit leave/reset/loadout cleanup still removes deployed turrets.

@@ -35,6 +35,14 @@ public final class OffhandMacro {
     private static boolean objectiveAction;
     private static boolean shieldHold;
     private static boolean previousAttackDown, previousUseDown;
+    private static boolean previousPlaceDown, previousCancelDown;
+
+    // Placement uses the requested physical G/H keys independently of saved offhand bindings.
+    public static boolean placementDown() { return placementKeyDown(GLFW.GLFW_KEY_G); }
+    private static boolean placementKeyDown(int key) {
+        var mc=Minecraft.getInstance();
+        return mc.screen==null&&mc.isWindowActive()&&InputConstants.isKeyDown(mc.getWindow().getWindow(),key);
+    }
 
     private static KeyMapping mapping(String name, int key) {
         return new KeyMapping("gungang.key.offhand." + name, KeyConflictContext.IN_GAME,
@@ -60,11 +68,25 @@ public final class OffhandMacro {
         boolean useEdge = useClick && !previousUseDown;
         previousAttackDown = attackDown;
         previousUseDown = useDown;
+        boolean placeDown=placementDown(),cancelDown=placementKeyDown(GLFW.GLFW_KEY_H);
+        boolean placeEdge=placeDown&&!previousPlaceDown,cancelEdge=cancelDown&&!previousCancelDown;
+        previousPlaceDown=placeDown;previousCancelDown=cancelDown;
         if(TurretClient.servicing())return;
-        if ((attackEdge || useEdge) && GadgetClient.placing()) { GadgetClient.cancel(); return; }
+        if (GadgetClient.placing()) {
+            if (cancelEdge) GadgetClient.cancel();
+            return; // G is held to confirm placement, not to cancel the preview.
+        }
+        boolean placementItem=mc.player!=null&&mc.player.getOffhandItem().getItem() instanceof dev.gungang.acoustics.server.GadgetItem gadget
+                &&dev.gungang.acoustics.server.GadgetItem.placement(gadget.kind);
+        if(placementItem) {
+            if(owner==null&&placeEdge&&canStart(mc))begin(mc,true);
+            return; // H never opens a placement preview, even with swapped saved bindings.
+        }
         if (owner == null && (attackEdge || useEdge) && canStart(mc)) {
             if(attackEdge&&dev.gungang.acoustics.server.CombatGadgets.is(mc.player.getOffhandItem(),"shield"))return;
-            begin(mc, !attackEdge);
+            boolean deployable=mc.player.getOffhandItem().getItem() instanceof dev.gungang.acoustics.server.GadgetItem item
+                    &&dev.gungang.acoustics.server.GadgetItem.placement(item.kind);
+            begin(mc, !attackEdge||deployable);
         }
     }
 
@@ -131,7 +153,7 @@ public final class OffhandMacro {
                 try {
                     // Objectives validate their own ray trace on the server. Avoid an interactive
                     // floor block or a gun input handler consuming the macro's single use click.
-                    if (objectiveAction||(use&&(dev.gungang.acoustics.server.HandAxeItem.is(owner.getMainHandItem())||dev.gungang.acoustics.server.Defibrillator.is(owner.getMainHandItem())||dev.gungang.acoustics.server.CombatGadgets.is(owner.getMainHandItem(),"arrow_grenade")))) mc.gameMode.useItem(owner, InteractionHand.MAIN_HAND);
+                    if (objectiveAction||(use&&owner.getMainHandItem().getItem() instanceof dev.gungang.acoustics.server.GadgetItem item&&dev.gungang.acoustics.server.GadgetItem.placement(item.kind))||(use&&(dev.gungang.acoustics.server.HandAxeItem.is(owner.getMainHandItem())||dev.gungang.acoustics.server.Defibrillator.is(owner.getMainHandItem())||dev.gungang.acoustics.server.CombatGadgets.is(owner.getMainHandItem(),"arrow_grenade")))) mc.gameMode.useItem(owner, InteractionHand.MAIN_HAND);
                     else if (use) ((Clicks) mc).gungang$use();
                     else ((Clicks) mc).gungang$attack();
                 } finally { click = false; }

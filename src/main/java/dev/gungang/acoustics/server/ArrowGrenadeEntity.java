@@ -10,13 +10,13 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.*;
 
-/** A lobbed grenade becomes a stationary, twelve-second random arrow emitter on impact. */
+/** A lobbed grenade emits simultaneous spherical arrow bursts once per second on impact. */
 public final class ArrowGrenadeEntity extends ThrowableItemProjectile {
     private static final EntityDataAccessor<Boolean> ACTIVE=SynchedEntityData.defineId(ArrowGrenadeEntity.class,EntityDataSerializers.BOOLEAN);
     private Vec3 anchor=Vec3.ZERO;
     private long expires,nextShot;
     private double damage=16,range=6,speed=1.2;
-    private int interval=1;
+    private int interval=20;
     public ArrowGrenadeEntity(EntityType<? extends ArrowGrenadeEntity> type,Level level){super(type,level);}
     @Override protected void defineSynchedData(){super.defineSynchedData();entityData.define(ACTIVE,false);}
     @Override protected Item getDefaultItem(){return GadgetItems.ARROW_GRENADE.get();}
@@ -58,12 +58,22 @@ public final class ArrowGrenadeEntity extends ThrowableItemProjectile {
         if(now>=nextShot){emit();nextShot=now+interval;}
     }
     private void emit(){
+        // A complete horizontal ring, two angled rings, and both poles cover all directions each burst.
+        for(int ring=-1;ring<=1;ring++) {
+            int count=ring==0?16:8;
+            double pitch=ring*Math.PI/4,horizontal=Math.cos(pitch);
+            for(int i=0;i<count;i++) {
+                double angle=2*Math.PI*i/count;
+                emitArrow(new Vec3(Math.cos(angle)*horizontal,Math.sin(pitch),Math.sin(angle)*horizontal));
+            }
+        }
+        emitArrow(new Vec3(0,1,0));emitArrow(new Vec3(0,-1,0));
+        level().playSound(null,blockPosition(),SoundEvents.ARROW_SHOOT,SoundSource.PLAYERS,.35f,1.5f+random.nextFloat()*.3f);
+    }
+    private void emitArrow(Vec3 direction){
         var arrow=GadgetItems.ARROW_FRAGMENT.get().create(level());if(arrow==null)return;
-        double y=random.nextDouble()*2-1,angle=random.nextDouble()*Math.PI*2,horizontal=Math.sqrt(1-y*y);
-        var direction=new Vec3(Math.cos(angle)*horizontal,y,Math.sin(angle)*horizontal);
         arrow.launch(getOwner(),position(),direction,damage,range,speed);
-        if(level().addFreshEntity(arrow)&&level().getGameTime()%4==0)
-            level().playSound(null,blockPosition(),SoundEvents.ARROW_SHOOT,SoundSource.PLAYERS,.35f,1.5f+random.nextFloat()*.3f);
+        level().addFreshEntity(arrow);
     }
     @Override public void addAdditionalSaveData(CompoundTag tag){
         super.addAdditionalSaveData(tag);tag.putBoolean("Active",active());tag.putLong("Expires",expires);tag.putLong("NextShot",nextShot);
@@ -73,6 +83,7 @@ public final class ArrowGrenadeEntity extends ThrowableItemProjectile {
         super.readAdditionalSaveData(tag);entityData.set(ACTIVE,tag.getBoolean("Active"));anchor=position();
         expires=tag.getLong("Expires");nextShot=tag.getLong("NextShot");damage=tag.getDouble("ShardDamage");
         range=tag.getDouble("ShardRange");speed=tag.getDouble("ShardSpeed");interval=Math.max(1,tag.getInt("Interval"));
+        if(interval==1){interval=20;nextShot=level().getGameTime()+interval;}
         if(active()){setNoGravity(true);setDeltaMovement(Vec3.ZERO);}
     }
     @Override public net.minecraft.network.protocol.Packet<net.minecraft.network.protocol.game.ClientGamePacketListener> getAddEntityPacket(){return net.minecraftforge.network.NetworkHooks.getEntitySpawningPacket(this);}
