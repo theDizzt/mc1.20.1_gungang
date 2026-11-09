@@ -14,6 +14,18 @@ public final class HudText {
     /** Display TTF for large HUD numbers only; small labels keep the regular font. */
     public static final ResourceLocation NUMBER_FONT = new ResourceLocation(GungangAcoustics.ID, "hud_number");
 
+    /** Plain GUNGANG (Latin, digits, symbols) with Galmuri11 Bold for everything else (Hangul), for weapon ids and specs, independent of the font preset. */
+    public static final ResourceLocation UI_FONT = new ResourceLocation(GungangAcoustics.ID, "gungang_ui");
+    public static MutableComponent gungang(String value) {
+        return Component.literal(value).withStyle(style -> style.withFont(UI_FONT));
+    }
+    /** The longest prefix of value that fits maxWidth in {@link #UI_FONT}. */
+    public static String fitGungang(String value, int maxWidth) {
+        var font = Minecraft.getInstance().font;
+        String text = value;
+        while (!text.isEmpty() && font.width(gungang(text)) > maxWidth) text = text.substring(0, text.offsetByCodePoints(text.length(), -1));
+        return text;
+    }
     public static Component number(String value) {
         return Component.literal(value).withStyle(style -> style.withFont(NUMBER_FONT));
     }
@@ -74,6 +86,21 @@ public final class HudText {
 
     public static void draw(GuiGraphics graphics, String value, int x, int y, int maxWidth, int color) {
         drawScaled(graphics, value, x, y, maxWidth, color, AcousticConfig.HUD_TEXT_SIZE.get() / 100f, HudText::styled);
+    }
+    /**
+     * {@link #draw} that never cuts letters off: a value wider than maxWidth is shrunk to fit and kept vertically
+     * centred on the line it would have used (nicknames).
+     */
+    public static void drawFit(GuiGraphics graphics, String value, int x, int y, int maxWidth, int color) {
+        var font = Minecraft.getInstance().font;
+        float size = AcousticConfig.HUD_TEXT_SIZE.get() / 100f;
+        int width = Math.max(1, font.width(styled(value)));
+        float scale = Math.min(size, maxWidth / (float) width);
+        graphics.pose().pushPose();
+        graphics.pose().translate(x, y + font.lineHeight * (size - scale) / 2f, 0);
+        graphics.pose().scale(scale, scale, 1);
+        graphics.drawString(font, styled(value), 0, 0, color, false);
+        graphics.pose().popPose();
     }
     public static void health(net.minecraft.client.gui.GuiGraphics g, String value, int x, int y, int width, int height, int color) {
         health(g, value, x, y, width, height, color, 1f);

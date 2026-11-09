@@ -67,7 +67,7 @@ public final class ArcThrower {
         var type=level.registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.DAMAGE_TYPE).getHolderOrThrow(DamageTypes.INDIRECT_MAGIC);
         float damage=(float)(config.arcDamage()*AdrenalineDamage.multiplier(owner));
         var from=victim.getBoundingBox().getCenter();
-        for(var near:level.getEntitiesOfClass(LivingEntity.class,victim.getBoundingBox().inflate(radius),BotEntity::participant)){
+        for(var near:level.getEntitiesOfClass(LivingEntity.class,victim.getBoundingBox().inflate(radius),CombatRules::target)){
             if(near==victim||near==owner||!near.isAlive()||near.isSpectator()||struck.contains(near.getUUID()))continue;
             if(near.getBoundingBox().getCenter().distanceTo(from)>radius||SafeZones.contains(near))continue;
             if(owner instanceof Player p&&near instanceof Player other&&!p.canHarmPlayer(other))continue;

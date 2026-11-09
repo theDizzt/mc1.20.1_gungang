@@ -149,7 +149,7 @@ public final class SurvivalGadgets {
      */
     private static boolean target(LivingEntity q){
         var hunt=MatchManager.propHunt();
-        return BotEntity.participant(q)&&!SafeZones.contains(q)&&(hunt==null||!hunt.participant(q.getUUID()));
+        return CombatRules.target(q)&&!SafeZones.contains(q)&&(hunt==null||!hunt.participant(q.getUUID()));
     }
     /** Jet flame trail of a non-player owner (the bot); same damage and lifetime as a player's trail. */
     static void trail(ServerLevel level,UUID owner,Vec3 position,long end){TRAILS.add(new Trail(level,owner,position,end));}

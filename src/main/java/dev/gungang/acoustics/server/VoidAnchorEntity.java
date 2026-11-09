@@ -83,7 +83,7 @@ public final class VoidAnchorEntity extends LivingEntity {
     }
     private boolean enemy(LivingEntity e) {
         if(e==this||!e.isAlive()||e.isSpectator()||e.getUUID().equals(owner)||SafeZones.contains(e)||LobbyManager.respawning(e.getUUID())||FreeForAllMatch.blocked(e))return false;
-        if(!(e instanceof Player||e instanceof BotEntity||e instanceof net.minecraft.world.entity.monster.Enemy))return false;
+        if(!(e instanceof Player||e instanceof BotEntity||e instanceof net.minecraft.world.entity.monster.Enemy||CombatRules.npcTarget(e)))return false;
         if(e instanceof Player p&&p.isCreative())return false;
         return team.isEmpty()||e.getTeam()==null||!team.equals(e.getTeam().getName());
     }

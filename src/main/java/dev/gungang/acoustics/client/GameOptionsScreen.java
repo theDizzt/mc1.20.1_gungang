@@ -271,7 +271,7 @@ final class GameOptionsScreen extends ArenaScreen {
                 }
                 case WEAPONS->{
                     String v=value(row.key());var current=GameOptions.WeaponMode.valueOf(v.isEmpty()?row.placeholder():v);
-                    String label=switch(current){case CLASSIC->"클래식 (직접 선택)";case RANDOM->"랜덤 무기 (주기마다 교체)";case MELEE->"근접전 (근접 주무기만)";}+(v.isEmpty()?" · 기본":"");
+                    String label=switch(current){case CLASSIC->"클래식 (직접 선택)";case RANDOM->"랜덤 무기 (주기마다 교체)";case MELEE->"근접전 (근접 주무기·중복 허용)";}+(v.isEmpty()?" · 기본":"");
                     button(label,boxX(),y,BOX+NOTE+6,18,enabled,ACCENT,()->{var next=GameOptions.WeaponMode.values()[(current.ordinal()+1)%GameOptions.WeaponMode.values().length];values.put(row.key(),next.name());rebuildWidgets();});
                 }
                 case CHOICE->{

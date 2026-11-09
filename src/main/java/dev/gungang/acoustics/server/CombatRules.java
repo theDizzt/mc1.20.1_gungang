@@ -41,6 +41,16 @@ public final class CombatRules {
     private static boolean bulletKnockbackMissing;
 
     /** Damage dealt inside {@code work} (bleeding, fallout ...) pushes nobody. */
+    /**
+     * A Custom NPCs entity our own weapons may hit, like a vanilla mob. Prop hunt keeps map NPCs inert (bullets pass
+     * through them), so they are never targets there. Their own faction rules still decide inside {@code hurt}.
+     */
+    public static boolean npcTarget(net.minecraft.world.entity.Entity entity){
+        return entity instanceof net.minecraft.world.entity.LivingEntity living&&living.isAlive()&&!living.isSpectator()
+                &&PropHuntMatch.npc(entity)&&MatchManager.propHunt()==null;
+    }
+    /** A player or bot in play, or a Custom NPC ({@link #npcTarget}). */
+    public static boolean target(net.minecraft.world.entity.Entity entity){return BotEntity.participant(entity)||npcTarget(entity);}
     public static void quietly(Runnable work){
         QUIET.set(QUIET.get()+1);
         try{work.run();}finally{QUIET.set(QUIET.get()-1);}

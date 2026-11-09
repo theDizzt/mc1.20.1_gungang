@@ -35,9 +35,9 @@ public final class AcousticConfig {
         LCD_TIMER = b.comment("Draw the match timer as the seven-segment LCD clock instead of the GUNGANG-font display.").define("lcdTimerClock", false);
         CUSTOM_FONT = b.comment("Use the selected font preset. Disable to restore the normal game/resource-pack font.")
                 .define("customFont", true);
-        FONT_PRESET = b.comment("GUNGANG (default), GALMURI, or EXTERNAL. Missing glyphs fall back to Galmuri11 Bold.")
-                .defineEnum("fontPreset", FontPreset.GUNGANG);
-        FONT_FILE = b.comment("EXTERNAL preset only: TTF filename in config/gungang/fonts. Empty selects the first .ttf; missing/invalid files fall back to GUNGANG.")
+        FONT_PRESET = b.comment("GALMURI (default), GUNGANG, or EXTERNAL. Missing glyphs fall back to Galmuri11 Bold.")
+                .defineEnum("fontPreset", FontPreset.GALMURI);
+        FONT_FILE = b.comment("EXTERNAL preset only: TTF filename in config/gungang/fonts. Empty selects the first .ttf; missing/invalid files fall back to Galmuri11 Bold.")
                 .define("fontFile", "");
         FONT_OVERSAMPLE = b.comment("Selected and bundled TTF raster resolution multiplier, 1..8. Higher values use more atlas memory. Reload resources after changing.")
                 .defineInRange("fontOversample", 6, 1, 8);
