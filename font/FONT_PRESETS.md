@@ -1,28 +1,42 @@
 # UI font presets
 
-The Fonts options page cycles between MaruMinya, Galmuri11 Bold
-(default), and External TTF. Save reloads resources. External file selection is
-only used by the External preset; invalid files fall back to MaruMinya.
-Disabling custom fonts restores the game/resource-pack font.
+The Fonts options page cycles between GUNGANG (default), Galmuri11 Bold and
+External TTF. Save reloads resources. External file selection is only used by
+the External preset; invalid files fall back to GUNGANG. Disabling custom fonts
+restores the game/resource-pack font.
 
-Both bundled fonts use 1200 units/em and representative Hangul ink bounds of
-1100 units. Galmuri hhea ascent/descent is 1200/-200; MaruMinya is 1200/0.
-At Minecraft TTF size 9, their Hangul ink heights are therefore 7.0714 and
-8.25 GUI pixels. MaruMinya uses size 9 × 1200/1400 = 7.7142857 (85.714%).
-This preserves the legacy Hangul height and advance without scaling widgets.
-The existing configurable [0, 1] shift remains unchanged.
+## GUNGANG (`gungang_hangul.ttf`)
 
-MaruMinya's Latin glyphs are intrinsically narrower and shorter: A has
-500×900 ink units versus Galmuri's 800×1100. A uniform scale cannot match
-both scripts simultaneously; Hangul is the UI sizing reference. No horizontal
-stretch is applied. Timer and dedicated numeric fonts are unchanged.
+Built from `gungang.ttf` (Latin, digits, symbols; 2048 units/em) and
+`Mulmaru.ttf` (Hangul and everything GUNGANG lacks; 192 units/em):
 
-The MaruMinya preset adds a 0.35 GUI-pixel horizontal ink pass to default-font
-text (including its shadow). This compensates its light single-pixel strokes
-after downscaling, without changing text advances, wrapping or widget sizes.
-It does not enable Minecraft's full 1-pixel bold spacing. Legacy, external and
-dedicated HUD number/timer fonts do not receive this pass.
+- GUNGANG glyphs are kept unchanged; Mulmaru only fills missing codepoints.
+- Mulmaru is scaled by 1592 / 176 = 9.04545 so its Hangul ink height (11 px)
+  equals the GUNGANG capital A (1592 units, 7 GUNGANG pixels).
+- Hangul (syllables and jamo) is lifted onto the baseline so it spans 0..1592
+  exactly like A. Other Mulmaru glyphs keep Mulmaru's baseline.
+- Letter spacing: Mulmaru's 1 px trailing gap is replaced by GUNGANG's gap
+  (advance 1364 - ink width 1137 = 227 units).
+- Line metrics are GUNGANG's (hhea 1592/-455); the Windows clip box is widened
+  to cover all ink.
 
-External TTFs retain size 9. Galmuri remains the missing-glyph fallback for
-MaruMinya and external fonts. Existing external filenames are retained but
-require selecting External TTF after this update.
+At Minecraft TTF size 9 the STB pixel scale is 9 / (1592 + 455), so one GUNGANG
+pixel is one GUI pixel and both A and Hangul are 7 GUI pixels high. Hangul
+strokes are thinner than Latin ones because a scaled Mulmaru pixel is about
+145 units versus GUNGANG's 227; matching the heights makes this unavoidable.
+
+Mulmaru is SIL OFL 1.1, so the merged font is distributed under OFL 1.1 with
+both copyright notices kept in its name table.
+
+## Galmuri11 Bold
+
+Size 9, 1200 units/em, hhea 1200/-200. It is also the missing-glyph fallback
+for GUNGANG and external fonts.
+
+## History
+
+u216-u327 had a MaruMinya preset (size 9 x 6/7 with a 0.35 GUI-pixel ink pass)
+and Galmuri11 Bold as default. u329 removed MaruMinya and renamed the stored
+value `GALMURI_LEGACY` to `GALMURI`, so old configs start on GUNGANG.
+
+External TTFs retain size 9. Timer and dedicated numeric fonts are unchanged.

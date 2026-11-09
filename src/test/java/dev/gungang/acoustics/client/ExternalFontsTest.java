@@ -10,15 +10,14 @@ import static org.junit.jupiter.api.Assertions.*;
 class ExternalFontsTest {
     @TempDir Path directory;
 
-    @Test void maruPresetMatchesLegacyHangulInkHeight() throws Exception {
-        var legacy = Path.of("font/Galmuri11-Bold.ttf");
-        var maru = Path.of("font/x12y12pxMaruMinyaHangul.ttf");
-        var font = java.awt.Font.createFont(java.awt.Font.TRUETYPE_FONT, maru.toFile());
+    @Test void gungangPresetMatchesHangulToLatinCapitalHeight() throws Exception {
+        var gungang = Path.of("font/gungang_hangul.ttf");
+        var font = java.awt.Font.createFont(java.awt.Font.TRUETYPE_FONT, gungang.toFile());
         for (char glyph : "한글가힣AZ09".toCharArray()) assertTrue(font.canDisplay(glyph));
-        for (String glyph : new String[]{"한", "글", "가"}) {
-            assertEquals(inkHeight(legacy, glyph, dev.gungang.acoustics.FontPreset.GALMURI_LEGACY.size),
-                    inkHeight(maru, glyph, dev.gungang.acoustics.FontPreset.MARU_MINYA.size), .01);
-        }
+        double size = dev.gungang.acoustics.FontPreset.GUNGANG.size;
+        double capital = inkHeight(gungang, "A", size);
+        assertEquals(7.0, capital, .01); // one GUNGANG pixel per GUI pixel
+        for (String glyph : new String[]{"한", "글", "가"}) assertEquals(capital, inkHeight(gungang, glyph, size), .01);
     }
 
     /** Minecraft's STB pixel-height scale uses the hhea ascent minus descent. */

@@ -15,7 +15,7 @@ public final class AcousticConfig {
     public static final ForgeConfigSpec.BooleanValue FONT_SMOOTHING;
     public static final ForgeConfigSpec.BooleanValue HUD_BOLD_TEXT, LCD_TIMER;
     public static final ForgeConfigSpec.IntValue HUD_TEXT_SIZE;
-    public static final ForgeConfigSpec.BooleanValue TEAM_HUD, LEGACY_TEAM_HUD, KILL_LOG, TEAM_SILHOUETTES, COMPASS, AUTO_SPRINT;
+    public static final ForgeConfigSpec.BooleanValue TEAM_HUD, LEGACY_TEAM_HUD, TEAM_WEAPON_NUMBERS, COMBO_HUD, KILL_LOG, TEAM_SILHOUETTES, COMPASS, AUTO_SPRINT;
     public static final ForgeConfigSpec.BooleanValue ENABLED, DIFFRACTION, LOW_PASS, SHOOTER_HUD;
     public static final ForgeConfigSpec.DoubleValue REFERENCE_DISTANCE, ROLLOFF, WALL_STRENGTH, SMOOTHING;
     public static final ForgeConfigSpec.IntValue UPDATE_BUDGET, MAX_TRACE_DISTANCE, DIFFRACTION_RADIUS, HUD_OFFSET_X, HUD_OFFSET_Y, MIN_EFFECT_VOLUME;
@@ -35,9 +35,9 @@ public final class AcousticConfig {
         LCD_TIMER = b.comment("Draw the match timer as the seven-segment LCD clock instead of the GUNGANG-font display.").define("lcdTimerClock", false);
         CUSTOM_FONT = b.comment("Use the selected font preset. Disable to restore the normal game/resource-pack font.")
                 .define("customFont", true);
-        FONT_PRESET = b.comment("MARU_MINYA, GALMURI_LEGACY (default), or EXTERNAL. Bundled sizes are normalized to the legacy Hangul height.")
-                .defineEnum("fontPreset", FontPreset.GALMURI_LEGACY);
-        FONT_FILE = b.comment("EXTERNAL preset only: TTF filename in config/gungang/fonts. Empty selects the first .ttf; missing/invalid files fall back to MaruMinya.")
+        FONT_PRESET = b.comment("GUNGANG (default), GALMURI, or EXTERNAL. Missing glyphs fall back to Galmuri11 Bold.")
+                .defineEnum("fontPreset", FontPreset.GUNGANG);
+        FONT_FILE = b.comment("EXTERNAL preset only: TTF filename in config/gungang/fonts. Empty selects the first .ttf; missing/invalid files fall back to GUNGANG.")
                 .define("fontFile", "");
         FONT_OVERSAMPLE = b.comment("Selected and bundled TTF raster resolution multiplier, 1..8. Higher values use more atlas memory. Reload resources after changing.")
                 .defineInRange("fontOversample", 6, 1, 8);
@@ -51,6 +51,8 @@ public final class AcousticConfig {
         AUTO_SPRINT = b.comment("Sprint automatically while moving forward; fire and aim input stop the sprint so guns stay usable.").define("autoSprint", true);
         TEAM_HUD = b.define("teamHud", true);
         LEGACY_TEAM_HUD = b.comment("Draw teammates in the older wide layout (name, long health bar, item slot) instead of the compact one.").define("legacyTeamLayout", false);
+        TEAM_WEAPON_NUMBERS = b.comment("Show each teammate's chosen primary (white) and secondary (yellow) weapon numbers beside their held item. Prop hunt block numbers always show.").define("teamWeaponNumbers", true);
+        COMBO_HUD = b.comment("Right of the health bar: hit combo (x99) and the damage it dealt (3942.6). A combo ends 3 seconds after the last hit. Replaces the game mode label.").define("comboHud", true);
         KILL_LOG = b.define("killLog", true);
         TEAM_SILHOUETTES = b.define("teamSilhouettes", true);
         SHOOTER_HUD = b.comment("Replace the vanilla hotbar and hearts with a bottom-left shooter HUD. Independent of acoustic processing.")
