@@ -11,8 +11,8 @@ class HealthBarAnimationTest {
         assertEquals(0.75f, bar.update(10, 20, 0.16), 0.0001f);
         assertEquals(0.5f, bar.update(10, 20, 0.36));
         assertEquals(0.5f, bar.update(20, 20, 0.4));
-        assertEquals(0.75f, bar.update(20, 20, 0.575), 0.0001f);
-        assertEquals(1f, bar.update(20, 20, 0.76));
+        assertEquals(0.75f, bar.update(20, 20, 0.7), 0.0001f);
+        assertEquals(1f, bar.update(20, 20, 1.01));
     }
 
     @Test void interruptedAnimationStartsAtVisibleValue() {
@@ -22,7 +22,7 @@ class HealthBarAnimationTest {
         float mid = bar.update(0, 20, 0.2);
         assertEquals(mid, bar.update(20, 20, 0.2));
         assertTrue(bar.update(20, 20, 0.3) > mid);
-        assertEquals(1f, bar.update(20, 20, 0.56));
+        assertEquals(1f, bar.update(20, 20, 0.81));
     }
 
     @Test void independentOfFrameRateAndNoProgressWhenTimeIsPaused() {

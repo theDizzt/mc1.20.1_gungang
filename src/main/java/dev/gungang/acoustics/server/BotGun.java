@@ -38,6 +38,20 @@ final class BotGun {
     private static Method count;
     private static boolean countResolved;
     private int fullest;
+    /** Read-only telemetry: never construct a BotGun for a human (that draws/supplies the weapon). */
+    record Observation(int rounds,boolean reloading,boolean reloadKnown) { }
+    static Observation observe(LivingEntity entity) {
+        try {
+            var access=api();if(access==null)return new Observation(-1,false,false);
+            Object item=access.gun.invoke(null,entity.getMainHandItem());
+            if(item==null)return new Observation(-1,false,false);
+            if(!countResolved){countResolved=true;try{count=Class.forName("com.tacz.guns.api.item.IGun").getMethod("getCurrentAmmoCount",ItemStack.class);}catch(ReflectiveOperationException absent){count=null;}}
+            int rounds=count==null?-1:((Number)count.invoke(item,entity.getMainHandItem())).intValue();
+            Object state=reloadState==null?null:reloadState.invoke(access.from.invoke(null,entity));
+            boolean known=state!=null&&reloadType!=null;
+            return new Observation(rounds,known&&!((Enum<?>)reloadType.invoke(state)).name().equals("NOT_RELOADING"),known);
+        }catch(ReflectiveOperationException|RuntimeException unavailable){return new Observation(-1,false,false);}
+    }
     /**
      * Magazine fill 0..1 as the bot would know it from its own gun: rounds left over the most it has seen loaded.
      * 1 when the TaCZ build has no ammo-count API.

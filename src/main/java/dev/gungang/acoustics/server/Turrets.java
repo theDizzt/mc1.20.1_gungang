@@ -48,23 +48,41 @@ public final class Turrets {
         if(apply)config=c;
     }
     public static AABB bounds(BlockPos pos) {return new AABB(pos.getX(),pos.getY(),pos.getZ(),pos.getX()+2,pos.getY()+2,pos.getZ()+2);}
+    public static BlockPos target(Player player,double range) {
+        var hit=GadgetManager.target(player,range);if(hit==null)return null;
+        // The aimed support can be any of the four base tiles, not only the north-west corner.
+        for(int x=0;x>=-1;x--)for(int z=0;z>=-1;z--) {
+            var candidate=hit.offset(x,0,z);
+            if(valid(player,candidate))return candidate;
+        }
+        return hit; // Keep a red preview when the actual footprint is obstructed or uneven.
+    }
+    public static AABB bounds(Level level,BlockPos pos) {
+        return bounds(pos).move(0,PlacementSurface.height(level,pos)-pos.getY(),0);
+    }
     public static boolean supported(Level level,BlockPos pos) {
+        double y=PlacementSurface.height(level,pos);
+        // A base tile must support the turret, but its entire 2x2 footprint need not be paved.
+        // Space occupied by taller neighbouring terrain is still rejected by the collision check below.
         for(int x=0;x<2;x++)for(int z=0;z<2;z++) {
             var below=pos.offset(x,-1,z);
-            if(!level.hasChunkAt(below)||!level.getBlockState(below).isFaceSturdy(level,below,Direction.UP))return false;
+            if(PlacementSurface.supports(level,below.above(),y))return true;
         }
-        return true;
+        return false;
     }
     public static boolean valid(net.minecraft.world.entity.LivingEntity p,BlockPos pos) {
         if(pos==null||!p.isAlive()||p.isSpectator()||SafeZones.contains(p))return false;
-        var level=p.level();var box=bounds(pos);
-        if(pos.getY()<level.getMinBuildHeight()||pos.getY()+2>level.getMaxBuildHeight()
+        var level=p.level();var box=bounds(level,pos);
+        if(box.minY<level.getMinBuildHeight()||box.maxY>level.getMaxBuildHeight()
                 ||!level.getWorldBorder().isWithinBounds(box)||!supported(level,pos))return false;
-        for(int x=0;x<2;x++)for(int y=0;y<2;y++)for(int z=0;z<2;z++) {
-            var cell=pos.offset(x,y,z);
-            if(!level.hasChunkAt(cell)||!level.getFluidState(cell).isEmpty()||SafeZones.contains(level,cell.getX()+.5,cell.getY()+.5,cell.getZ()+.5))return false;
+        // Inspect the actual fractional-height volume, not the two whole block cells above the slab.
+        var clear=box.deflate(1e-5);
+        for(var cell:BlockPos.betweenClosed(BlockPos.containing(clear.minX,clear.minY,clear.minZ),BlockPos.containing(clear.maxX,clear.maxY,clear.maxZ))) {
+            if(!level.hasChunkAt(cell)||SafeZones.contains(level,cell.getX()+.5,Math.max(clear.minY,cell.getY()+.5),cell.getZ()+.5))return false;
+            var fluid=level.getFluidState(cell);
+            if(!fluid.isEmpty()&&cell.getY()+fluid.getHeight(level,cell)>clear.minY)return false;
         }
-        return level.noCollision(box)&&level.getEntities(p,box,e->!e.isSpectator()).isEmpty()&&!box.intersects(p.getBoundingBox());
+        return level.noCollision(clear)&&level.getEntities(p,clear,e->!e.isSpectator()).isEmpty()&&!clear.intersects(p.getBoundingBox());
     }
     public static TurretEntity owned(UUID owner) {
         var turret=OWNED.get(owner);return turret!=null&&!turret.isRemoved()?turret:null;

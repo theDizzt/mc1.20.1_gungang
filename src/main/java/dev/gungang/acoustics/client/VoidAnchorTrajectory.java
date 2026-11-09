@@ -38,7 +38,7 @@ public final class VoidAnchorTrajectory {
             boolean landed=hit.getType()==HitResult.Type.BLOCK;
             if(landed)end=hit.getLocation();
             if(landed) {
-                ThrowAimGuide.impact(pose,lines,end,Vec3.atLowerCornerOf(hit.getDirection().getNormal()),false);
+                ThrowAimGuide.impact(pose,lines,PlacementSurface.anchorImpact(mc.level,hit),mc.level.getBlockState(hit.getBlockPos()).getBlock() instanceof net.minecraft.world.level.block.SlabBlock?new Vec3(0,1,0):Vec3.atLowerCornerOf(hit.getDirection().getNormal()),false);
                 break;
             }
             point=end;distance+=step.horizontalDistance();velocity=VoidAnchorFlight.next(velocity,distance);

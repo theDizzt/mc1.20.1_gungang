@@ -82,6 +82,7 @@ public final class Defibrillator {
         level.sendParticles(net.minecraft.core.particles.ParticleTypes.ELECTRIC_SPARK,target.getX(),target.getY()+target.getBbHeight()/2,target.getZ(),16,.3,.4,.3,.15);
         level.playSound(null,target.blockPosition(),net.minecraft.sounds.SoundEvents.AMETHYST_BLOCK_CHIME,net.minecraft.sounds.SoundSource.PLAYERS,1.2f,1.4f);
         level.playSound(null,user.blockPosition(),net.minecraft.sounds.SoundEvents.BEACON_POWER_SELECT,net.minecraft.sounds.SoundSource.PLAYERS,.7f,1.8f);
+        HealCue.received(target);
         if(target instanceof Player player)player.displayClientMessage(Component.literal(ProgressionService.name(user)+"의 제세동기 · 추가 체력 "+Math.round(bonus)),true);
         if(user instanceof ServerPlayer player)player.displayClientMessage(Component.literal(ProgressionService.name(target)+"에게 추가 체력 "+Math.round(bonus)),true);
     }

@@ -15,6 +15,7 @@ import net.minecraft.network.chat.Component;
 public final class WeaponPatchScreen extends ArenaScreen {
     private static final int TOP = 60, ROW = 22, LIST = 150, BOX = 96;
     private static final Map<String, String> GROUPS = Map.ofEntries(
+            Map.entry("speed", "공격 속도 · 경기 중에도 즉시 적용 (연사 RPM · 근접 공격 간격)"),
             Map.entry("gear", "GunGang 장비 · 장착 중인 플레이어에게 즉시 적용"),
             Map.entry("secondary", "GunGang 보조무기 · 로비에서 적용, 다음 지급부터"),
             Map.entry("display", "무기 선택 화면 표시 정보"),

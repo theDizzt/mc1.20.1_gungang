@@ -45,23 +45,32 @@ public final class StatusForecast {
         return (float)Math.min(total,body.getHealth());
     }
 
+    /** Recovery potion health still to come, capped at what the body is missing (health bars draw it green). */
+    static float pendingHeal(LivingEntity body){
+        if(!body.isAlive())return 0;
+        float total;
+        if(body instanceof BotEntity){var agent=BotManager.agent(body);total=agent==null?0:agent.gadgets.pendingHeal(body.level().getGameTime());}
+        else total=GadgetManager.pendingHeal(body.getUUID());
+        return Math.max(0,Math.min(total,body.getMaxHealth()-body.getHealth()));
+    }
+
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent event){
         if(event.phase!=TickEvent.Phase.END||event.getServer().getTickCount()%PERIOD!=0)return;
         for(ServerLevel level:event.getServer().getAllLevels()){
             if(level.players().isEmpty())continue;
-            var ids=new ArrayList<Integer>();var amounts=new ArrayList<Float>();
+            var ids=new ArrayList<Integer>();var amounts=new ArrayList<Float>();var heals=new ArrayList<Float>();
             var bodies=new ArrayList<LivingEntity>(level.players());
             for(var entity:level.getAllEntities())if(entity instanceof BotEntity bot)bodies.add(bot);
             for(var body:bodies){
-                float amount=Math.round(pending(body)*2)/2f;
-                if(amount>0){ids.add(body.getId());amounts.add(amount);}
+                float amount=Math.round(pending(body)*2)/2f,heal=Math.round(pendingHeal(body)*2)/2f;
+                if(amount>0||heal>0){ids.add(body.getId());amounts.add(amount);heals.add(heal);}
             }
-            int hash=Objects.hash(ids,amounts);
+            int hash=Objects.hash(ids,amounts,heals);
             for(var player:level.players()){
                 Integer last=SENT.get(player.getUUID());
                 if(last!=null&&last==hash)continue;
                 SENT.put(player.getUUID(),hash);
-                if(GungangNetwork.installed(player))GungangNetwork.send(player,new GungangNetwork.StatusDamage(ids.stream().mapToInt(Integer::intValue).toArray(),toArray(amounts)));
+                if(GungangNetwork.installed(player))GungangNetwork.send(player,new GungangNetwork.StatusDamage(ids.stream().mapToInt(Integer::intValue).toArray(),toArray(amounts),toArray(heals)));
             }
         }
     }
