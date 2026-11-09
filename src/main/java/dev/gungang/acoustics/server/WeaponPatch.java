@@ -90,7 +90,10 @@ public final class WeaponPatch {
             Map.entry("guardReductionPercent", "방어 피해 경감 (%)"), Map.entry("guardAngle", "방어 각도 (정면, °)"),
             Map.entry("respawnSeconds", "다시 생기는 시간 (초)"), Map.entry("soundVolume", "소리 크기"), Map.entry("soundIntervalTicks", "발소리 간격 (틱)"),
             Map.entry("poisonSeconds", "독 시간 (초)"), Map.entry("amplifier", "효과 단계 (0=I)"), Map.entry("height", "높이 (블록)"),
-            Map.entry("particlesPerSecond", "초당 입자 수"), Map.entry("damageIntervalTicks", "피해 간격 (틱)"));
+            Map.entry("particlesPerSecond", "초당 입자 수"),
+            Map.entry("windRange", "좌클릭 송풍 사거리 (블록)"), Map.entry("cannonAmmoCost", "공기대포 탄약 소모"), Map.entry("cannonDamage", "공기대포 피해"),
+            Map.entry("cannonKnockbackMultiplier", "공기대포 넉백 배수"), Map.entry("cannonSelfKnockback", "공기대포 사용자 반동 (블록/틱)"),
+            Map.entry("cannonRange", "공기대포 사거리 (블록)"), Map.entry("cannonRadius", "공기대포 범위 반경 (블록)"), Map.entry("cannonCooldownSeconds", "공기대포 쿨타임 (초)"), Map.entry("damageIntervalTicks", "피해 간격 (틱)"));
     private static final Map<String, String> LABELS = Map.ofEntries(
             Map.entry("windStrength", "송풍기 바람 세기 (0.01 단위)"),
             Map.entry("name", "이름"), Map.entry("category", "분류"), Map.entry("maxHealth", "최대 체력"), Map.entry("movementSpeed", "이동 속도 (%)"),
@@ -258,6 +261,7 @@ public final class WeaponPatch {
             if (TwinBlades.is(stack)) return "twin_blades";
             if (Fallout.is(stack)) return "fallout";
             if (ArcThrower.is(stack)) return "arc_thrower";
+            if (WindBlower.is(stack)) return "wind_blower";
             var key = net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(weapon.stack().getItem());
             return key != null && key.getNamespace().equals("gungang") && ConfigModify.exists("item", key.getPath()) ? key.getPath() : null;
         } catch (Exception invalid) { return null; }
