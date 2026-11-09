@@ -77,14 +77,14 @@ public final class FontPack {
                 if (preset == FontPreset.EXTERNAL)
                     loaded = ExternalFonts.load(ExternalFonts.prepareDirectory(FMLPaths.CONFIGDIR.get()), selection);
             } catch (IOException | IllegalArgumentException failure) {
-                LogUtils.getLogger().warn("Could not load TTF from config/gungang/fonts; using bundled GUNGANG", failure);
+                LogUtils.getLogger().warn("Could not load TTF from config/gungang/fonts; using bundled Galmuri11 Bold", failure);
             }
             external = loaded;
             int resolution = AcousticConfig.SPEC.isLoaded()
                     ? AcousticConfig.FONT_OVERSAMPLE.get() : AcousticConfig.FONT_OVERSAMPLE.getDefault();
             String providers = external == null ? "" : provider("user.ttf", resolution, 9) + ",";
             definition = ("{\"providers\":[" + providers + provider(preset.file, resolution, preset.size)
-                     + (preset == FontPreset.GALMURI ? "" : "," + provider(FontPreset.GALMURI.file, resolution, FontPreset.GALMURI.size))
+                     + (preset.file.equals(FontPreset.GALMURI.file) ? "" : "," + provider(FontPreset.GALMURI.file, resolution, FontPreset.GALMURI.size))
                      + "]}")
                     .getBytes(StandardCharsets.UTF_8);
         }

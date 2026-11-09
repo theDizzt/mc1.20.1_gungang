@@ -194,7 +194,7 @@ public final class TeamHud {
         Integer level = PlayerLevels.level(member.id());
         if (level != null) LevelEmblem.draw(g, level, x + 34, y + 1, 12);
         int nameX = level != null ? x + 49 : x + 34;
-        HudText.draw(g, member.name(), nameX, y + 1, x + 114 - nameX, 0xFFFFFFFF);
+        HudText.drawFit(g, member.name(), nameX, y + 1, x + 114 - nameX, 0xFFFFFFFF);
         ShooterHud.card(g, x + 34, y + 16, 80, 14, ShooterHud.BAR_EDGE, BAR_TRACK, 0);
         ShooterHud.card(g, x + 118, y + 8, 22, 22, ShooterHud.EDGE, SLOT_SURFACE, 0);
         if (p != null) {

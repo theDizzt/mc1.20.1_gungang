@@ -906,8 +906,11 @@ public final class LobbyManager {
         CompoundBow.syncAmmo(p);
         p.inventoryMenu.broadcastChanges();
     }
-    /** Individual mode has no teammates; opposing teams may use the same weapon. */
-    private static boolean duplicates(boolean primary){return primary?options().game().common().duplicatePrimary():options().game().common().duplicateSecondary();}
+    /**
+     * Individual mode has no teammates; opposing teams may use the same weapon. 근접전 always allows duplicates (only
+     * four melee primaries), whatever the common options say.
+     */
+    private static boolean duplicates(boolean primary){if(options().game().meleeWeapons(selectedMode))return true;return primary?options().game().common().duplicatePrimary():options().game().common().duplicateSecondary();}
     private static boolean weaponTaken(UUID player,boolean primary,String id){
         var self=PLAYERS.get(player);
         if(!enabled||self==null||!Set.of("ALPHA","BRAVO").contains(self.team)||selectedMode.equals("FREE_FOR_ALL")||duplicates(primary))return false;

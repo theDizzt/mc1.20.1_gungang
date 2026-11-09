@@ -113,7 +113,7 @@ public final class TurretEntity extends LivingEntity {
     /** Barrel axis of the model (948 units at 1/800 block), on the yaw pivot. */
     private Vec3 muzzle(){return position().add(0,1.185,0);}
     private boolean enemy(LivingEntity e){
-        return (e instanceof Player||e instanceof BotEntity)&&e.isAlive()&&!e.isSpectator()&&!e.getUUID().equals(owner())
+        return (e instanceof Player||e instanceof BotEntity||CombatRules.npcTarget(e))&&e.isAlive()&&!e.isSpectator()&&!e.getUUID().equals(owner())
                 &&!(e instanceof Player p&&p.isCreative())&&!LobbyManager.respawning(e.getUUID())&&!FreeForAllMatch.blocked(e)&&!SafeZones.contains(e)
                 &&(team.isEmpty()||e.getTeam()==null||!team.equals(e.getTeam().getName()));
     }

@@ -182,7 +182,7 @@ final class LoadoutScreen extends ArenaScreen {
     private void presetLine(GuiGraphics g,String label,String name,String id,int dx,int y,int right){
         g.drawString(font,label,dx+8,y,INK,false);
         var text=Component.literal(name).withStyle(net.minecraft.ChatFormatting.WHITE);
-        if(!id.isEmpty())text.append(Component.literal(" [id: "+id+"]").withStyle(s->s.withColor(0xC8B060)));
+        if(!id.isEmpty())text.append(Component.literal(" [id: "+id+"]").withStyle(s->s.withColor(0xC8B060).withFont(HudText.UI_FONT)));
         g.drawString(font,net.minecraft.locale.Language.getInstance().getVisualOrder(font.substrByWidth(text,Math.max(1,right-dx-70))),dx+62,y,ACCENT,false);
     }
     @Override public boolean keyPressed(int key,int scan,int modifiers){
@@ -206,7 +206,7 @@ final class LoadoutScreen extends ArenaScreen {
         if(holder!=null){String tag="선점됨 · "+holder;tagX-=font.width(tag)+8;badge(g,tag,tagX,89,TAKEN);tagX-=4;}
         if(ReleaseDateText.upcoming(weapon.releaseDate())){String tag=ReleaseDateText.UPCOMING;tagX-=font.width(tag)+8;badge(g,tag,tagX,89,0xFF5FC8E0);tagX-=4;}
         var title=Component.literal(weapon.name()).withStyle(worn?net.minecraft.ChatFormatting.GOLD:net.minecraft.ChatFormatting.WHITE)
-                .append(Component.literal(" [id: "+weapon.id()+"]").withStyle(s->s.withColor(0xC8B060)));
+                .append(Component.literal(" [id: "+weapon.id()+"]").withStyle(s->s.withColor(0xC8B060).withFont(HudText.UI_FONT)));
         g.drawString(font,net.minecraft.locale.Language.getInstance().getVisualOrder(font.substrByWidth(title,Math.max(1,tagX-dx-10))),dx+6,90,INK,false);
         int pw=previewWidth(),mh=middleHeight();
         preview(g,weapon,dx+4,PREVIEW_TOP,pw,mh);
@@ -371,8 +371,8 @@ final class LoadoutScreen extends ArenaScreen {
             if(ReleaseDateText.upcoming(weapon.releaseDate()))small(g,ReleaseDateText.UPCOMING,cx+(worn?8:3),y+3,.55f,0xFF5FC8E0);
             // Id small at the top right; name at the bottom left over a dark strip.
             float idScale=.55f,nameScale=.65f;
-            String id=font.plainSubstrByWidth(weapon.id(),Math.max(1,(int)((tile-10)/idScale)));
-            small(g,id,cx+tile-3-font.width(id)*idScale,y+3,idScale,0xFFC8B060);
+            String id=HudText.fitGungang(weapon.id(),Math.max(1,(int)((tile-10)/idScale)));
+            small(g,HudText.gungang(id),cx+tile-3-font.width(HudText.gungang(id))*idScale,y+3,idScale,0xFFC8B060);
             g.fill(cx+1,y+tile-9,cx+tile-1,y+tile-1,0x99000000);
             String name=font.plainSubstrByWidth(weapon.name(),Math.max(1,(int)((tile-5)/nameScale)));
             small(g,name,cx+3,y+tile-7,nameScale,worn?TacticalStyle.GOLD:INK);
@@ -395,7 +395,8 @@ final class LoadoutScreen extends ArenaScreen {
             g.fill(x+listWidth()-3,GRID_TOP,x+listWidth()-2,bottom,TacticalStyle.TRACK);TacticalStyle.round(g,x+listWidth()-4,ty,3,thumb,ACCENT);
         }
     }
-    private void small(GuiGraphics g,String text,float x,float y,float scale,int color){
+    private void small(GuiGraphics g,String text,float x,float y,float scale,int color){small(g,Component.literal(text),x,y,scale,color);}
+    private void small(GuiGraphics g,Component text,float x,float y,float scale,int color){
         g.pose().pushPose();g.pose().translate(x,y,0);g.pose().scale(scale,scale,1);g.drawString(font,text,0,0,color,false);g.pose().popPose();
     }
     /** The weapon's model at the detail preview's resting angle, fitted to the tile. */
@@ -454,8 +455,8 @@ final class LoadoutScreen extends ArenaScreen {
     /** Widest label any weapon can show, so bar length does not depend on the selected weapon's text. */
     private int labelColumn(){
         int width=0;
-        for(var label:FIXED_LABELS)width=Math.max(width,font.width(label));
-        for(var weapon:state.catalog().secondary())for(var row:weapon.stats())width=Math.max(width,font.width(row.name()));
+        for(var label:FIXED_LABELS)width=Math.max(width,font.width(HudText.gungang(label)));
+        for(var weapon:state.catalog().secondary())for(var row:weapon.stats())width=Math.max(width,font.width(HudText.gungang(row.name())));
         return width;
     }
     /**
@@ -469,20 +470,25 @@ final class LoadoutScreen extends ArenaScreen {
         int barX=x1+labelW+6,barEnd=x2,y=y1+Math.max(0,(h-rows.size()*STAT_ROW)/2)+3;
         g.enableScissor(x1,y1,x2,y1+h);
         for(var row:rows){
-            g.drawString(font,row.label(),x1,y,MUTED,false);
-            String value=font.plainSubstrByWidth(row.value(),Math.max(1,x2-barX));
-            if(row.fraction()<0||barEnd-barX<8){g.drawString(font,value,row.fraction()<0?barX:x2-font.width(value),y,ACCENT,false);y+=STAT_ROW;continue;}
+            // Specs (labels and values) use the GUNGANG font whatever the font preset.
+            g.drawString(font,HudText.gungang(row.label()),x1,y,MUTED,false);
+            String value=HudText.fitGungang(row.value(),Math.max(1,x2-barX));
+            int valueW=font.width(HudText.gungang(value));
+            if(row.fraction()<0||barEnd-barX<8){g.drawString(font,HudText.gungang(value),row.fraction()<0?barX:x2-valueW,y,ACCENT,false);y+=STAT_ROW;continue;}
             // The XP bar's gold gauge; each bar eases to the newly selected weapon's value.
             float target=row.fraction(),shown=STAT_SHOWN.getOrDefault(row.label(),target);
             shown+=(target-shown)*.25f;if(Math.abs(target-shown)<.002f)shown=target;STAT_SHOWN.put(row.label(),shown);
             TacticalStyle.goldGauge(g,barX,y-1,barEnd-barX,10,shown,shown,false);
-            outlined(g,value,x2-font.width(value)-1,y,INK);
+            // GUNGANG's 7px digits sit at the top of the 10px bar (y-1..y+9); 1.5px down centres them on it.
+            g.pose().pushPose();g.pose().translate(0,1.5f,0);
+            outlined(g,HudText.gungang(value),x2-valueW-1,y,INK);
+            g.pose().popPose();
             y+=STAT_ROW;
         }
         g.disableScissor();
     }
     /** Text with a one-pixel black outline, readable over the bar. */
-    private void outlined(GuiGraphics g,String text,int x,int y,int color){
+    private void outlined(GuiGraphics g,Component text,int x,int y,int color){
         for(int dx=-1;dx<=1;dx++)for(int dy=-1;dy<=1;dy++)if(dx!=0||dy!=0)g.drawString(font,text,x+dx,y+dy,0xFF000000,false);
         g.drawString(font,text,x,y,color,false);
     }

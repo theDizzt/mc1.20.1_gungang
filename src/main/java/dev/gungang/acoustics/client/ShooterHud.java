@@ -65,7 +65,7 @@ public final class ShooterHud {
         TeamPointHud.badge(graphics,player.getUUID(),x+3,y+5,56);
         int detailX = x + 68;
         if (!watching) ProgressionHud.draw(graphics,detailX,y+7,WIDTH-68);
-        HudText.draw(graphics, player instanceof net.minecraft.world.entity.player.Player named ? ClientNames.of(named) : player.getName().getString(), detailX, y + 19, WIDTH - 68, 0xFFFFFFFF);
+        HudText.drawFit(graphics, player instanceof net.minecraft.world.entity.player.Player named ? ClientNames.of(named) : player.getName().getString(), detailX, y + 19, WIDTH - 68, 0xFFFFFFFF);
         // Slot 1 is always inventory index 0, independent of the player's selected slot.
         if (player instanceof net.minecraft.world.entity.player.Player self && !watching)
             slot(graphics, self.getInventory().getItem(0), detailX, y + 32, self.getInventory().selected == 0, team);
