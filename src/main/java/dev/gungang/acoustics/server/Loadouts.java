@@ -24,7 +24,7 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
         }
     }
     public record Weapon(String id, @com.google.gson.annotations.SerializedName(value="itemNbt",alternate={"nbt"}) String itemNbt, String name, String description, Specs specs, String usage, String category,
-                         Double maxHealth, Double movementSpeed, Double cooldownSeconds, String command, boolean jetpackVerticalFlight, String releaseDate, List<Stat> stats, Elements elements) {
+                         Double maxHealth, Double movementSpeed, Double cooldownSeconds, String command, boolean jetpackVerticalFlight, String releaseDate, List<Stat> stats, Elements elements, Double windStrength) {
         public Weapon {
             stats=stats==null?List.of():List.copyOf(stats);
             releaseDate=ArenaMap.releaseDate(releaseDate,id);
@@ -39,6 +39,12 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
             if(!Double.isFinite(maxHealth)||maxHealth<1||maxHealth>1024||!Double.isFinite(movementSpeed)||movementSpeed<1||movementSpeed>1000
                     ||!Double.isFinite(cooldownSeconds)||cooldownSeconds<0||cooldownSeconds>3600) throw new IllegalArgumentException("Invalid weapon health, speed or cooldown: "+id);
             if(elements!=null)elements.validate(id);
+            windStrength=windStrength==null?(itemNbt.contains("bf1:wex")?1.0:0.0):windStrength;
+            if(!Double.isFinite(windStrength)||windStrength<0||windStrength>100||java.math.BigDecimal.valueOf(windStrength).stripTrailingZeros().scale()>2)
+                throw new IllegalArgumentException("바람 세기는 0~100, 0.01 단위로 입력하세요.");
+        }
+        public Weapon(String id,String itemNbt,String name,String description,Specs specs,String usage,String category,Double maxHealth,Double movementSpeed,Double cooldownSeconds,String command,boolean jetpackVerticalFlight,String releaseDate,List<Stat> stats,Elements elements) {
+            this(id,itemNbt,name,description,specs,usage,category,maxHealth,movementSpeed,cooldownSeconds,command,jetpackVerticalFlight,releaseDate,stats,elements,null);
         }
         public Weapon(String id,String itemNbt,String name,String description,Specs specs,String usage,String category,Double maxHealth,Double movementSpeed,Double cooldownSeconds,String command,boolean jetpackVerticalFlight,String releaseDate,List<Stat> stats) {
             this(id,itemNbt,name,description,specs,usage,category,maxHealth,movementSpeed,cooldownSeconds,command,jetpackVerticalFlight,releaseDate,stats,null);

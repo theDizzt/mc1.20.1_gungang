@@ -205,7 +205,7 @@ public final class ConfigModify {
     /** Weapon fields the patch screen edits, in display order, with their current effective values. */
     static Map<String,JsonElement> weaponFields(String id)throws Exception{
         var target=target("weapon",id);var result=new LinkedHashMap<String,JsonElement>();
-        for(String key:List.of("name","category","description","usage","releaseDate","maxHealth","movementSpeed","specs.damage","specs.accuracy","specs.stability","specs.range","specs.fireRate"))
+        for(String key:List.of("name","category","description","usage","releaseDate","maxHealth","movementSpeed","windStrength","specs.damage","specs.accuracy","specs.stability","specs.range","specs.fireRate"))
             if(target.fields.containsKey(key))result.put(key,value(target.effective,key));
         // Card stat lines (stats.N.value), labelled by their name on the patch screen.
         for(String key:target.fields.keySet())if(key.matches("stats\\.\\d+\\.(name|value)"))result.put(key,value(target.effective,key));

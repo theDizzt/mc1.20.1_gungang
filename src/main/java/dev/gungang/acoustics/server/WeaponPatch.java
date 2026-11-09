@@ -92,6 +92,7 @@ public final class WeaponPatch {
             Map.entry("poisonSeconds", "독 시간 (초)"), Map.entry("amplifier", "효과 단계 (0=I)"), Map.entry("height", "높이 (블록)"),
             Map.entry("particlesPerSecond", "초당 입자 수"), Map.entry("damageIntervalTicks", "피해 간격 (틱)"));
     private static final Map<String, String> LABELS = Map.ofEntries(
+            Map.entry("windStrength", "송풍기 바람 세기 (0.01 단위)"),
             Map.entry("name", "이름"), Map.entry("category", "분류"), Map.entry("maxHealth", "최대 체력"), Map.entry("movementSpeed", "이동 속도 (%)"),
             Map.entry("description", "표시 · 설명 (줄바꿈 \\n)"), Map.entry("usage", "표시 · 사용방법 (줄바꿈 \\n)"), Map.entry("releaseDate", "출시일 (yyyy-MM-dd)"),
             Map.entry("specs.damage", "표시 · 피해"), Map.entry("specs.accuracy", "표시 · 정확도"), Map.entry("specs.stability", "표시 · 안정성"),

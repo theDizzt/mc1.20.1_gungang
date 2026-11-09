@@ -24,6 +24,8 @@ public final class PatchHelp {
     private static void item(String setting, String field, String text) { ITEM_OF.put(setting + "." + field, text); }
 
     static {
+        gear("windStrength", "송풍기 바람 세기. 기본 1, 0~100 사이를 0.01 단위로 입력합니다.\n적중 방향으로 속도를 세기 × 0.1 블록/틱만큼 더하며, 대상마다 한 틱에 한 번 적용됩니다.\n위로 튕기는 넉백과 별개이며, 0이면 바람으로 밀지 않습니다.");
+        tacz("script_param.shoot_delay", "연속 발사 시작 전 준비 시간(초). 미니건 기본 0.25, 0이면 즉시 발사합니다.\n연속 발사 중에는 RPM 간격을 유지하며, 사격이 0.15초 이상 끊기면 다시 준비합니다.");
         // ---- TaCZ gun data -------------------------------------------------------------------------------------
         tacz("bullet.damage", "용도: 탄환 1개가 맞았을 때의 기본 피해 (거리 감소 적용 전).\n"
                 + "작동: 맞은 거리에 해당하는 '거리별 피해' 구간 값이 있으면 그 값이 이 값을 대신합니다. 산탄이면 탄환마다 따로 들어갑니다.\n"
