@@ -52,6 +52,23 @@ public final class TeamPointHud {
         if(!active()||view.vitals()==null)return null;
         return view.vitals().stream().filter(v->v.id().equals(id)).findFirst().orElse(null);
     }
+    private static final Map<String,net.minecraft.world.item.ItemStack> HELD=new HashMap<>();
+    /** A teammate's held item as the server reports it (for beyond tracking range); empty when unknown. */
+    static net.minecraft.world.item.ItemStack held(UUID id){
+        var vital=vital(id);
+        if(vital==null||vital.held()==null||vital.held().isEmpty())return net.minecraft.world.item.ItemStack.EMPTY;
+        if(HELD.size()>64)HELD.clear();
+        return HELD.computeIfAbsent(vital.held(),snbt->{
+            try{return net.minecraft.world.item.ItemStack.of(net.minecraft.nbt.TagParser.parseTag(snbt));}
+            catch(Exception invalid){return net.minecraft.world.item.ItemStack.EMPTY;}
+        });
+    }
+    /** A teammate's chosen primary and secondary weapon ids ("" when none), or null when unknown. */
+    static String[] weapons(UUID id){
+        var vital=vital(id);
+        if(vital==null)return null;
+        return new String[]{vital.primary()==null?"":vital.primary(),vital.secondary()==null?"":vital.secondary()};
+    }
     /** A teammate's number in the team roster (the same one as on portraits and team points), or 0. */
     static int number(UUID id){
         if(!active())return 0;

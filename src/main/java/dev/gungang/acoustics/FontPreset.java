@@ -1,10 +1,14 @@
 package dev.gungang.acoustics;
 
-/** Bundled TTF sizes normalized to Galmuri's Hangul ink height (1100 / 1400). */
+/**
+ * Bundled TTF presets; Galmuri11 Bold is the default. GUNGANG (GUNGANG Latin + Mulmaru Hangul) at size 9 maps one
+ * GUNGANG pixel to one GUI pixel; its Hangul ink height equals the Latin 'A' (7 px). Weapon ids and specs use plain
+ * GUNGANG with a Galmuri fallback through {@code HudText.UI_FONT}, whatever preset is selected.
+ */
 public enum FontPreset {
-    MARU_MINYA("x12y12pxmaruminyahangul.ttf", 9.0 * 6 / 7),
-    GALMURI_LEGACY("galmuri11-bold.ttf", 9),
-    EXTERNAL("x12y12pxmaruminyahangul.ttf", 9.0 * 6 / 7);
+    GALMURI("galmuri11-bold.ttf", 9),
+    GUNGANG("gungang_hangul.ttf", 9),
+    EXTERNAL("galmuri11-bold.ttf", 9);
 
     public final String file;
     public final double size;

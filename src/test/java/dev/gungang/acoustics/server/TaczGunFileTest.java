@@ -27,6 +27,18 @@ class TaczGunFileTest {
               "movement_speed": {"base": 0.0, "aim": -0.2, "reload": -0.3}
             }""";
 
+    @Test void editsTheImpliedDefaultBulletDamage() {
+        var file = TaczGunFile.parse(Path.of("gun.json"), "{\n  // no damage\n  \"bullet\": {\n    \"life\": 1\n  }\n}");
+        assertTrue(file.editable().containsKey("bullet.damage"));
+        assertEquals("5", file.current("bullet.damage"));
+        assertEquals(file.source(), file.patched(Map.of("bullet.damage", "5.0")));
+        var patched = TaczGunFile.parse(Path.of("gun.json"), file.patched(Map.of("bullet.damage", "12.5")));
+        assertEquals("12.5", patched.values().get("bullet.damage").text());
+        assertEquals("1", patched.values().get("bullet.life").text());
+        var empty = TaczGunFile.parse(Path.of("gun.json"), "{\"bullet\": {}}");
+        assertEquals("8", TaczGunFile.parse(Path.of("gun.json"), empty.patched(Map.of("bullet.damage", "8"))).values().get("bullet.damage").text());
+        assertFalse(TaczGunFile.parse(Path.of("gun.json"), "{\"rpm\": 600}").editable().containsKey("bullet.damage"));
+    }
     @Test void scansPathsThroughComments() {
         var file = TaczGunFile.parse(Path.of("m2hb_data.json"), SOURCE);
         assertEquals("30", file.values().get("weight").text());
@@ -54,5 +66,14 @@ class TaczGunFileTest {
         assertEquals(SOURCE, file.patched(Map.of("movement_speed.base", "0", "rpm", "550.00")));
         assertThrows(IllegalArgumentException.class, () -> file.patched(Map.of("ammo", "1")));
         assertThrows(IllegalArgumentException.class, () -> file.patched(Map.of("bullet.damage", "abc")));
+    }
+    @Test void editsKnockbackInHundredths() {
+        var file = TaczGunFile.parse(Path.of("wex_data.json"), "{\n  \"bullet\": {\n    \"damage\": 0,\n    \"knockback\": 1\n  }\n}");
+        assertTrue(file.editable().containsKey("bullet.knockback"));
+        var patched = TaczGunFile.parse(Path.of("wex_data.json"), file.patched(Map.of("bullet.knockback", "1.25")));
+        assertEquals("1.25", patched.values().get("bullet.knockback").text());
+        assertEquals(file.source(), file.patched(Map.of("bullet.knockback", "1.00")));
+        assertThrows(IllegalArgumentException.class, () -> file.patched(Map.of("bullet.knockback", "1.255")));
+        assertThrows(IllegalArgumentException.class, () -> file.patched(Map.of("bullet.knockback", "-0.01")));
     }
 }

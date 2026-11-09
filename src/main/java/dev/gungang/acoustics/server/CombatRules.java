@@ -41,6 +41,16 @@ public final class CombatRules {
     private static boolean bulletKnockbackMissing;
 
     /** Damage dealt inside {@code work} (bleeding, fallout ...) pushes nobody. */
+    /**
+     * A Custom NPCs entity our own weapons may hit, like a vanilla mob. Prop hunt keeps map NPCs inert (bullets pass
+     * through them), so they are never targets there. Their own faction rules still decide inside {@code hurt}.
+     */
+    public static boolean npcTarget(net.minecraft.world.entity.Entity entity){
+        return entity instanceof net.minecraft.world.entity.LivingEntity living&&living.isAlive()&&!living.isSpectator()
+                &&PropHuntMatch.npc(entity)&&MatchManager.propHunt()==null;
+    }
+    /** A player or bot in play, or a Custom NPC ({@link #npcTarget}). */
+    public static boolean target(net.minecraft.world.entity.Entity entity){return BotEntity.participant(entity)||npcTarget(entity);}
     public static void quietly(Runnable work){
         QUIET.set(QUIET.get()+1);
         try{work.run();}finally{QUIET.set(QUIET.get()-1);}
@@ -61,6 +71,44 @@ public final class CombatRules {
             return Math.max(0,bulletKnockback.getFloat(direct));
         }catch(ReflectiveOperationException|RuntimeException|LinkageError unavailable){bulletKnockbackMissing=true;return HIT_STRENGTH;}
     }
+    /** Guns whose bullets also knock teammates back (friendly fire blocks the damage, and with it vanilla's push). */
+    private static final Set<String> ALLY_KNOCKBACK_GUNS=Set.of("zeta:sg225sp");
+    /**
+     * Guns that push whoever they hit, teammates and enemies alike, whatever their damage (the 35 classic blower deals
+     * none, so no hit would push). Their pellets push a target at most once per tick; any other push of that target in
+     * the same tick (its own damage hit) is dropped, so a strength of 1 means 1 whichever way the hit lands.
+     */
+    private static final Set<String> PUSH_GUNS=Set.of("bf1:wex");
+    /** Victims pushed by a {@link #PUSH_GUNS} bullet, by the game time of that push. */
+    private static final Map<LivingEntity,Long> PUSHED=new WeakHashMap<>();
+    private static boolean pushing;
+    private static boolean pushedNow(LivingEntity victim){return PUSHED.getOrDefault(victim,Long.MIN_VALUE)==victim.level().getGameTime();}
+    /**
+     * A knockback gun's bullet hitting someone, before TaCZ hurts them: pushes them by the bullet's knockback, away from
+     * the shooter, where the hit itself would not ({@link #ALLY_KNOCKBACK_GUNS}: teammates behind friendly fire;
+     * {@link #PUSH_GUNS}: everyone).
+     */
+    public static void gunKnockback(net.minecraft.world.entity.projectile.Projectile bullet,Entity target){
+        if(bullet.level().isClientSide||!(bullet instanceof Las5Damage.BulletAccess access))return;
+        String gun=String.valueOf(access.getGunId());
+        boolean everyone=PUSH_GUNS.contains(gun);
+        if(!everyone&&!ALLY_KNOCKBACK_GUNS.contains(gun))return;
+        if(!(bullet.getOwner() instanceof LivingEntity owner)||!(target instanceof LivingEntity victim)||victim==owner
+                ||!BotEntity.participant(victim)||LobbyManager.respawning(victim.getUUID())||SafeZones.contains(victim))return;
+        if(!everyone){
+            var team=owner.getTeam();
+            if(team==null||team.isAllowFriendlyFire()||!owner.isAlliedTo(victim))return;
+        }
+        if(victim instanceof ServerPlayer p&&CombatGadgets.shieldBlocked(p))return;
+        if(everyone&&pushedNow(victim))return;
+        double strength=strength(bullet);
+        if(strength<=0)return;
+        if(everyone)PUSHED.put(victim,victim.level().getGameTime());
+        pushing=true;
+        try{victim.knockback(strength,owner.getX()-victim.getX(),owner.getZ()-victim.getZ());}
+        finally{pushing=false;}
+        if(!(victim instanceof ServerPlayer))victim.hurtMarked=true;
+    }
     @SubscribeEvent(priority=EventPriority.LOWEST) public static void hit(LivingDamageEvent event){
         var victim=event.getEntity();
         if(event.isCanceled()||event.getAmount()<=0||victim.level().isClientSide||quiet()||!guarded(victim))return;
@@ -74,6 +122,9 @@ public final class CombatRules {
         var victim=event.getEntity();
         if(victim.level().isClientSide)return;
         if(quiet()){event.setCanceled(true);PENDING.remove(victim);return;}
+        // A push gun already pushed this victim this tick: drop the extra push of its own damage hit.
+        if(!pushing&&pushedNow(victim)){event.setCanceled(true);PENDING.remove(victim);return;}
+        if(pushing)return;
         var expected=PENDING.remove(victim);
         if(expected==null)return;
         boolean ours=victim instanceof ServerPlayer p&&CombatGadgets.shieldBlocked(p)||Turrets.bulletVictim(victim);

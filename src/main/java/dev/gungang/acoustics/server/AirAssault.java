@@ -124,7 +124,7 @@ public final class AirAssault {
     }
 
     private static boolean enemy(ServerPlayer owner,LivingEntity target) {
-        boolean combatant=BotEntity.participant(target)||target instanceof net.minecraft.world.entity.monster.Enemy;
+        boolean combatant=CombatRules.target(target)||target instanceof net.minecraft.world.entity.monster.Enemy;
         if(target==owner||!target.isAlive()||target.isSpectator()||!combatant||SafeZones.contains(target)
                 ||LobbyManager.respawning(target.getUUID())||FreeForAllMatch.blocked(target))return false;
         if(target instanceof Player p&&p.isCreative())return false;

@@ -16,12 +16,15 @@ public final class TaczGunFile {
     }
     /** Patchable TaCZ fields with their Korean label, integer flag and accepted range. */
     public record Field(String path, String label, boolean integer, double min, double max) { }
+    /** Knockback strength: edited in steps of 0.01. */
+    static final String KNOCKBACK = "bullet.knockback";
     public static final List<Field> FIELDS = List.of(
             new Field("bullet.damage", "기본 피해", false, 0, 10000),
             new Field("rpm", "연사 속도 (RPM)", true, 1, 6000),
             new Field("ammo_amount", "탄창 용량", true, 1, Integer.MAX_VALUE),
             new Field("bullet.bullet_amount", "발당 탄환 수 (산탄)", true, 1, 256),
             new Field("bullet.pierce", "관통 수", true, 0, 1000),
+            new Field("bullet.knockback", "넉백 강도 (0.01 단위)", false, 0, 100),
             new Field("bullet.speed", "탄속", false, 0, 10000),
             new Field("bullet.life", "탄 수명 (초)", false, 0, 3600),
             new Field("bullet.extra_damage.head_shot_multiplier", "헤드샷 배수", false, 0, 100),
@@ -107,6 +110,18 @@ public final class TaczGunFile {
         return result;
     }
     public Map<String, Value> values() { return values; }
+    /** TaCZ's BulletData default when a pack leaves {@code bullet.damage} out. */
+    static final String DEFAULT_DAMAGE = "5";
+    /** Whether the file has a bullet object but no damage in it, so TaCZ uses {@link #DEFAULT_DAMAGE}. */
+    private boolean implicitDamage() {
+        int[] bullet = containers.get("bullet");
+        return !values.containsKey("bullet.damage") && bullet != null && source.charAt(bullet[0]) == '{';
+    }
+    /** The value text of an editable field, including the implied default bullet damage. */
+    public String current(String path) {
+        var value = values.get(path);
+        return value != null ? value.text() : path.equals("bullet.damage") && implicitDamage() ? DEFAULT_DAMAGE : null;
+    }
 
     /** The data file of a TaCZ gun id such as {@code rfp:m2hb}, searched in the server's unpacked gun packs. */
     public static TaczGunFile find(String gunId) throws java.io.IOException {
@@ -157,7 +172,13 @@ public final class TaczGunFile {
     /** Fields shown in the patch screen: known numeric settings, then each distance band of the damage curve. */
     public Map<String, Field> editable() {
         var result = new LinkedHashMap<String, Field>();
-        for (var field : FIELDS) { var v = values.get(field.path()); if (v != null && v.number()) result.put(field.path(), field); }
+        for (var field : FIELDS) {
+            var v = values.get(field.path());
+            if (v != null && v.number()) result.put(field.path(), field);
+            // A pack that leaves the bullet damage out still has one (TaCZ's default); editing it writes the field.
+            else if (v == null && field.path().equals("bullet.damage") && implicitDamage())
+                result.put(field.path(), new Field(field.path(), field.label() + " (팩 미지정 · TaCZ 기본 " + DEFAULT_DAMAGE + ")", false, field.min(), field.max()));
+        }
         for (int i = 0; i < ADJUST_ROWS; i++) {
             var damage = values.get(ADJUST + i + ".damage");
             if (damage == null) break;
@@ -181,15 +202,25 @@ public final class TaczGunFile {
             try {
                 var exact = new java.math.BigDecimal(text);
                 if (field.integer()) exact.intValueExact();
+                if (field.path().equals(KNOCKBACK) && exact.stripTrailingZeros().scale() > 2) throw new ArithmeticException("0.01 단위");
                 number = exact.doubleValue();
             } catch (ArithmeticException | NumberFormatException invalid) {
-                throw new IllegalArgumentException(field.label() + ": " + (field.integer() ? "정수" : "숫자") + "를 입력하세요.");
+                throw new IllegalArgumentException(field.label() + ": " + (field.integer() ? "정수" : field.path().equals(KNOCKBACK) ? "0.01 단위 숫자" : "숫자") + "를 입력하세요.");
             }
             if (!Double.isFinite(number) || number < field.min() || number > field.max())
                 throw new IllegalArgumentException(field.label() + ": " + format(field.min()) + "~" + format(field.max()) + " 범위로 입력하세요.");
             var value = values.get(field.path());
-            if (new java.math.BigDecimal(value.text()).compareTo(new java.math.BigDecimal(text)) == 0) continue; // 0.0 stays 0.0
-            edits.add(value); replacement.put(value, canonical(text));
+            String now = value != null ? value.text() : current(field.path());
+            if (new java.math.BigDecimal(now).compareTo(new java.math.BigDecimal(text)) == 0) continue; // 0.0 stays 0.0
+            if (value == null) {
+                // The implied default bullet damage: insert the field at the start of the bullet object instead.
+                int open = containers.get("bullet")[0];
+                String prefix = "bullet.";
+                boolean empty = values.keySet().stream().noneMatch(k -> k.startsWith(prefix)) && containers.keySet().stream().noneMatch(k -> k.startsWith(prefix));
+                value = new Value(field.path(), "", open + 1, open + 1);
+                replacement.put(value, "\n    \"damage\": " + canonical(text) + (empty ? "\n  " : ","));
+            } else replacement.put(value, canonical(text));
+            edits.add(value);
         }
         edits.sort(Comparator.comparingInt(Value::start).reversed());
         var out = new StringBuilder(source);

@@ -6,8 +6,13 @@ import java.util.*;
 public final class TeamPointState {
     public record Member(UUID id,int number) { }
     public record Point(UUID owner,int number,String dimension,double x,double y,double z,long sequence) { }
-    /** A living teammate's health, so the team HUD can show it beyond the client's entity tracking range. */
-    public record Vital(UUID id,float health,float maximum,float absorption) { }
+    /**
+     * A living teammate's health, so the team HUD can show it beyond the client's entity tracking range, with their
+     * chosen primary/secondary weapon ids and the held item (SNBT, volatile ammo tags removed; "" when empty).
+     */
+    public record Vital(UUID id,float health,float maximum,float absorption,String primary,String secondary,String held) {
+        public Vital(UUID id,float health,float maximum,float absorption){this(id,health,maximum,absorption,"","","");}
+    }
     public record View(String team,int color,List<Member> members,List<Point> points,List<Vital> vitals) {
         public View(String team,int color,List<Member> members,List<Point> points){this(team,color,members,points,List.of());}
         public View withVitals(List<Vital> list){return new View(team,color,members,points,List.copyOf(list));}
