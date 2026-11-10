@@ -27,8 +27,10 @@ public final class ShurikenItem extends Item {
         public Mode next(){return values()[(ordinal()+1)%values().length];}
     }
     public static final String AMMO="ShurikenAmmo",CAPACITY="ShurikenCapacity",MODE="ShurikenMode",RELOAD_END="ShurikenReloadEnd",RELOAD_TICKS="ShurikenReloadTicks",
-            JUMP="ShurikenJump",INTERVAL="ShurikenInterval";
-    private static final String LAST_THROW="ShurikenLastThrow",AIR_JUMPED="ShurikenAirJumped";
+            JUMP="ShurikenJump",CLIMB="ShurikenClimb",INTERVAL="ShurikenInterval",PER_THROW="ShurikenPerThrow";
+    private static final String LAST_THROW="ShurikenLastThrow",AIR_JUMPED="ShurikenAirJumped",LAST_CLIMB="ShurikenLastClimb";
+    /** Fewest ticks between two wall-climb steps (the client paces taps the same way). */
+    public static final int CLIMB_TICKS=4;
     /** Network jitter the server forgives between two throws. */
     private static final int THROW_JITTER_TICKS=2;
     /** Semi-mode follow-up throws still to come: player, game time due, damage. */
@@ -57,6 +59,10 @@ public final class ShurikenItem extends Item {
     public static int reloadTicks(ItemStack stack){return stack.hasTag()?Math.max(1,stack.getTag().getInt(RELOAD_TICKS)):1;}
     /** Upward speed of the double jump, as last synced (blocks per tick). */
     public static double jumpVelocity(ItemStack stack){return stack.hasTag()&&stack.getTag().contains(JUMP)?stack.getTag().getDouble(JUMP):ExtraGadgetConfig.SHURIKEN_DEFAULTS.doubleJumpVelocity();}
+    /** Ammo one throw spends, as last synced (HUD countdown, client throw animation). */
+    public static int perThrow(ItemStack stack){return stack.hasTag()&&stack.getTag().contains(PER_THROW)?Math.max(1,stack.getTag().getInt(PER_THROW)):ExtraGadgetConfig.SHURIKEN_DEFAULTS.ammoPerThrow();}
+    /** Upward speed of one wall-climb step, as last synced (blocks per tick). */
+    public static double climbVelocity(ItemStack stack){return stack.hasTag()&&stack.getTag().contains(CLIMB)?stack.getTag().getDouble(CLIMB):ExtraGadgetConfig.SHURIKEN_DEFAULTS.wallClimbVelocity();}
     /** Ticks between throws as last synced (client input pacing). */
     public static int throwTicks(ItemStack stack){return stack.hasTag()&&stack.getTag().contains(INTERVAL)?Math.max(1,stack.getTag().getInt(INTERVAL)):interval(ExtraGadgetConfig.SHURIKEN_DEFAULTS);}
     private static int interval(ExtraGadgetConfig.Shuriken c){return Math.max(1,(int)Math.round(c.attackIntervalSeconds()*20));}
@@ -67,6 +73,8 @@ public final class ShurikenItem extends Item {
         if(tag.getInt(CAPACITY)!=c.capacity())tag.putInt(CAPACITY,c.capacity());
         if(!tag.contains(AMMO)||tag.getInt(AMMO)>c.capacity())tag.putInt(AMMO,c.capacity());
         if(tag.getDouble(JUMP)!=c.doubleJumpVelocity())tag.putDouble(JUMP,c.doubleJumpVelocity());
+        if(tag.getInt(PER_THROW)!=c.ammoPerThrow())tag.putInt(PER_THROW,c.ammoPerThrow());
+        if(!tag.contains(CLIMB)||tag.getDouble(CLIMB)!=c.wallClimbVelocity())tag.putDouble(CLIMB,c.wallClimbVelocity());
         if(tag.getInt(INTERVAL)!=interval(c))tag.putInt(INTERVAL,interval(c));
         long end=tag.getLong(RELOAD_END);
         if(end>0){
@@ -166,6 +174,22 @@ public final class ShurikenItem extends Item {
         p.fallDistance=0;
         p.level().playSound(null,p.blockPosition(),SoundEvents.ENDER_DRAGON_FLAP,SoundSource.PLAYERS,.35f,1.8f);
         ((net.minecraft.server.level.ServerLevel)p.level()).sendParticles(net.minecraft.core.particles.ParticleTypes.CLOUD,p.getX(),p.getY(),p.getZ(),8,.25,.05,.25,.02);
+    }
+    /**
+     * One wall-climb step: the client applied the climb to its own movement while facing a wall; the server only paces
+     * it, clears the fall (so a climb never ends in fall damage) and plays the step on the wall.
+     */
+    public static void climb(ServerPlayer p){
+        var data=p.getPersistentData();long now=p.level().getGameTime();
+        if(!carried(p)||p.isSpectator()||!p.isAlive()||p.isPassenger()||LobbyManager.respawning(p.getUUID()))return;
+        if(data.contains(LAST_CLIMB)&&now-data.getLong(LAST_CLIMB)>=0&&now-data.getLong(LAST_CLIMB)<CLIMB_TICKS-1)return;
+        data.putLong(LAST_CLIMB,now);
+        p.fallDistance=0;
+        var look=p.getLookAngle();
+        var wall=net.minecraft.core.BlockPos.containing(p.getX()+Math.signum(look.x)*.6,p.getY()+.5,p.getZ()+Math.signum(look.z)*.6);
+        var state=p.level().getBlockState(wall);
+        var sound=state.isAir()?net.minecraft.world.level.block.SoundType.STONE:state.getSoundType();
+        p.level().playSound(null,p.blockPosition(),sound.getStepSound(),SoundSource.PLAYERS,sound.getVolume()*.6f,sound.getPitch()*1.1f);
     }
     @SubscribeEvent(priority=EventPriority.LOW) public static void playerTick(TickEvent.PlayerTickEvent event){
         if(event.phase!=TickEvent.Phase.END||event.player.level().isClientSide)return;

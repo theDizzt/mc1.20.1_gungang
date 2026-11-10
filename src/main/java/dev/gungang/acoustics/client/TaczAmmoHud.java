@@ -108,19 +108,23 @@ public final class TaczAmmoHud {
         var mc=Minecraft.getInstance();if(mc.player==null||mc.options.hideGui||mc.player.isSpectator()||mc.level==null)return;
         if(PropHuntClient.hider())return;
         var stack=mc.player.getMainHandItem();if(!dev.gungang.acoustics.server.ShurikenItem.is(stack))return;
-        int ammo=dev.gungang.acoustics.server.ShurikenItem.ammo(stack),capacity=dev.gungang.acoustics.server.ShurikenItem.capacity(stack);
+        int actual=dev.gungang.acoustics.server.ShurikenItem.ammo(stack),capacity=dev.gungang.acoustics.server.ShurikenItem.capacity(stack);
         long end=dev.gungang.acoustics.server.ShurikenItem.reloadEnd(stack);
-        boolean reloading=end>0;boolean alert=ammo<=0&&!reloading;
-        int color=alert?0xFFFF5555:reloading?0xFFB57CFF:ammo<=capacity*.25?0xFFFFFF55:0xFFFFFFFF;
+        boolean reloading=end>0;
+        double clock=System.nanoTime()/1e9;
+        String key=mc.player.getInventory().selected+"|shuriken";
+        if(!key.equals(animatedGun)){animatedGun=key;BAR.reset();lastAmmo=actual;shotAt=reloadAt=-10;shurikenStepAt=clock;}
+        // A throw spends several rounds at once; the count runs down one at a time, quickly. A reload snaps up.
+        if(actual>lastAmmo){lastAmmo=actual;reloadAt=clock;}
+        else if(actual<lastAmmo&&clock-shurikenStepAt>=SHURIKEN_STEP){lastAmmo--;shotAt=shurikenStepAt=clock;}        int ammo=lastAmmo;
+        // Red while reloading or at a quarter or less, yellow at half or less.
+        boolean alert=reloading||ammo<=capacity*.25;
+        int color=alert?0xFFFF5555:ammo<=capacity*.5?0xFFFFFF55:0xFFFFFFFF;
         var font=mc.font;String count=String.valueOf(ammo);int places=Math.max(3,count.length());
         String padding="0".repeat(places-count.length());
         var l=layout(places);int right=l.right(),w=l.countW(),x0=right-w;
         float scale=(float)(2.0/mc.getWindow().getGuiScale());g.pose().pushPose();g.pose().scale(scale,scale,1);
         star(g,l.iconX()+48,l.iconY()+13,alert?0xB3FF4D4D:0xB3000000);
-        double clock=System.nanoTime()/1e9;
-        String key=mc.player.getInventory().selected+"|shuriken";
-        if(!key.equals(animatedGun)){animatedGun=key;BAR.reset();lastAmmo=ammo;shotAt=reloadAt=-10;}
-        if(ammo!=lastAmmo){if(ammo<lastAmmo)shotAt=clock;else reloadAt=clock;lastAmmo=ammo;}
         float ratio;
         if(reloading){
             int total=dev.gungang.acoustics.server.ShurikenItem.reloadTicks(stack);
@@ -152,6 +156,9 @@ public final class TaczAmmoHud {
         text(g,font,name,x-8-font.width(name),l.rowTop()-11,0xFFE2E8F0);
         g.pose().popPose();
     }
+    /** Seconds per round of the shuriken count's run-down, and when it last stepped. */
+    private static final double SHURIKEN_STEP=.045;
+    private static double shurikenStepAt=-10;
     /** Four-pointed star silhouette centred on (cx, cy). */
     private static void star(GuiGraphics g,int cx,int cy,int color){
         for(int i=0;i<=11;i++){int half=Math.max(0,(11-i)/4);

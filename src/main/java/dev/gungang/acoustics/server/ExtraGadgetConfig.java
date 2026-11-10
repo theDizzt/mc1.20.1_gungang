@@ -78,10 +78,10 @@ public final class ExtraGadgetConfig {
      */
     public record Shuriken(int capacity,int ammoPerThrow,double reloadSeconds,double attackIntervalSeconds,double projectileSpeed,double spreadDegrees,double flightSeconds,
                            double semiDamage,int semiIntervalTicks,double burstDamage,double burstAngle,
-                           double ricochetDamage1,double ricochetDamage2,double ricochetDamage3,double ricochetRadius,double doubleJumpVelocity) {
+                           double ricochetDamage1,double ricochetDamage2,double ricochetDamage3,double ricochetRadius,double doubleJumpVelocity,double wallClimbVelocity) {
         public double ricochetDamage(int hop){return switch(hop){case 1->ricochetDamage1;case 2->ricochetDamage2;default->ricochetDamage3;};}
     }
-    public static final Shuriken SHURIKEN_DEFAULTS=new Shuriken(18,3,1.5,.5,3,1.5,5,13,2,13,8,33,22,11,16,.5);
+    public static final Shuriken SHURIKEN_DEFAULTS=new Shuriken(18,3,1.5,.5,3,1.5,5,13,2,13,8,33,22,11,16,.5,.42);
     public static Shuriken shuriken=SHURIKEN_DEFAULTS;
     public static TwinBlades twinBlades=new TwinBlades(24,24,24,24,48,72,4,100,30,100);
     public static Molotov molotov=new Molotov(5,8,3,36);
@@ -135,7 +135,7 @@ public final class ExtraGadgetConfig {
         GadgetConfig.bounded(sh.attackIntervalSeconds(),.05,10);GadgetConfig.bounded(sh.projectileSpeed(),.2,8);GadgetConfig.bounded(sh.spreadDegrees(),0,45);
         GadgetConfig.bounded(sh.flightSeconds(),.1,30);GadgetConfig.bounded(sh.semiIntervalTicks(),0,20);GadgetConfig.bounded(sh.burstAngle(),0,90);
         for(double d:new double[]{sh.semiDamage(),sh.burstDamage(),sh.ricochetDamage1(),sh.ricochetDamage2(),sh.ricochetDamage3()})GadgetConfig.bounded(d,0,10000);
-        GadgetConfig.bounded(sh.ricochetRadius(),0,64);GadgetConfig.bounded(sh.doubleJumpVelocity(),0,3);
+        GadgetConfig.bounded(sh.ricochetRadius(),0,64);GadgetConfig.bounded(sh.doubleJumpVelocity(),0,3);GadgetConfig.bounded(sh.wallClimbVelocity(),0,3);
         var tb=GadgetConfig.read("twin_blades",TwinBlades.class,new TwinBlades(24,24,24,24,48,72,4,100,30,100),overrides,apply);
         for(int i=1;i<=6;i++)GadgetConfig.bounded(tb.damage(i),0,10000);
         GadgetConfig.bounded(tb.range(),.5,16);GadgetConfig.bounded(tb.slashAngle(),1,360);GadgetConfig.bounded(tb.thrustAngle(),1,360);GadgetConfig.bounded(tb.guardMovementSpeed(),1,500);
