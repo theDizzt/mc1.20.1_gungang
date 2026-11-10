@@ -101,13 +101,24 @@ public final class ShurikenInput {
         player.fallDistance=0;
         send("shurikenJump");
     }
-    /** A solid wall within reach in the horizontal look direction, at the feet or the chest. */
+    /** A solid wall within reach in the horizontal look direction, at the feet or the chest. Barriers don't count. */
     private static boolean facingWall(LocalPlayer player){
         var look=player.getLookAngle();double length=Math.sqrt(look.x*look.x+look.z*look.z);
         if(length<1e-4)return false;
         double dx=look.x/length*WALL_REACH,dz=look.z/length*WALL_REACH;
         var box=player.getBoundingBox().deflate(.02,.1,.02);
-        return !player.level().noCollision(player,box.move(dx,0,dz));
+        var moved=box.move(dx,0,dz);var level=player.level();
+        if(!level.getEntityCollisions(player,moved).isEmpty())return true;
+        var test=net.minecraft.world.phys.shapes.Shapes.create(moved);
+        var ctx=net.minecraft.world.phys.shapes.CollisionContext.of(player);
+        for(var pos:net.minecraft.core.BlockPos.betweenClosed(net.minecraft.util.Mth.floor(moved.minX),net.minecraft.util.Mth.floor(moved.minY),net.minecraft.util.Mth.floor(moved.minZ),
+                net.minecraft.util.Mth.floor(moved.maxX),net.minecraft.util.Mth.floor(moved.maxY),net.minecraft.util.Mth.floor(moved.maxZ))){
+            var state=level.getBlockState(pos);
+            if(state.isAir()||state.is(net.minecraft.world.level.block.Blocks.BARRIER))continue;
+            var shape=state.getCollisionShape(level,pos,ctx);
+            if(!shape.isEmpty()&&net.minecraft.world.phys.shapes.Shapes.joinIsNotEmpty(shape.move(pos.getX(),pos.getY(),pos.getZ()),test,net.minecraft.world.phys.shapes.BooleanOp.AND))return true;
+        }
+        return false;
     }
     private static net.minecraft.world.item.ItemStack carriedStack(LocalPlayer player){
         for(var stack:player.getInventory().items)if(ShurikenItem.is(stack))return stack;
