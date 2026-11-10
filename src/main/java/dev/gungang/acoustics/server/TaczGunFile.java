@@ -19,6 +19,12 @@ public final class TaczGunFile {
     /** Knockback strength: edited in steps of 0.01. */
     static final String KNOCKBACK = "bullet.knockback";
     public static final List<Field> FIELDS = List.of(
+            new Field("script_param.shoot_delay", "발사 전 지연 (초)", false, 0, 60),
+            new Field("heat.max", "과열 한도", false, 0, 100000),
+            new Field("heat.per_shot", "발당 발열량", false, 0, 100000),
+            new Field("heat.cooling_multiplier", "냉각 배수", false, 0, 10000),
+            new Field("heat.cooling_delay", "냉각 지연 (ms)", false, 0, 600000),
+            new Field("heat.over_heat_time", "과열 잠금 (ms)", false, 0, 600000),
             new Field("bullet.damage", "기본 피해", false, 0, 10000),
             new Field("rpm", "연사 속도 (RPM)", true, 1, 6000),
             new Field("ammo_amount", "탄창 용량", true, 1, Integer.MAX_VALUE),
