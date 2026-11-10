@@ -50,6 +50,10 @@ public final class UtilityHud {
         CombatGadgets.Gauge turretAmmo=null;
         for(var gauge:state.gauges())if(gauge.kind().equals("turret_ammo"))turretAmmo=gauge;
         for(var gauge:state.gauges()) {
+            if(gauge.kind().equals("m95")){
+                gauge(g,center,y,width,height,gauge.remaining(),gauge.maximum(),"관통력 "+HudHealth.number(gauge.remaining())+"/"+HudHealth.number(gauge.maximum()),partial);
+                y-=height+4;continue;
+            }
             if(gauge.kind().equals("turret_ammo"))continue;
             if(gauge.kind().equals("turret_health")) {
                 // Turret: its health on the bar, its magazine as a line above.
