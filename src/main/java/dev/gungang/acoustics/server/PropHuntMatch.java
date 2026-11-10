@@ -40,10 +40,19 @@ public final class PropHuntMatch {
         var m=members.get(id);if(m==null||!m.bot)return null;
         var a=BotManager.agent(id);return a==null||a.bot==null||a.bot.isRemoved()?null:a.bot;
     }
-    /** Every member's body: players and bots alike. */
-    List<LivingEntity> bodies(){return members.keySet().stream().map(this::body).filter(Objects::nonNull).toList();}
+    /**
+     * Every member's body: players and bots alike. Hider gimmicks ask for this (and {@link #seekers()}) many times per
+     * hider per tick, so the lookup is kept for the rest of the tick; a body removed meanwhile drops out of seekers().
+     */
+    List<LivingEntity> bodies(){
+        int tick=server.getTickCount();
+        if(bodiesTick!=tick||bodiesCache==null){bodiesCache=members.keySet().stream().map(this::body).filter(Objects::nonNull).toList();bodiesTick=tick;}
+        return bodiesCache;
+    }
+    private List<LivingEntity> bodiesCache;
+    private int bodiesTick=Integer.MIN_VALUE;
     /** Active seekers, players and bots: every hider gimmick acts on both. */
-    List<LivingEntity> seekers(){return bodies().stream().filter(p->!hider(p.getUUID())&&!frozen(p.getUUID())&&p.isAlive()&&!p.isSpectator()).toList();}
+    List<LivingEntity> seekers(){return bodies().stream().filter(p->!p.isRemoved()&&!hider(p.getUUID())&&!frozen(p.getUUID())&&p.isAlive()&&!p.isSpectator()).toList();}
     boolean bot(UUID id){var m=members.get(id);return m!=null&&m.bot;}
     String name(UUID id){var m=members.get(id);return m==null?"":m.name;}
     boolean locked(UUID id){var m=members.get(id);return m!=null&&m.fixed;}
@@ -203,6 +212,7 @@ public final class PropHuntMatch {
         p.getInventory().load(s.inventory());p.inventoryMenu.broadcastChanges();
         p.setGameMode(s.mode());p.getAttribute(Attributes.MAX_HEALTH).setBaseValue(s.health());p.setHealth(p.getMaxHealth());
         p.setInvisible(s.invisible());p.removeEffect(MobEffects.BLINDNESS);p.refreshDimensions();
+        sent.remove(p);
         GungangNetwork.send(p,new GungangNetwork.PropHunt(ServerFiles.GSON.toJson(new PropHuntSnapshot(false,"",0,0,List.of()))));
         sync();
     }
@@ -363,7 +373,8 @@ public final class PropHuntMatch {
                 rush(p,rush);
                 if(phase()==PropHuntGame.Phase.HIDING||m.waiting>server.getTickCount()){
                     var s=map.bravoSpawn();hold(p,new Vec3(s.x(),s.y(),s.z()),s.yaw(),s.pitch());
-                    if(phase()==PropHuntGame.Phase.HIDING)p.addEffect(new MobEffectInstance(MobEffects.BLINDNESS,30,0,false,false,false));
+                    // Topped up only as it runs low: a fresh effect every tick re-sent the effect packet every tick.
+                    if(phase()==PropHuntGame.Phase.HIDING){var blind=p.getEffect(MobEffects.BLINDNESS);if(blind==null||blind.getDuration()<=10)p.addEffect(new MobEffectInstance(MobEffects.BLINDNESS,30,0,false,false,false));}
                     p.stopUsingItem();
                 }else p.removeEffect(MobEffects.BLINDNESS);
                 // Preserve either hand order, including the offhand macro's temporary swap.
@@ -371,7 +382,7 @@ public final class PropHuntMatch {
                     var stack=p.getInventory().getItem(i);
                     if(PropAwn.issued(stack)){
                         if(i!=40){int home=PropAwn.is(stack)||PropAwn.jetpack(stack)?40:0;if(p.getInventory().getItem(home).isEmpty()){p.getInventory().setItem(home,stack);p.getInventory().setItem(i,ItemStack.EMPTY);}}
-                    }else p.getInventory().setItem(i,ItemStack.EMPTY);
+                    }else if(!stack.isEmpty())p.getInventory().setItem(i,ItemStack.EMPTY);
                 }
                 PropAwn.tick(p,p.getInventory().getItem(0));PropAwn.tick(p,p.getOffhandItem());
                 p.getInventory().selected=0;
@@ -861,22 +872,36 @@ public final class PropHuntMatch {
         var m=MatchManager.propHunt();return m!=null&&m.participant(player.getUUID());
     }
     public PropEntity prop(UUID id){var m=members.get(id);return m==null||!game.alive(id)||reviewing?null:m.prop;}
+    /** The last snapshot sent to each viewer; an unchanged one is not sent again (a new login is a new player object). */
+    private final Map<ServerPlayer,String> sent=new WeakHashMap<>();
+    private List<PropHuntSnapshot.Row> rows(boolean see){
+        var rows=new ArrayList<PropHuntSnapshot.Row>(members.size());
+        for(var m:members.values()){
+            boolean found=hider(m.id)&&!game.alive(m.id),visible=see||found;
+            rows.add(new PropHuntSnapshot.Row(m.id.toString(),m.name,m.team,visible&&m.prop!=null?m.prop.item():"",visible&&m.prop!=null?Block.getId(m.prop.state()):0,m.prop==null?-1:m.prop.getId(),found,m.fixed,game.hidden(m.id),game.found(m.id),visible?abilityRemaining(m):0,m.prop==null?0:PropAbilities.cooldown(m.prop.item()),visible?abilities.active(m.id):0,visible?abilities.auxiliary(m.id):0,visible?abilities.auxiliaryMax(m.id):0,abilities.stunned(m.id),m.wall==null?-1:m.wall.get2DDataValue()));
+        }
+        return rows;
+    }
     private void sync(){
+        // Every viewer gets one of two row lists (disguises shown or hidden), built once per sync.
+        List<PropHuntSnapshot.Row> shown=null,hidden=null;
         // A test session only talks to its own players; everyone else keeps their normal HUD.
         for(var viewer:server.getPlayerList().getPlayers()){
             if(test&&!participant(viewer.getUUID()))continue;
-            boolean see=hider(viewer.getUUID())||reviewing||!participant(viewer.getUUID());var rows=new ArrayList<PropHuntSnapshot.Row>();
-            for(var m:members.values()){
-                boolean found=hider(m.id)&&!game.alive(m.id),visible=see||found;
-                rows.add(new PropHuntSnapshot.Row(m.id.toString(),m.name,m.team,visible&&m.prop!=null?m.prop.item():"",visible&&m.prop!=null?Block.getId(m.prop.state()):0,m.prop==null?-1:m.prop.getId(),found,m.fixed,game.hidden(m.id),game.found(m.id),visible?abilityRemaining(m):0,m.prop==null?0:PropAbilities.cooldown(m.prop.item()),visible?abilities.active(m.id):0,visible?abilities.auxiliary(m.id):0,visible?abilities.auxiliaryMax(m.id):0,abilities.stunned(m.id),m.wall==null?-1:m.wall.get2DDataValue()));
-            }
+            boolean see=hider(viewer.getUUID())||reviewing||!participant(viewer.getUUID());
+            List<PropHuntSnapshot.Row> rows;
+            if(see){if(shown==null)shown=rows(true);rows=shown;}else{if(hidden==null)hidden=rows(false);rows=hidden;}
             // Only the viewer's own block choice is sent, never anyone else's.
             var own=members.get(viewer.getUUID());
             var offers=own==null||reviewing||!hider(own.id)||!game.alive(own.id)?List.<String>of():game.offers(own.id);
             boolean shared=choice==GameOptions.Choice.FIRST_COME&&!offers.isEmpty();
             int picked=offers.isEmpty()?-1:shared?game.claimed(own.id):own.picked;
             int seconds=offers.isEmpty()?0:Math.max(0,((shared?sharedUntil:own.choiceUntil)-server.getTickCount()+19)/20);
-            GungangNetwork.send(viewer,new GungangNetwork.PropHunt(ServerFiles.GSON.toJson(new PropHuntSnapshot(true,phase().name(),test?0:(game.remaining()+19)/20,test?0:(game.nextChange()+19)/20,rows,test?0:(game.huntRemaining()+19)/20,!test&&game.finalMinute(),offers,picked,seconds,!offers.isEmpty()&&own.initial,shared?game.takenByOthers(own.id):List.of(),!cling,shared,abilities.scout(viewer.getUUID())))));
+            String json=ServerFiles.GSON.toJson(new PropHuntSnapshot(true,phase().name(),test?0:(game.remaining()+19)/20,test?0:(game.nextChange()+19)/20,rows,test?0:(game.huntRemaining()+19)/20,!test&&game.finalMinute(),offers,picked,seconds,!offers.isEmpty()&&own.initial,shared?game.takenByOthers(own.id):List.of(),!cling,shared,abilities.scout(viewer.getUUID())));
+            // Cooldowns and clocks change the text whenever they tick, so a skipped copy is one the client already holds.
+            if(json.equals(sent.get(viewer)))continue;
+            sent.put(viewer,json);
+            GungangNetwork.send(viewer,new GungangNetwork.PropHunt(json));
         }
     }
     private int abilityRemaining(Member m){

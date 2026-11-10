@@ -868,6 +868,14 @@ public final class PropAbilities {
             if(box.intersects(column))match.launch(body,BURST_LAUNCH);
         }
     }
+    /** Disguises that turn with their hider's view (unless locked). */
+    private static final Set<String> TURNING=Set.of("minecraft:minecart",MONEY_CART,"gungang:mannequin","gungang:dried_ghast",EUNBI,HANBI,"minecraft:armor_stand","minecraft:tnt_minecart",PartyBlocks.SANGA,PartyBlocks.PHOTO_ID);
+    /** An open beacon disguise anywhere speeds every hider; checked once per tick, not once per hider. */
+    private int beaconTick=Integer.MIN_VALUE;private boolean beaconOn;
+    private boolean beaconLit(int now){
+        if(beaconTick!=now){beaconTick=now;beaconOn=match.bodies().stream().map(q->match.prop(q.getUUID())).anyMatch(other->other!=null&&other.item().equals("minecraft:beacon")&&other.open());}
+        return beaconOn;
+    }
     public void tick(LivingEntity p,PropEntity prop){
         var r=data(p.getUUID());int now=match.now();String item=prop.item();
         boolean moving=r.lastPosition!=null&&p.position().subtract(r.lastPosition).horizontalDistanceSqr()>.0001;r.lastPosition=p.position();
@@ -878,7 +886,7 @@ public final class PropAbilities {
         if(item.equals(PartyBlocks.AUTO))auto(p,prop,r,now);
         if(item.equals(PartyBlocks.PHOTO_ID))photo(p,prop,now);
         if(r.stun>now){p.setDeltaMovement(Vec3.ZERO);p.hurtMarked=true;if(r.stunPosition!=null)pin(p,r.stunPosition.x,r.stunPosition.y,r.stunPosition.z);}
-        boolean beacon=match.bodies().stream().map(q->match.prop(q.getUUID())).anyMatch(other->other!=null&&other.item().equals("minecraft:beacon")&&other.open());
+        boolean beacon=beaconLit(now);
         modifier(p,BEACON,beacon?.2:0);
         if(item.equals("minecraft:sponge"))sponge(p,prop);
         if(item.equals(LIGHT_BLOCK))lightBody(p);
@@ -890,7 +898,7 @@ public final class PropAbilities {
         if(!r.stuck.isEmpty())stuck(prop,r,now);
         if(item.equals("minecraft:sugar_cane")){int height=Math.min(3,1+(now-r.born)/1200);if(prop.height()!=height){prop.height(height);p.refreshDimensions();}}
         if(item.equals("minecraft:oak_sign")&&!match.locked(p.getUUID()))prop.state(prop.state().setValue(StandingSignBlock.ROTATION,Math.floorMod(Math.round(p.getYRot()*16/360),16)));
-        if(Set.of("minecraft:minecart",MONEY_CART,"gungang:mannequin","gungang:dried_ghast",EUNBI,HANBI,"minecraft:armor_stand","minecraft:tnt_minecart",PartyBlocks.SANGA,PartyBlocks.PHOTO_ID).contains(item)&&!match.locked(p.getUUID())){prop.setYRot(p.getYRot());prop.setYHeadRot(p.getYRot());prop.setYBodyRot(p.getYRot());}
+        if(TURNING.contains(item)&&!match.locked(p.getUUID())){prop.setYRot(p.getYRot());prop.setYHeadRot(p.getYRot());prop.setYBodyRot(p.getYRot());}
         if(item.equals("minecraft:bee_nest")&&!r.bees){r.bees=true;for(int i=0;i<3;i++){var mob=PropSummons.spawn(level(p),PropSummonEntity.Kind.BEE,p.getUUID(),prop.position().add(Math.cos(i*2.1),1,Math.sin(i*2.1)),100,36,true);if(mob!=null)r.mobs.add(mob);}}
         r.mobs.removeIf(Entity::isRemoved);for(int i=0;i<r.mobs.size();i++)PropSummons.tick(match,r.mobs.get(i),prop.position(),i);
         r.discs.removeIf(disc->{if(disc.isRemoved()||disc.tickCount>60){disc.discard();return true;}return false;});

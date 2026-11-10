@@ -91,9 +91,9 @@ public final class EscortCart extends Entity {
     /** Collision shapes from every cart near the moving entity's swept box. */
     public static List<VoxelShape> collisions(Level level,Entity entity,AABB box){
         if(entity instanceof EscortCart)return List.of();
-        var out=new ArrayList<VoxelShape>();
-        for(var cart:level.getEntitiesOfClass(EscortCart.class,box))for(var solid:cart.solids())if(solid.intersects(box))out.add(Shapes.create(solid));
-        return out;
+        List<VoxelShape> out=null;
+        for(var cart:level.getEntitiesOfClass(EscortCart.class,box))for(var solid:cart.solids())if(solid.intersects(box)){if(out==null)out=new ArrayList<>();out.add(Shapes.create(solid));}
+        return out==null?List.of():out;
     }
     /** Nearest point where a segment enters the model, for bullets and projectiles. */
     public Optional<Vec3> clip(Vec3 from,Vec3 to){
