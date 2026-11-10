@@ -31,6 +31,8 @@ public final class GadgetItems {
     public static final RegistryObject<Item> HAND_AXE=ITEMS.register("hand_axe",HandAxeItem::new);
     public static final RegistryObject<Item> DEFIBRILLATOR=ITEMS.register("defibrillator",DefibrillatorItem::new);
     public static final RegistryObject<Item> RAPIER=ITEMS.register("rapier",RapierItem::new);
+    public static final RegistryObject<Item> SHURIKEN=ITEMS.register("shuriken",ShurikenItem::new);
+    public static final RegistryObject<EntityType<ShurikenEntity>> SHURIKEN_PROJECTILE=ENTITIES.register("shuriken",()->EntityType.Builder.<ShurikenEntity>of(ShurikenEntity::new,MobCategory.MISC).sized(.35f,.35f).clientTrackingRange(10).updateInterval(1).build("gungang_acoustics:shuriken"));
     public static final RegistryObject<Item> JETPACK=ITEMS.register("jetpack",()->new GadgetItem("jetpack"));
     public static final RegistryObject<Item> AIR_ASSAULT=ITEMS.register("air_assault",()->new GadgetItem("air_assault"));
     public static final RegistryObject<Item> VOID_ANCHOR=ITEMS.register("void_anchor",()->new GadgetItem("void_anchor"));
