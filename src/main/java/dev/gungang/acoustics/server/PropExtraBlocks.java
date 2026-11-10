@@ -25,6 +25,9 @@ public final class PropExtraBlocks {
     public static final RegistryObject<Block> WILDFLOWERS=block("wildflowers",()->new ShapeBlock(Properties.copy(Blocks.PINK_PETALS).noCollission().noOcclusion(),Block.box(0,0,0,16,3,16)));
     /** Death zone marker (DeathZoneBlock): invisible except to whoever holds one; kills match participants who touch it. */
     public static final RegistryObject<Block> DEATH_ZONE=block("death_zone",DeathZoneBlock::new);
+    /** Everlasting snow: carpet-thin snow with no random tick, so neither light nor weather ever melts it. */
+    public static final RegistryObject<Block> SNOW_CARPET=block("snow_carpet",()->new CarpetBlock(Properties.of().mapColor(net.minecraft.world.level.material.MapColor.SNOW)
+            .strength(.1f).sound(SoundType.SNOW).pushReaction(net.minecraft.world.level.material.PushReaction.DESTROY)));
     private static RegistryObject<Block> block(String id,java.util.function.Supplier<Block> supplier){var result=BLOCKS.register(id,supplier);ITEMS.register(id,()->new BlockItem(result.get(),new Item.Properties()));return result;}
     public static void register(net.minecraftforge.eventbus.api.IEventBus bus){BLOCKS.register(bus);ITEMS.register(bus);}
     /**
