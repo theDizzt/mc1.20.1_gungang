@@ -99,7 +99,7 @@ public final class WeaponPatch {
             Map.entry("burstDamage", "Burst · 수리검 1개 피해"), Map.entry("burstAngle", "Burst · 방사 각도 (°)"),
             Map.entry("ricochetDamage1", "Ricochet · 1번째 대상 피해"), Map.entry("ricochetDamage2", "Ricochet · 2번째 대상 피해"),
             Map.entry("ricochetDamage3", "Ricochet · 3번째 대상 피해"), Map.entry("ricochetRadius", "Ricochet · 도탄 반경 (블록)"),
-            Map.entry("doubleJumpVelocity", "2단 점프 세기 (블록/틱)"));
+            Map.entry("doubleJumpVelocity", "2단 점프 세기 (블록/틱)"), Map.entry("wallClimbVelocity", "벽타기 한 걸음 세기 (블록/틱)"));
     private static final Map<String, String> LABELS = Map.ofEntries(
             Map.entry("windStrength", "송풍기 바람 세기 (0.01 단위)"),
             Map.entry("name", "이름"), Map.entry("category", "분류"), Map.entry("maxHealth", "최대 체력"), Map.entry("movementSpeed", "이동 속도 (%)"),

@@ -318,6 +318,8 @@ public final class LobbyManager {
         if(action.action().equals("shurikenMode")){ShurikenItem.cycleMode(sender);return;}
         if(action.action().equals("shurikenReload")){ShurikenItem.reload(sender);return;}
         if(action.action().equals("shurikenJump")){ShurikenItem.doubleJump(sender);return;}
+        if(action.action().equals("shurikenClimb")){ShurikenItem.climb(sender);return;}
+        if(action.action().equals("bladesReset")){TwinBlades.resetCombo(sender);return;}
         if(action.action().equals("defibTarget")){Defibrillator.choose(sender,action.value());return;}
         if(action.action().equals("rapierAttack")){int aimed;try{aimed=action.value().isEmpty()?-1:Integer.parseInt(action.value());}catch(NumberFormatException e){aimed=-1;}RapierItem.thrust(sender,aimed);return;}
         // Plant/defuse key: press and release must both arrive, so it bypasses the action rate limit.

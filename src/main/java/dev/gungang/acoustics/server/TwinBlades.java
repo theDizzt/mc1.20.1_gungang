@@ -61,6 +61,13 @@ public final class TwinBlades {
         event.setCanceled(true);
         if(event.getEntity() instanceof Projectile projectile&&projectile.getOwner() instanceof LivingEntity owner)swing(owner);
     }
+    /**
+     * TaCZ's fire select key restarts the gun pack's combo animation at motion 1 (the client rebuilds the script state),
+     * so the server's motion count starts over too: the next swing is motion 1 and motions 5 and 6 land where they show.
+     */
+    public static void resetCombo(net.minecraft.server.level.ServerPlayer player){
+        if(is(player.getMainHandItem()))LAST.remove(player.getUUID());
+    }
     private static void swing(LivingEntity owner){
         if(!owner.isAlive()||owner.isSpectator()||guarding(owner))return;
         long now=owner.level().getGameTime();var last=LAST.get(owner.getUUID());
