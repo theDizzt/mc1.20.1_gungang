@@ -93,7 +93,13 @@ public final class WeaponPatch {
             Map.entry("particlesPerSecond", "초당 입자 수"),
             Map.entry("windRange", "좌클릭 송풍 사거리 (블록)"), Map.entry("cannonAmmoCost", "공기대포 탄약 소모"), Map.entry("cannonDamage", "공기대포 피해"),
             Map.entry("cannonKnockbackMultiplier", "공기대포 넉백 배수"), Map.entry("cannonSelfKnockback", "공기대포 사용자 반동 (블록/틱)"),
-            Map.entry("cannonRange", "공기대포 사거리 (블록)"), Map.entry("cannonRadius", "공기대포 범위 반경 (블록)"), Map.entry("cannonCooldownSeconds", "공기대포 쿨타임 (초)"), Map.entry("damageIntervalTicks", "피해 간격 (틱)"));
+            Map.entry("cannonRange", "공기대포 사거리 (블록)"), Map.entry("cannonRadius", "공기대포 범위 반경 (블록)"), Map.entry("cannonCooldownSeconds", "공기대포 쿨타임 (초)"), Map.entry("damageIntervalTicks", "피해 간격 (틱)"),
+            Map.entry("ammoPerThrow", "1회 투척 탄약 소모"), Map.entry("reloadSeconds", "재장전 시간 (초)"), Map.entry("spreadDegrees", "탄퍼짐 (°)"),
+            Map.entry("flightSeconds", "최대 비행 시간 (초)"), Map.entry("semiDamage", "Semi · 수리검 1개 피해"), Map.entry("semiIntervalTicks", "Semi · 연속 투척 간격 (틱)"),
+            Map.entry("burstDamage", "Burst · 수리검 1개 피해"), Map.entry("burstAngle", "Burst · 방사 각도 (°)"),
+            Map.entry("ricochetDamage1", "Ricochet · 1번째 대상 피해"), Map.entry("ricochetDamage2", "Ricochet · 2번째 대상 피해"),
+            Map.entry("ricochetDamage3", "Ricochet · 3번째 대상 피해"), Map.entry("ricochetRadius", "Ricochet · 도탄 반경 (블록)"),
+            Map.entry("doubleJumpVelocity", "2단 점프 세기 (블록/틱)"), Map.entry("wallClimbVelocity", "벽타기 한 걸음 세기 (블록/틱)"));
     private static final Map<String, String> LABELS = Map.ofEntries(
             Map.entry("windStrength", "송풍기 바람 세기 (0.01 단위)"),
             Map.entry("name", "이름"), Map.entry("category", "분류"), Map.entry("maxHealth", "최대 체력"), Map.entry("movementSpeed", "이동 속도 (%)"),

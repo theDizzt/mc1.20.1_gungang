@@ -44,6 +44,7 @@ public final class ClientSetup {
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.ARROW_FRAGMENT.get(),ArrowFragmentRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.ORDNANCE.get(),OrdnanceRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.HAND_AXE_PROJECTILE.get(),HandAxeRenderer::new);
+        event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.SHURIKEN_PROJECTILE.get(),ShurikenRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.VOID_ANCHOR_ENTITY.get(),VoidAnchorRenderer::new);
     }
     @SubscribeEvent public static void blockColors(net.minecraftforge.client.event.RegisterColorHandlersEvent.Block event) {
@@ -94,6 +95,7 @@ public final class ClientSetup {
         event.registerBelow(VanillaGuiOverlay.HOTBAR.id(), "damage_vignette", DamageVignette::render);
         event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "shooter_hud", ShooterHud::render);
         event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "rapier_energy", TaczAmmoHud::rapier);
+        event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "shuriken_ammo", TaczAmmoHud::shuriken);
     }
     @SubscribeEvent
     public static void setup(FMLClientSetupEvent event) {
