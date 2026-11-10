@@ -31,6 +31,7 @@ public final class GungangAcoustics {
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, AcousticConfig.SPEC);
         dev.gungang.acoustics.server.GungangNetwork.register();
         dev.gungang.acoustics.server.SecondaryRuntime.registerTacz();
+        dev.gungang.acoustics.server.M95.registerTacz();
         dev.gungang.acoustics.server.BotManager.registerTacz();
         dev.gungang.acoustics.server.SafeZones.registerTacz();
         dev.gungang.acoustics.server.SpawnGateProtection.registerTacz();

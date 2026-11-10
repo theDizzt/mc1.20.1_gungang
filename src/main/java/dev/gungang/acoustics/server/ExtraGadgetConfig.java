@@ -4,6 +4,9 @@ import java.io.IOException;
 
 /** Configurations for equipment whose original implementations used fixed constants. */
 public final class ExtraGadgetConfig {
+    public record M95(double damage,double headshotMultiplier,int magazine,double rechargePerSecond,double maximumCharge,
+                      double smallThreshold,int smallBlocks,double largeThreshold,int largeBlocks,double thirdThreshold,int thirdBlocks,double unlimitedThreshold,double hitscanRange,double scopeRevealSeconds) { }
+    public static M95 m95=new M95(51,1.33,3,15,200,10,1,50,3,100,10,150,256,20);
     public record ArrowGrenade(double damage,double projectileRange,double durationSeconds,double cooldownSeconds,int emissionIntervalTicks,double projectileSpeed,double throwSpeed) { }
     public static ArrowGrenade arrowGrenade=new ArrowGrenade(16,6,12,30,20,1.2,1.1);
     public record Molotov(double radius,double durationSeconds,int burnSeconds,double cooldownSeconds,double burnDamage) {
@@ -125,6 +128,35 @@ public final class ExtraGadgetConfig {
         GadgetConfig.bounded(fo.radius(),.1,32);GadgetConfig.bounded(fo.durationSeconds(),.05,300);GadgetConfig.bounded(fo.intervalSeconds(),.05,60);
         for(double d:new double[]{fo.startDamage(),fo.damageStep(),fo.maxDamage()})GadgetConfig.bounded(d,0,10000);
         var ac=GadgetConfig.read("arc_thrower",ArcThrower.class,new ArcThrower(36,24,3,1),overrides,apply);
+        var sniper=GadgetConfig.read("m95",M95.class,new M95(51,1.33,3,15,200,10,1,50,3,100,10,150,256,20),overrides,apply);
+        var penetrationMigration=ServerFiles.root().resolve("item/.m95-penetration10-v3");
+        if(!overrides.containsKey("m95")&&!java.nio.file.Files.exists(penetrationMigration)&&sniper.maximumCharge()==240&&sniper.smallThreshold()==20&&sniper.unlimitedThreshold()==100){
+            sniper=new M95(sniper.damage(),1.33,sniper.magazine(),15,200,10,1,50,3,100,10,150,sniper.hitscanRange(),sniper.scopeRevealSeconds());
+            if(apply)java.nio.file.Files.writeString(ServerFiles.root().resolve("item/m95.json"),ServerFiles.GSON.toJson(sniper));
+        }
+        if(!overrides.containsKey("m95")&&!java.nio.file.Files.exists(penetrationMigration)&&sniper.thirdThreshold()==100&&(sniper.thirdBlocks()==3||sniper.thirdBlocks()==6)){
+            sniper=new M95(sniper.damage(),sniper.headshotMultiplier(),sniper.magazine(),sniper.rechargePerSecond(),sniper.maximumCharge(),sniper.smallThreshold(),sniper.smallBlocks(),sniper.largeThreshold(),sniper.largeBlocks(),sniper.thirdThreshold(),10,sniper.unlimitedThreshold(),sniper.hitscanRange(),sniper.scopeRevealSeconds());
+            if(apply)java.nio.file.Files.writeString(ServerFiles.root().resolve("item/m95.json"),ServerFiles.GSON.toJson(sniper));
+        }
+        if(apply&&!overrides.containsKey("m95")&&!java.nio.file.Files.exists(penetrationMigration))java.nio.file.Files.writeString(penetrationMigration,"M95 penetration defaults migrated.\n");
+        var scopeMigration=ServerFiles.root().resolve("item/.m95-scope20-v2");
+        if(!overrides.containsKey("m95")&&!java.nio.file.Files.exists(scopeMigration)){
+            if(sniper.scopeRevealSeconds()==5){
+                sniper=new M95(sniper.damage(),sniper.headshotMultiplier(),sniper.magazine(),sniper.rechargePerSecond(),sniper.maximumCharge(),sniper.smallThreshold(),sniper.smallBlocks(),sniper.largeThreshold(),sniper.largeBlocks(),sniper.thirdThreshold(),sniper.thirdBlocks(),sniper.unlimitedThreshold(),sniper.hitscanRange(),20);
+                if(apply)java.nio.file.Files.writeString(ServerFiles.root().resolve("item/m95.json"),ServerFiles.GSON.toJson(sniper));
+            }
+            if(apply)java.nio.file.Files.writeString(scopeMigration,"M95 default scope delay upgraded to 20 seconds.\n");
+        }
+        GadgetConfig.bounded(sniper.damage(),0,10000);GadgetConfig.bounded(sniper.headshotMultiplier(),0,10000);
+        GadgetConfig.bounded(sniper.magazine(),1,1000);GadgetConfig.bounded(sniper.rechargePerSecond(),0,10000);
+        GadgetConfig.bounded(sniper.maximumCharge(),1,10000);GadgetConfig.bounded(sniper.smallThreshold(),1,sniper.maximumCharge());
+        GadgetConfig.bounded(sniper.largeThreshold(),sniper.smallThreshold(),sniper.maximumCharge());
+        GadgetConfig.bounded(sniper.thirdThreshold(),sniper.largeThreshold(),sniper.maximumCharge());
+        GadgetConfig.bounded(sniper.thirdBlocks(),0,256);
+        GadgetConfig.bounded(sniper.unlimitedThreshold(),sniper.thirdThreshold(),sniper.maximumCharge());
+        GadgetConfig.bounded(sniper.smallBlocks(),0,256);GadgetConfig.bounded(sniper.largeBlocks(),sniper.smallBlocks(),256);
+        GadgetConfig.bounded(sniper.hitscanRange(),1,512);GadgetConfig.bounded(sniper.scopeRevealSeconds(),0,300);
+        if(apply)m95=sniper;
         GadgetConfig.bounded(ac.damage(),0,10000);GadgetConfig.bounded(ac.arcDamage(),0,10000);GadgetConfig.bounded(ac.arcRadius(),0,32);GadgetConfig.bounded(ac.glowSeconds(),0,300);
         var wb=GadgetConfig.read("wind_blower",WindBlower.class,new WindBlower(7,30,10,3,1,8,1.5,1),overrides,apply);
         GadgetConfig.bounded(wb.windRange(),0,256);GadgetConfig.bounded(wb.cannonAmmoCost(),0,10000);GadgetConfig.bounded(wb.cannonDamage(),0,10000);
