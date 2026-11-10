@@ -68,6 +68,12 @@ public final class WeaponPatch {
     private static final Map<String, String> SECONDARY_LABELS = Map.of("cooldownSeconds", "쿨타임 (초)", "plantSeconds", "설치 시간 (초)", "fuseSeconds", "폭발 시간 (초)", "defuseSeconds", "해체 시간 (초)");
     /** Item effect setting labels; anything not listed shows its field name. */
     private static final Map<String, String> ITEM_LABELS = Map.ofEntries(
+            Map.entry("headshotMultiplier", "헤드샷 배율"),Map.entry("scopeRevealSeconds", "줌 유지 후 투시 대기 시간 (초)"),Map.entry("magazine", "M95 탄창 용량"),
+            Map.entry("rechargePerSecond", "초당 관통력 충전"),Map.entry("maximumCharge", "최대 관통력"),
+            Map.entry("smallThreshold", "1단계 관통력 비용"),Map.entry("smallBlocks", "1단계 관통 블록 수"),
+            Map.entry("largeThreshold", "2단계 관통력 비용"),Map.entry("largeBlocks", "2단계 관통 블록 수"),
+            Map.entry("thirdThreshold", "3단계 관통력 비용"),Map.entry("thirdBlocks", "3단계 관통 블록 수"),
+            Map.entry("unlimitedThreshold", "무제한 블록 관통 비용"),Map.entry("hitscanRange", "히트스캔 사거리 (블록)"),
             Map.entry("damage", "피해"), Map.entry("radius", "반경 (블록)"), Map.entry("range", "범위 (블록)"), Map.entry("durationSeconds", "지속 시간 (초)"),
             Map.entry("cooldownSeconds", "쿨타임 (초)"), Map.entry("health", "체력"), Map.entry("heal", "회복량"), Map.entry("speed", "속도"),
             Map.entry("capacity", "용량·탄약"), Map.entry("projectileRange", "투사체 사거리 (블록)"), Map.entry("projectileSpeed", "투사체 속도"),
@@ -226,6 +232,10 @@ public final class WeaponPatch {
                     rows.add(new Row("melee:" + field.path(), field.label(), "melee", true, data.values().get(field.path()).text()));
             } catch (IllegalArgumentException missing) { file = "! " + missing.getMessage(); }
         }
+        if(M95.is(weapon.stack())){
+            // These values are owned by the M95 item settings, not the pack's ballistic defaults.
+            rows.removeIf(row->Set.of("item:damage","tacz:ammo_amount","tacz:bullet.extra_damage.head_shot_multiplier").contains(row.key()));
+        }
         speedFirst(rows);
         String setting = itemSetting(weapon);
         rows.replaceAll(row -> row.withHelp(PatchHelp.of(row.key(), setting)));
@@ -253,6 +263,7 @@ public final class WeaponPatch {
     static String itemSetting(Loadouts.Weapon weapon) {
         try {
             var stack = weapon.stack();
+            if (M95.is(stack)) return "m95";
             if (KatanaSpin.katana(stack)) return "katana";
             if (TwinBlades.is(stack)) return "twin_blades";
             if (Fallout.is(stack)) return "fallout";
