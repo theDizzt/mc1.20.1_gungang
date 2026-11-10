@@ -60,6 +60,8 @@ public final class GadgetConfig {
         var json=overrides.containsKey(id)?overrides.get(id):Files.exists(path)?com.google.gson.JsonParser.parseString(Files.readString(path)).getAsJsonObject():new com.google.gson.JsonObject();
         var merged=ServerFiles.GSON.toJsonTree(defaults).getAsJsonObject();
         for(var e:json.entrySet()) {
+            // M95 now uses a damage multiplier; old fixed headshot damage is superseded.
+            if(id.equals("m95")&&e.getKey().equals("headshotDamage"))continue;
             // Pre-throw-only hand axes had these keys. Ignore them when upgrading existing servers.
             if(id.equals("hand_axe")&&java.util.Set.of("meleeDamage","meleeCooldownSeconds").contains(e.getKey()))continue;
             if(!merged.has(e.getKey()))throw new IllegalArgumentException("Unknown item option: "+e.getKey());merged.add(e.getKey(),e.getValue());

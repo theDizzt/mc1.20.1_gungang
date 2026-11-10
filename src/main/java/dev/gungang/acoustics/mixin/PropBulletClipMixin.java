@@ -19,14 +19,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(ClipContext.class)
 public abstract class PropBulletClipMixin {
     @Unique private boolean gungang$thinScenery;
+    @Unique private boolean gungang$m95Traced;
 
     @Inject(method="<init>",at=@At("RETURN"))
     private void gungang$bullet(Vec3 from,Vec3 to,ClipContext.Block block,ClipContext.Fluid fluid,Entity entity,CallbackInfo ci){
         gungang$thinScenery=block==ClipContext.Block.COLLIDER&&PropBullet.penetrates(entity);
+        gungang$m95Traced=block==ClipContext.Block.COLLIDER&&dev.gungang.acoustics.server.M95.skipTracedBlocks(entity,from,to);
     }
 
     @Inject(method="getBlockShape",at=@At("RETURN"),cancellable=true)
     private void gungang$thinBlock(BlockState state,BlockGetter level,BlockPos pos,CallbackInfoReturnable<VoxelShape> cir){
-        if(gungang$thinScenery)cir.setReturnValue(PropBullet.blockingShape(cir.getReturnValue()));
+        if(gungang$m95Traced)cir.setReturnValue(net.minecraft.world.phys.shapes.Shapes.empty());
+        else if(gungang$thinScenery)cir.setReturnValue(PropBullet.blockingShape(cir.getReturnValue()));
     }
 }

@@ -311,6 +311,7 @@ public final class LobbyManager {
     }
     public static void action(ServerPlayer sender, GungangNetwork.Action action) {
         if (server == null) return;
+        if(action.action().equals("m95Mode")){M95.cycle(sender);return;}
         if(action.action().equals("turretReload")){Turrets.key(sender,action.value());return;}
         if(action.action().equals("gimmickAttack")){GimmickEvents.request(sender);return;}
         if(action.action().equals("defibTarget")){Defibrillator.choose(sender,action.value());return;}
