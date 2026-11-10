@@ -103,6 +103,62 @@ public final class TaczAmmoHud {
         digits(g,mc.font,padding,0,ArenaScreen.blend(0xFF1A2230,color,.35f));digits(g,mc.font,value,padding.length(),digitColor);g.pose().popPose();
         g.pose().popPose();
     }
+    /** 33 shuriken: magazine count and bar like a gun (purple reload progress while reloading), and its fire modes. */
+    public static void shuriken(net.minecraftforge.client.gui.overlay.ForgeGui gui,GuiGraphics g,float partial,int screenWidth,int screenHeight){
+        var mc=Minecraft.getInstance();if(mc.player==null||mc.options.hideGui||mc.player.isSpectator()||mc.level==null)return;
+        if(PropHuntClient.hider())return;
+        var stack=mc.player.getMainHandItem();if(!dev.gungang.acoustics.server.ShurikenItem.is(stack))return;
+        int ammo=dev.gungang.acoustics.server.ShurikenItem.ammo(stack),capacity=dev.gungang.acoustics.server.ShurikenItem.capacity(stack);
+        long end=dev.gungang.acoustics.server.ShurikenItem.reloadEnd(stack);
+        boolean reloading=end>0;boolean alert=ammo<=0&&!reloading;
+        int color=alert?0xFFFF5555:reloading?0xFFB57CFF:ammo<=capacity*.25?0xFFFFFF55:0xFFFFFFFF;
+        var font=mc.font;String count=String.valueOf(ammo);int places=Math.max(3,count.length());
+        String padding="0".repeat(places-count.length());
+        var l=layout(places);int right=l.right(),w=l.countW(),x0=right-w;
+        float scale=(float)(2.0/mc.getWindow().getGuiScale());g.pose().pushPose();g.pose().scale(scale,scale,1);
+        star(g,l.iconX()+48,l.iconY()+13,alert?0xB3FF4D4D:0xB3000000);
+        double clock=System.nanoTime()/1e9;
+        String key=mc.player.getInventory().selected+"|shuriken";
+        if(!key.equals(animatedGun)){animatedGun=key;BAR.reset();lastAmmo=ammo;shotAt=reloadAt=-10;}
+        if(ammo!=lastAmmo){if(ammo<lastAmmo)shotAt=clock;else reloadAt=clock;lastAmmo=ammo;}
+        float ratio;
+        if(reloading){
+            int total=dev.gungang.acoustics.server.ShurikenItem.reloadTicks(stack);
+            float left=Math.max(0,end-(mc.level.getGameTime()+partial));
+            ratio=1-Math.min(1,left/total);
+        }else ratio=capacity>0?Math.max(0,Math.min(1,ammo/(float)capacity)):0;
+        float shown=reloading?ratio:BAR.update(ratio);
+        if(reloading)BAR.reset();
+        int fill=Math.round(w*shown),barTop=l.barTop();
+        g.fill(x0+1,barTop+1,right+1,barTop+BAR_H+1,SHADOW);
+        g.fill(x0,barTop,right,barTop+BAR_H,0x803A3B32);
+        g.fill(x0,barTop,x0+fill,barTop+BAR_H,color);
+        float kick=pulse(clock-shotAt,.14),pop=pulse(clock-reloadAt,.38);
+        float grow=1+.10f*kick+.18f*pop;int digitColor=color;
+        if(kick>0)digitColor=ArenaScreen.blend(digitColor,0xFFFFFFFF,.6f*kick);
+        if(pop>0&&!alert)digitColor=ArenaScreen.blend(digitColor,0xFF9CF2B0,.75f*pop);
+        float cx=x0+w/2f,cy=l.countTop()+3.5f*AMMO_SCALE;
+        g.pose().pushPose();g.pose().translate(cx,cy-2.5f*kick,0);g.pose().scale(grow,grow,1);g.pose().translate(-cx,-cy,0);
+        g.pose().translate(x0,l.countTop(),0);g.pose().scale(AMMO_SCALE,AMMO_SCALE,1);
+        digits(g,font,padding,0,alert?color:ArenaScreen.blend(0xFF1A2230,color,.35f));digits(g,font,count,padding.length(),digitColor);g.pose().popPose();
+        var current=dev.gungang.acoustics.server.ShurikenItem.mode(stack);var modes=dev.gungang.acoustics.server.ShurikenItem.Mode.values();
+        int x=right;
+        for(int i=modes.length-1;i>=0;i--){
+            String mode=modes[i].label.toUpperCase(java.util.Locale.ROOT);x-=font.width(mode);
+            text(g,font,mode,x,l.rowTop()-11,modes[i]==current?0xFFFFFFFF:0xFF5A6474);
+            if(i>0)x-=font.width(" ");
+        }
+        String name=font.plainSubstrByWidth(stack.getHoverName().getString(),Math.max(1,mc.getWindow().getWidth()/4-MARGIN-(right-x+8)));
+        text(g,font,name,x-8-font.width(name),l.rowTop()-11,0xFFE2E8F0);
+        g.pose().popPose();
+    }
+    /** Four-pointed star silhouette centred on (cx, cy). */
+    private static void star(GuiGraphics g,int cx,int cy,int color){
+        for(int i=0;i<=11;i++){int half=Math.max(0,(11-i)/4);
+            g.fill(cx-half,cy-i,cx+half+1,cy-i+1,color);g.fill(cx-half,cy+i,cx+half+1,cy+i+1,color);
+            if(i>0){g.fill(cx-i,cy-half,cx-i+1,cy+half+1,color);g.fill(cx+i,cy-half,cx+i+1,cy+half+1,color);}}
+        g.fill(cx-3,cy-3,cx+4,cy+4,color);
+    }
     private static final BarTween RAPIER_BAR=new BarTween(.32,.07);
     private static double rapierFrame=-10;
     private static int lastGauge;
