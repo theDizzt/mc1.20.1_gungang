@@ -27,6 +27,7 @@ public final class ScannerVision {
     public static Integer color(net.minecraft.world.entity.Entity entity){
         var mc=Minecraft.getInstance();
         if(mc.player==null||entity==mc.player||!entity.isAlive()||entity.isSpectator()||entity.isAlliedTo(mc.player))return null;
+        var m95=M95EchoHud.color(entity);if(m95!=null)return m95;
         return view.targets().stream().filter(t->t.id().equals(entity.getUUID())).map(CombatGadgets.Target::color).findFirst().orElse(null);
     }
     public static void receive(String json) {view=ServerFiles.GSON.fromJson(json,CombatGadgets.ScanView.class);}

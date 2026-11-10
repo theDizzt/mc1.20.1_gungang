@@ -53,6 +53,8 @@ public final class GungangNetwork {
     public record RapierStep(int entity,float yaw,float distance) { }
     /** One LAS-5 shot: shooter entity id (-1: none), bullet start and the server-side hit point. */
     public record Las5Shot(int owner,double fx,double fy,double fz,double tx,double ty,double tz) { }
+    public record M95Shot(int owner,double fx,double fy,double fz,double tx,double ty,double tz) { }
+    public record M95EchoPacket(java.util.List<M95Echo.Target> targets) { }
     /** A TaCZ gun-pack sound for the receiving player only (e.g. tacz:kill for a twin-blades kill). */
     public record KillSound(String sound) { }
     /** Pending status-ailment damage per entity id in the receiver's dimension (purple share of health bars). */
@@ -109,6 +111,14 @@ public final class GungangNetwork {
                 b->{var ids=b.readVarIntArray(256);int n=Math.min(256,b.readVarInt());var amounts=new float[n];for(int i=0;i<n;i++)amounts[i]=b.readFloat();
                     int h=Math.min(256,b.readVarInt());var heals=new float[h];for(int i=0;i<h;i++)heals[i]=b.readFloat();return new StatusDamage(ids,amounts,heals);},(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.StatusDamageClient.receive(p.ids(),p.amounts(),p.heals())));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(42,M95Shot.class,(p,b)->{b.writeVarInt(p.owner+1);b.writeDouble(p.fx);b.writeDouble(p.fy);b.writeDouble(p.fz);b.writeDouble(p.tx);b.writeDouble(p.ty);b.writeDouble(p.tz);},
+                b->new M95Shot(b.readVarInt()-1,b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble()),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.Las5Beam.receive(p)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(43,M95EchoPacket.class,(p,b)->b.writeCollection(p.targets,(buf,t)->{buf.writeDouble(t.x());buf.writeDouble(t.y());buf.writeDouble(t.z());buf.writeUUID(t.id());}),
+                b->new M95EchoPacket(b.readList(buf->new M95Echo.Target(buf.readDouble(),buf.readDouble(),buf.readDouble(),buf.readUUID()))),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.M95EchoHud.receive(p.targets)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(41,ComboHit.class,(p,b)->b.writeFloat(p.amount),b->new ComboHit(b.readFloat()),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.ComboHud.hit(p.amount())));ctx.setPacketHandled(true);
