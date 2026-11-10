@@ -14,6 +14,12 @@ import org.lwjgl.glfw.GLFW;
 @net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid=dev.gungang.acoustics.GungangAcoustics.ID,value=Dist.CLIENT)
 public final class PropHuntClient {
     private static PropHuntSnapshot state;
+    /**
+     * The snapshot's rows by player id, rebuilt on every snapshot. Lookups run per entity per frame (outlines, push and
+     * size checks, the team HUD), so they must not scan the list and format UUIDs each time.
+     */
+    private static Map<UUID,PropHuntSnapshot.Row> rows=Map.of();
+    private static PropHuntSnapshot.Row row(UUID id){return id==null?null:rows.get(id);}
     private static CameraType previous;
     private static boolean charging,jumpHeld,clung;
     private static long chargeStart;
@@ -27,8 +33,7 @@ public final class PropHuntClient {
         // Seekers may fire inside safe zones during the match; nobody in the match can click custom NPCs.
         SafeZones.clientArmed=e->{var s=self();var p=Minecraft.getInstance().player;return s!=null&&e==p&&!review()&&!s.team().equals("ALPHA");};
         SafeZones.clientInMatch=()->self()!=null&&!review();
-        PropBullet.clientSeeker=e->active()&&state.phase().equals("HUNTING")&&state.players().stream()
-                .anyMatch(r->r.id().equals(e.getUUID().toString())&&r.team().equals("BRAVO"));
+        PropBullet.clientSeeker=e->{if(!active()||!state.phase().equals("HUNTING"))return false;var r=row(e.getUUID());return r!=null&&r.team().equals("BRAVO");};
     }
     public static int pages(MatchSnapshot value,int height){return PropHuntHud.pages(value,height);}
     public static int table(GuiGraphics g,MatchSnapshot value,int x,int y,int width,int height,int page){return PropHuntHud.table(g,value,x,y,width,height,page);}
@@ -36,15 +41,14 @@ public final class PropHuntClient {
     static void clampPage(int pages){page=Math.min(page,pages-1);}
     public static boolean active(){return state!=null&&state.active();}
     public static boolean review(){return active()&&state.phase().equals("REVIEW");}
-    private static PropHuntSnapshot.Row self(){var p=Minecraft.getInstance().player;return !active()||p==null?null:state.players().stream().filter(r->r.id().equals(p.getUUID().toString())).findFirst().orElse(null);}
+    private static PropHuntSnapshot.Row self(){var p=Minecraft.getInstance().player;return !active()||p==null?null:row(p.getUUID());}
     /** The living hider's own disguise id ("minecraft:minecart"...), or null. */
     static String disguise(){var s=self();return hider()&&s!=null&&!s.block().isEmpty()?dev.gungang.acoustics.server.PropCatalog.id(s.block()).toString():null;}
     public static boolean hider(){var s=self();return s!=null&&s.team().equals("ALPHA")&&!s.found()&&!review();}
     public static boolean outline(PropEntity prop){
         if(prop.marker())return true;
-        var viewer=self();
-        return viewer!=null&&!review()&&viewer.team().equals("ALPHA")&&prop.owner()!=null
-                &&state.players().stream().anyMatch(r->r.id().equals(prop.owner().toString())&&r.team().equals("ALPHA"));
+        var viewer=self();if(viewer==null||review()||!viewer.team().equals("ALPHA"))return false;
+        var owner=row(prop.owner());return owner!=null&&owner.team().equals("ALPHA");
     }
     /** The local player is on the seeking team while the round is being played. */
     public static boolean seeker(){var s=self();return s!=null&&s.team().equals("BRAVO")&&!review();}
@@ -61,15 +65,18 @@ public final class PropHuntClient {
     /** Locked and flying the free spectator camera (Q): the own body is a spectator that is its own camera. */
     static boolean free(){var mc=Minecraft.getInstance();return fixed()&&mc.player!=null&&mc.player.isSpectator()&&mc.getCameraEntity()==mc.player;}
     /** A hider the seekers have found: out for the rest of the round. */
-    static boolean found(UUID id){return active()&&state.players().stream().anyMatch(r->r.id().equals(id.toString())&&r.team().equals("ALPHA")&&r.found());}
-    public static boolean hidden(UUID id){return active()&&state.players().stream().anyMatch(r->r.id().equals(id.toString())&&r.team().equals("ALPHA")&&!r.found());}
+    static boolean found(UUID id){var r=active()?row(id):null;return r!=null&&r.team().equals("ALPHA")&&r.found();}
+    public static boolean hidden(UUID id){var r=active()?row(id):null;return r!=null&&r.team().equals("ALPHA")&&!r.found();}
     public static PropEntity prop(net.minecraft.world.entity.player.Player player){
         if(!active()||review()||player.level()==null)return null;
-        var row=state.players().stream().filter(r->r.id().equals(player.getUUID().toString())&&!r.found()).findFirst().orElse(null);
-        return row!=null&&player.level().getEntity(row.entity()) instanceof PropEntity p?p:null;
+        var row=row(player.getUUID());
+        return row!=null&&!row.found()&&row.entity()>=0&&player.level().getEntity(row.entity()) instanceof PropEntity p?p:null;
     }
     public static void receive(String json){
         state=ServerFiles.GSON.fromJson(json,PropHuntSnapshot.class);
+        var index=new HashMap<UUID,PropHuntSnapshot.Row>();
+        if(state!=null&&state.players()!=null)for(var r:state.players())try{index.putIfAbsent(UUID.fromString(r.id()),r);}catch(IllegalArgumentException ignored){}
+        rows=index;
         received=Minecraft.getInstance().level==null?0:Minecraft.getInstance().level.getGameTime();
         var s=self();if(s!=null&&!s.block().equals(lastBlock)){lastBlock=s.block();noticeUntil=System.currentTimeMillis()+4500;}
         if(!hider())restore();
@@ -78,7 +85,7 @@ public final class PropHuntClient {
     /** A hider's current disguise row (not found, block chosen), or null outside the hunt or for seekers. */
     static PropHuntSnapshot.Row disguiseOf(UUID id){
         if(!active()||review())return null;
-        return state.players().stream().filter(r->r.id().equals(id.toString())&&r.team().equals("ALPHA")&&!r.found()&&!r.block().isEmpty()).findFirst().orElse(null);
+        var r=row(id);return r!=null&&r.team().equals("ALPHA")&&!r.found()&&!r.block().isEmpty()?r:null;
     }
     /** "참나무 판자 [01]" for a drawn block or colour variant. */
     static String disguise(String block){
@@ -92,7 +99,7 @@ public final class PropHuntClient {
         var mc=Minecraft.getInstance();
         UUID watched=watched();
         if(!active()||review()||watched==null||mc.player==null)return null;
-        var row=state.players().stream().filter(r->r.id().equals(watched.toString())).findFirst().orElse(null);
+        var row=row(watched);
         if(row==null)return null;
         // Only while spectating someone else: the own disguise is already in the control guide.
         if(watched.equals(mc.player.getUUID()))return null;
@@ -173,7 +180,7 @@ public final class PropHuntClient {
         var mc=Minecraft.getInstance();if(previous!=null){mc.options.setCameraType(previous);previous=null;}charging=false;jumpHeld=false;
         if((clung||stuck||ride!=null)&&mc.player!=null)mc.player.setNoGravity(false);clung=false;stuck=false;letGo=false;ride=null;rode=null;
     }
-    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut e){restore();state=null;lastBlock="";noticeUntil=0;page=0;}
+    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut e){restore();state=null;rows=Map.of();lastBlock="";noticeUntil=0;page=0;}
     @SubscribeEvent public static void tick(net.minecraftforge.event.TickEvent.ClientTickEvent e){
         if(e.phase!=net.minecraftforge.event.TickEvent.Phase.END)return;
         var mc=Minecraft.getInstance();if(!hider()){restore();return;}
