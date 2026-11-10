@@ -17,6 +17,7 @@
     "entity.gungang_acoustics.void_anchor":  "Void Anchor",
     "item.gungang.turret":  "Turret",
     "item.gungang.rapier":  "Rapier",
+    "item.gungang.shuriken":  "Shuriken",
     "item.gungang.secret_wand":  "Secret Wand",
     "entity.gungang_acoustics.turret":  "Turret",
     "death.attack.gungang.turret":  "%1$s was shot by %2$s\u0027s turret",

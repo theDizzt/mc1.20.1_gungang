@@ -70,6 +70,19 @@ public final class ExtraGadgetConfig {
     public record WindBlower(double windRange,int cannonAmmoCost,double cannonDamage,double cannonKnockbackMultiplier,double cannonSelfKnockback,
                              double cannonRange,double cannonRadius,double cannonCooldownSeconds) { }
     public static WindBlower windBlower=new WindBlower(7,30,10,3,1,8,1.5,1);
+    /**
+     * 33 shuriken ({@link ShurikenItem}): every throw spends ammoPerThrow of the capacity-round magazine. Semi throws
+     * three in a row along the aim (semiIntervalTicks apart), burst three at once fanned burstAngle degrees apart, and
+     * ricochet one that bounces on to the nearest enemy within ricochetRadius of each body it hits (up to three bodies).
+     * No range falloff; projectiles fly projectileSpeed blocks per tick for at most flightSeconds.
+     */
+    public record Shuriken(int capacity,int ammoPerThrow,double reloadSeconds,double attackIntervalSeconds,double projectileSpeed,double spreadDegrees,double flightSeconds,
+                           double semiDamage,int semiIntervalTicks,double burstDamage,double burstAngle,
+                           double ricochetDamage1,double ricochetDamage2,double ricochetDamage3,double ricochetRadius,double doubleJumpVelocity) {
+        public double ricochetDamage(int hop){return switch(hop){case 1->ricochetDamage1;case 2->ricochetDamage2;default->ricochetDamage3;};}
+    }
+    public static final Shuriken SHURIKEN_DEFAULTS=new Shuriken(18,3,1.5,.5,3,1.5,5,13,2,13,8,33,22,11,16,.5);
+    public static Shuriken shuriken=SHURIKEN_DEFAULTS;
     public static TwinBlades twinBlades=new TwinBlades(24,24,24,24,48,72,4,100,30,100);
     public static Molotov molotov=new Molotov(5,8,3,36);
     public static Orbital orbital=new Orbital(24,256,84,5,64,240);
@@ -117,6 +130,12 @@ public final class ExtraGadgetConfig {
         GadgetConfig.bounded(wb.windRange(),0,256);GadgetConfig.bounded(wb.cannonAmmoCost(),0,10000);GadgetConfig.bounded(wb.cannonDamage(),0,10000);
         GadgetConfig.bounded(wb.cannonKnockbackMultiplier(),0,100);GadgetConfig.bounded(wb.cannonSelfKnockback(),0,10);GadgetConfig.bounded(wb.cannonRange(),.5,128);
         GadgetConfig.bounded(wb.cannonRadius(),0,32);GadgetConfig.bounded(wb.cannonCooldownSeconds(),0,86400);
+        var sh=GadgetConfig.read("shuriken",Shuriken.class,SHURIKEN_DEFAULTS,overrides,apply);
+        GadgetConfig.bounded(sh.capacity(),1,1000);GadgetConfig.bounded(sh.ammoPerThrow(),1,sh.capacity());GadgetConfig.bounded(sh.reloadSeconds(),0,60);
+        GadgetConfig.bounded(sh.attackIntervalSeconds(),.05,10);GadgetConfig.bounded(sh.projectileSpeed(),.2,8);GadgetConfig.bounded(sh.spreadDegrees(),0,45);
+        GadgetConfig.bounded(sh.flightSeconds(),.1,30);GadgetConfig.bounded(sh.semiIntervalTicks(),0,20);GadgetConfig.bounded(sh.burstAngle(),0,90);
+        for(double d:new double[]{sh.semiDamage(),sh.burstDamage(),sh.ricochetDamage1(),sh.ricochetDamage2(),sh.ricochetDamage3()})GadgetConfig.bounded(d,0,10000);
+        GadgetConfig.bounded(sh.ricochetRadius(),0,64);GadgetConfig.bounded(sh.doubleJumpVelocity(),0,3);
         var tb=GadgetConfig.read("twin_blades",TwinBlades.class,new TwinBlades(24,24,24,24,48,72,4,100,30,100),overrides,apply);
         for(int i=1;i<=6;i++)GadgetConfig.bounded(tb.damage(i),0,10000);
         GadgetConfig.bounded(tb.range(),.5,16);GadgetConfig.bounded(tb.slashAngle(),1,360);GadgetConfig.bounded(tb.thrustAngle(),1,360);GadgetConfig.bounded(tb.guardMovementSpeed(),1,500);
@@ -130,7 +149,7 @@ public final class ExtraGadgetConfig {
         GadgetConfig.bounded(s.durationSeconds(),.05,300);GadgetConfig.bounded(h.capacity(),1,10000);GadgetConfig.bounded(h.repairSeconds(),0,86400);
         GadgetConfig.bounded(h.movementPenaltyPercent(),0,99);GadgetConfig.bounded(h.regenDelaySeconds(),0,300);GadgetConfig.bounded(h.regenPerSecond(),0,10000);GadgetConfig.bounded(h.meleeReductionPercent(),0,100);
         for(double c:new double[]{m.cooldownSeconds(),o.cooldownSeconds(),l.cooldownSeconds(),j.cooldownSeconds(),s.cooldownSeconds(),x.cooldownSeconds()})GadgetConfig.bounded(c,0,86400);
-        if(apply){molotov=m;orbital=o;life=l;jet=j;scanner=s;shield=h;handAxe=x;arrowGrenade=ag;rapier=r;katana=k;regeneration=rg;combat=cb;fallout=fo;twinBlades=tb;arcThrower=ac;windBlower=wb;}
+        if(apply){molotov=m;orbital=o;life=l;jet=j;scanner=s;shield=h;handAxe=x;arrowGrenade=ag;rapier=r;katana=k;regeneration=rg;combat=cb;fallout=fo;twinBlades=tb;arcThrower=ac;windBlower=wb;shuriken=sh;}
     }
     private ExtraGadgetConfig() { }
 }

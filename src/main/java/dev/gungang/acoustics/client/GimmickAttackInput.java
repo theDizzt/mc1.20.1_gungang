@@ -11,6 +11,8 @@ public final class GimmickAttackInput {
     @SubscribeEvent(receiveCanceled=true) public static void attack(net.minecraftforge.client.event.InputEvent.InteractionKeyMappingTriggered event){
         var mc=net.minecraft.client.Minecraft.getInstance();
         if(!event.isAttack()||mc.player==null||mc.level==null||mc.screen!=null)return;
+        // The shuriken's own handler (ShurikenInput) throws instead; its shuriken hit gimmick blocks themselves.
+        if(ShurikenItem.is(mc.player.getMainHandItem()))return;
         if(mc.player.getMainHandItem().getItem() instanceof RapierItem){
             if(event.isCanceled())return;
             event.setCanceled(true);event.setSwingHand(false);

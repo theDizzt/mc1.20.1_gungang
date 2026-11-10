@@ -17,6 +17,7 @@
     "entity.gungang_acoustics.void_anchor":  "보이드 앵커",
     "item.gungang.turret":  "터렛",
     "item.gungang.rapier":  "레이피어",
+    "item.gungang.shuriken":  "수리검",
     "item.gungang.secret_wand":  "비밀의 완드",
     "entity.gungang_acoustics.turret":  "터렛",
     "death.attack.gungang.turret":  "%1$s님이 %2$s님의 터렛에 사망했습니다",

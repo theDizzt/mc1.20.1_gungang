@@ -213,6 +213,22 @@ public final class PatchHelp {
         item("wind_blower", "cannonSelfKnockback", "용도: 공기대포를 쏠 때 사용자가 조준 반대 방향으로 받는 반동 속도(블록/틱). 0이면 반동이 없습니다.");
         item("wind_blower", "cannonRange", "용도: 공기대포가 닿는 최대 거리(블록). 벽에 막히면 그 앞까지만 닿습니다.");
         item("wind_blower", "cannonRadius", "용도: 공기대포 범위의 반경(블록). 조준선에서 이 거리 안에 몸이 걸치면 맞습니다.\n산출식: 맞는 영역 ≈ 지름 (반경 × 2), 길이 사거리의 원기둥");
+        item("shuriken", "capacity", "용도: 수리검 탄창 크기. 기본 18발이며, 투척마다 '1회 투척 탄약 소모'만큼 줄어듭니다.\n산출식: 탄창당 투척 수 = 탄창 / 1회 소모 (기본 18 / 3 = 6회)");
+        item("shuriken", "ammoPerThrow", "용도: 클릭 1회(조정관과 무관)에 소모하는 탄약. 남은 탄약이 이보다 적으면 자동으로 재장전합니다.");
+        item("shuriken", "reloadSeconds", "용도: 재장전 시간(초). TaCZ 재장전 키 또는 탄약이 바닥나면 시작되며, 다른 무기로 바꾸면 취소됩니다.");
+        item("shuriken", "attackIntervalSeconds", "용도: 투척 사이의 최소 간격(초). 경기 중에도 즉시 적용됩니다.\n산출식: 초당 투척 수 = 1 / 간격");
+        item("shuriken", "projectileSpeed", "용도: 수리검 비행 속도(블록/틱, 20틱 = 1초). 중력 없이 직선으로 날아갑니다.\n산출식: 초당 비행 거리 = 속도 × 20");
+        item("shuriken", "spreadDegrees", "용도: 수리검마다 무작위로 퍼지는 정도(°, 표준편차 기준). 0이면 정확히 조준선으로 날아갑니다. Ricochet 도탄 구간에는 적용되지 않습니다.");
+        item("shuriken", "flightSeconds", "용도: 수리검이 아무것도 맞히지 못했을 때 사라지기까지의 시간(초). 거리별 피해 감소는 없습니다.\n산출식: 최대 비행 거리 = 속도 × 20 × 시간");
+        item("shuriken", "semiDamage", "용도: Semi 조정관에서 수리검 1개의 피해. 조준선 방향으로 3개를 연속으로 던집니다.\n산출식: 모두 맞으면 피해 = 피해 × 3 (기본 13 × 3 = 39)");
+        item("shuriken", "semiIntervalTicks", "용도: Semi 조정관의 3연속 투척 사이 간격(틱). 0이면 3개를 한 번에 던집니다.");
+        item("shuriken", "burstDamage", "용도: Burst 조정관에서 수리검 1개의 피해. 3개를 동시에 부채꼴로 던집니다.\n산출식: 모두 맞으면 피해 = 피해 × 3 (기본 13 × 3 = 39)");
+        item("shuriken", "burstAngle", "용도: Burst 조정관에서 가운데 수리검과 양옆 수리검 사이의 각도(°).\n산출식: 부채꼴 전체 폭 = 각도 × 2");
+        item("shuriken", "ricochetDamage1", "용도: Ricochet 조정관에서 처음 맞은 대상의 피해.");
+        item("shuriken", "ricochetDamage2", "용도: Ricochet 도탄 1회째(2번째 대상)의 피해. 처음 맞은 대상 기준 도탄 반경 안의 가장 가까운 적에게 날아갑니다.");
+        item("shuriken", "ricochetDamage3", "용도: Ricochet 도탄 2회째(3번째 대상)의 피해. 2번째 대상 기준 도탄 반경 안의 가장 가까운 적에게 날아갑니다.\n산출식: 3명 모두 맞으면 총 피해 = 1번째 + 2번째 + 3번째 (기본 33 + 22 + 11 = 66)");
+        item("shuriken", "ricochetRadius", "용도: 도탄 대상을 찾는 반경(블록). 맞은 대상에게서 보이는(벽에 가리지 않은) 가장 가까운 적을 고르며, 이미 맞은 대상과 아군은 제외합니다. 0이면 도탄하지 않습니다.");
+        item("shuriken", "doubleJumpVelocity", "용도: 공중에서 점프 키를 한 번 더 눌렀을 때의 위쪽 속도(블록/틱). 수리검을 가지고 있으면 사용할 수 있고, 땅에 닿으면 다시 충전됩니다.\n참고: 일반 점프 = 0.42. 0이면 2단 점프가 위로 올라가지 않습니다.");
         item("wind_blower", "cannonCooldownSeconds", "용도: 공기대포를 다시 쏠 수 있기까지의 시간(초).");
         item("katana", "rightClickDamage", "용도: 우클릭 강공격 피해. 맞으면 출혈이 이어집니다.\n산출식: 총 피해 = 우클릭 피해 + 출혈 초당 피해 × 출혈 시간");
         // ---- GunGang blocks (전역 tab, /gungang modify block) -------------------------------------------------------

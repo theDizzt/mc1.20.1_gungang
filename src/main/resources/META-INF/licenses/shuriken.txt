@@ -1,0 +1,3 @@
+"Shuriken" by equilibre (https://sketchfab.com/equilibre), https://sketchfab.com/3d-models/shuriken-89a5d6a38b2449a98dbcfc320209c532
+Licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/).
+Modifications: glTF converted to OBJ; turned to face +Z; scale normalized; texture downsized to PNG.
