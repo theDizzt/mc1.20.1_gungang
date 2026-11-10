@@ -23,6 +23,12 @@ public final class DamageCredit {
     private record Burn(UUID owner,long until) { }
     private record Credit(UUID owner,long added) { }
     private static final Map<LivingEntity,Hit> LAST=new WeakHashMap<>();
+    private static final Map<LivingEntity,Hit> WIND=new WeakHashMap<>();
+    static final int WIND_WINDOW=200;
+    /** Zero-damage wind still owns the environmental consequences of its push for ten seconds. */
+    static void wind(LivingEntity victim,LivingEntity owner){
+        if(owner!=victim)WIND.put(victim,new Hit(owner.getUUID(),victim.level().getGameTime()));
+    }
     private static final Map<LivingEntity,Burn> FIRE=new WeakHashMap<>();
     private static final Map<LivingEntity,Map<MobEffect,Credit>> EFFECTS=new WeakHashMap<>();
 
@@ -34,6 +40,16 @@ public final class DamageCredit {
     }
     /** The attacker to credit, or null for damage nobody caused (map hazards, falls, own fire). */
     public static Entity attacker(LivingEntity victim,DamageSource source){
+        if(victim.level() instanceof ServerLevel level){
+            var push=WIND.get(victim);
+            if(push!=null&&(level.getGameTime()-push.time()>WIND_WINDOW||LobbyManager.respawning(victim.getUUID()))){WIND.remove(victim);push=null;}
+            if(push!=null&&(source.is(DamageTypes.FALL)||source.is(DamageTypes.FELL_OUT_OF_WORLD)
+                    ||source.is(net.minecraft.tags.DamageTypeTags.IS_EXPLOSION))){
+                var owner=level.getServer().getPlayerList().getPlayer(push.attacker());
+                Entity credited=owner!=null?owner:level.getEntity(push.attacker());
+                if(credited!=null)return credited;
+            }
+        }
         if(AcidPoisonEffect.active())return null;
         var attacker=direct(source);if(attacker!=null)return attacker;
         if(!(victim.level() instanceof ServerLevel level))return null;
@@ -76,4 +92,14 @@ public final class DamageCredit {
         EFFECTS.computeIfAbsent(victim,v->new HashMap<>()).put(event.getEffectInstance().getEffect(),new Credit(owner,now));
     }
     private DamageCredit(){}
+    @SubscribeEvent(priority=EventPriority.LOWEST,receiveCanceled=true) public static void died(LivingDeathEvent event){
+        // Preserve credit for all death listeners in this tick, including cancelled match deaths.
+        var victim=event.getEntity();var push=WIND.get(victim);
+        if(push!=null)WIND.put(victim,new Hit(push.attacker(),victim.level().getGameTime()-WIND_WINDOW));
+    }
+    @SubscribeEvent public static void tick(LivingEvent.LivingTickEvent event){
+        var victim=event.getEntity();
+        if(!victim.level().isClientSide&&LobbyManager.respawning(victim.getUUID()))WIND.remove(victim);
+    }
+    @SubscribeEvent public static void stopped(net.minecraftforge.event.server.ServerStoppedEvent event){WIND.clear();LAST.clear();FIRE.clear();EFFECTS.clear();}
 }

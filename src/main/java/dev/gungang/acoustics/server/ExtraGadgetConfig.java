@@ -63,6 +63,13 @@ public final class ExtraGadgetConfig {
     /** 32 ARC-12: damage of a shot to each body its pellets reach, the arc to everyone within arcRadius of them, and the glow. */
     public record ArcThrower(double damage,double arcDamage,double arcRadius,double glowSeconds) { }
     public static ArcThrower arcThrower=new ArcThrower(36,24,3,1);
+    /**
+     * 35 classic blower: windRange limits the left-click wind's push; right click fires an air cannon
+     * ({@link dev.gungang.acoustics.server.WindBlower}).
+     */
+    public record WindBlower(double windRange,int cannonAmmoCost,double cannonDamage,double cannonKnockbackMultiplier,double cannonSelfKnockback,
+                             double cannonRange,double cannonRadius,double cannonCooldownSeconds) { }
+    public static WindBlower windBlower=new WindBlower(7,30,10,3,1,8,1.5,1);
     public static TwinBlades twinBlades=new TwinBlades(24,24,24,24,48,72,4,100,30,100);
     public static Molotov molotov=new Molotov(5,8,3,36);
     public static Orbital orbital=new Orbital(24,256,84,5,64,240);
@@ -106,6 +113,10 @@ public final class ExtraGadgetConfig {
         for(double d:new double[]{fo.startDamage(),fo.damageStep(),fo.maxDamage()})GadgetConfig.bounded(d,0,10000);
         var ac=GadgetConfig.read("arc_thrower",ArcThrower.class,new ArcThrower(36,24,3,1),overrides,apply);
         GadgetConfig.bounded(ac.damage(),0,10000);GadgetConfig.bounded(ac.arcDamage(),0,10000);GadgetConfig.bounded(ac.arcRadius(),0,32);GadgetConfig.bounded(ac.glowSeconds(),0,300);
+        var wb=GadgetConfig.read("wind_blower",WindBlower.class,new WindBlower(7,30,10,3,1,8,1.5,1),overrides,apply);
+        GadgetConfig.bounded(wb.windRange(),0,256);GadgetConfig.bounded(wb.cannonAmmoCost(),0,10000);GadgetConfig.bounded(wb.cannonDamage(),0,10000);
+        GadgetConfig.bounded(wb.cannonKnockbackMultiplier(),0,100);GadgetConfig.bounded(wb.cannonSelfKnockback(),0,10);GadgetConfig.bounded(wb.cannonRange(),.5,128);
+        GadgetConfig.bounded(wb.cannonRadius(),0,32);GadgetConfig.bounded(wb.cannonCooldownSeconds(),0,86400);
         var tb=GadgetConfig.read("twin_blades",TwinBlades.class,new TwinBlades(24,24,24,24,48,72,4,100,30,100),overrides,apply);
         for(int i=1;i<=6;i++)GadgetConfig.bounded(tb.damage(i),0,10000);
         GadgetConfig.bounded(tb.range(),.5,16);GadgetConfig.bounded(tb.slashAngle(),1,360);GadgetConfig.bounded(tb.thrustAngle(),1,360);GadgetConfig.bounded(tb.guardMovementSpeed(),1,500);
@@ -119,7 +130,7 @@ public final class ExtraGadgetConfig {
         GadgetConfig.bounded(s.durationSeconds(),.05,300);GadgetConfig.bounded(h.capacity(),1,10000);GadgetConfig.bounded(h.repairSeconds(),0,86400);
         GadgetConfig.bounded(h.movementPenaltyPercent(),0,99);GadgetConfig.bounded(h.regenDelaySeconds(),0,300);GadgetConfig.bounded(h.regenPerSecond(),0,10000);GadgetConfig.bounded(h.meleeReductionPercent(),0,100);
         for(double c:new double[]{m.cooldownSeconds(),o.cooldownSeconds(),l.cooldownSeconds(),j.cooldownSeconds(),s.cooldownSeconds(),x.cooldownSeconds()})GadgetConfig.bounded(c,0,86400);
-        if(apply){molotov=m;orbital=o;life=l;jet=j;scanner=s;shield=h;handAxe=x;arrowGrenade=ag;rapier=r;katana=k;regeneration=rg;combat=cb;fallout=fo;twinBlades=tb;arcThrower=ac;}
+        if(apply){molotov=m;orbital=o;life=l;jet=j;scanner=s;shield=h;handAxe=x;arrowGrenade=ag;rapier=r;katana=k;regeneration=rg;combat=cb;fallout=fo;twinBlades=tb;arcThrower=ac;windBlower=wb;}
     }
     private ExtraGadgetConfig() { }
 }

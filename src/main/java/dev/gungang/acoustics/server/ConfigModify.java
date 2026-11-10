@@ -47,7 +47,7 @@ public final class ConfigModify {
             result.put("arrow_grenade",ExtraGadgetConfig.arrowGrenade);
             result.put("turret",Turrets.config);
             result.put("landmine",GadgetConfig.mine);result.put("recovery_potion",GadgetConfig.recovery);result.put("adrenaline",GadgetConfig.adrenaline);result.put("barrier",GadgetConfig.barrier);result.put("bear_trap",GadgetConfig.bearTrap);
-            result.put("molotov",ExtraGadgetConfig.molotov);result.put("orbital_strike",ExtraGadgetConfig.orbital);result.put("life_support",ExtraGadgetConfig.life);result.put("jetpack",ExtraGadgetConfig.jet);result.put("infrared_scanner",ExtraGadgetConfig.scanner);result.put("shield",ExtraGadgetConfig.shield);result.put("hand_axe",ExtraGadgetConfig.handAxe);result.put("rapier",ExtraGadgetConfig.rapier);result.put("katana",ExtraGadgetConfig.katana);result.put("health_regeneration",ExtraGadgetConfig.regeneration);result.put("combat",ExtraGadgetConfig.combat);result.put("fallout",ExtraGadgetConfig.fallout);result.put("twin_blades",ExtraGadgetConfig.twinBlades);result.put("arc_thrower",ExtraGadgetConfig.arcThrower);
+            result.put("molotov",ExtraGadgetConfig.molotov);result.put("orbital_strike",ExtraGadgetConfig.orbital);result.put("life_support",ExtraGadgetConfig.life);result.put("jetpack",ExtraGadgetConfig.jet);result.put("infrared_scanner",ExtraGadgetConfig.scanner);result.put("shield",ExtraGadgetConfig.shield);result.put("hand_axe",ExtraGadgetConfig.handAxe);result.put("rapier",ExtraGadgetConfig.rapier);result.put("katana",ExtraGadgetConfig.katana);result.put("health_regeneration",ExtraGadgetConfig.regeneration);result.put("combat",ExtraGadgetConfig.combat);result.put("fallout",ExtraGadgetConfig.fallout);result.put("twin_blades",ExtraGadgetConfig.twinBlades);result.put("arc_thrower",ExtraGadgetConfig.arcThrower);result.put("wind_blower",ExtraGadgetConfig.windBlower);
         }else if(kind.equals("block")){
             result.put("small_health_pack",GadgetConfig.smallHealthPack);result.put("large_health_pack",GadgetConfig.largeHealthPack);
             result.put("uxo",GimmickConfig.uxo);result.put("gas_barrel",GimmickConfig.gas);result.put("puddle",GimmickConfig.puddle);result.put("acid",GimmickConfig.acid);result.put("nozzle",GimmickConfig.nozzle);result.put("acid_nozzle",GimmickConfig.acidNozzle);result.putAll(GimmickConfig.walls);
@@ -205,7 +205,7 @@ public final class ConfigModify {
     /** Weapon fields the patch screen edits, in display order, with their current effective values. */
     static Map<String,JsonElement> weaponFields(String id)throws Exception{
         var target=target("weapon",id);var result=new LinkedHashMap<String,JsonElement>();
-        for(String key:List.of("name","category","description","usage","releaseDate","maxHealth","movementSpeed","specs.damage","specs.accuracy","specs.stability","specs.range","specs.fireRate"))
+        for(String key:List.of("name","category","description","usage","releaseDate","maxHealth","movementSpeed","windStrength","specs.damage","specs.accuracy","specs.stability","specs.range","specs.fireRate"))
             if(target.fields.containsKey(key))result.put(key,value(target.effective,key));
         // Card stat lines (stats.N.value), labelled by their name on the patch screen.
         for(String key:target.fields.keySet())if(key.matches("stats\\.\\d+\\.(name|value)"))result.put(key,value(target.effective,key));

@@ -15,8 +15,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Pseudo
 @Mixin(targets="com.tacz.guns.entity.EntityKineticBullet",remap=false)
 public abstract class TaczAllyKnockbackMixin {
-    @Inject(method="onHitEntity",at=@At("HEAD"),require=0)
-    private void gungang$allyKnockback(@Coerce EntityHitResult result,Vec3 start,Vec3 end,CallbackInfo ci) {
-        CombatRules.gunKnockback((Projectile)(Object)this,result.getEntity());
+    @Inject(method="onHitEntity(Lcom/tacz/guns/util/TacHitResult;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;)V",at=@At("HEAD"),require=1)
+    private void gungang$allyKnockback(@Coerce Object result,Vec3 start,Vec3 end,CallbackInfo ci) {
+        CombatRules.gunKnockback((Projectile)(Object)this,((EntityHitResult)result).getEntity());
     }
 }
