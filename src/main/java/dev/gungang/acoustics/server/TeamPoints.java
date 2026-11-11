@@ -17,6 +17,10 @@ public final class TeamPoints {
     static final TeamPointState STATE=new TeamPointState();
     private static final Map<UUID,String> sent=new HashMap<>();
     private static final Map<UUID,Integer> nextRequest=new HashMap<>();
+    private record Payload(TeamPointState.View view,String json){}
+    private record HeldItem(net.minecraft.nbt.CompoundTag tag,String text){}
+    private static final Map<String,Payload> cachedPayloads=new HashMap<>();
+    private static final Map<UUID,HeldItem> cachedHeld=new HashMap<>();
     private static boolean available(){return MatchManager.active()&&MatchManager.freeForAll()==null;}
     static void refresh(MinecraftServer server) {
         var roster=new LinkedHashMap<UUID,String>();
@@ -39,7 +43,7 @@ public final class TeamPoints {
         sync(server);
     }
     public static void clear(MinecraftServer server) {
-        STATE.clear();nextRequest.clear();sent.clear();if(server!=null){refresh(server);sync(server);}
+        STATE.clear();nextRequest.clear();sent.clear();cachedPayloads.clear();cachedHeld.clear();if(server!=null){refresh(server);sync(server);}
     }
     static TeamPointState.Point latest(String team,String dimension,long after) {
         return STATE.view(team,0).points().stream().filter(p->p.sequence()>after&&p.dimension().equals(dimension))
@@ -49,26 +53,37 @@ public final class TeamPoints {
         var payloads=new HashMap<String,String>();var online=new HashSet<UUID>();var vitals=vitals(server);
         for(var player:server.getPlayerList().getPlayers()) {
             online.add(player.getUUID());String team=available()?LobbyManager.team(player.getUUID()):"";
-            String json=payloads.computeIfAbsent(team,t->ServerFiles.GSON.toJson(STATE.view(t,LobbyManager.options().color(t)).withVitals(vitals.getOrDefault(t,List.of()))));
+            String json=payloads.computeIfAbsent(team,t->{
+                var view=STATE.view(t,LobbyManager.options().color(t)).withVitals(vitals.getOrDefault(t,List.of()));
+                var cached=cachedPayloads.get(t);
+                if(cached==null||!cached.view().equals(view)){
+                    cached=new Payload(view,ServerFiles.GSON.toJson(view));cachedPayloads.put(t,cached);
+                }
+                return cached.json();
+            });
             if(GungangNetwork.installed(player)&&!json.equals(sent.get(player.getUUID()))) {
                 GungangNetwork.send(player,new GungangNetwork.TeamPointView(json));sent.put(player.getUUID(),json);
             }
         }
         sent.keySet().retainAll(online);nextRequest.keySet().retainAll(online);
+        cachedPayloads.keySet().retainAll(payloads.keySet());
     }
     /** Each team's living players and bots with their health, rounded to half points so idle teams send nothing new. */
     private static Map<String,List<TeamPointState.Vital>> vitals(MinecraftServer server){
-        var result=new HashMap<String,List<TeamPointState.Vital>>();if(!available())return result;
+        var result=new HashMap<String,List<TeamPointState.Vital>>();if(!available()){cachedHeld.clear();return result;}
+        var current=new HashSet<UUID>();
         var bodies=new ArrayList<net.minecraft.world.entity.LivingEntity>(server.getPlayerList().getPlayers());bodies.addAll(BotManager.entities());
         for(var body:bodies){
             if(!body.isAlive()||body.isSpectator())continue;
             String team=body instanceof ServerPlayer p?LobbyManager.team(p.getUUID()):BotManager.side(body);
             if(!TeamPointState.validTeam(team))continue;
+            current.add(body.getUUID());
             String[] weapons=body instanceof ServerPlayer p?LobbyManager.weapons(p.getUUID()):BotManager.weapons(body);
             if(weapons==null)weapons=new String[]{"",""};
             result.computeIfAbsent(team,t->new ArrayList<>()).add(new TeamPointState.Vital(body.getUUID(),half(body.getHealth()),half(body.getMaxHealth()),half(body.getAbsorptionAmount()),
-                    weapons[0],weapons[1],held(body.getMainHandItem())));
+                    weapons[0],weapons[1],held(body.getUUID(),body.getMainHandItem())));
         }
+        cachedHeld.keySet().retainAll(current);
         return result;
     }
     private static float half(float value){return Math.round(value*2)/2f;}
@@ -76,14 +91,26 @@ public final class TeamPoints {
     private static final List<String> VOLATILE=List.of("GunCurrentAmmoCount","HasBulletInBarrel","GunGangCooldownTicks","GunGangCooldownUntil","GunGangCooldownEnd");
     static String held(net.minecraft.world.item.ItemStack stack){
         if(stack.isEmpty())return "";
+        return heldTag(stack).toString();
+    }
+    private static String held(UUID owner,net.minecraft.world.item.ItemStack stack){
+        if(stack.isEmpty()){cachedHeld.remove(owner);return "";}
+        // Compare the complete saved data, including capabilities. Never retain the live mutable stack/tag.
+        var tag=heldTag(stack);var cached=cachedHeld.get(owner);
+        if(cached==null||!cached.tag().equals(tag)){
+            cached=new HeldItem(tag,tag.toString());cachedHeld.put(owner,cached);
+        }
+        return cached.text();
+    }
+    private static net.minecraft.nbt.CompoundTag heldTag(net.minecraft.world.item.ItemStack stack){
         var copy=stack.copyWithCount(1);
         if(copy.getTag()!=null){for(var key:VOLATILE)copy.getTag().remove(key);if(copy.getTag().isEmpty())copy.setTag(null);}
-        return copy.save(new net.minecraft.nbt.CompoundTag()).toString();
+        return copy.save(new net.minecraft.nbt.CompoundTag());
     }
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent event) {
         if(event.phase!=TickEvent.Phase.END)return;
         var server=event.getServer();refresh(server);sync(server);
     }
-    @SubscribeEvent public static void stopped(ServerStoppedEvent event){STATE.reset();sent.clear();nextRequest.clear();}
+    @SubscribeEvent public static void stopped(ServerStoppedEvent event){STATE.reset();sent.clear();nextRequest.clear();cachedPayloads.clear();cachedHeld.clear();}
     private TeamPoints() { }
 }
