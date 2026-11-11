@@ -17,7 +17,7 @@ import net.minecraft.world.phys.*;
  * ({@code hop} 1-3) bounces on from each body it hits to the nearest enemy in sight within the ricochet radius, as a
  * new shuriken homing on that body, until three bodies are hit; each hop deals its own damage (33 / 22 / 11).
  */
-public final class ShurikenEntity extends ThrowableItemProjectile {
+public final class ShurikenEntity extends ThrowableItemProjectile implements net.minecraftforge.entity.IEntityAdditionalSpawnData {
     /** Bodies a ricochet chain may hit at most. */
     public static final int MAX_HOPS=3;
     private double damage;
@@ -27,6 +27,20 @@ public final class ShurikenEntity extends ThrowableItemProjectile {
     /** Client only: recent positions for the purple glow trail, newest first. */
     public final ArrayDeque<Vec3> trail=new ArrayDeque<>();
     public static final int TRAIL_POINTS=10;
+    /**
+     * The thrower's "shuriken" effect colours ({@link EffectColors}), sent in the spawn data: Forge's spawn packet
+     * does not carry the projectile owner, so the client cannot look them up itself.
+     */
+    private int[] colors=EffectColors.server(null,"shuriken");
+    public int[] colors(){return colors;}
+    @Override public void writeSpawnData(net.minecraft.network.FriendlyByteBuf buffer){
+        var owner=getOwner();int[] c=EffectColors.server(owner==null?null:owner.getUUID(),"shuriken");
+        buffer.writeInt(c[0]);buffer.writeInt(c[1]);
+    }
+    @Override public void readSpawnData(net.minecraft.network.FriendlyByteBuf buffer){
+        int first=buffer.readInt(),second=buffer.readInt();
+        colors=new int[]{first&0xFFFFFF,second<0?-1:second&0xFFFFFF};
+    }
 
     public ShurikenEntity(EntityType<? extends ShurikenEntity> type,Level level){super(type,level);setNoGravity(true);}
     @Override protected Item getDefaultItem(){return GadgetItems.SHURIKEN.get();}
@@ -94,7 +108,9 @@ public final class ShurikenEntity extends ThrowableItemProjectile {
         if(level().isClientSide){
             trail.addFirst(position());
             while(trail.size()>TRAIL_POINTS)trail.removeLast();
-            if(random.nextInt(2)==0)level().addParticle(new net.minecraft.core.particles.DustParticleOptions(new org.joml.Vector3f(.72f,.32f,1f),.8f),getX(),getY(),getZ(),0,0,0);
+            if(random.nextInt(2)==0){
+                level().addParticle(new net.minecraft.core.particles.DustParticleOptions(EffectColors.vector(EffectColors.at(colors,random.nextFloat())),.8f),getX(),getY(),getZ(),0,0,0);
+            }
         }else if(tickCount>lifeTicks)discard();
     }
     @Override public boolean isOnFire(){return false;}

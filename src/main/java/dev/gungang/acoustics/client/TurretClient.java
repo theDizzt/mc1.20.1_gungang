@@ -45,9 +45,9 @@ public final class TurretClient {
     @SubscribeEvent public static void hint(RenderGuiEvent.Post event){
         var mc=Minecraft.getInstance();if(mc.screen!=null||mc.options.hideGui||!HudVisibility.enabled())return;
         var reload=nearby(false);var fix=nearby(true);var turret=ownedNearby();if(turret==null)return;
-        String text="터렛 "+turret.ammo()+"/"+turret.capacity()+" · HP "+Math.round(turret.getHealth())+"/"+Math.round(turret.getMaxHealth());
-        String keys=(reload==null?"":OffhandMacro.USE.getTranslatedKeyMessage().getString()+" 길게 재장전 ")+(fix==null?"":OffhandMacro.ATTACK.getTranslatedKeyMessage().getString()+" 길게 수리");
-        if(keys.isEmpty())keys="탄약·체력 최대";
+        String text=Lang.tr("터렛 ")+turret.ammo()+"/"+turret.capacity()+" · HP "+Math.round(turret.getHealth())+"/"+Math.round(turret.getMaxHealth());
+        String keys=(reload==null?"":OffhandMacro.USE.getTranslatedKeyMessage().getString()+Lang.tr(" 길게 재장전 "))+(fix==null?"":OffhandMacro.ATTACK.getTranslatedKeyMessage().getString()+Lang.tr(" 길게 수리"));
+        if(keys.isEmpty())keys=Lang.tr("탄약·체력 최대");
         var g=event.getGuiGraphics();g.drawCenteredString(mc.font,text,g.guiWidth()/2,g.guiHeight()/2+14,0xFF8CC8FF);
         g.drawCenteredString(mc.font,keys,g.guiWidth()/2,g.guiHeight()/2+26,0xFFFFFFFF);
     }

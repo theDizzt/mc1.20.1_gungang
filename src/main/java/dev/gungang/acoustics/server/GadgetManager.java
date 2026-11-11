@@ -22,7 +22,7 @@ public final class GadgetManager {
         int count=CompoundBow.clearArrows(server);
         for(var level:server.getAllLevels()) {
             var attacks=new ArrayList<net.minecraft.world.entity.Entity>();
-            for(var entity:level.getAllEntities())if(entity instanceof VoidAnchorEntity||entity instanceof OrdnanceEntity||entity instanceof MolotovEntity||entity instanceof ArrowGrenadeEntity||entity instanceof ArrowFragmentEntity)attacks.add(entity);
+            for(var entity:level.getAllEntities())if(entity instanceof CommandFlagEntity||entity instanceof VoidAnchorEntity||entity instanceof OrdnanceEntity||entity instanceof MolotovEntity||entity instanceof ArrowGrenadeEntity||entity instanceof ArrowFragmentEntity)attacks.add(entity);
             attacks.forEach(net.minecraft.world.entity.Entity::discard);
             var entities=new ArrayList<DeployableEntity>();
             for(var entity:level.getAllEntities())if(entity instanceof DeployableEntity placed)entities.add(placed);
@@ -48,7 +48,7 @@ public final class GadgetManager {
         PLACED.put(entity.getUUID(),entity);
     }
     public static void use(ServerPlayer p,ItemStack stack,String kind) {
-        if(p.getPersistentData().hasUUID("VoidAnchorTether")&&(kind.equals("air_assault")||kind.equals("jetpack")))return;
+        if(p.getPersistentData().hasUUID("VoidAnchorTether")&&(kind.equals("air_assault")||kind.equals("jetpack")||kind.equals("hermes_boots")))return;
         if(SurvivalGadgets.jetting(p))return;
         if((kind.equals("landmine")||kind.equals("molotov")||kind.equals("arrow_grenade")||kind.equals("orbital_strike")||kind.equals("bear_trap")||kind.equals("turret"))&&SafeZones.contains(p))return;
         if(!p.isAlive()||p.isSpectator()||LobbyManager.respawning(p.getUUID())||!SecondaryRuntime.ready(p,stack))return;
@@ -61,6 +61,7 @@ public final class GadgetManager {
             p.level().playSound(null,p.blockPosition(),net.minecraft.sounds.SoundEvents.TRIDENT_THROW,net.minecraft.sounds.SoundSource.PLAYERS,1,.7f);return;
         }
         if(kind.equals("air_assault")) {AirAssault.start(p,stack);return;}
+        if(kind.equals("hermes_boots")) {HermesBoots.dash(p,stack);return;}
         if(kind.equals("jetpack")) {
             // Prop hunt seekers fly only while hunting, never from the waiting room.
             var hunt=MatchManager.propHunt();
@@ -144,6 +145,14 @@ public final class GadgetManager {
             else turret.discard();
             return;
         }
+        if(kind.equals("command_flag")) {
+            var pos=target(p,ExtraGadgetConfig.commandFlag.placementRange());
+            if(!CommandFlags.valid(p,pos))return;
+            var flag=GadgetItems.COMMAND_FLAG_ENTITY.get().create(p.serverLevel());if(flag==null)return;
+            flag.setPos(pos.getX()+.5,PlacementSurface.height(p.level(),pos),pos.getZ()+.5);flag.setup(p);
+            if(p.serverLevel().addFreshEntity(flag)){CommandFlags.track(flag);SecondaryRuntime.commit(p,stack);cancel(p);}
+            return;
+        }
         if(kind.equals("orbital_strike")) {
             var pos=target(p,ExtraGadgetConfig.orbital.range());
             if(!valid(p,pos,false,false)) {p.displayClientMessage(Component.literal("이 위치에는 폭격을 지정할 수 없습니다."),true);return;}
@@ -204,6 +213,7 @@ public final class GadgetManager {
     }
     /** Mines and barriers of one owner, player or bot. */
     static void clearOwned(net.minecraft.server.MinecraftServer server,UUID owner) {
+        CommandFlags.clear(owner);
         Turrets.clear(server,owner);
         DeployableLedger.get(server).clear(owner);
         for(var level:server.getAllLevels()) {

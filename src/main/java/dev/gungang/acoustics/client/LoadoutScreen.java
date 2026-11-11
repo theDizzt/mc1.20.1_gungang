@@ -35,6 +35,14 @@ final class LoadoutScreen extends ArenaScreen {
     private String nameDraft="";
     private boolean confirmDelete;
     private net.minecraft.client.gui.components.EditBox nameBox;
+    /** 프리셋 tab, "이펙트 색상" entry: per-player effect colours ({@link EffectColors}) instead of a preset slot. */
+    private boolean colorMode;
+    private int colorEffect;
+    private String hexDraft="";
+    private net.minecraft.client.gui.components.EditBox hexBox;
+    /** The colour on the RGB sliders. */
+    private int rgbDraft=0xFF3B2E;
+    private final RgbSlider[] sliders=new RgbSlider[3];
     LoadoutScreen(EquipmentSnapshot state){super("GUNGANG / LOADOUT");this.state=state;selected=state.primary();PreviewCache.clear();}
     void update(EquipmentSnapshot next){
         state=next;
@@ -42,16 +50,22 @@ final class LoadoutScreen extends ArenaScreen {
         rebuildWidgets();
     }
     private List<Loadouts.Weapon> sortedSource,sorted=List.of();
-    /** Groups the catalog by category (first-appearance order), keeping the server's order inside each group. */
+    /** The catalog in weapon number order ({@link #byNumber}). */
     private List<Loadouts.Weapon> weapons(){
         var source=primary?state.catalog().primary():state.catalog().secondary();
-        if(source!=sortedSource){sortedSource=source;sorted=byCategory(source);}
+        if(source!=sortedSource){sortedSource=source;sorted=byNumber(source);}
         return sorted;
     }
-    static List<Loadouts.Weapon> byCategory(List<Loadouts.Weapon> source){
-        var groups=new java.util.LinkedHashMap<String,List<Loadouts.Weapon>>();
-        for(var weapon:source)groups.computeIfAbsent(weapon.category(),k->new java.util.ArrayList<>()).add(weapon);
-        return groups.values().stream().flatMap(List::stream).toList();
+    /**
+     * Weapon number order: the leading digits of the id (01, 28, 74, 96_infrared-scanner ...) ascending; ids without
+     * a number follow alphabetically. Equal numbers keep the server's order.
+     */
+    static List<Loadouts.Weapon> byNumber(List<Loadouts.Weapon> source){
+        return source.stream().sorted(java.util.Comparator.comparingLong((Loadouts.Weapon w)->number(w.id())).thenComparing(w->number(w.id())==Long.MAX_VALUE?w.id():"")).toList();
+    }
+    static long number(String id){
+        int end=0;while(end<id.length()&&end<18&&Character.isDigit(id.charAt(end)))end++;
+        return end==0?Long.MAX_VALUE:Long.parseLong(id.substring(0,end));
     }
     private int capacity(){return Math.max(1,(height-140)/27);}
     /**
@@ -74,13 +88,14 @@ final class LoadoutScreen extends ArenaScreen {
     private Loadouts.Weapon selected(){return weapons().stream().filter(w->w.id().equals(selected)).findFirst().orElse(weapons().get(0));}
     private void select(String id){selected=id;scroll=0;yaw=-25;pitch=12;zoom=1;rebuildWidgets();}
     @Override protected void init(){
-        nameBox=null;
+        languageButton();
+        nameBox=null;hexBox=null;
         int x=left()+12,w=body()-24,list=listWidth();
         // The two view icons (list / grid) sit at the right end of the tab row.
         int toggles=VIEW_BUTTON*2+4+8,tab=(w-16-toggles)/3;
-        tabButton("주무기 · 핫바 1",x,57,tab,22,!presets&&primary,()->{presets=false;primary=true;page=0;gridScroll=0;followRandom=false;select(state.primary());});
-        tabButton("보조무기 · 왼손",x+tab+8,57,tab,22,!presets&&!primary,()->{presets=false;primary=false;page=0;gridScroll=0;followRandom=false;select(state.secondary());});
-        tabButton("프리셋",x+(tab+8)*2,57,w-toggles-(tab+8)*2,22,presets,()->{presets=true;followRandom=false;selectPreset(presetSlot);});
+        tabButton(Lang.tr("주무기 · 핫바 1"),x,57,tab,22,!presets&&primary,()->{presets=false;primary=true;page=0;gridScroll=0;followRandom=false;select(state.primary());});
+        tabButton(Lang.tr("보조무기 · 왼손"),x+tab+8,57,tab,22,!presets&&!primary,()->{presets=false;primary=false;page=0;gridScroll=0;followRandom=false;select(state.secondary());});
+        tabButton(Lang.tr("프리셋"),x+(tab+8)*2,57,w-toggles-(tab+8)*2,22,presets,()->{presets=true;followRandom=false;selectPreset(presetSlot);});
         if(!presets){
             button(Component.empty(),x+w-VIEW_BUTTON*2-4,57,VIEW_BUTTON,22,true,grid?MUTED:ACCENT,()->{grid=false;rebuildWidgets();});
             button(Component.empty(),x+w-VIEW_BUTTON,57,VIEW_BUTTON,22,true,grid?ACCENT:MUTED,()->{grid=true;rebuildWidgets();});
@@ -94,10 +109,10 @@ final class LoadoutScreen extends ArenaScreen {
             var label=Component.empty();
             if(worn)label.append(Component.literal("● ").withStyle(net.minecraft.ChatFormatting.GOLD));
             String holder=state.takenBy(primary,weapon.id());
-            if(holder!=null)label.append(Component.literal("선점 ").withStyle(net.minecraft.ChatFormatting.RED,net.minecraft.ChatFormatting.BOLD));
+            if(holder!=null)label.append(Component.literal(Lang.tr("선점 ")).withStyle(net.minecraft.ChatFormatting.RED,net.minecraft.ChatFormatting.BOLD));
             label.append(Component.literal(weapon.name()).withStyle(worn?net.minecraft.ChatFormatting.GOLD:holder!=null?net.minecraft.ChatFormatting.GRAY:net.minecraft.ChatFormatting.WHITE));
             if(holder!=null)label.append(Component.literal(" · "+holder).withStyle(net.minecraft.ChatFormatting.RED));
-            if(ReleaseDateText.upcoming(weapon.releaseDate()))label.append(Component.literal(" ["+ReleaseDateText.UPCOMING+"]").withStyle(net.minecraft.ChatFormatting.AQUA));
+            if(ReleaseDateText.upcoming(weapon.releaseDate()))label.append(Component.literal(" ["+Lang.tr(ReleaseDateText.UPCOMING)+"]").withStyle(net.minecraft.ChatFormatting.AQUA));
             // The category is drawn right-aligned over the reserved padding in render().
             listButton(label,x,85+(i-page)*27,list-6,24,true,
                     weapon.id().equals(selected().id())?ACCENT:MUTED,9,categoryWidth(weapon)+6+silhouetteWidth(),()->clickWeapon(weapon.id()));
@@ -108,54 +123,178 @@ final class LoadoutScreen extends ArenaScreen {
     /** Weapons a teammate already holds while duplicates are off. */
     private static final int TAKEN=0xFFE05555;
     private void initActions(int x,int w,int list){
-        button("랜덤 무기",x,height-48,list-6,22,state.allowed(),TacticalStyle.GOLD,()->{followRandom=true;LobbyClient.action("randomLoadout","","");});
+        button(Lang.tr("랜덤 무기"),x,height-48,list-6,22,state.allowed(),TacticalStyle.GOLD,()->{followRandom=true;LobbyClient.action("randomLoadout","","");});
         boolean worn=selected().id().equals(primary?state.primary():state.secondary());
         Runnable equip=()->LobbyClient.action(primary?"primary":"secondary",selected().id(),"");
         String holder=state.takenBy(primary,selected().id());
-        if(holder!=null&&!worn)colorButton("선점됨 · "+holder,detailX(),height-48,Math.max(40,w-list-82),22,false,TAKEN,equip);
-        else if(worn)button("장착 중인 무기",detailX(),height-48,Math.max(40,w-list-82),22,state.allowed(),ACCENT,equip);
-        else colorButton("선택한 무기 장착",detailX(),height-48,Math.max(40,w-list-82),22,state.allowed(),ACCENT,equip);
+        if(holder!=null&&!worn)colorButton(Lang.tr("선점됨 · ")+holder,detailX(),height-48,Math.max(40,w-list-82),22,false,TAKEN,equip);
+        else if(worn)button(Lang.tr("장착 중인 무기"),detailX(),height-48,Math.max(40,w-list-82),22,state.allowed(),ACCENT,equip);
+        else colorButton(Lang.tr("선택한 무기 장착"),detailX(),height-48,Math.max(40,w-list-82),22,state.allowed(),ACCENT,equip);
         closeButton(x+w-64,height-48,64,22);
     }
     private int categoryWidth(Loadouts.Weapon weapon){return Math.min(font.width(weapon.category()),Math.max(0,(listWidth()-6)/3))+6;}
     private PlayerRecord.Preset preset(int slot){return state.presets().stream().filter(p->p.slot()==slot).findFirst().orElse(null);}
     private void selectPreset(int slot){
-        presetSlot=slot;confirmDelete=false;
+        presetSlot=slot;confirmDelete=false;colorMode=false;
         var preset=preset(slot);nameDraft=preset==null?"":preset.name();
         rebuildWidgets();
     }
     private void initPresets(int x,int w,int list){
+        if(colorMode){
+            listButton(Component.literal(Lang.tr("◀ 프리셋")).withStyle(c->c.withColor(DIM&0xFFFFFF)),x,85,list-6,22,true,MUTED,()->selectPreset(presetSlot));
+            for(int i=0;i<EffectColors.EFFECTS.size();i++){
+                int index=i;var effect=EffectColors.EFFECTS.get(i);
+                var label=Component.literal(Lang.tr(effect.weapon())+" ").withStyle(c->c.withColor(DIM&0xFFFFFF)).append(Component.literal(Lang.tr(effect.label())).withStyle(net.minecraft.ChatFormatting.WHITE));
+                // The right padding holds the effect's current colours (drawn in renderColors).
+                listButton(label,x,85+26+i*24,list-6,21,true,i==colorEffect?ACCENT:MUTED,9,28,()->{colorEffect=index;loadDraft();rebuildWidgets();});
+            }
+            initColors(x,w);return;
+        }
         for(int slot=1;slot<=PlayerRecord.PRESETS;slot++){
             int s=slot;var preset=preset(slot);
             var label=Component.empty();
             if(state.defaultPreset()==slot)label.append(Component.literal("★ ").withStyle(net.minecraft.ChatFormatting.GOLD));
             label.append(Component.literal(slot+"  ").withStyle(c->c.withColor(DIM&0xFFFFFF)));
-            label.append(preset==null?Component.literal("빈 슬롯").withStyle(c->c.withColor(DIM&0xFFFFFF)):Component.literal(preset.name()).withStyle(net.minecraft.ChatFormatting.WHITE));
-            listButton(label,x,85+(slot-1)*27,list-6,24,true,slot==presetSlot?ACCENT:MUTED,()->selectPreset(s));
+            label.append(preset==null?Component.literal(Lang.tr("빈 슬롯")).withStyle(c->c.withColor(DIM&0xFFFFFF)):Component.literal(preset.name()).withStyle(net.minecraft.ChatFormatting.WHITE));
+            listButton(label,x,85+(slot-1)*27,list-6,24,true,!colorMode&&slot==presetSlot?ACCENT:MUTED,()->selectPreset(s));
         }
+        listButton(Component.literal(Lang.tr("◆ 이펙트 색상")).withStyle(net.minecraft.ChatFormatting.AQUA),x,85+PlayerRecord.PRESETS*27+6,list-6,24,true,colorMode?ACCENT:MUTED,
+                ()->{colorMode=true;confirmDelete=false;loadDraft();rebuildWidgets();});
         var preset=preset(presetSlot);
         if(preset==null)nameDraft="";else if(nameDraft.isEmpty())nameDraft=preset.name();
         int dx=detailX(),right=x+w;
         if(preset!=null){
             int boxW=Math.max(60,Math.min(180,right-dx-90));
-            nameBox=new TacticalEditBox(font,dx+8,PREVIEW_TOP+82,boxW,18,Component.literal("프리셋 이름"));
+            nameBox=new TacticalEditBox(font,dx+8,PREVIEW_TOP+82,boxW,18,Component.literal(Lang.tr("프리셋 이름")));
             nameBox.setMaxLength(20);nameBox.setValue(nameDraft);nameBox.setResponder(text->nameDraft=text);
             addRenderableWidget(nameBox);
-            button("이름 변경",dx+12+boxW,PREVIEW_TOP+81,Math.max(40,Math.min(76,right-dx-boxW-18)),20,true,ACCENT,this::renamePreset);
+            button(Lang.tr("이름 변경"),dx+12+boxW,PREVIEW_TOP+81,Math.max(40,Math.min(76,right-dx-boxW-18)),20,true,ACCENT,this::renamePreset);
         }else nameBox=null;
         String slot=Integer.toString(presetSlot);
         int bw=(Math.max(160,w-list-82)-12)/4,by=height-48;
-        colorButton(preset==null?"현재 장비 저장":"현재 장비로 덮어쓰기",dx,by,bw,22,true,ACCENT,()->{confirmDelete=false;LobbyClient.action("presetSave",slot,"");});
-        button("장착",dx+bw+4,by,bw,22,preset!=null&&state.allowed(),READY,()->LobbyClient.action("presetApply",slot,""));
-        button(state.defaultPreset()==presetSlot?"기본값 해제":"기본값 설정",dx+(bw+4)*2,by,bw,22,preset!=null,TacticalStyle.GOLD,()->LobbyClient.action("presetDefault",slot,""));
-        button(confirmDelete?"삭제 확인":"삭제",dx+(bw+4)*3,by,bw,22,preset!=null,0xFFCC3333,()->{
+        colorButton(preset==null?Lang.tr("현재 장비 저장"):Lang.tr("현재 장비로 덮어쓰기"),dx,by,bw,22,true,ACCENT,()->{confirmDelete=false;LobbyClient.action("presetSave",slot,"");});
+        button(Lang.tr("장착"),dx+bw+4,by,bw,22,preset!=null&&state.allowed(),READY,()->LobbyClient.action("presetApply",slot,""));
+        button(state.defaultPreset()==presetSlot?Lang.tr("기본값 해제"):Lang.tr("기본값 설정"),dx+(bw+4)*2,by,bw,22,preset!=null,TacticalStyle.GOLD,()->LobbyClient.action("presetDefault",slot,""));
+        button(confirmDelete?Lang.tr("삭제 확인"):Lang.tr("삭제"),dx+(bw+4)*3,by,bw,22,preset!=null,0xFFCC3333,()->{
             if(confirmDelete){confirmDelete=false;LobbyClient.action("presetDelete",slot,"");}else{confirmDelete=true;rebuildWidgets();}
         });
         closeButton(x+w-64,by,64,22);
     }
+    private EffectColors.Effect colorEffect(){return EffectColors.EFFECTS.get(Math.max(0,Math.min(EffectColors.EFFECTS.size()-1,colorEffect)));}
+    private java.util.UUID me(){return minecraft==null||minecraft.player==null?null:minecraft.player.getUUID();}
+    /** The colours now in effect for the chosen effect (the defaults until the player picks their own). */
+    private List<Integer> currentColors(){
+        int[] c=EffectColors.client(me(),colorEffect().key());var list=new ArrayList<Integer>();list.add(c[0]);if(c[1]>=0)list.add(c[1]);return list;
+    }
+    private static String hex(int rgb){return String.format(Locale.ROOT,"%06X",rgb&0xFFFFFF);}
+    private void sendColors(List<Integer> colors){
+        LobbyClient.action("effectColor",colorEffect().key(),String.join(",",colors.stream().map(LoadoutScreen::hex).toList()));
+    }
+    /** Click on a colour: off if picked, otherwise added (a third replaces the second). Removing both restores the default. */
+    private void toggleColor(int rgb){
+        var colors=currentColors();
+        if(!EffectColors.customized(me(),colorEffect().key()))colors.clear(); // A fresh pick replaces the defaults.
+        if(colors.contains(rgb))colors.remove(Integer.valueOf(rgb));else if(colors.size()<2)colors.add(rgb);else colors.set(1,rgb);
+        sendColors(colors);
+    }
+    /** The RGB sliders start from the chosen effect's first colour. */
+    private void loadDraft(){rgbDraft=currentColors().get(0);hexDraft="";}
+    private int paletteColumns(){return colorWidth()>=16*14+45+16?16:8;}
+    private int colorWidth(){return left()+body()-12-detailX();}
+    private int cellSize(){int cols=paletteColumns();return Math.max(9,Math.min(18,(colorWidth()-16-(cols-1)*3)/cols));}
+    private int paletteTop(){return PREVIEW_TOP+11;}
+    private int savedTop(){int cols=paletteColumns(),rows=(EffectColors.PALETTE.length+cols-1)/cols;return paletteTop()+rows*(cellSize()+3)+17;}
+    private int rgbTop(){int cols=paletteColumns(),rows=(PlayerRecord.SAVED_COLORS+cols-1)/cols;return savedTop()+rows*(cellSize()+3)+8;}
+    /** Palette cell {x, y, size}. */
+    private int[] swatch(int i){int cols=paletteColumns(),size=cellSize();return new int[]{detailX()+8+(i%cols)*(size+3),paletteTop()+(i/cols)*(size+3),size};}
+    /** Saved-colour cell {x, y, size}; the slots past the saved ones are drawn empty. */
+    private int[] savedCell(int i){int cols=paletteColumns(),size=cellSize();return new int[]{detailX()+8+(i%cols)*(size+3),savedTop()+(i/cols)*(size+3),size};}
+    private int sliderWidth(){return Math.max(80,Math.min(170,colorWidth()-16-46-90));}
+    private void initColors(int x,int w){
+        int dx=detailX(),right=x+w,top=rgbTop(),sw=sliderWidth();
+        String[] names={"R","G","B"};
+        for(int i=0;i<3;i++){
+            int shift=16-8*i;
+            sliders[i]=new RgbSlider(dx+8,top+i*16,sw,14,names[i],shift,((rgbDraft>>shift)&255)/255.0);
+            addRenderableWidget(sliders[i]);
+        }
+        int hy=top+3*16+4;
+        hexBox=new TacticalEditBox(font,dx+8,hy,62,18,Component.literal("RRGGBB"));
+        hexBox.setMaxLength(7);hexBox.setValue(hexDraft.isEmpty()?"#"+hex(rgbDraft):hexDraft);
+        hexBox.setResponder(text->{
+            hexDraft=text;String t=text.strip();if(t.startsWith("#"))t=t.substring(1);
+            if(t.matches("[0-9A-Fa-f]{6}")){rgbDraft=Integer.parseInt(t,16);for(int i=0;i<3;i++)if(sliders[i]!=null)sliders[i].set(((rgbDraft>>(16-8*i))&255)/255.0);}
+        });
+        addRenderableWidget(hexBox);
+        int bw=Math.max(40,(sw-62-8)/2+20);
+        button(Lang.tr("선택에 추가"),dx+74,hy-1,bw,20,true,ACCENT,()->toggleColor(rgbDraft));
+        button(Lang.tr("내 색상 저장"),dx+78+bw,hy-1,bw,20,true,TacticalStyle.GOLD,()->LobbyClient.action("effectColorSave",hex(rgbDraft),""));
+        int by=height-48;
+        button(Lang.tr("기본값으로"),dx,by,Math.max(60,Math.min(120,right-dx-72)),22,EffectColors.customized(me(),colorEffect().key()),TacticalStyle.GOLD,
+                ()->LobbyClient.action("effectColor",colorEffect().key(),""));
+        closeButton(x+w-64,by,64,22);
+    }
+    /** RGB slider for one channel ({@code shift} 16 red, 8 green, 0 blue) of the draft colour. */
+    private final class RgbSlider extends net.minecraft.client.gui.components.AbstractSliderButton {
+        private final String name;private final int shift;
+        RgbSlider(int x,int y,int w,int h,String name,int shift,double value){super(x,y,w,h,Component.empty(),value);this.name=name;this.shift=shift;updateMessage();}
+        void set(double v){value=Math.max(0,Math.min(1,v));updateMessage();}
+        private int channel(){return (int)Math.round(value*255);}
+        @Override protected void updateMessage(){setMessage(Component.literal(name+"  "+channel()));}
+        @Override protected void applyValue(){
+            rgbDraft=(rgbDraft&~(255<<shift))|(channel()<<shift);
+            hexDraft="";if(hexBox!=null&&!hexBox.isFocused())hexBox.setValue("#"+hex(rgbDraft));
+        }
+    }
+    private void swatchCell(GuiGraphics g,int[] cell,int rgb,int picked,boolean hover){
+        g.fill(cell[0]-1,cell[1]-1,cell[0]+cell[2]+1,cell[1]+cell[2]+1,picked>=0?0xFFFFFFFF:hover?0xFFB0B0B0:0xFF30343A);
+        g.fill(cell[0],cell[1],cell[0]+cell[2],cell[1]+cell[2],0xFF000000|rgb);
+        if(picked>=0){String n=Integer.toString(picked+1);int lum=((rgb>>16&255)*3+(rgb>>8&255)*6+(rgb&255))/10;
+            g.drawString(font,n,cell[0]+(cell[2]-font.width(n))/2+1,cell[1]+(cell[2]-8)/2+1,lum>140?0xFF000000:0xFFFFFFFF,false);}
+    }
+    private static boolean inside(int[] cell,double x,double y){return x>=cell[0]&&x<cell[0]+cell[2]&&y>=cell[1]&&y<cell[1]+cell[2];}
+    private void renderColors(GuiGraphics g,int mouseX,int mouseY){
+        int x=left()+12,w=body()-24,dx=detailX(),right=x+w;
+        var effect=colorEffect();boolean custom=EffectColors.customized(me(),effect.key());
+        // Current colours beside each effect in the left column.
+        for(int i=0;i<EffectColors.EFFECTS.size();i++){
+            int[] c=EffectColors.client(me(),EffectColors.EFFECTS.get(i).key());int ry=85+26+i*24+6,rx=x+listWidth()-6-24;
+            g.fill(rx-1,ry-1,rx+19,ry+9,0xFF30343A);g.fill(rx,ry,rx+(c[1]<0?18:9),ry+8,0xFF000000|c[0]);if(c[1]>=0)g.fill(rx+9,ry,rx+18,ry+8,0xFF000000|c[1]);
+        }
+        card(g,dx,85,right,height-57);
+        TacticalStyle.band(g,dx,85,right,18,ACCENT,PANEL);
+        int tagX=right-6;String tag=custom?Lang.tr("사용자 지정"):Lang.tr("기본값");tagX-=font.width(tag)+8;badge(g,tag,tagX,89,custom?ACCENT:MUTED);
+        Marquee.draw(g,font,Lang.tr("이펙트 색상  ·  ")+Lang.tr(effect.weapon())+" "+Lang.tr(effect.label()),dx+6,90,Math.max(1,tagX-dx-10),INK,false);
+        var colors=currentColors();
+        Marquee.draw(g,font,Lang.tr("팔레트 · 클릭해 최대 2개 선택 (두 색은 섞여서 표시)"),dx+8,PREVIEW_TOP,Math.max(1,right-dx-16),DIM,false);
+        for(int i=0;i<EffectColors.PALETTE.length;i++){
+            int[] cell=swatch(i);int rgb=EffectColors.PALETTE[i];
+            swatchCell(g,cell,rgb,custom?colors.indexOf(rgb):-1,inside(cell,mouseX,mouseY));
+        }
+        var saved=EffectColors.saved();
+        Marquee.draw(g,font,Lang.tr("내 색상 ")+saved.size()+"/"+PlayerRecord.SAVED_COLORS+Lang.tr(" · 좌클릭 선택 · 우클릭 삭제"),dx+8,savedTop()-11,Math.max(1,right-dx-16),DIM,false);
+        for(int i=0;i<PlayerRecord.SAVED_COLORS;i++){
+            int[] cell=savedCell(i);
+            if(i<saved.size()){int rgb=saved.get(i);swatchCell(g,cell,rgb,custom?colors.indexOf(rgb):-1,inside(cell,mouseX,mouseY));}
+            else{g.renderOutline(cell[0],cell[1],cell[2],cell[2],0xFF30343A);}
+        }
+        // RGB: the draft colour beside the sliders, then the current blend.
+        int top=rgbTop(),sw=sliderWidth(),px=dx+8+sw+6;
+        g.fill(px-1,top-1,px+37,top+47,0xFF30343A);g.fill(px,top,px+36,top+46,0xFF000000|rgbDraft);
+        int bx=px+44,bw=right-8-bx;
+        if(bw<40)return;
+        g.drawString(font,Lang.tr("선택"),bx,top,DIM,false);
+        int[] pair={colors.get(0),colors.size()>1?colors.get(1):-1};
+        int steps=Math.max(1,bw/2);
+        for(int i=0;i<steps;i++){int c=EffectColors.at(pair,i/(float)Math.max(1,steps-1));g.fill(bx+i*bw/steps,top+11,bx+(i+1)*bw/steps,top+25,0xFF000000|c);}
+        var names=new StringBuilder();for(int c:colors){if(names.length()>0)names.append(" + ");names.append('#').append(hex(c));}
+        if(!custom)names.append(Lang.tr("  (기본값)"));
+        Marquee.draw(g,font,names.toString(),bx,top+29,Math.max(1,bw),MUTED,false);
+        Marquee.draw(g,font,Lang.tr("다른 플레이어에게도 이 색으로 보입니다."),bx,top+40,Math.max(1,bw),DIM,false);
+    }
     private void renamePreset(){if(preset(presetSlot)!=null)LobbyClient.action("presetRename",Integer.toString(presetSlot),nameDraft.strip());}
     private String weaponName(List<Loadouts.Weapon> group,String id){
-        return group.stream().filter(w->w.id().equals(id)).map(Loadouts.Weapon::name).findFirst().orElse("등록되지 않은 무기");
+        return group.stream().filter(w->w.id().equals(id)).map(Loadouts.Weapon::name).findFirst().orElse(Lang.tr("등록되지 않은 무기"));
     }
     private void renderPresets(GuiGraphics g){
         int x=left()+12,w=body()-24,dx=detailX(),right=x+w;
@@ -163,66 +302,68 @@ final class LoadoutScreen extends ArenaScreen {
         card(g,dx,85,right,height-57);
         TacticalStyle.band(g,dx,85,right,18,fallback?TacticalStyle.GOLD:ACCENT,PANEL);
         int tagX=right-6;
-        if(fallback){String tag="경기 시작 기본값";tagX-=font.width(tag)+8;badge(g,tag,tagX,89,TacticalStyle.GOLD);}
-        String title="프리셋 "+presetSlot+(preset==null?"  ·  빈 슬롯":"  ·  "+preset.name());
-        g.drawString(font,font.plainSubstrByWidth(title,Math.max(1,tagX-dx-10)),dx+6,90,INK,false);
+        if(fallback){String tag=Lang.tr("경기 시작 기본값");tagX-=font.width(tag)+8;badge(g,tag,tagX,89,TacticalStyle.GOLD);}
+        String title=Lang.tr("프리셋 ")+presetSlot+(preset==null?Lang.tr("  ·  빈 슬롯"):"  ·  "+preset.name());
+        Marquee.draw(g,font,title,dx+6,90,Math.max(1,tagX-dx-10),INK,false);
         var catalog=state.catalog();int y=PREVIEW_TOP+4;
         if(preset!=null){
-            presetLine(g,"주무기",weaponName(catalog.primary(),preset.primary()),preset.primary(),dx,y,right);
-            presetLine(g,"보조무기",weaponName(catalog.secondary(),preset.secondary()),preset.secondary(),dx,y+STAT_ROW,right);
-            g.drawString(font,"이름 (20자 이하, Enter로 저장)",dx+8,PREVIEW_TOP+70,DIM,false);
-        }else g.drawString(font,font.plainSubstrByWidth("아래 버튼으로 현재 장착한 무기 조합을 이 슬롯에 저장합니다.",Math.max(1,right-dx-16)),dx+8,y,MUTED,false);
+            presetLine(g,Lang.tr("주무기"),weaponName(catalog.primary(),preset.primary()),preset.primary(),dx,y,right);
+            presetLine(g,Lang.tr("보조무기"),weaponName(catalog.secondary(),preset.secondary()),preset.secondary(),dx,y+STAT_ROW,right);
+            g.drawString(font,Lang.tr("이름 (20자 이하, Enter로 저장)"),dx+8,PREVIEW_TOP+70,DIM,false);
+        }else Marquee.draw(g,font,Lang.tr("아래 버튼으로 현재 장착한 무기 조합을 이 슬롯에 저장합니다."),dx+8,y,Math.max(1,right-dx-16),MUTED,false);
         int cy=height-57-48;
         if(cy<PREVIEW_TOP+(preset==null?24:110))return;
         g.fill(dx+4,cy-6,right-4,cy-5,TacticalStyle.HAIRLINE);
-        g.drawString(font,"현재 장비",dx+8,cy,DIM,false);
-        presetLine(g,"주무기",state.primary().isEmpty()?"미선택":weaponName(catalog.primary(),state.primary()),state.primary(),dx,cy+12,right);
-        presetLine(g,"보조무기",state.secondary().isEmpty()?"미선택":weaponName(catalog.secondary(),state.secondary()),state.secondary(),dx,cy+12+STAT_ROW,right);
+        g.drawString(font,Lang.tr("현재 장비"),dx+8,cy,DIM,false);
+        presetLine(g,Lang.tr("주무기"),state.primary().isEmpty()?Lang.tr("미선택"):weaponName(catalog.primary(),state.primary()),state.primary(),dx,cy+12,right);
+        presetLine(g,Lang.tr("보조무기"),state.secondary().isEmpty()?Lang.tr("미선택"):weaponName(catalog.secondary(),state.secondary()),state.secondary(),dx,cy+12+STAT_ROW,right);
     }
     private void presetLine(GuiGraphics g,String label,String name,String id,int dx,int y,int right){
         g.drawString(font,label,dx+8,y,INK,false);
         var text=Component.literal(name).withStyle(net.minecraft.ChatFormatting.WHITE);
         if(!id.isEmpty())text.append(Component.literal(" [id: "+id+"]").withStyle(s->s.withColor(0xC8B060).withFont(HudText.UI_FONT)));
-        g.drawString(font,net.minecraft.locale.Language.getInstance().getVisualOrder(font.substrByWidth(text,Math.max(1,right-dx-70))),dx+62,y,ACCENT,false);
+        Marquee.draw(g,font,text,dx+62,y,Math.max(1,right-dx-70),ACCENT,false);
     }
     @Override public boolean keyPressed(int key,int scan,int modifiers){
         if(presets&&nameBox!=null&&nameBox.isFocused()&&(key==org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER||key==org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER)){renamePreset();return true;}
+        if(presets&&colorMode&&hexBox!=null&&hexBox.isFocused()&&(key==org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER||key==org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER)){toggleColor(rgbDraft);return true;}
         return super.keyPressed(key,scan,modifiers);
     }
-    @Override public void tick(){if(nameBox!=null)nameBox.tick();}
+    @Override public void tick(){if(nameBox!=null)nameBox.tick();if(hexBox!=null)hexBox.tick();}
     @Override public void render(GuiGraphics g,int mouseX,int mouseY,float partial){
         if(presets){
-            shell(g,state.team()+"  /  프리셋 "+state.presets().size()+"/"+PlayerRecord.PRESETS+"  /  ★ 표시는 경기 시작 시 자동 장착");
-            renderPresets(g);super.render(g,mouseX,mouseY,partial);return;
+            shell(g,state.team()+Lang.tr("  /  프리셋 ")+state.presets().size()+"/"+PlayerRecord.PRESETS+Lang.tr("  /  ★ 표시는 경기 시작 시 자동 장착"));
+            if(colorMode)renderColors(g,mouseX,mouseY);else renderPresets(g);
+            super.render(g,mouseX,mouseY,partial);return;
         }
-        shell(g,state.team()+"  /  "+(state.preparationSeconds()>0?"출격까지 "+state.preparationSeconds()+"초":state.spawnHint()?"팀 스폰 구역":"무기 선택")+"  /  "+LobbyClient.LOADOUT.getTranslatedKeyMessage().getString()+"로 다시 열기");
+        shell(g,state.team()+"  /  "+(state.preparationSeconds()>0?Lang.tr("출격까지 ")+state.preparationSeconds()+Lang.tr("초"):state.spawnHint()?Lang.tr("팀 스폰 구역"):Lang.tr("무기 선택"))+"  /  "+LobbyClient.LOADOUT.getTranslatedKeyMessage().getString()+Lang.tr("로 다시 열기"));
         int x=left()+12,w=body()-24,dx=detailX(),right=x+w,dw=right-dx;
         var weapon=selected();boolean worn=weapon.id().equals(primary?state.primary():state.secondary());
         card(g,dx,85,right,height-57);
         TacticalStyle.band(g,dx,85,right,18,ACCENT,PANEL);
         int tagX=right-6;
-        if(worn){String tag="장착 중";tagX-=font.width(tag)+8;badge(g,tag,tagX,89,ACCENT);tagX-=4;}
+        if(worn){String tag=Lang.tr("장착 중");tagX-=font.width(tag)+8;badge(g,tag,tagX,89,ACCENT);tagX-=4;}
         String holder=worn?null:state.takenBy(primary,weapon.id());
-        if(holder!=null){String tag="선점됨 · "+holder;tagX-=font.width(tag)+8;badge(g,tag,tagX,89,TAKEN);tagX-=4;}
-        if(ReleaseDateText.upcoming(weapon.releaseDate())){String tag=ReleaseDateText.UPCOMING;tagX-=font.width(tag)+8;badge(g,tag,tagX,89,0xFF5FC8E0);tagX-=4;}
+        if(holder!=null){String tag=Lang.tr("선점됨 · ")+holder;tagX-=font.width(tag)+8;badge(g,tag,tagX,89,TAKEN);tagX-=4;}
+        if(ReleaseDateText.upcoming(weapon.releaseDate())){String tag=Lang.tr(ReleaseDateText.UPCOMING);tagX-=font.width(tag)+8;badge(g,tag,tagX,89,0xFF5FC8E0);tagX-=4;}
         var title=Component.literal(weapon.name()).withStyle(worn?net.minecraft.ChatFormatting.GOLD:net.minecraft.ChatFormatting.WHITE)
                 .append(Component.literal(" [id: "+weapon.id()+"]").withStyle(s->s.withColor(0xC8B060).withFont(HudText.UI_FONT)));
-        g.drawString(font,net.minecraft.locale.Language.getInstance().getVisualOrder(font.substrByWidth(title,Math.max(1,tagX-dx-10))),dx+6,90,INK,false);
+        Marquee.draw(g,font,title,dx+6,90,Math.max(1,tagX-dx-10),INK,false);
         int pw=previewWidth(),mh=middleHeight();
         preview(g,weapon,dx+4,PREVIEW_TOP,pw,mh);
         // Overlays sit above the 3D item, which renders at z 150.
         g.pose().pushPose();g.pose().translate(0,0,300);
         badge(g,weapon.category(),dx+8,PREVIEW_TOP+mh-14,ACCENT);
-        String hint=font.plainSubstrByWidth("드래그 회전 / 휠 확대",Math.max(1,pw-font.width(weapon.category())-28));
-        g.drawString(font,hint,dx+pw-font.width(hint),PREVIEW_TOP+mh-11,DIM,false);
+        String hint=Lang.tr("드래그 회전 / 휠 확대");int hintRoom=Math.max(1,pw-font.width(weapon.category())-28);
+        Marquee.draw(g,font,hint,dx+pw-Math.min(hintRoom,font.width(hint)),PREVIEW_TOP+mh-11,hintRoom,DIM,false);
         g.pose().popPose();
         statPanel(g,statRows(weapon),dx+pw+12,PREVIEW_TOP,right-6,mh);
         int top=PREVIEW_TOP+mh+6,bottom=height-57;
         g.fill(dx+4,top-3,right-4,top-2,TacticalStyle.HAIRLINE);
         var rows=new ArrayList<Row>();
-        if(primary)paragraph(rows,"막대: 목록 내 같은 단위의 최댓값 기준",dw-16,true);
-        if(weapon.releaseDate()!=null&&!weapon.releaseDate().isEmpty())paragraph(rows,"출시 "+ReleaseDateText.format(weapon.releaseDate()),dw-16,true);
-        paragraph(rows,weapon.description(),dw-16);heading(rows,"사용방법");paragraph(rows,weapon.usage(),dw-16);
+        if(primary)paragraph(rows,Lang.tr("막대: 목록 내 같은 단위의 최댓값 기준"),dw-16,true);
+        if(weapon.releaseDate()!=null&&!weapon.releaseDate().isEmpty())paragraph(rows,Lang.tr("출시 ")+ReleaseDateText.format(weapon.releaseDate()),dw-16,true);
+        paragraph(rows,weapon.description(),dw-16);heading(rows,Lang.tr("사용방법"));paragraph(rows,weapon.usage(),dw-16);
         int total=rows.stream().mapToInt(Row::height).sum();maxScroll=Math.max(0,total-(bottom-top));scroll=Math.min(scroll,maxScroll);
         g.enableScissor(dx,top,right,bottom);int y=top-scroll;
         for(var row:rows){
@@ -247,8 +388,8 @@ final class LoadoutScreen extends ArenaScreen {
         if(!grid){
             renderSilhouettes(g,x);
             for(int i=page;i<Math.min(weapons().size(),page+capacity());i++){
-                var item=weapons().get(i);int cw=categoryWidth(item)-6;String category=font.plainSubstrByWidth(item.category(),Math.max(1,cw));
-                g.drawString(font,category,x+listWidth()-12-font.width(category),85+(i-page)*27+8,DIM,false);
+                var item=weapons().get(i);int cw=categoryWidth(item)-6;int room=Math.max(1,cw);
+                Marquee.draw(g,font,item.category(),x+listWidth()-12-Math.min(room,font.width(item.category())),85+(i-page)*27+8,room,DIM,false);
             }
         }
     }
@@ -321,19 +462,15 @@ final class LoadoutScreen extends ArenaScreen {
         for(int i=0;i<2;i++)for(int j=0;j<2;j++)g.fill(gridX+i*6,top+j*6-1,gridX+i*6+4,top+j*6+3,gridColor);
         g.pose().popPose();
     }
-    // ---- grid view: grouped by category, five square tiles a row ----
+    // ---- grid view: weapon number order, five square tiles a row ----
     private static final int COLUMNS=5,GAP=3,HEADER=14,GRID_TOP=85;
     /** A category header (weapon null) or a weapon tile, in content coordinates (y before scrolling). */
     private record Cell(Loadouts.Weapon weapon,String header,int x,int y){}
     private int gridBottom(){return height-54;}
     private int tileSize(){return Math.max(16,(listWidth()-10-GAP*(COLUMNS-1))/COLUMNS);}
     private List<Cell> gridCells(){
-        var cells=new ArrayList<Cell>();int x=left()+12,tile=tileSize(),y=0,column=0;String category=null;
+        var cells=new ArrayList<Cell>();int x=left()+12,tile=tileSize(),y=0,column=0;
         for(var weapon:weapons()){
-            if(!weapon.category().equals(category)){
-                if(category!=null&&column>0)y+=tile+GAP;
-                category=weapon.category();cells.add(new Cell(null,category,x,y));y+=HEADER;column=0;
-            }
             cells.add(new Cell(weapon,null,x+column*(tile+GAP),y));
             if(++column==COLUMNS){column=0;y+=tile+GAP;}
         }
@@ -368,14 +505,13 @@ final class LoadoutScreen extends ArenaScreen {
             int edge=picked?ACCENT:worn?TacticalStyle.GOLD:hover?MUTED:0;
             if(edge!=0){g.fill(cx,y,cx+tile,y+1,edge);g.fill(cx,y+tile-1,cx+tile,y+tile,edge);g.fill(cx,y,cx+1,y+tile,edge);g.fill(cx+tile-1,y,cx+tile,y+tile,edge);}
             if(worn)g.fill(cx+3,y+3,cx+6,y+6,TacticalStyle.GOLD);
-            if(ReleaseDateText.upcoming(weapon.releaseDate()))small(g,ReleaseDateText.UPCOMING,cx+(worn?8:3),y+3,.55f,0xFF5FC8E0);
+            if(ReleaseDateText.upcoming(weapon.releaseDate()))small(g,Lang.tr(ReleaseDateText.UPCOMING),cx+(worn?8:3),y+3,.55f,0xFF5FC8E0);
             // Id small at the top right; name at the bottom left over a dark strip.
             float idScale=.55f,nameScale=.65f;
             String id=HudText.fitGungang(weapon.id(),Math.max(1,(int)((tile-10)/idScale)));
             small(g,HudText.gungang(id),cx+tile-3-font.width(HudText.gungang(id))*idScale,y+3,idScale,0xFFC8B060);
             g.fill(cx+1,y+tile-9,cx+tile-1,y+tile-1,0x99000000);
-            String name=font.plainSubstrByWidth(weapon.name(),Math.max(1,(int)((tile-5)/nameScale)));
-            small(g,name,cx+3,y+tile-7,nameScale,worn?TacticalStyle.GOLD:INK);
+            smallMarquee(g,weapon.name(),cx+3,y+tile-7,nameScale,Math.max(1,(int)((tile-5)/nameScale)),worn?TacticalStyle.GOLD:INK);
             String holder=state.takenBy(primary,weapon.id());
             if(holder!=null&&!worn){
                 // A teammate already holds it (duplicates off): dim the tile, red frame and a "선점됨" tag with the holder.
@@ -383,9 +519,9 @@ final class LoadoutScreen extends ArenaScreen {
                 if(!picked){g.fill(cx,y,cx+tile,y+1,TAKEN);g.fill(cx,y+tile-1,cx+tile,y+tile,TAKEN);g.fill(cx,y,cx+1,y+tile,TAKEN);g.fill(cx+tile-1,y,cx+tile,y+tile,TAKEN);}
                 int mid=y+(tile-9)/2;
                 g.fill(cx+1,mid-6,cx+tile-1,mid+7,0xCC5A1414);
-                g.drawCenteredString(font,"선점됨",cx+tile/2,mid-4,0xFFFF8A8A);
-                String who=font.plainSubstrByWidth(holder,Math.max(1,(int)((tile-6)/.6f)));
-                small(g,who,cx+tile/2f-font.width(who)*.3f,mid+8,.6f,0xFFFFC4C4);
+                g.drawCenteredString(font,Lang.tr("선점됨"),cx+tile/2,mid-4,0xFFFF8A8A);
+                int whoRoom=Math.max(1,(int)((tile-6)/.6f));
+                smallMarquee(g,holder,cx+tile/2f-Math.min(whoRoom,font.width(holder))*.3f,mid+8,.6f,whoRoom,0xFFFFC4C4);
             }
             g.pose().popPose();
         }
@@ -396,6 +532,10 @@ final class LoadoutScreen extends ArenaScreen {
         }
     }
     private void small(GuiGraphics g,String text,float x,float y,float scale,int color){small(g,Component.literal(text),x,y,scale,color);}
+    /** {@link #small} in a box {@code width} text pixels wide, scrolling when the text is longer (Marquee). */
+    private void smallMarquee(GuiGraphics g,String text,float x,float y,float scale,int width,int color){
+        g.pose().pushPose();g.pose().translate(x,y,0);g.pose().scale(scale,scale,1);Marquee.draw(g,font,text,0,0,width,color,false);g.pose().popPose();
+    }
     private void small(GuiGraphics g,Component text,float x,float y,float scale,int color){
         g.pose().pushPose();g.pose().translate(x,y,0);g.pose().scale(scale,scale,1);g.drawString(font,text,0,0,color,false);g.pose().popPose();
     }
@@ -415,6 +555,19 @@ final class LoadoutScreen extends ArenaScreen {
     }
     private boolean inGrid(double x,double y){int left=left()+12;return gridView()&&x>=left&&x<left+listWidth()-6&&y>=GRID_TOP&&y<gridBottom();}
     @Override public boolean mouseClicked(double x,double y,int button){
+        if((button==0||button==1)&&presets&&colorMode){
+            Integer hit=null;boolean saved=false;
+            for(int i=0;i<EffectColors.PALETTE.length&&hit==null;i++)if(inside(swatch(i),x,y))hit=EffectColors.PALETTE[i];
+            var own=EffectColors.saved();
+            for(int i=0;i<own.size()&&hit==null;i++)if(inside(savedCell(i),x,y)){hit=own.get(i);saved=true;}
+            if(hit!=null){
+                minecraft.getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK,1));
+                if(button==1){if(saved)LobbyClient.action("effectColorForget",hex(hit),"");return true;}
+                rgbDraft=hit;hexDraft="";if(hexBox!=null)hexBox.setValue("#"+hex(hit));
+                for(int i=0;i<3;i++)if(sliders[i]!=null)sliders[i].set(((hit>>(16-8*i))&255)/255.0);
+                toggleColor(hit);return true;
+            }
+        }
         if(button==0&&inGrid(x,y)){
             int tile=tileSize();
             for(var cell:gridCells()){
@@ -434,17 +587,17 @@ final class LoadoutScreen extends ArenaScreen {
     private List<Row> statRows(Loadouts.Weapon weapon){
         var rows=new ArrayList<Row>();
         if(primary){
-            stat(rows,"최대 체력",number(weapon.maxHealth()),v->number(v.maxHealth()));
-            stat(rows,"이동 속도",number(weapon.movementSpeed())+"%",v->number(v.movementSpeed())+"%");
+            stat(rows,Lang.tr("최대 체력"),number(weapon.maxHealth()),v->number(v.maxHealth()));
+            stat(rows,Lang.tr("이동 속도"),number(weapon.movementSpeed())+"%",v->number(v.movementSpeed())+"%");
             if(weapon.specs()!=null){
-                stat(rows,"피해량",weapon.specs().damage(),v->v.specs()==null?"":v.specs().damage());
-                stat(rows,"명중률",weapon.specs().accuracy(),v->v.specs()==null?"":v.specs().accuracy());
-                stat(rows,"안정성",weapon.specs().stability(),v->v.specs()==null?"":v.specs().stability());
-                stat(rows,"사거리",weapon.specs().range(),v->v.specs()==null?"":v.specs().range());
-                stat(rows,"연사력",weapon.specs().fireRate(),v->v.specs()==null?"":v.specs().fireRate());
+                stat(rows,Lang.tr("피해량"),weapon.specs().damage(),v->v.specs()==null?"":v.specs().damage());
+                stat(rows,Lang.tr("명중률"),weapon.specs().accuracy(),v->v.specs()==null?"":v.specs().accuracy());
+                stat(rows,Lang.tr("안정성"),weapon.specs().stability(),v->v.specs()==null?"":v.specs().stability());
+                stat(rows,Lang.tr("사거리"),weapon.specs().range(),v->v.specs()==null?"":v.specs().range());
+                stat(rows,Lang.tr("연사력"),weapon.specs().fireRate(),v->v.specs()==null?"":v.specs().fireRate());
             }
         }else{
-            rows.add(new Row("재사용 대기시간",weapon.cooldownSeconds()==0?"무제한":number(weapon.cooldownSeconds())+"초",-1,STAT_ROW));
+            rows.add(new Row(Lang.tr("재사용 대기시간"),weapon.cooldownSeconds()==0?Lang.tr("무제한"):number(weapon.cooldownSeconds())+Lang.tr("초"),-1,STAT_ROW));
             // Secondary specs come from the weapon JSON "stats"; bars compare against secondaries listing the same stat.
             for(var row:weapon.stats())stat(rows,row.name(),row.value(),v->v.stats().stream().filter(s->s.name().equals(row.name())).map(Loadouts.Stat::value).findFirst().orElse(""));
         }
@@ -455,7 +608,7 @@ final class LoadoutScreen extends ArenaScreen {
     /** Widest label any weapon can show, so bar length does not depend on the selected weapon's text. */
     private int labelColumn(){
         int width=0;
-        for(var label:FIXED_LABELS)width=Math.max(width,font.width(HudText.gungang(label)));
+        for(var label:FIXED_LABELS)width=Math.max(width,font.width(HudText.gungang(Lang.tr(label))));
         for(var weapon:state.catalog().secondary())for(var row:weapon.stats())width=Math.max(width,font.width(HudText.gungang(row.name())));
         return width;
     }
@@ -512,8 +665,8 @@ final class LoadoutScreen extends ArenaScreen {
         TacticalStyle.brackets(g,x,y,w,h,8,ACCENT);
         var stack=PreviewCache.item(weapon.id(),primary);
         if(stack==null||stack.isEmpty()){
-            String message=stack==null?"모델 불러오는 중…":"표시할 아이템 모델이 없습니다";
-            g.drawString(font,font.plainSubstrByWidth(message,Math.max(1,w-8)),x+4,y+h/2-4,MUTED,false);return;
+            String message=stack==null?Lang.tr("모델 불러오는 중…"):Lang.tr("표시할 아이템 모델이 없습니다");
+            Marquee.draw(g,font,message,x+4,y+h/2-4,Math.max(1,w-8),MUTED,false);return;
         }
         g.flush();g.enableScissor(x,y,x+w,y+h);g.pose().pushPose();
         // Fit the measured model: its diagonal stays inside the panel at any rotation, centred on the model itself.

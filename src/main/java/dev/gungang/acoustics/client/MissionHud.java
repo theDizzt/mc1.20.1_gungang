@@ -23,7 +23,7 @@ final class MissionHud {
         // The game mode sits beside the label, dimmer, so the objective line stays the focus.
         g.drawString(font, mode, x + PAD + font.width("MISSION") + 6, TOP + 3, 0xFFB8BCC4, false);
         g.pose().pushPose();g.pose().translate(x + PAD, TOP + 12, 0);
-        g.drawString(font, font.plainSubstrByWidth(mission, textWidth), 0, 0, 0xFFF2F2EA, true);
+        Marquee.draw(g,font,mission,0,0,textWidth,0xFFF2F2EA,true);
         g.pose().popPose();
         return TOP + HEIGHT + 6;
     }
@@ -36,24 +36,24 @@ final class MissionHud {
         String team = team(s, mc.player == null ? "" : mc.player.getUUID().toString());
         var p = s.point();boolean alpha = team.equals("ALPHA"), bravo = team.equals("BRAVO"), playing = alpha || bravo;
         return switch (p.mode()) {
-            case "DEATHMATCH" -> "먼저 " + p.goal() + "킬을 달성하라";
-            case "FREE_FOR_ALL" -> "모두를 쓰러뜨리고 먼저 " + p.goal() + "점을 달성하라";
-            case "CONTROL" -> "거점을 장악해 먼저 " + p.goal() + "점을 획득하라";
-            case "NORMANDY" -> !playing ? p.name() + " 거점 공방전" : bravo ? p.name() + " 거점을 점령하라" : p.name() + " 거점을 끝까지 사수하라";
-            case "ESCORT" -> !playing ? "공금 수송 작전" : alpha ? "공금을 안전하게 횡령하라" : "공금을 들고 나르는 자들을 저지하라";
-            case "PROP_HUNT" -> !playing ? "숨바꼭질" : alpha ? "블록으로 변신해 끝까지 살아남아라" : "숨어 있는 블록을 모두 찾아내라";
+            case "DEATHMATCH" -> Lang.tr("먼저 ") + p.goal() + Lang.tr("킬을 달성하라");
+            case "FREE_FOR_ALL" -> Lang.tr("모두를 쓰러뜨리고 먼저 ") + p.goal() + Lang.tr("점을 달성하라");
+            case "CONTROL" -> Lang.tr("거점을 장악해 먼저 ") + p.goal() + Lang.tr("점을 획득하라");
+            case "NORMANDY" -> !playing ? p.name() + Lang.tr(" 거점 공방전") : bravo ? p.name() + Lang.tr(" 거점을 점령하라") : p.name() + Lang.tr(" 거점을 끝까지 사수하라");
+            case "ESCORT" -> !playing ? Lang.tr("공금 수송 작전") : alpha ? Lang.tr("공금을 안전하게 횡령하라") : Lang.tr("공금을 들고 나르는 자들을 저지하라");
+            case "PROP_HUNT" -> !playing ? Lang.tr("숨바꼭질") : alpha ? Lang.tr("블록으로 변신해 끝까지 살아남아라") : Lang.tr("숨어 있는 블록을 모두 찾아내라");
             case "BOMB" -> bomb(s, team);
             default -> null;
         };
     }
     private static String bomb(MatchSnapshot s, String team) {
         var b = s.bomb();
-        if (b == null) return "폭탄을 설치하거나 막아라";
+        if (b == null) return Lang.tr("폭탄을 설치하거나 막아라");
         boolean planted = b.plantedSite() != null && !b.plantedSite().isEmpty();
-        if (!team.equals("ALPHA") && !team.equals("BRAVO")) return planted ? b.plantedSite() + " 지점 폭탄 설치됨" : "폭탄 설치 공방전";
+        if (!team.equals("ALPHA") && !team.equals("BRAVO")) return planted ? b.plantedSite() + Lang.tr(" 지점 폭탄 설치됨") : Lang.tr("폭탄 설치 공방전");
         boolean attack = team.equals(b.attacker());
-        if (planted) return attack ? b.plantedSite() + " 지점의 폭탄이 터질 때까지 지켜라" : b.plantedSite() + " 지점의 폭탄을 해체하라";
-        return attack ? "A 또는 B 지점에 폭탄을 설치하라" : "적의 폭탄 설치를 저지하라";
+        if (planted) return attack ? b.plantedSite() + Lang.tr(" 지점의 폭탄이 터질 때까지 지켜라") : b.plantedSite() + Lang.tr(" 지점의 폭탄을 해체하라");
+        return attack ? Lang.tr("A 또는 B 지점에 폭탄을 설치하라") : Lang.tr("적의 폭탄 설치를 저지하라");
     }
     private static String team(MatchSnapshot s, String id) {
         if (s.players() != null) for (var r : s.players()) if (r.id().equals(id)) return r.team();

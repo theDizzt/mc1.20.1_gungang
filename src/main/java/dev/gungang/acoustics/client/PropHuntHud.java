@@ -23,15 +23,15 @@ final class PropHuntHud {
         boolean review="REVIEW".equals(s.phase()),hiding="HIDING".equals(s.phase());
         g.pose().pushPose();g.pose().translate(g.guiWidth()/2f,top,0);g.pose().scale(scale,scale,1);
         // The seek timer stays separate from the hiding clock: shown on the seeker plate until the hunt starts.
-        String change=review?"종료":s.changeSeconds()>0?"변신 "+MatchReport.time(s.changeSeconds()):"변신 없음";
-        String seek=hiding?"찾는 시간 "+MatchReport.time(s.huntSeconds()):s.rush()?"이동속도 +35%":seekers+"명 · 발견";
+        String change=review?Lang.tr("종료"):s.changeSeconds()>0?Lang.tr("변신 ")+MatchReport.time(s.changeSeconds()):Lang.tr("변신 없음");
+        String seek=hiding?Lang.tr("찾는 시간 ")+MatchReport.time(s.huntSeconds()):s.rush()?Lang.tr("이동속도 +35%"):seekers+Lang.tr("명 · 발견");
         MatchRibbonHud.frame(g);
-        MatchRibbonHud.wing(g,true,HIDER,(int)alive,hiders.size(),"숨는 팀 · 생존",change);
-        MatchRibbonHud.wing(g,false,SEEKER,finds,hiders.size(),"술래 · 발견",seek);
+        MatchRibbonHud.wing(g,true,HIDER,(int)alive,hiders.size(),Lang.tr("숨는 팀 · 생존"),change);
+        MatchRibbonHud.wing(g,false,SEEKER,finds,hiders.size(),Lang.tr("술래 · 발견"),seek);
         MatchRibbonHud.segments(g,true,hiders.size(),i->!hiders.get(i).found(),HIDER);
         MatchRibbonHud.segments(g,false,hiders.size(),i->hiders.get(i).found(),SEEKER);
         MatchTimerHud.drawAt(g,MatchReport.time(s.seconds()),0,3);
-        DeathmatchHud.small(g,review?"위치 확인":hiding?"숨는 시간":s.rush()?"마지막 1분":"찾는 시간",0,24,.8f,review?DeathmatchHud.MUTED:hiding?HIDER:s.rush()?FOUND:SEEKER,true);
+        DeathmatchHud.small(g,review?Lang.tr("위치 확인"):hiding?Lang.tr("숨는 시간"):s.rush()?Lang.tr("마지막 1분"):Lang.tr("찾는 시간"),0,24,.8f,review?DeathmatchHud.MUTED:hiding?HIDER:s.rush()?FOUND:SEEKER,true);
         g.pose().popPose();
         tiles(g,hiders,top+Math.round(35*scale)+2);
         guide(g,PropHuntClient.guide());
@@ -60,7 +60,7 @@ final class PropHuntHud {
         for(int i=0;i<lines.size();i++){
             int y=top+i*9;
             g.fill(left-2,y,right,y+9,i==0?0x66000000:0x4C000000);
-            String line=lines.get(i);boolean highlight=line.startsWith("변신:");
+            String line=lines.get(i);boolean highlight=line.startsWith(Lang.tr("변신: "));
             if(i==0)g.drawString(font,line,left+(width-font.width(line))/2,y+1,HIDER,false);
             else g.drawString(font,line,left,y+1,highlight?0xFFFFE27A:0xFFFFFFFF,false);
         }
@@ -113,9 +113,9 @@ final class PropHuntHud {
         int shown=Math.max(1,Math.max(Math.min(capacity,hiders.size()-page*capacity),Math.min(capacity,seekers.size()-page*capacity)));
         int bottom=y+HEAD+COLS+shown*ROW+(pages>1?FOOT:4);
         long alive=hiders.stream().filter(e->!Boolean.TRUE.equals(e.found())).count();
-        card(g,true,"숨는 팀",HIDER,live?"생존 "+alive+" / "+hiders.size():hiders.size()+"명",live?String.valueOf(alive):String.valueOf(hiders.size()),hiders,x,y,half,bottom,page,capacity,pages);
+        card(g,true,Lang.tr("숨는 팀"),HIDER,live?Lang.tr("생존 ")+alive+" / "+hiders.size():hiders.size()+Lang.tr("명"),live?String.valueOf(alive):String.valueOf(hiders.size()),hiders,x,y,half,bottom,page,capacity,pages);
         int finds=seekers.stream().mapToInt(Entry::finds).sum();
-        card(g,false,"술래",SEEKER,seekers.size()+"명 · "+finds+"명 발견",String.valueOf(finds),seekers,x+half+SPLIT,y,half,bottom,page,capacity,pages);
+        card(g,false,Lang.tr("술래"),SEEKER,seekers.size()+Lang.tr("명 · ")+finds+Lang.tr("명 발견"),String.valueOf(finds),seekers,x+half+SPLIT,y,half,bottom,page,capacity,pages);
         return pages;
     }
     private static void card(GuiGraphics g,boolean hider,String title,int color,String subtitle,String total,List<Entry> rows,
@@ -132,12 +132,12 @@ final class PropHuntHud {
         // Hiders: status + hidden time; seekers: find count. Right-anchored so names keep the rest.
         int value=right-8,status=value-52,face=left+26,nameX=face+30,cy=top+HEAD,nameEnd=hider?status-34:value-30;
         g.fill(left,cy,right,cy+COLS,0x30000000);g.fill(left,cy+COLS-1,right,cy+COLS,TacticalStyle.EDGE);
-        g.drawString(font,"#",left+8,cy+3,DIM,false);g.drawString(font,"플레이어",face,cy+3,DIM,false);
-        if(hider){MatchHud.column(g,"상태",status,cy+3,DIM);MatchHud.column(g,"숨은 시간",value,cy+3,DIM);}
-        else MatchHud.column(g,"발견",value,cy+3,DIM);
+        g.drawString(font,"#",left+8,cy+3,DIM,false);g.drawString(font,Lang.tr("플레이어"),face,cy+3,DIM,false);
+        if(hider){MatchHud.column(g,Lang.tr("상태"),status,cy+3,DIM);MatchHud.column(g,Lang.tr("숨은 시간"),value,cy+3,DIM);}
+        else MatchHud.column(g,Lang.tr("발견"),value,cy+3,DIM);
         String self=mc.player==null?"":mc.player.getUUID().toString();
         int start=page*capacity,count=Math.max(0,Math.min(capacity,rows.size()-start));
-        if(count==0)g.drawString(font,"플레이어 없음",left+(width-font.width("플레이어 없음"))/2,cy+COLS+5,DIM,false);
+        if(count==0)g.drawString(font,Lang.tr("플레이어 없음"),left+(width-font.width(Lang.tr("플레이어 없음")))/2,cy+COLS+5,DIM,false);
         for(int i=0;i<count;i++) {
             var row=rows.get(start+i);int ry=cy+COLS+i*ROW,rank=start+i+1;boolean mine=row.id().equals(self),found=Boolean.TRUE.equals(row.found());
             if(mine){g.fill(left,ry,right,ry+ROW,rgb|0x38000000);g.fill(left,ry,left+2,ry+ROW,color);}
@@ -148,14 +148,14 @@ final class PropHuntHud {
             PlayerFaceRenderer.draw(g,row.skin()!=null&&!row.skin().isEmpty()?BotRenderer.texture(row.skin()):MatchHud.skin(row.id()),face,ry+3,12);
             if(found)g.fill(face,ry+3,face+12,ry+15,0x90141511);
             PlayerLevels.draw(g,row.id(),face+15,ry+3,12);
-            g.drawString(font,font.plainSubstrByWidth(row.name(),Math.max(1,nameEnd-nameX)),nameX,ry+5,mine?0xFFFFFFFF:found?0xFF8A96A6:TacticalStyle.INK,false);
+            Marquee.draw(g,font,row.name(),nameX,ry+5,Math.max(1,nameEnd-nameX),mine?0xFFFFFFFF:found?0xFF8A96A6:TacticalStyle.INK,false);
             if(hider) {
-                if(row.found()!=null)MatchHud.column(g,found?"발견됨":"생존",status,ry+5,found?FOUND:HIDER);
+                if(row.found()!=null)MatchHud.column(g,found?Lang.tr("발견됨"):Lang.tr("생존"),status,ry+5,found?FOUND:HIDER);
                 MatchHud.column(g,MatchReport.time(row.seconds()),value,ry+5,0xFFFFFFFF);
-            } else MatchHud.column(g,row.finds()+"명",value,ry+5,0xFFFFFFFF);
+            } else MatchHud.column(g,row.finds()+Lang.tr("명"),value,ry+5,0xFFFFFFFF);
         }
         if(pages>1) {
-            String label=(page+1)+" / "+pages+" · 휠";
+            String label=(page+1)+" / "+pages+Lang.tr(" · 휠");
             g.fill(left+8,bottom-FOOT,right-8,bottom-FOOT+1,TacticalStyle.EDGE);
             g.drawString(font,label,right-8-font.width(label),bottom-FOOT+3,DIM,false);
         }

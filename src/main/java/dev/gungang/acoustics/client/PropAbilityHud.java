@@ -15,8 +15,8 @@ final class PropAbilityHud {
         // Its categories (공격, 디버프, 견고, 접착, 신속, 액체, 광원, 특수, 색상) follow the name in their colours.
         var tags=dev.gungang.acoustics.server.PropInteraction.tags(row.block(),state);
         int tagsW=0;for(var t:tags)tagsW+=mc.font.width(t.label())+4;
-        name=mc.font.plainSubstrByWidth(name,Math.max(1,mc.getWindow().getWidth()/4-18-tagsW));
-        TaczAmmoHud.text(g,mc.font,name,l.right()-tagsW-mc.font.width(name),l.rowTop()-11,0xFFE2E8F0);
+        int room=Math.max(1,mc.getWindow().getWidth()/4-18-tagsW);
+        TaczAmmoHud.textMarquee(g,mc.font,name,l.right()-tagsW-Math.min(room,mc.font.width(name)),l.rowTop()-11,room,0xFFE2E8F0);
         int tx=l.right()-tagsW+4;
         for(var t:tags){TaczAmmoHud.text(g,mc.font,t.label(),tx,l.rowTop()-11,t.color());tx+=mc.font.width(t.label())+4;}
         icon(g,row.block(),state,l.iconX()+26,l.iconY());
@@ -116,13 +116,13 @@ final class PropAbilityHud {
     static int gauges(GuiGraphics g,int center,int y,int width,int height,float partial){
         var row=PropHuntClient.ability();if(row==null)return y;
         float active=Math.max(0,row.active()-PropHuntClient.elapsed(partial));
-        if(active>0){UtilityHud.gauge(g,center,y,width,height,active,100,String.format(java.util.Locale.ROOT,"수평 이동 %.1f초",active/20),partial);y-=height+4;}
+        if(active>0){UtilityHud.gauge(g,center,y,width,height,active,100,String.format(java.util.Locale.ROOT,Lang.tr("수평 이동 %.1f초"),active/20),partial);y-=height+4;}
         if(row.auxiliaryMax()>0){
             // Dolls show their gauge in seconds (184 beam, 191 cloak); a spawner its spider's health.
             String label=switch(row.block()){
-                case "gungang:eunbi_doll"->String.format(java.util.Locale.ROOT,"광선 %.1f초",row.auxiliary());
-                case "gungang:hanbi_doll"->String.format(java.util.Locale.ROOT,"투명화 %.1f초",row.auxiliary());
-                default->"독거미 "+HudHealth.number(row.auxiliary())+"/"+HudHealth.number(row.auxiliaryMax());
+                case "gungang:eunbi_doll"->String.format(java.util.Locale.ROOT,Lang.tr("광선 %.1f초"),row.auxiliary());
+                case "gungang:hanbi_doll"->String.format(java.util.Locale.ROOT,Lang.tr("투명화 %.1f초"),row.auxiliary());
+                default->Lang.tr("독거미 ")+HudHealth.number(row.auxiliary())+"/"+HudHealth.number(row.auxiliaryMax());
             };
             UtilityHud.gauge(g,center,y,width,height,row.auxiliary(),row.auxiliaryMax(),label,partial);y-=height+4;
         }

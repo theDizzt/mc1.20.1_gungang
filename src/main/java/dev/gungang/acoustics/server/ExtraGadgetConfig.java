@@ -24,6 +24,12 @@ public final class ExtraGadgetConfig {
     public record VoidAnchor(double health,double pullRange,int maxTargets,double pullBlocksPerSecond,double damage) { }
     public static final VoidAnchor VOID_ANCHOR_DEFAULTS=new VoidAnchor(60,10,1,5,20);
     public static VoidAnchor voidAnchor=VOID_ANCHOR_DEFAULTS;
+    public record CommandFlag(double health,double cooldownSeconds,double placementRange,
+                              double baseRadius,double baseHealPerSecond,double healingUpgradeSeconds,
+                              double upgradedHealPerSecond,double healingRadius,double defenseUpgradeSeconds,
+                              double defenseRadius,double damageReductionPercent,double globalUpgradeSeconds) { }
+    public static final CommandFlag COMMAND_FLAG_DEFAULTS=new CommandFlag(100,75,5,10,1,20,5,20,60,40,15,180);
+    public static CommandFlag commandFlag=COMMAND_FLAG_DEFAULTS;
     public record ArrowGrenade(double damage,double projectileRange,double durationSeconds,double cooldownSeconds,double emissionIntervalSeconds,double projectileSpeed,double throwSpeed) {
         public int emissionIntervalTicks(){return Math.max(1,ticks(emissionIntervalSeconds));}
     }
@@ -36,6 +42,15 @@ public final class ExtraGadgetConfig {
     public record Jet(double speed,double durationSeconds,double collisionDamage,double knockback,int burnSeconds,double trailSeconds,double cooldownSeconds,boolean verticalFlight,double burnDamage) {
         public Jet(double speed,double duration,double damage,double knockback,int burn,double trail,double cooldown,boolean vertical){this(speed,duration,damage,knockback,burn,trail,cooldown,vertical,1);}
     }
+    /**
+     * 74 Hermes' Boots: a fixed-step forward dash of dashDistance blocks over dashSeconds. Up to maxCharges dashes are
+     * stored; each spent one comes back chargeSeconds later (one at a time). trailSeconds: how long the glow lingers.
+     */
+    public record Hermes(double dashDistance,double dashSeconds,int maxCharges,double chargeSeconds,double trailSeconds) {
+        public int dashTicks(){return Math.max(1,(int)Math.round(dashSeconds*20));}
+    }
+    public static final Hermes HERMES_DEFAULTS=new Hermes(4,.2,2,6,.35);
+    public static Hermes hermes=HERMES_DEFAULTS;
     public record Scanner(double durationSeconds,double cooldownSeconds) { }
     public record Shield(double capacity,double repairSeconds,double movementPenaltyPercent,boolean outOfCombatRegen,double regenDelaySeconds,double regenPerSecond,double meleeReductionPercent) {
         public Shield(double capacity,double repair){this(capacity,repair,15);}
@@ -118,6 +133,16 @@ public final class ExtraGadgetConfig {
         load(java.util.Map.of(),true);
     }
     static void load(java.util.Map<String,com.google.gson.JsonObject> overrides,boolean apply)throws IOException {
+        var flag=GadgetConfig.read("command_flag",CommandFlag.class,COMMAND_FLAG_DEFAULTS,overrides,apply);
+        GadgetConfig.bounded(flag.health(),1,1024);GadgetConfig.bounded(flag.cooldownSeconds(),0,86400);
+        GadgetConfig.bounded(flag.placementRange(),1,8);
+        for(double radius:new double[]{flag.baseRadius(),flag.healingRadius(),flag.defenseRadius()})GadgetConfig.bounded(radius,.1,128);
+        for(double heal:new double[]{flag.baseHealPerSecond(),flag.upgradedHealPerSecond()})GadgetConfig.bounded(heal,0,10000);
+        GadgetConfig.bounded(flag.healingUpgradeSeconds(),0,86400);
+        GadgetConfig.bounded(flag.defenseUpgradeSeconds(),flag.healingUpgradeSeconds(),86400);
+        GadgetConfig.bounded(flag.globalUpgradeSeconds(),flag.defenseUpgradeSeconds(),86400);
+        GadgetConfig.bounded(flag.damageReductionPercent(),0,100);
+        if(apply)commandFlag=flag;
         var assault=GadgetConfig.read("air_assault",AirAssault.class,AIR_ASSAULT_DEFAULTS,overrides,apply);
         GadgetConfig.bounded(assault.centerSize(),.1,64);GadgetConfig.bounded(assault.outerSize(),assault.centerSize(),64);GadgetConfig.bounded(assault.shockwaveSize(),assault.outerSize(),64);
         for(double d:new double[]{assault.centerDamage(),assault.outerDamage(),assault.shockwaveDamage()})GadgetConfig.bounded(d,0,10000);
@@ -135,6 +160,9 @@ public final class ExtraGadgetConfig {
         var o=GadgetConfig.read("orbital_strike",Orbital.class,new Orbital(24,256,84,5,64,240),overrides,apply);
         var l=GadgetConfig.read("life_support",Life.class,new Life(30,2.9,1,.1,120),overrides,apply);
         var j=GadgetConfig.read("jetpack",Jet.class,new Jet(.85,3,25,1.5,3,1,24,false),overrides,apply);
+        var hb=GadgetConfig.read("hermes_boots",Hermes.class,HERMES_DEFAULTS,overrides,apply);
+        GadgetConfig.bounded(hb.dashDistance(),.5,32);GadgetConfig.bounded(hb.dashSeconds(),.05,2);GadgetConfig.bounded(hb.maxCharges(),1,10);
+        GadgetConfig.bounded(hb.chargeSeconds(),0,86400);GadgetConfig.bounded(hb.trailSeconds(),0,5);
         var s=GadgetConfig.read("infrared_scanner",Scanner.class,new Scanner(10,120),overrides,apply);
         var h=GadgetConfig.read("shield",Shield.class,new Shield(75,90),overrides,apply);
         var x=GadgetConfig.read("hand_axe",HandAxe.class,new HandAxe(66,5,24,1,16,0),overrides,apply);
@@ -208,7 +236,7 @@ public final class ExtraGadgetConfig {
         GadgetConfig.bounded(s.durationSeconds(),.05,300);GadgetConfig.bounded(h.capacity(),1,10000);GadgetConfig.bounded(h.repairSeconds(),0,86400);
         GadgetConfig.bounded(h.movementPenaltyPercent(),0,99);GadgetConfig.bounded(h.regenDelaySeconds(),0,300);GadgetConfig.bounded(h.regenPerSecond(),0,10000);GadgetConfig.bounded(h.meleeReductionPercent(),0,100);
         for(double c:new double[]{m.cooldownSeconds(),o.cooldownSeconds(),l.cooldownSeconds(),j.cooldownSeconds(),s.cooldownSeconds(),x.cooldownSeconds()})GadgetConfig.bounded(c,0,86400);
-        if(apply){molotov=m;orbital=o;life=l;jet=j;scanner=s;shield=h;handAxe=x;arrowGrenade=ag;rapier=r;katana=k;regeneration=rg;combat=cb;fallout=fo;twinBlades=tb;arcThrower=ac;windBlower=wb;shuriken=sh;}
+        if(apply){molotov=m;orbital=o;life=l;jet=j;hermes=hb;scanner=s;shield=h;handAxe=x;arrowGrenade=ag;rapier=r;katana=k;regeneration=rg;combat=cb;fallout=fo;twinBlades=tb;arcThrower=ac;windBlower=wb;shuriken=sh;}
     }
     private ExtraGadgetConfig() { }
 }

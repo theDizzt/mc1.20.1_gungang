@@ -42,6 +42,10 @@ public final class BearTrapRenderer extends EntityRenderer<BearTrapEntity> {
         pose.pushPose();pose.translate(-.13,close*-.015,-.13);pose.scale(.26f,1,.26f);
         blocks.renderSingleBlock(Blocks.HEAVY_WEIGHTED_PRESSURE_PLATE.defaultBlockState(),pose,buffers,light,OverlayTexture.NO_OVERLAY);
         pose.popPose();
+        if(trap.outlineVisibleTo(Minecraft.getInstance().player)){
+            pose.pushPose();pose.translate(0,.07-close*.015,0);pose.mulPose(Axis.XP.rotationDegrees(90));
+            TeamEmblems.decal(pose,buffers,light,trap.teamName(),0,-.11f,0,.22f,false);pose.popPose();
+        }
         // Anchor chain trailing off one end.
         pose.pushPose();pose.translate(HALF+.05,.03-.25,-.25);pose.scale(.5f,.5f,.5f);
         blocks.renderSingleBlock(Blocks.CHAIN.defaultBlockState().setValue(net.minecraft.world.level.block.RotatedPillarBlock.AXIS,net.minecraft.core.Direction.Axis.X),pose,buffers,light,OverlayTexture.NO_OVERLAY);

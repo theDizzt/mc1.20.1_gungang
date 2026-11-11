@@ -70,39 +70,40 @@ final class LobbyScreen extends ArenaScreen {
         if(member(dragId)==null){dragId=null;draggingMember=false;}
         rebuildWidgets();
     }
-    @Override public void onClose(){super.onClose();minecraft.gui.setOverlayMessage(Component.literal(LobbyClient.LOBBY.getTranslatedKeyMessage().getString()+" 키 또는 /gungang lobby로 대기실 다시 열기"),false);}
+    @Override public void onClose(){super.onClose();minecraft.gui.setOverlayMessage(Component.literal(LobbyClient.LOBBY.getTranslatedKeyMessage().getString()+Lang.tr(" 키 또는 /gungang lobby로 대기실 다시 열기")),false);}
     @Override protected void init(){
+        languageButton();
         baseW=0;
         for(String zone:List.of("ALPHA","BRAVO","SPECTATOR"))memberScroll.put(zone,offset(zone));
         for(var row:rows()){
             var m=row.member();int color=m.team().equals("ALPHA")?LobbyClient.options.color("ALPHA"):m.team().equals("BRAVO")?LobbyClient.options.color("BRAVO"):MUTED;
             var label=Component.literal(m.name());
-            if(m.id().equals(state.you()))label.append(Component.literal(" 나").withStyle(s->s.withColor(ACCENT&0xFFFFFF)));
+            if(m.id().equals(state.you()))label.append(Component.literal(Lang.tr(" 나")).withStyle(s->s.withColor(ACCENT&0xFFFFFF)));
             listButton(label,row.x,row.y,row.w,17,admin()||m.id().equals(state.you()),m.id().equals(target)?color:MUTED,NAME,font.width(status(m))+14,()->{target=m.id();rebuildWidgets();});
         }
         if(maps)mapButtons();
         var b=controls();int x=b.x+5,w=b.w-10,h=18,y=b.y+6,third=(w-8)/3,half=(w-4)/2;
         var picked=member(target);boolean editable=picked!=null&&(admin()||picked.id().equals(state.you()));
-        colorButton("알파",x,y,third,h,editable,LobbyClient.options.color("ALPHA"),()->LobbyClient.action("team","ALPHA",target));
-        button("관전",x+third+4,y,third,h,editable&&!picked.bot(),MUTED,()->LobbyClient.action("team","SPECTATOR",target));
-        colorButton("브라보",x+(third+4)*2,y,w-(third+4)*2,h,editable,LobbyClient.options.color("BRAVO"),()->LobbyClient.action("team","BRAVO",target));
+        colorButton(Lang.tr("알파"),x,y,third,h,editable,LobbyClient.options.color("ALPHA"),()->LobbyClient.action("team","ALPHA",target));
+        button(Lang.tr("관전"),x+third+4,y,third,h,editable&&!picked.bot(),MUTED,()->LobbyClient.action("team","SPECTATOR",target));
+        colorButton(Lang.tr("브라보"),x+(third+4)*2,y,w-(third+4)*2,h,editable,LobbyClient.options.color("BRAVO"),()->LobbyClient.action("team","BRAVO",target));
         y+=22;
-        button(maps?"미리보기":"맵 선택",x,y,third,h,true,ACCENT,()->{maps=!maps;draggingPreview=false;rebuildWidgets();});
-        button("팀 섞기",x+third+4,y,third,h,admin(),MUTED,()->LobbyClient.action("random","",""));
-        button("게임 옵션",x+(third+4)*2,y,w-(third+4)*2,h,true,ACCENT,()->minecraft.setScreen(new GameOptionsScreen(state)));
+        button(maps?Lang.tr("미리보기"):Lang.tr("맵 선택"),x,y,third,h,true,ACCENT,()->{maps=!maps;draggingPreview=false;rebuildWidgets();});
+        button(Lang.tr("팀 섞기"),x+third+4,y,third,h,admin(),MUTED,()->LobbyClient.action("random","",""));
+        button(Lang.tr("게임 옵션"),x+(third+4)*2,y,w-(third+4)*2,h,true,ACCENT,()->minecraft.setScreen(new GameOptionsScreen(state)));
         y+=22;modeButtons(x,y,w);y+=modeHeight()+4;
         boolean bots=admin()&&state.botEnabled()&&dev.gungang.acoustics.server.LobbyRules.bots(state.selectedMode());
-        button("봇 + "+state.botCount()+"/"+state.botMax(),x,y,half,h,bots&&state.botCount()<state.botMax(),MUTED,()->LobbyClient.action("botAdd","",""));
-        button("선택한 봇 제거",x+half+4,y,w-half-4,h,bots&&picked!=null&&picked.bot(),MUTED,()->LobbyClient.action("botRemove","",picked.id()));
+        button(Lang.tr("봇 + ")+state.botCount()+"/"+state.botMax(),x,y,half,h,bots&&state.botCount()<state.botMax(),MUTED,()->LobbyClient.action("botAdd","",""));
+        button(Lang.tr("선택한 봇 제거"),x+half+4,y,w-half-4,h,bots&&picked!=null&&picked.bot(),MUTED,()->LobbyClient.action("botRemove","",picked.id()));
         y+=22;
         var self=member(state.you());boolean ready=self!=null&&self.ready();String selection=state.selectedMap()+":"+state.selectedMode();
         boolean allowed=self!=null&&(self.team().equals("ALPHA")||self.team().equals("BRAVO"))&&!state.selectedMap().isEmpty();
-        colorButton(ready?"준비 취소":"준비 완료",x,y,Math.max(1,w-42),h,allowed,ready?WAITING:ACCENT,()->LobbyClient.action("ready",Boolean.toString(!ready),selection));
+        colorButton(ready?Lang.tr("준비 취소"):Lang.tr("준비 완료"),x,y,Math.max(1,w-42),h,allowed,ready?WAITING:ACCENT,()->LobbyClient.action("ready",Boolean.toString(!ready),selection));
         closeButton(x+w-38,y,38,h);
     }
-    private static String status(LobbySnapshot.Member m){return m.ready()?"준비":m.team().equals("UNASSIGNED")?"미배정":m.team().equals("SPECTATOR")?"관전":"대기";}
+    private static String status(LobbySnapshot.Member m){return m.ready()?Lang.tr("준비"):m.team().equals("UNASSIGNED")?Lang.tr("미배정"):m.team().equals("SPECTATOR")?Lang.tr("관전"):Lang.tr("대기");}
     private static int statusColor(LobbySnapshot.Member m){return m.ready()?READY:m.team().equals("ALPHA")||m.team().equals("BRAVO")?WAITING:MUTED;}
-    static String modeName(String mode){return switch(mode){case "PROP_HUNT"->"숨바꼭질";case "FREE_FOR_ALL"->"개인전";case "ESCORT"->"호위";case "BOMB"->"폭탄전";case "DEATHMATCH"->"팀 데스매치";case "NORMANDY"->"이동점령";default->"쟁탈전";};}
+    static String modeName(String mode){return switch(mode){case "PROP_HUNT"->Lang.tr("숨바꼭질");case "FREE_FOR_ALL"->Lang.tr("개인전");case "ESCORT"->Lang.tr("호위");case "BOMB"->Lang.tr("폭탄전");case "DEATHMATCH"->Lang.tr("팀 데스매치");case "NORMANDY"->Lang.tr("이동점령");default->Lang.tr("쟁탈전");};}
     private void modeButtons(int x,int y,int w){
         var selected=map(state.selectedMap());var modes=new ArrayList<String>();
         if(selected!=null){
@@ -128,12 +129,12 @@ final class LobbyScreen extends ArenaScreen {
         button("›",b.right()-24,b.y+4,18,18,mapScroll<maxMapScroll(),MUTED,()->scrollMaps(mapScroll+mapCapacity()));
         int offset=randomRow()?1:0;
         for(int i=mapScroll;i<Math.min(mapCount(),mapScroll+mapCapacity());i++){
-            var m=i<offset?null:state.maps().get(i-offset);String id=m==null?RANDOM:m.id();String label=m==null?"랜덤 맵 · 임무":(state.selectedMap().equals(id)?"● ":"")+m.id()+" · "+m.name();
+            var m=i<offset?null:state.maps().get(i-offset);String id=m==null?RANDOM:m.id();String label=m==null?Lang.tr("랜덤 맵 · 임무"):(state.selectedMap().equals(id)?"● ":"")+m.id()+" · "+m.name();
             listButton(Component.literal(label),b.x+5,b.y+27+(i-mapScroll)*21,b.w-10,18,true,id.equals(previewMap)?ACCENT:MUTED,()->{previewMap=id;rebuildWidgets();});
         }
         int w=(b.w-14)/2;
-        button("미리보기",b.x+5,b.bottom()-23,w,18,true,MUTED,()->{maps=false;rebuildWidgets();});
-        button("맵 적용",b.x+9+w,b.bottom()-23,b.w-w-14,18,admin()&&(map(previewMap)!=null||randomRow()&&RANDOM.equals(previewMap)),ACCENT,()->{LobbyClient.action("map",previewMap,"");maps=false;rebuildWidgets();});
+        button(Lang.tr("미리보기"),b.x+5,b.bottom()-23,w,18,true,MUTED,()->{maps=false;rebuildWidgets();});
+        button(Lang.tr("맵 적용"),b.x+9+w,b.bottom()-23,b.w-w-14,18,admin()&&(map(previewMap)!=null||randomRow()&&RANDOM.equals(previewMap)),ACCENT,()->{LobbyClient.action("map",previewMap,"");maps=false;rebuildWidgets();});
     }
     private void scrollMaps(int next){mapScroll=Math.max(0,Math.min(maxMapScroll(),next));rebuildWidgets();}
     /** Raised panel tinted by {@code color}; a positive {@code header} adds a title band of that height. */
@@ -142,35 +143,38 @@ final class LobbyScreen extends ArenaScreen {
         TacticalStyle.surface(g,b.x,b.y,b.w,b.h,blend(base,0xFFFFFFFF,.02f),base,blend(BORDER,color,.25f));
         TacticalStyle.band(g,b.x+1,b.y+1,b.right()-1,header,color,base);
     }
-    private void text(GuiGraphics g,String value,int x,int y,int max,int color){g.drawString(font,font.plainSubstrByWidth(value,Math.max(1,max)),x,y,color,false);}
+    private void text(GuiGraphics g,String value,int x,int y,int max,int color){Marquee.draw(g,font,value,x,y,Math.max(1,max),color,false);}
     /** Band title with a leading tick, a dim count and an optional right-aligned chip; returns the chip's left edge. */
     private int panelTitle(GuiGraphics g,Box b,String title,String count,String chip,int chipColor,int color){
         int chipX=b.right()-6;
         if(chip!=null){chipX-=font.width(chip)+8;badge(g,chip,chipX,b.y+5,chipColor);}
-        g.fill(b.x+6,b.y+6,b.x+8,b.y+15,color);
-        text(g,title,b.x+12,b.y+7,chipX-b.x-18,INK);
-        int countX=b.x+12+font.width(title)+5;if(countX<chipX-6)text(g,count,countX,b.y+7,chipX-countX-6,DIM);
+        String emblem=title.equals(Lang.tr("알파"))?"ALPHA":title.equals(Lang.tr("브라보"))?"BRAVO":"";
+        int titleX=b.x+12;
+        if(TeamEmblems.draw(g,emblem,b.x+4,b.y+1,17))titleX=b.x+24;
+        else g.fill(b.x+6,b.y+6,b.x+8,b.y+15,color);
+        text(g,title,titleX,b.y+7,chipX-titleX-6,INK);
+        int countX=titleX+font.width(title)+5;if(countX<chipX-6)text(g,count,countX,b.y+7,chipX-countX-6,DIM);
         return chipX;
     }
     private void teamPanel(GuiGraphics g,Box b,String title,List<LobbySnapshot.Member> members,int color){
         panel(g,b,color,18);long ready=members.stream().filter(LobbySnapshot.Member::ready).count();
         boolean all=!members.isEmpty()&&ready==members.size();
-        panelTitle(g,b,title,members.size()+"명","준비 "+ready+"/"+members.size(),all?READY:MUTED,color);
+        panelTitle(g,b,title,members.size()+Lang.tr("명"),Lang.tr("준비 ")+ready+"/"+members.size(),all?READY:MUTED,color);
         // Readiness doubles as the band's divider.
         int x1=b.x+1,x2=b.right()-1;g.fill(x1,b.y+19,x2,b.y+21,TacticalStyle.TRACK);
         if(ready>0)g.fill(x1,b.y+19,x1+Math.round((x2-x1)*ready/(float)members.size()),b.y+21,all?READY:color);
-        if(members.isEmpty())text(g,"플레이어 없음 · 이름을 끌어 놓으세요",b.x+12,b.y+29,b.w-18,DIM);
+        if(members.isEmpty())text(g,Lang.tr("플레이어 없음 · 이름을 끌어 놓으세요"),b.x+12,b.y+29,b.w-18,DIM);
     }
     @Override public void render(GuiGraphics g,int mx,int my,float partial){
         g.fillGradient(0,0,width,height,0xF00C0D0A,0xF01B1D16);TacticalStyle.grid(g,0,0,width,height,24,0x07FFFFFF);
         var head=new Box(8,8,leftWidth(),34);panel(g,head,ACCENT,0);
         g.fill(head.x+7,head.y+7,head.x+9,head.y+27,ACCENT);
-        text(g,"GUNGANG / MATCH LOBBY",head.x+14,head.y+7,leftWidth()-24,INK);text(g,"이름을 끌어 팀 이동 · 다른 팀 이름 위에 놓으면 교체 · 휠 스크롤",head.x+14,head.y+20,leftWidth()-24,MUTED);
-        teamPanel(g,alpha(),"알파",team("ALPHA"),LobbyClient.options.color("ALPHA"));teamPanel(g,bravo(),"브라보",team("BRAVO"),LobbyClient.options.color("BRAVO"));
-        var b=spectators();panel(g,b,MUTED,18);panelTitle(g,b,"관전 / 미배정",neutral().size()+"명",null,0,MUTED);
-        if(neutral().isEmpty())text(g,"관전자 없음",b.x+12,b.y+29,b.w-18,DIM);
+        text(g,"GUNGANG / MATCH LOBBY",head.x+14,head.y+7,leftWidth()-24,INK);text(g,Lang.tr("이름을 끌어 팀 이동 · 다른 팀 이름 위에 놓으면 교체 · 휠 스크롤"),head.x+14,head.y+20,leftWidth()-24,MUTED);
+        teamPanel(g,alpha(),Lang.tr("알파"),team("ALPHA"),LobbyClient.options.color("ALPHA"));teamPanel(g,bravo(),Lang.tr("브라보"),team("BRAVO"),LobbyClient.options.color("BRAVO"));
+        var b=spectators();panel(g,b,MUTED,18);panelTitle(g,b,Lang.tr("관전 / 미배정"),neutral().size()+Lang.tr("명"),null,0,MUTED);
+        if(neutral().isEmpty())text(g,Lang.tr("관전자 없음"),b.x+12,b.y+29,b.w-18,DIM);
         panel(g,controls(),MUTED,0);var p=preview();panel(g,p,ACCENT,maps?24:33);
-        if(maps){g.fill(p.x+6,p.y+7,p.x+8,p.y+16,ACCENT);text(g,"맵 선택",p.x+12,p.y+8,p.w-64,INK);}else renderPreview(g);
+        if(maps){g.fill(p.x+6,p.y+7,p.x+8,p.y+16,ACCENT);text(g,Lang.tr("맵 선택"),p.x+12,p.y+8,p.w-64,INK);}else renderPreview(g);
         super.render(g,mx,my,partial);
         for(var row:rows()){
             var m=row.member();var skin=m.bot()?BotRenderer.texture(m.skin()):MatchHud.skin(m.id());
@@ -184,11 +188,11 @@ final class LobbyScreen extends ArenaScreen {
     }
     private void renderPreview(GuiGraphics g){
         baseW=0;var b=preview();if(!java.util.Objects.equals(viewedMap,previewMap)){viewedMap=previewMap;zoom=1;panX=panY=0;draggingPreview=false;}
-        var m=map(previewMap);if(m==null){text(g,RANDOM.equals(previewMap)?"랜덤 맵 · 임무":"선택된 맵 없음",b.x+6,b.y+9,b.w-12,INK);text(g,"맵 선택에서 적용할 맵을 고르세요",b.x+6,b.y+26,b.w-12,MUTED);return;}
+        var m=map(previewMap);if(m==null){text(g,RANDOM.equals(previewMap)?Lang.tr("랜덤 맵 · 임무"):Lang.tr("선택된 맵 없음"),b.x+6,b.y+9,b.w-12,INK);text(g,Lang.tr("맵 선택에서 적용할 맵을 고르세요"),b.x+6,b.y+26,b.w-12,MUTED);return;}
         boolean selected=m.id().equals(state.selectedMap());
-        String tag=selected?"현재 경기":"미리보기";int tagX=b.right()-6-font.width(tag)-8;badge(g,tag,tagX,b.y+7,selected?READY:MUTED);
+        String tag=selected?Lang.tr("현재 경기"):Lang.tr("미리보기");int tagX=b.right()-6-font.width(tag)-8;badge(g,tag,tagX,b.y+7,selected?READY:MUTED);
         g.fill(b.x+6,b.y+7,b.x+8,b.y+29,ACCENT);
-        text(g,m.name(),b.x+12,b.y+8,tagX-b.x-18,INK);text(g,selected?modeName(state.selectedMode()):m.gameMode(),b.x+12,b.y+20,b.w-18,ACCENT);
+        text(g,m.name(),b.x+12,b.y+8,tagX-b.x-18,INK);text(g,selected?modeName(state.selectedMode()):Lang.tr(m.gameMode()),b.x+12,b.y+20,b.w-18,ACCENT);
         int infoH=Math.min(70,Math.max(36,b.h/3)),infoY=b.bottom()-infoH;viewX=b.x+6;viewY=b.y+38;viewW=b.w-12;viewH=infoY-viewY-6;
         var image=PreviewCache.image(m);
         if(viewH>0&&viewW>0)g.fillGradient(viewX,viewY,viewX+viewW,viewY+viewH,0xFF1C1D17,0xFF0E0F0B);
@@ -199,13 +203,13 @@ final class LobbyScreen extends ArenaScreen {
             TacticalStyle.brackets(g,viewX,viewY,viewW,viewH,8,ACCENT);
             if(zoom>1.01){String zoomTag=String.format(java.util.Locale.ROOT,"x%.1f",zoom);badge(g,zoomTag,viewX+viewW-font.width(zoomTag)-12,viewY+viewH-15,ACCENT);}
         }else if(viewH>10)text(g,image.error(),viewX+4,viewY+4,viewW-8,DIM);
-        String weather=switch(m.weather()==null?"clear":m.weather()){case "rain"->"비";case "snow"->"눈";case "fog"->"안개";default->"맑음";};String time=switch(m.timeOfDay()==null?"day":m.timeOfDay()){case "dawn"->"새벽";case "dusk"->"해질녘";case "night"->"밤";default->"낮";};
+        String weather=switch(m.weather()==null?"clear":m.weather()){case "rain"->Lang.tr("비");case "snow"->Lang.tr("눈");case "fog"->Lang.tr("안개");default->Lang.tr("맑음");};String time=switch(m.timeOfDay()==null?"day":m.timeOfDay()){case "dawn"->Lang.tr("새벽");case "dusk"->Lang.tr("해질녘");case "night"->Lang.tr("밤");default->Lang.tr("낮");};
         int chipX=b.x+6;chipX+=badge(g,weather,chipX,infoY-2,MUTED)+3;chipX+=badge(g,time,chipX,infoY-2,MUTED)+6;
-        text(g,"휠 확대 / 드래그 이동",chipX,infoY,b.right()-6-chipX,DIM);
+        text(g,Lang.tr("휠 확대 / 드래그 이동"),chipX,infoY,b.right()-6-chipX,DIM);
         var rules=state.options().game().deathmatch(state.options().deathmatch());
-        String description=selected&&"DEATHMATCH".equals(state.selectedMode())?rules.timeLimitSeconds()+"초 · 목표 "+rules.winningKills()+"킬":m.description();
+        String description=selected&&"DEATHMATCH".equals(state.selectedMode())?rules.timeLimitSeconds()+Lang.tr("초 · 목표 ")+rules.winningKills()+Lang.tr("킬"):m.description();
         int y=infoY+13;for(var line:font.split(Component.literal(description==null?"":description),Math.max(1,b.w-12))){if(y+9>b.bottom()-17)break;g.drawString(font,line,b.x+6,y,MUTED,false);y+=11;}
-        text(g,m.releaseDate()==null||m.releaseDate().isEmpty()?"맵 선택 → 맵 적용으로 경기 맵 변경":"출시 "+ReleaseDateText.format(m.releaseDate()),b.x+6,b.bottom()-12,b.w-12,DIM);
+        text(g,m.releaseDate()==null||m.releaseDate().isEmpty()?Lang.tr("맵 선택 → 맵 적용으로 경기 맵 변경"):Lang.tr("출시 ")+ReleaseDateText.format(m.releaseDate()),b.x+6,b.bottom()-12,b.w-12,DIM);
     }
     private String zoneAt(double x,double y){return alpha().contains(x,y)?"ALPHA":bravo().contains(x,y)?"BRAVO":spectators().contains(x,y)?"SPECTATOR":null;}
     private boolean overPreview(double x,double y){return !maps&&baseW>0&&x>=viewX&&x<viewX+viewW&&y>=viewY&&y<viewY+viewH;}

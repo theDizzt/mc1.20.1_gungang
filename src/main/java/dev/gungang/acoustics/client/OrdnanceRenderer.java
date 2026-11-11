@@ -25,7 +25,10 @@ public final class OrdnanceRenderer extends EntityRenderer<OrdnanceEntity> {
                 float heat=Math.max(0,Math.min(1,(progress-.6f)/.4f));heat=heat*heat*(3-2*heat);
                 float flicker=heat>0?1+.12f*heat*(float)Math.sin((entity.tickCount+partial)*2.1):1;
                 beam=(.2f+.45f*heat)*flicker;glow=.35f+.75f*heat;
-                color=new float[]{1,.05f+.75f*heat,.85f+.15f*heat};
+                // The caller's colour (two pulse into each other), heating toward a pale tint of itself.
+                int base=dev.gungang.acoustics.server.EffectColors.pulse(entity.colors(),(entity.tickCount+partial)/20.0);
+                int hot=dev.gungang.acoustics.server.EffectColors.at(new int[]{base,0xFFFFFF},.8f*heat);
+                color=new float[]{dev.gungang.acoustics.server.EffectColors.red(hot),dev.gungang.acoustics.server.EffectColors.green(hot),dev.gungang.acoustics.server.EffectColors.blue(hot)};
             }
             pose.pushPose();pose.translate(-.5,0,-.5);
             BeaconRenderer.renderBeaconBeam(pose,buffers,BEAM,partial,1,entity.level().getGameTime(),0,256,color,beam,glow);

@@ -16,12 +16,14 @@ public final class TurretRenderer extends EntityRenderer<TurretEntity> {
     @Override public void render(TurretEntity turret,float yaw,float partial,PoseStack pose,MultiBufferSource buffers,int light){
         pose.pushPose();pose.scale(2,2,2);
         part(BASE,pose,buffers,light);
+        TeamEmblems.decal(pose,buffers,light,turret.teamName(),0,.12f,-.505f,.28f,false);
+        TeamEmblems.decal(pose,buffers,light,turret.teamName(),0,.12f,.505f,.28f,true);
         pose.mulPose(Axis.YP.rotationDegrees(-turret.aimYaw()));
         part(HEAD,pose,buffers,light);
         pose.popPose();
         if(!Minecraft.getInstance().options.hideGui){
             pose.pushPose();pose.translate(0,2.25,0);pose.mulPose(entityRenderDispatcher.cameraOrientation());pose.scale(-.025f,-.025f,.025f);
-            var font=Minecraft.getInstance().font;String marker="▼ 터렛";
+            var font=Minecraft.getInstance().font;String marker=Lang.tr("▼ 터렛");
             font.drawInBatch(marker,-font.width(marker)/2f,0,turret.teamColor()|0xFF000000,false,pose.last().pose(),buffers,net.minecraft.client.gui.Font.DisplayMode.NORMAL,0x60000000,15728880);
             pose.popPose();
         }

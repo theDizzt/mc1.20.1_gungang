@@ -25,28 +25,29 @@ public final class EscortHud {
         g.pose().pushPose();g.pose().translate(g.guiWidth()/2f,top,0);g.pose().scale(scale,scale,1);
         g.fill(-180,3,180,4,LIGHT);g.fill(-180,6,-179,13,LIGHT);g.fill(179,6,180,13,LIGHT);
         track(g,v,alpha,bravo,next);
-        DeathmatchHud.small(g,"ALPHA · ATK",-166,19,.85f,alpha,false,true);
-        DeathmatchHud.small(g,motion(v),-166,30,.8f,0xFFFFFFFF,false,true);
+        TeamEmblems.draw(g,"ALPHA",-180,15,20);TeamEmblems.draw(g,"BRAVO",160,15,20);
+        DeathmatchHud.small(g,"ALPHA · ATK",-156,19,.85f,alpha,false,true);
+        DeathmatchHud.small(g,motion(v),-156,30,.8f,0xFFFFFFFF,false,true);
         distance(g,meters(next-v.distance())+"m",-72,23);
-        DeathmatchHud.small(g,"BRAVO · DEF",166,19,.85f,bravo,false,false);
-        DeathmatchHud.small(g,v.completed()>=v.checkpoints().size()?"최종 목적지":"체크포인트 "+(v.completed()+1)+" / "+v.checkpoints().size(),166,30,.8f,0xFFFFFFFF,false,false);
+        DeathmatchHud.small(g,"BRAVO · DEF",156,19,.85f,bravo,false,false);
+        DeathmatchHud.small(g,v.completed()>=v.checkpoints().size()?Lang.tr("최종 목적지"):Lang.tr("체크포인트 ")+(v.completed()+1)+" / "+v.checkpoints().size(),156,30,.8f,0xFFFFFFFF,false,false);
         distance(g,meters(v.length()-v.distance())+"m",72,23);
         if(v.overtimeTicks()>0){
             overtime(g,String.format(Locale.ROOT,"%.1f",v.overtimeTicks()/20.0),17,1.6f,v.overtimeTicks()<=40?0xFFFF6B6B:AMBER);
-            DeathmatchHud.small(g,"추가시간",0,32,.8f,AMBER,true);
+            DeathmatchHud.small(g,Lang.tr("추가시간"),0,32,.8f,AMBER,true);
         }else {
             MatchTimerHud.drawAt(g,snapshot,0,16,true);
-            if("PREPARING".equals(snapshot.phase()))DeathmatchHud.small(g,"준비 중",0,32,.8f,LIGHT,true);
+            if("PREPARING".equals(snapshot.phase()))DeathmatchHud.small(g,Lang.tr("준비 중"),0,32,.8f,LIGHT,true);
         }
         g.pose().popPose();return top+Math.round(55*scale);
     }
     private static String motion(EscortMatch.View v){
         return switch(v.motion()){
-            case "FORWARD" -> "전진 x"+String.format(Locale.ROOT,"%.2f",v.multiplier());
-            case "REVERSE" -> "후퇴 중";
-            case "CONTESTED" -> "경합 중";
-            case "CHECKPOINT" -> "정차 "+String.format(Locale.ROOT,"%.1f",v.stopTicks()/20.0)+"s";
-            default -> "정지";
+            case "FORWARD" -> Lang.tr("전진 x")+String.format(Locale.ROOT,"%.2f",v.multiplier());
+            case "REVERSE" -> Lang.tr("후퇴 중");
+            case "CONTESTED" -> Lang.tr("경합 중");
+            case "CHECKPOINT" -> Lang.tr("정차 ")+String.format(Locale.ROOT,"%.1f",v.stopTicks()/20.0)+"s";
+            default -> Lang.tr("정지");
         };
     }
     private static void distance(GuiGraphics g,String text,int cx,int cy){

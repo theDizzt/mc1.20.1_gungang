@@ -49,12 +49,12 @@ public final class MatchHud {
         }
     }
     static Component resultTitle(MatchSnapshot result) {
-        if(result.winner().equals("DRAW"))return Component.literal("무승부");
-        if(result.winner().equals("ABORTED"))return Component.literal("경기 종료");
-        if(FreeForAllHud.is(result)){var row=result.players().stream().filter(r->r.id().equals(result.winner())).findFirst().orElse(null);return Component.literal((row==null?"":row.name())+" 승리").withStyle(style->style.withColor(row==null?0xFFFFFF:row.color()));}
+        if(result.winner().equals("DRAW"))return Component.literal(Lang.tr("무승부"));
+        if(result.winner().equals("ABORTED"))return Component.literal(Lang.tr("경기 종료"));
+        if(FreeForAllHud.is(result)){var row=result.players().stream().filter(r->r.id().equals(result.winner())).findFirst().orElse(null);return Component.literal((row==null?"":row.name())+Lang.tr(" 승리")).withStyle(style->style.withColor(row==null?0xFFFFFF:row.color()));}
         var options=result.options()==null?TeamOptions.defaults():result.options();
         return Component.empty().append(Component.literal("Team "+result.winner()).withStyle(s->s.withColor(options.color(result.winner())&0xFFFFFF)))
-                .append(Component.literal(" 승리").withStyle(ChatFormatting.WHITE));
+                .append(Component.literal(Lang.tr(" 승리")).withStyle(ChatFormatting.WHITE));
     }
     @SubscribeEvent public static void tick(net.minecraftforge.event.TickEvent.ClientTickEvent event) {
         if(event.phase!=net.minecraftforge.event.TickEvent.Phase.END||pendingResult==null)return;
@@ -110,7 +110,7 @@ public final class MatchHud {
         else {y=ControlPointHud.draw(g,state)+4;if(state.point()==null)MatchTimerHud.draw(g,state,y);}
         WeaponRollClient.draw(g,y);
         if(mc.screen==null&&mc.options.keyPlayerList.isDown()) {
-            String label="경과 시간",time=MatchReport.time(state.elapsedSeconds());
+            String label=Lang.tr("경과 시간"),time=MatchReport.time(state.elapsedSeconds());
             int w=mc.font.width(label)+HudText.timeWidth(time)+20,cx=g.guiWidth()/2-w/2;
             g.fill(cx,y+18,cx+w,y+31,0x90141511);g.fill(cx,y+30,cx+w,y+31,TacticalStyle.GOLD);
             g.drawString(mc.font,label,cx+7,y+21,TacticalStyle.MUTED,false);
@@ -156,10 +156,10 @@ public final class MatchHud {
         g.fillGradient(left,top,right,bottom,0xB01D1F18,0xB010110E);
         g.fillGradient(left,top,right,top+HEAD,rgb|0x50000000,rgb|0x08000000);
         g.fill(left,top,right,top+2,color|0xFF000000);
-        g.fill(left+8,top+9,left+10,top+19,color|0xFF000000);
-        g.drawString(font,name,left+14,top+7,0xFFFFFFFF,false);
+        TeamEmblems.draw(g,name,left+5,top+4,25);
+        g.drawString(font,name,left+34,top+7,0xFFFFFFFF,false);
         long kills=rows.stream().mapToLong(MatchSnapshot.Row::kills).sum();
-        g.drawString(font,rows.size()+"명 · "+kills+" 킬",left+14,top+17,TacticalStyle.MUTED,false);
+        g.drawString(font,rows.size()+Lang.tr("명 · ")+kills+Lang.tr(" 킬"),left+34,top+17,TacticalStyle.MUTED,false);
         String total=String.valueOf(score);
         g.pose().pushPose();g.pose().translate(right-8-HudText.numberWidth(total)*2,top+6,0);g.pose().scale(2,2,1);
         HudText.drawNumber(g,HudText.number(total),0,0,leading?0xFFFFFFFF:0xFFB4C0CE);g.pose().popPose();
@@ -167,12 +167,12 @@ public final class MatchHud {
         int dmg=right-8,assist=dmg-46,death=assist-22,kill=death-22,face=left+26,nameX=face+30,cy=top+HEAD;
         g.fill(left,cy,right,cy+COLS,0x30000000);g.fill(left,cy+COLS-1,right,cy+COLS,TacticalStyle.EDGE);
         g.drawString(font,"#",left+8,cy+3,TacticalStyle.DIM,false);
-        g.drawString(font,"플레이어",face,cy+3,TacticalStyle.DIM,false);
+        g.drawString(font,Lang.tr("플레이어"),face,cy+3,TacticalStyle.DIM,false);
         column(g,"K",kill,cy+3,TacticalStyle.DIM);column(g,"D",death,cy+3,TacticalStyle.DIM);
         column(g,"A",assist,cy+3,TacticalStyle.DIM);column(g,"DMG",dmg,cy+3,TacticalStyle.DIM);
         String self=mc.player==null?"":mc.player.getUUID().toString();
         int start=page*capacity,count=Math.max(0,Math.min(capacity,rows.size()-start));
-        if(count==0)g.drawString(font,"플레이어 없음",left+(width-font.width("플레이어 없음"))/2,cy+COLS+5,TacticalStyle.DIM,false);
+        if(count==0)g.drawString(font,Lang.tr("플레이어 없음"),left+(width-font.width(Lang.tr("플레이어 없음")))/2,cy+COLS+5,TacticalStyle.DIM,false);
         for(int i=0;i<count;i++) {
             var row=rows.get(start+i);int ry=cy+COLS+i*ROW,rank=start+i+1;boolean mine=row.id().equals(self);
             if(mine){g.fill(left,ry,right,ry+ROW,rgb|0x38000000);g.fill(left,ry,left+2,ry+ROW,color|0xFF000000);}
@@ -182,7 +182,7 @@ public final class MatchHud {
             g.fill(face-1,ry+2,face+13,ry+16,mine?color|0xFF000000:TacticalStyle.EDGE);
             PlayerFaceRenderer.draw(g,row.skin()!=null&&!row.skin().isEmpty()?BotRenderer.texture(row.skin()):skin(row.id()),face,ry+3,12);
             PlayerLevels.draw(g,row.id(),face+15,ry+3,12);
-            g.drawString(font,font.plainSubstrByWidth(row.name(),Math.max(1,kill-22-nameX)),nameX,ry+5,mine?0xFFFFFFFF:TacticalStyle.INK,false);
+            Marquee.draw(g,font,row.name(),nameX,ry+5,Math.max(1,kill-22-nameX),mine?0xFFFFFFFF:TacticalStyle.INK,false);
             column(g,String.valueOf(row.kills()),kill,ry+5,0xFFFFFFFF);
             column(g,String.valueOf(row.deaths()),death,ry+5,0xFFE08A8A);
             column(g,String.valueOf(row.assists()),assist,ry+5,TacticalStyle.MUTED);
@@ -221,19 +221,19 @@ public final class MatchHud {
         Results(MatchSnapshot result) { super(resultTitle(result)); this.result=result; }
         @Override boolean seeThrough() { return true; }
         @Override protected void init() {
-            button("이전",left()+10,height-40,60,20,true,ACCENT,()->current=Math.max(0,current-1));
-            button("다음",left()+76,height-40,60,20,true,ACCENT,()->current=Math.min(tablePages(result,height-112)-1,current+1));
+            button(Lang.tr("이전"),left()+10,height-40,60,20,true,ACCENT,()->current=Math.max(0,current-1));
+            button(Lang.tr("다음"),left()+76,height-40,60,20,true,ACCENT,()->current=Math.min(tablePages(result,height-112)-1,current+1));
             closeButton(left()+body()-80,height-40,70,20);
         }
         @Override public void render(GuiGraphics g,int mx,int my,float partial) {
             if(FreeForAllHud.is(result)){
                 var winner=result.players().stream().filter(r->r.id().equals(result.winner())).findFirst().orElse(null);
-                var subtitle=Component.literal(result.map()+" · 플레이 시간 "+MatchReport.time(result.seconds()));
-                if(winner!=null)subtitle.append(Component.literal(" · 1위 ").withStyle(ChatFormatting.GRAY))
-                        .append(Component.literal(winner.name()+" "+winner.score()+"점").withStyle(s->s.withColor(winner.color()&0xFFFFFF)));
+                var subtitle=Component.literal(result.map()+Lang.tr(" · 플레이 시간 ")+MatchReport.time(result.seconds()));
+                if(winner!=null)subtitle.append(Component.literal(Lang.tr(" · 1위 ")).withStyle(ChatFormatting.GRAY))
+                        .append(Component.literal(winner.name()+" "+winner.score()+Lang.tr("점")).withStyle(s->s.withColor(winner.color()&0xFFFFFF)));
                 shell(g,subtitle);
             }
-            else shell(g,Component.literal(result.map()+" · 플레이 시간 "+MatchReport.time(result.seconds())+" · ")
+            else shell(g,Component.literal(result.map()+Lang.tr(" · 플레이 시간 ")+MatchReport.time(result.seconds())+" · ")
                     .append(Component.literal("Team ALPHA "+result.alphaScore()).withStyle(s->s.withColor((result.options()==null?TeamOptions.defaults():result.options()).color("ALPHA")&0xFFFFFF)))
                     .append(Component.literal(" : ").withStyle(ChatFormatting.GRAY))
                     .append(Component.literal("Team Bravo "+result.bravoScore()).withStyle(s->s.withColor((result.options()==null?TeamOptions.defaults():result.options()).color("BRAVO")&0xFFFFFF))));

@@ -157,6 +157,11 @@ public final class CombatGadgets {
     }
     public static Hud hud(ServerPlayer p) {
         var gauges=new ArrayList<Gauge>();long now=p.level().getGameTime();
+        for(var flag:CommandFlags.owned(p.getUUID())){
+            gauges.add(new Gauge("command_flag_range",(float)flag.radius(),1,false));
+            gauges.add(new Gauge("command_flag_health",flag.getHealth(),flag.getMaxHealth(),false));
+            gauges.add(new Gauge("command_flag_age",flag.age(),flag.globalTicks(),false));
+        }
         var turret=Turrets.owned(p.getUUID());
         if(turret!=null){gauges.add(new Gauge("turret_health",turret.getHealth(),turret.getMaxHealth(),false));gauges.add(new Gauge("turret_ammo",turret.ammo(),turret.capacity(),false));}
         var m95=M95.gauge(p);if(m95!=null)gauges.add(m95);

@@ -44,7 +44,7 @@ public final class RespawnPortrait {
         var state=SERVER.get(mc.player.getUUID());
         if(state==null) return;
         var g=event.getGuiGraphics();
-        String label="부활까지 "+Math.max(0,(state.until()-clock+19)/20)+"초 · ["+LobbyClient.LOADOUT.getTranslatedKeyMessage().getString()+"] 무기 변경";
+        String label=Lang.tr("부활까지 ")+Math.max(0,(state.until()-clock+19)/20)+Lang.tr("초 · [")+LobbyClient.LOADOUT.getTranslatedKeyMessage().getString()+Lang.tr("] 무기 변경");
         int width=mc.font.width(label),x=(g.guiWidth()-width)/2,y=g.guiHeight()/2+45;
         g.fill(x-8,y-5,x+width+8,y+14,0xCE101A27);
         g.drawString(mc.font,label,x,y,0xFFFFFFFF,true);

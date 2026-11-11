@@ -21,7 +21,8 @@ import net.minecraftforge.fml.common.Mod;
  */
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID,value=Dist.CLIENT)
 public final class Las5Beam {
-    private record Beam(Vec3 from,Vec3 to,long born,boolean m95){}
+    /** {@code colors}: the shooter's effect colours (las5 or m95, {@link dev.gungang.acoustics.server.EffectColors}). */
+    private record Beam(Vec3 from,Vec3 to,long born,boolean m95,int[] colors){}
     private static final List<Beam> BEAMS=new ArrayList<>();
     /** Beam life in ticks. */
     private static final int LIFE=3;
@@ -36,16 +37,18 @@ public final class Las5Beam {
         var start=new Vec3(shot.fx(),shot.fy(),shot.fz());var end=new Vec3(shot.tx(),shot.ty(),shot.tz());
         var dir=end.subtract(start);if(dir.lengthSqr()<1e-6)return;
         var owner=shot.owner()<0?null:mc.level.getEntity(shot.owner());
-        BEAMS.add(new Beam(muzzle(owner,start,dir.normalize()),end,mc.level.getGameTime(),false));
+        BEAMS.add(new Beam(muzzle(owner,start,dir.normalize()),end,mc.level.getGameTime(),false,colors(owner,"las5")));
         if(BEAMS.size()>64)BEAMS.remove(0);
     }
     public static void receive(dev.gungang.acoustics.server.GungangNetwork.M95Shot shot){
         var mc=Minecraft.getInstance();if(mc.level==null)return;
         Vec3 from=new Vec3(shot.fx(),shot.fy(),shot.fz()),to=new Vec3(shot.tx(),shot.ty(),shot.tz());
         if(from.distanceToSqr(to)<1e-8)return;
-        BEAMS.add(new Beam(muzzle(mc.level.getEntity(shot.owner()),from,to.subtract(from).normalize()),to,mc.level.getGameTime(),true));
+        var owner=mc.level.getEntity(shot.owner());
+        BEAMS.add(new Beam(muzzle(owner,from,to.subtract(from).normalize()),to,mc.level.getGameTime(),true,colors(owner,"m95")));
         if(BEAMS.size()>64)BEAMS.remove(0);
     }
+    private static int[] colors(Entity owner,String key){return dev.gungang.acoustics.server.EffectColors.client(owner==null?null:owner.getUUID(),key);}
     /** Roughly the gun's muzzle in the shooter's right hand, not the eye the bullet starts from. */
     private static Vec3 muzzle(Entity owner,Vec3 start,Vec3 dir){
         if(!(owner instanceof LivingEntity))return start;
@@ -66,9 +69,12 @@ public final class Las5Beam {
             var from=new org.joml.Vector3f((float)(beam.from().x-camera.x),(float)(beam.from().y-camera.y),(float)(beam.from().z-camera.z));
             var to=new org.joml.Vector3f((float)(beam.to().x-camera.x),(float)(beam.to().y-camera.y),(float)(beam.to().z-camera.z));
             var dir=new org.joml.Vector3f(to).sub(from);if(dir.lengthSquared()<1e-4f)continue;dir.normalize();
+            int glow=dev.gungang.acoustics.server.EffectColors.pulse(beam.colors(),(now+partial)/20.0);
+            // The LAS-5 core is the glow colour washed toward white; the M95 tracer is one colour throughout.
+            int core=beam.m95()?glow:dev.gungang.acoustics.server.EffectColors.at(new int[]{glow,0xFFFFFF},.65f);
             for(float[] layer:LAYERS){
-                boolean core=layer[2]>0;
-                PropObjectRenderer.strip(buffer,matrix,from,to,dir,eye,layer[0],beam.m95()?133/255f:1,beam.m95()?219/255f:core?1:.86f,beam.m95()?217/255f:core?.75f:.1f,layer[1]*fade);
+                int color=layer[2]>0?core:glow;
+                PropObjectRenderer.strip(buffer,matrix,from,to,dir,eye,layer[0],dev.gungang.acoustics.server.EffectColors.red(color),dev.gungang.acoustics.server.EffectColors.green(color),dev.gungang.acoustics.server.EffectColors.blue(color),layer[1]*fade);
             }
         }
         buffers.endBatch(RenderType.lightning());

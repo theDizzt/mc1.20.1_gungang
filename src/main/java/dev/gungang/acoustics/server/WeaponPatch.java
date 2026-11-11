@@ -96,8 +96,26 @@ public final class WeaponPatch {
     /** Max health and movement speed are not edited for secondaries: neither offered nor accepted. */
     private static final Set<String> SECONDARY_HIDDEN = Set.of("maxHealth", "movementSpeed");
     private static final Map<String, String> SECONDARY_LABELS = Map.of("cooldownSeconds", "쿨타임 (초)", "plantSeconds", "설치 시간 (초)", "fuseSeconds", "폭발 시간 (초)", "defuseSeconds", "해체 시간 (초)");
+    /** Labels for one item's own fields ("setting.field"), ahead of {@link #ITEM_LABELS}, where the shared name would mislead. */
+    private static final Map<String, String> ITEM_LABELS_OF = Map.of(
+            "hermes_boots.dashDistance", "돌진 거리 (블록)", "hermes_boots.dashSeconds", "돌진 시간 (초)",
+            "hermes_boots.maxCharges", "최대 충전 횟수", "hermes_boots.chargeSeconds", "1회 충전 시간 (초)",
+            "hermes_boots.trailSeconds", "글로우 잔상 유지 시간 (초)");
+    private static String itemLabel(String item, String field) {
+        return ITEM_LABELS_OF.getOrDefault(item + "." + field, ITEM_LABELS.getOrDefault(field, field));
+    }
     /** Item effect setting labels; anything not listed shows its field name. */
     private static final Map<String, String> ITEM_LABELS = Map.ofEntries(
+            Map.entry("placementRange", "설치 최대 거리 (블록)"),
+            Map.entry("baseRadius", "깃발 기본 효과 반경 (블록)"),
+            Map.entry("baseHealPerSecond", "깃발 기본 초당 회복량"),
+            Map.entry("healingUpgradeSeconds", "회복 강화까지 생존 시간 (초)"),
+            Map.entry("upgradedHealPerSecond", "깃발 강화 초당 회복량"),
+            Map.entry("healingRadius", "회복 강화 후 반경 (블록)"),
+            Map.entry("defenseUpgradeSeconds", "피해 감소 활성화까지 생존 시간 (초)"),
+            Map.entry("defenseRadius", "피해 감소 활성화 후 반경 (블록)"),
+            Map.entry("damageReductionPercent", "받는 피해 감소율 (%)"),
+            Map.entry("globalUpgradeSeconds", "모든 아군 적용까지 생존 시간 (초)"),
             Map.entry("piercingDamage", "관통탄 기본 피해"),
             Map.entry("normalHitCharge", "일반탄 명중 시 관통력 획득량"),
             Map.entry("smallDamageFalloff", "1단계 관통탄 거리 피해 감소 적용"),Map.entry("largeDamageFalloff", "2단계 관통탄 거리 피해 감소 적용"),
@@ -365,7 +383,7 @@ public final class WeaponPatch {
         String item = itemSetting(weapon);
         if (item == null) return;
         for (var field : ConfigModify.editable("item", item).entrySet())
-            rows.add(new Row("item:" + field.getKey(), item.equals("m95")&&field.getKey().equals("damage")?"일반탄 기본 피해":ITEM_LABELS.getOrDefault(field.getKey(), field.getKey()), "item", ConfigModify.numeric("item", item, field.getKey()), number(text(field.getValue()))));
+            rows.add(new Row("item:" + field.getKey(), item.equals("m95")&&field.getKey().equals("damage")?"일반탄 기본 피해":itemLabel(item, field.getKey()), "item", ConfigModify.numeric("item", item, field.getKey()), number(text(field.getValue()))));
     }
     /** Secondary changes: weapon file and item effect settings (lobby only, like /gungang modify), then TaCZ data. */
     private static String applySecondary(ServerPlayer player, String id, Map<String, String> changes) throws Exception {

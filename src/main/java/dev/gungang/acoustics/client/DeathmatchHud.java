@@ -17,8 +17,8 @@ final class DeathmatchHud {
             else {
                 var colors=state.options()==null?TeamOptions.defaults():state.options();
                 int goal=state.point()==null?0:state.point().goal();
-                MatchRibbonHud.wing(g,true,colors.color("ALPHA"),state.alphaScore(),goal,"ALPHA",goal>0?"목표 "+goal:"");
-                MatchRibbonHud.wing(g,false,colors.color("BRAVO"),state.bravoScore(),goal,"BRAVO",goal>0?"목표 "+goal:"");
+                MatchRibbonHud.wing(g,true,colors.color("ALPHA"),state.alphaScore(),goal,"ALPHA",goal>0?Lang.tr("목표 ")+goal:"");
+                MatchRibbonHud.wing(g,false,colors.color("BRAVO"),state.bravoScore(),goal,"BRAVO",goal>0?Lang.tr("목표 ")+goal:"");
             }
             MatchTimerHud.drawAt(g,state,0,3);
             g.pose().popPose();
@@ -51,7 +51,7 @@ final class DeathmatchHud {
         var dead=state.bomb().deadPlayers()==null?java.util.List.<String>of():state.bomb().deadPlayers();
         var members=state.players().stream().filter(r->team.equals(r.team())).toList();
         long left=members.stream().filter(r->!dead.contains(r.id())).count();
-        return "생존 "+left+"/"+members.size();
+        return Lang.tr("생존 ")+left+"/"+members.size();
     }
     /** Attacking is null outside bomb rounds; otherwise it picks the ATK/DEF tag. Note sits beside the tag (bomb survivors). */
     static void team(GuiGraphics g,boolean left,String name,int color,int score,boolean leading,Boolean attacking,String note) {
@@ -67,7 +67,7 @@ final class DeathmatchHud {
             int tx=left?edge:edge-w;
             g.fill(tx,y1+14,tx+w,y1+21,(tagColor&0xFFFFFF)|0x40000000);g.fill(tx,y1+14,tx+1,y1+21,tagColor);
             small(g,tag,tx+3,y1+15,.6f,tagColor,false,true);
-            if(!note.isEmpty())small(g,note,left?tx+w+3:tx-3,y1+15,.6f,note.startsWith("생존 0/")?0xFFFF6B6B:0xFFFFFFFF,false,left);
+            if(!note.isEmpty())small(g,note,left?tx+w+3:tx-3,y1+15,.6f,note.startsWith(Lang.tr("생존 ")+"0/")?0xFFFF6B6B:0xFFFFFFFF,false,left);
         }
     }
     /** Draws a score scaled about its centre so the pop grows in place; popping scores flash white. */
@@ -93,6 +93,12 @@ final class DeathmatchHud {
         if(bright)TacticalStyle.corner(g,x2,y1,4,color|0xFF000000);
     }
     static void small(GuiGraphics g,String text,int x,int y,float size,int color,boolean centered) { small(g,text,x,y,size,color,centered,true); }
+    /** {@link #small} (not centred) in a box {@code width} text pixels wide, scrolling when longer (Marquee). */
+    static void smallMarquee(GuiGraphics g,String text,int x,int y,float size,int color,boolean leftAnchor,int width) {
+        var font=Minecraft.getInstance().font;float w=Math.min(width,font.width(text))*size;
+        g.pose().pushPose();g.pose().translate(leftAnchor?x:x-w,y,0);g.pose().scale(size,size,1);
+        Marquee.draw(g,font,text,0,0,width,color,true);g.pose().popPose();
+    }
     /** Scaled label; leftAnchor=false right-aligns it to x. */
     static void small(GuiGraphics g,String text,int x,int y,float size,int color,boolean centered,boolean leftAnchor) {
         var font=Minecraft.getInstance().font;float w=font.width(text)*size;

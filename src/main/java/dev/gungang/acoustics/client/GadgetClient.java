@@ -56,7 +56,7 @@ public final class GadgetClient {
             else if(placing()&&mc.isWindowActive()&&!mc.isPaused()&&!mc.options.keyAttack.isDown()&&!holdSent) {
                 var pos=preview.equals("turret")?Turrets.target(mc.player,range):GadgetManager.target(mc.player,range);
                 boolean allowed=preview.equals("turret")?Turrets.valid(mc.player,pos)
-                        :GadgetManager.valid(mc.player,pos,preview.equals("barrier"),mc.player.getDirection().getAxis()==Direction.Axis.X);
+                        :preview.equals("command_flag")?CommandFlags.valid(mc.player,pos):GadgetManager.valid(mc.player,pos,preview.equals("barrier"),mc.player.getDirection().getAxis()==Direction.Axis.X);
                 if(!allowed)holdTicks=0;
                 else if(++holdTicks>=10) {holdSent=true;LobbyClient.action("place","","");}
             } else holdTicks=0;
@@ -78,7 +78,7 @@ public final class GadgetClient {
     }
     @SubscribeEvent public static void hint(RenderGuiEvent.Post e) {
         if(preview.isEmpty())return;var mc=Minecraft.getInstance();if(mc.screen!=null||mc.options.hideGui||!HudVisibility.enabled())return;
-        String text="G 길게 눌러 설치 · 우클릭 설치 · 좌클릭/H 취소";var g=e.getGuiGraphics();
+        String text=Lang.tr("G 길게 눌러 설치 · 우클릭 설치 · 좌클릭/H 취소");var g=e.getGuiGraphics();
         g.drawString(mc.font,text,(g.guiWidth()-mc.font.width(text))/2,g.guiHeight()/2+25,0xFFFFFFFF,true);
     }
     @SubscribeEvent public static void world(RenderLevelStageEvent e) {
@@ -87,11 +87,11 @@ public final class GadgetClient {
         var pos=preview.equals("turret")?Turrets.target(mc.player,range):GadgetManager.target(mc.player,range);if(pos==null)return;
         boolean wall=preview.equals("barrier"),east=mc.player.getDirection().getAxis()==Direction.Axis.X;
         boolean turret=preview.equals("turret");
-        boolean valid=turret?Turrets.valid(mc.player,pos):GadgetManager.valid(mc.player,pos,wall,east);
+        boolean valid=turret?Turrets.valid(mc.player,pos):preview.equals("command_flag")?CommandFlags.valid(mc.player,pos):GadgetManager.valid(mc.player,pos,wall,east);
         var pose=e.getPoseStack();var camera=e.getCamera().getPosition();
         pose.pushPose();pose.translate(-camera.x,-camera.y,-camera.z);
         var buffers=mc.renderBuffers().bufferSource();
-        LevelRenderer.renderLineBox(pose,buffers.getBuffer(RenderType.lines()),turret?Turrets.bounds(mc.level,pos):GadgetManager.bounds(mc.level,pos,wall,east),valid?.25f:1,valid?1:.2f,.3f,1);
+        LevelRenderer.renderLineBox(pose,buffers.getBuffer(RenderType.lines()),turret?Turrets.bounds(mc.level,pos):preview.equals("command_flag")?CommandFlags.bounds(mc.level,pos):GadgetManager.bounds(mc.level,pos,wall,east),valid?.25f:1,valid?1:.2f,.3f,1);
         buffers.endBatch(RenderType.lines());pose.popPose();
     }
     private GadgetClient() { }
