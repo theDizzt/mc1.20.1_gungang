@@ -50,6 +50,13 @@ public final class UtilityHud {
         CombatGadgets.Gauge turretAmmo=null;
         for(var gauge:state.gauges())if(gauge.kind().equals("turret_ammo"))turretAmmo=gauge;
         for(var gauge:state.gauges()) {
+            if(gauge.kind().equals("m95_observed"))continue;
+            if(gauge.kind().equals("m95_scope")){
+                float remaining=Math.max(0,gauge.remaining()-(mc.level.getGameTime()-received+partial));
+                String label=remaining>0?String.format(java.util.Locale.ROOT,"투시까지 %.1f초",remaining/20):"투시 준비 완료";
+                gauge(g,center,y,width,height,gauge.maximum()-remaining,gauge.maximum(),label,partial);
+                y-=height+4;continue;
+            }
             if(gauge.kind().equals("m95")){
                 gauge(g,center,y,width,height,gauge.remaining(),gauge.maximum(),"관통력 "+HudHealth.number(gauge.remaining())+"/"+HudHealth.number(gauge.maximum()),partial);
                 y-=height+4;continue;
@@ -68,6 +75,9 @@ public final class UtilityHud {
             String value=gauge.timed()?String.format(java.util.Locale.ROOT,"%.1fs",remaining/20f):HudHealth.number(remaining)+"/"+HudHealth.number(gauge.maximum());
             gauge(g,center,y,width,height,remaining,gauge.maximum(),name+" "+value,partial);
             y-=height+4;
+        }
+        for(var gauge:state.gauges())if(gauge.kind().equals("m95_observed")&&gauge.remaining()-(mc.level.getGameTime()-received+partial)>0){
+            g.drawString(mc.font,"관측됨",center-mc.font.width("관측됨")/2,y,0xFFFF7777,true);break;
         }
     }
     static void gauge(GuiGraphics g,int center,int y,int width,int height,float remaining,float maximum,String label,float partial) {
