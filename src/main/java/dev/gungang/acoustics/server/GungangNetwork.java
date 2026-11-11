@@ -55,6 +55,7 @@ public final class GungangNetwork {
     public record Las5Shot(int owner,double fx,double fy,double fz,double tx,double ty,double tz) { }
     public record M95Shot(int owner,double fx,double fy,double fz,double tx,double ty,double tz) { }
     public record M95EchoPacket(java.util.List<M95Echo.Target> targets) { }
+    public record M95Observed(java.util.List<java.util.UUID> targets) { }
     /** A TaCZ gun-pack sound for the receiving player only (e.g. tacz:kill for a twin-blades kill). */
     public record KillSound(String sound) { }
     /** Pending status-ailment damage per entity id in the receiver's dimension (purple share of health bars). */
@@ -116,6 +117,12 @@ public final class GungangNetwork {
                 b->new M95Shot(b.readVarInt()-1,b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble()),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.Las5Beam.receive(p)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(44,M95Observed.class,(p,b)->b.writeCollection(p.targets,(buf,id)->buf.writeUUID(id)),b->{
+            int size=b.readVarInt();if(size<0||size>512)throw new IllegalArgumentException("Too many observed targets");
+            var ids=new java.util.ArrayList<java.util.UUID>(size);for(int i=0;i<size;i++)ids.add(b.readUUID());return new M95Observed(ids);
+        },(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->M95Echo.observed(ctx.getSender(),p.targets));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(43,M95EchoPacket.class,(p,b)->b.writeCollection(p.targets,(buf,t)->{buf.writeDouble(t.x());buf.writeDouble(t.y());buf.writeDouble(t.z());buf.writeUUID(t.id());}),
                 b->new M95EchoPacket(b.readList(buf->new M95Echo.Target(buf.readDouble(),buf.readDouble(),buf.readDouble(),buf.readUUID()))),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.M95EchoHud.receive(p.targets)));ctx.setPacketHandled(true);

@@ -5,10 +5,29 @@ import java.io.IOException;
 /** Configurations for equipment whose original implementations used fixed constants. */
 public final class ExtraGadgetConfig {
     public record M95(double damage,double headshotMultiplier,int magazine,double rechargePerSecond,double maximumCharge,
-                      double smallThreshold,int smallBlocks,double largeThreshold,int largeBlocks,double thirdThreshold,int thirdBlocks,double unlimitedThreshold,double hitscanRange,double scopeRevealSeconds) { }
-    public static M95 m95=new M95(51,1.33,3,15,200,10,1,50,3,100,10,150,256,20);
-    public record ArrowGrenade(double damage,double projectileRange,double durationSeconds,double cooldownSeconds,int emissionIntervalTicks,double projectileSpeed,double throwSpeed) { }
-    public static ArrowGrenade arrowGrenade=new ArrowGrenade(16,6,12,30,20,1.2,1.1);
+                      double smallThreshold,int smallBlocks,double largeThreshold,int largeBlocks,double thirdThreshold,int thirdBlocks,double unlimitedThreshold,double hitscanRange,double scopeRevealSeconds,
+                      double smallHitPadding,double largeHitPadding,double thirdHitPadding,double unlimitedHitPadding,
+                      boolean smallDamageFalloff,boolean largeDamageFalloff,boolean thirdDamageFalloff,boolean unlimitedDamageFalloff,double piercingDamage,double normalHitCharge) {
+        public M95(double damage,double headshotMultiplier,int magazine,double rechargePerSecond,double maximumCharge,double smallThreshold,int smallBlocks,double largeThreshold,int largeBlocks,double thirdThreshold,int thirdBlocks,double unlimitedThreshold,double hitscanRange,double scopeRevealSeconds,double smallHitPadding,double largeHitPadding,double thirdHitPadding,double unlimitedHitPadding){
+            this(damage,headshotMultiplier,magazine,rechargePerSecond,maximumCharge,smallThreshold,smallBlocks,largeThreshold,largeBlocks,thirdThreshold,thirdBlocks,unlimitedThreshold,hitscanRange,scopeRevealSeconds,smallHitPadding,largeHitPadding,thirdHitPadding,unlimitedHitPadding,true,true,false,false,damage,50);
+        }
+        public M95(double damage,double headshotMultiplier,int magazine,double rechargePerSecond,double maximumCharge,double smallThreshold,int smallBlocks,double largeThreshold,int largeBlocks,double thirdThreshold,int thirdBlocks,double unlimitedThreshold,double hitscanRange,double scopeRevealSeconds){
+            this(damage,headshotMultiplier,magazine,rechargePerSecond,maximumCharge,smallThreshold,smallBlocks,largeThreshold,largeBlocks,thirdThreshold,thirdBlocks,unlimitedThreshold,hitscanRange,scopeRevealSeconds,0,.4,.4,.4);
+        }
+        public M95 withScopeDelay(double seconds){return new M95(damage,headshotMultiplier,magazine,rechargePerSecond,maximumCharge,smallThreshold,smallBlocks,largeThreshold,largeBlocks,thirdThreshold,thirdBlocks,unlimitedThreshold,hitscanRange,seconds,smallHitPadding,largeHitPadding,thirdHitPadding,unlimitedHitPadding,smallDamageFalloff,largeDamageFalloff,thirdDamageFalloff,unlimitedDamageFalloff,piercingDamage,normalHitCharge);}
+    }
+    public static M95 m95=new M95(51,1.33,3,15,200,10,1,50,3,100,10,150,256,10);
+    public record AirAssault(double centerSize,double centerDamage,double outerSize,double outerDamage,double shockwaveSize,double shockwaveDamage,
+                             double hoverSeconds,double diveRange,double diveSeconds,double airborneReductionPercent,double hitSpeedBonusPercent,double hitSpeedSeconds) { }
+    public static final AirAssault AIR_ASSAULT_DEFAULTS=new AirAssault(2,60,4,45,12,10,1,15,.3,15,15,1.25);
+    public static AirAssault airAssault=AIR_ASSAULT_DEFAULTS;
+    public record VoidAnchor(double health,double pullRange,int maxTargets,double pullBlocksPerSecond,double damage) { }
+    public static final VoidAnchor VOID_ANCHOR_DEFAULTS=new VoidAnchor(60,10,1,5,20);
+    public static VoidAnchor voidAnchor=VOID_ANCHOR_DEFAULTS;
+    public record ArrowGrenade(double damage,double projectileRange,double durationSeconds,double cooldownSeconds,double emissionIntervalSeconds,double projectileSpeed,double throwSpeed) {
+        public int emissionIntervalTicks(){return Math.max(1,ticks(emissionIntervalSeconds));}
+    }
+    public static ArrowGrenade arrowGrenade=new ArrowGrenade(16,6,12,30,1,1.2,1.1);
     public record Molotov(double radius,double durationSeconds,int burnSeconds,double cooldownSeconds,double burnDamage) {
         public Molotov(double radius,double duration,int burn,double cooldown){this(radius,duration,burn,cooldown,1);}
     }
@@ -99,13 +118,18 @@ public final class ExtraGadgetConfig {
         load(java.util.Map.of(),true);
     }
     static void load(java.util.Map<String,com.google.gson.JsonObject> overrides,boolean apply)throws IOException {
-        var ag=GadgetConfig.read("arrow_grenade",ArrowGrenade.class,new ArrowGrenade(16,6,12,30,20,1.2,1.1),overrides,apply);
-        if(!overrides.containsKey("arrow_grenade")&&ag.emissionIntervalTicks()==1) {
-            ag=new ArrowGrenade(ag.damage(),ag.projectileRange(),ag.durationSeconds(),ag.cooldownSeconds(),20,ag.projectileSpeed(),ag.throwSpeed());
-            if(apply)java.nio.file.Files.writeString(ServerFiles.root().resolve("item/arrow_grenade.json"),ServerFiles.GSON.toJson(ag));
-        }
+        var assault=GadgetConfig.read("air_assault",AirAssault.class,AIR_ASSAULT_DEFAULTS,overrides,apply);
+        GadgetConfig.bounded(assault.centerSize(),.1,64);GadgetConfig.bounded(assault.outerSize(),assault.centerSize(),64);GadgetConfig.bounded(assault.shockwaveSize(),assault.outerSize(),64);
+        for(double d:new double[]{assault.centerDamage(),assault.outerDamage(),assault.shockwaveDamage()})GadgetConfig.bounded(d,0,10000);
+        GadgetConfig.bounded(assault.hoverSeconds(),.05,30);GadgetConfig.bounded(assault.diveRange(),1,64);GadgetConfig.bounded(assault.diveSeconds(),.05,10);
+        GadgetConfig.bounded(assault.airborneReductionPercent(),0,100);GadgetConfig.bounded(assault.hitSpeedBonusPercent(),0,500);GadgetConfig.bounded(assault.hitSpeedSeconds(),0,60);
+        var anchor=GadgetConfig.read("void_anchor",VoidAnchor.class,VOID_ANCHOR_DEFAULTS,overrides,apply);
+        GadgetConfig.bounded(anchor.health(),1,1024);GadgetConfig.bounded(anchor.pullRange(),.1,64);GadgetConfig.bounded(anchor.maxTargets(),1,32);
+        GadgetConfig.bounded(anchor.pullBlocksPerSecond(),.1,40);GadgetConfig.bounded(anchor.damage(),0,10000);
+        if(apply){airAssault=assault;voidAnchor=anchor;}
+        var ag=GadgetConfig.read("arrow_grenade",ArrowGrenade.class,new ArrowGrenade(16,6,12,30,1,1.2,1.1),overrides,apply);
         GadgetConfig.bounded(ag.damage(),0,10000);GadgetConfig.bounded(ag.projectileRange(),.1,16);GadgetConfig.bounded(ag.durationSeconds(),.05,60);
-        GadgetConfig.bounded(ag.cooldownSeconds(),0,86400);GadgetConfig.bounded(ag.emissionIntervalTicks(),1,1200);
+        GadgetConfig.bounded(ag.cooldownSeconds(),0,86400);GadgetConfig.bounded(ag.emissionIntervalSeconds(),.05,60);
         GadgetConfig.bounded(ag.projectileSpeed(),.5,4);GadgetConfig.bounded(ag.throwSpeed(),.1,3);
         var m=GadgetConfig.read("molotov",Molotov.class,new Molotov(5,8,3,36),overrides,apply);
         var o=GadgetConfig.read("orbital_strike",Orbital.class,new Orbital(24,256,84,5,64,240),overrides,apply);
@@ -128,7 +152,7 @@ public final class ExtraGadgetConfig {
         GadgetConfig.bounded(fo.radius(),.1,32);GadgetConfig.bounded(fo.durationSeconds(),.05,300);GadgetConfig.bounded(fo.intervalSeconds(),.05,60);
         for(double d:new double[]{fo.startDamage(),fo.damageStep(),fo.maxDamage()})GadgetConfig.bounded(d,0,10000);
         var ac=GadgetConfig.read("arc_thrower",ArcThrower.class,new ArcThrower(36,24,3,1),overrides,apply);
-        var sniper=GadgetConfig.read("m95",M95.class,new M95(51,1.33,3,15,200,10,1,50,3,100,10,150,256,20),overrides,apply);
+        var sniper=GadgetConfig.read("m95",M95.class,new M95(51,1.33,3,15,200,10,1,50,3,100,10,150,256,10),overrides,apply);
         var penetrationMigration=ServerFiles.root().resolve("item/.m95-penetration10-v3");
         if(!overrides.containsKey("m95")&&!java.nio.file.Files.exists(penetrationMigration)&&sniper.maximumCharge()==240&&sniper.smallThreshold()==20&&sniper.unlimitedThreshold()==100){
             sniper=new M95(sniper.damage(),1.33,sniper.magazine(),15,200,10,1,50,3,100,10,150,sniper.hitscanRange(),sniper.scopeRevealSeconds());
@@ -139,15 +163,17 @@ public final class ExtraGadgetConfig {
             if(apply)java.nio.file.Files.writeString(ServerFiles.root().resolve("item/m95.json"),ServerFiles.GSON.toJson(sniper));
         }
         if(apply&&!overrides.containsKey("m95")&&!java.nio.file.Files.exists(penetrationMigration))java.nio.file.Files.writeString(penetrationMigration,"M95 penetration defaults migrated.\n");
-        var scopeMigration=ServerFiles.root().resolve("item/.m95-scope20-v2");
+        var scopeMigration=ServerFiles.root().resolve("item/.m95-scope10-pulse-v4");
         if(!overrides.containsKey("m95")&&!java.nio.file.Files.exists(scopeMigration)){
-            if(sniper.scopeRevealSeconds()==5){
-                sniper=new M95(sniper.damage(),sniper.headshotMultiplier(),sniper.magazine(),sniper.rechargePerSecond(),sniper.maximumCharge(),sniper.smallThreshold(),sniper.smallBlocks(),sniper.largeThreshold(),sniper.largeBlocks(),sniper.thirdThreshold(),sniper.thirdBlocks(),sniper.unlimitedThreshold(),sniper.hitscanRange(),20);
+            if(sniper.scopeRevealSeconds()==5||sniper.scopeRevealSeconds()==20){
+                sniper=sniper.withScopeDelay(10);
                 if(apply)java.nio.file.Files.writeString(ServerFiles.root().resolve("item/m95.json"),ServerFiles.GSON.toJson(sniper));
             }
-            if(apply)java.nio.file.Files.writeString(scopeMigration,"M95 default scope delay upgraded to 20 seconds.\n");
+            if(apply)java.nio.file.Files.writeString(scopeMigration,"M95 default scope delay upgraded to 10 seconds.\n");
         }
         GadgetConfig.bounded(sniper.damage(),0,10000);GadgetConfig.bounded(sniper.headshotMultiplier(),0,10000);
+        GadgetConfig.bounded(sniper.piercingDamage(),0,10000);
+        GadgetConfig.bounded(sniper.normalHitCharge(),0,10000);
         GadgetConfig.bounded(sniper.magazine(),1,1000);GadgetConfig.bounded(sniper.rechargePerSecond(),0,10000);
         GadgetConfig.bounded(sniper.maximumCharge(),1,10000);GadgetConfig.bounded(sniper.smallThreshold(),1,sniper.maximumCharge());
         GadgetConfig.bounded(sniper.largeThreshold(),sniper.smallThreshold(),sniper.maximumCharge());
@@ -156,6 +182,7 @@ public final class ExtraGadgetConfig {
         GadgetConfig.bounded(sniper.unlimitedThreshold(),sniper.thirdThreshold(),sniper.maximumCharge());
         GadgetConfig.bounded(sniper.smallBlocks(),0,256);GadgetConfig.bounded(sniper.largeBlocks(),sniper.smallBlocks(),256);
         GadgetConfig.bounded(sniper.hitscanRange(),1,512);GadgetConfig.bounded(sniper.scopeRevealSeconds(),0,300);
+        for(double padding:new double[]{sniper.smallHitPadding(),sniper.largeHitPadding(),sniper.thirdHitPadding(),sniper.unlimitedHitPadding()})GadgetConfig.bounded(padding,0,4);
         if(apply)m95=sniper;
         GadgetConfig.bounded(ac.damage(),0,10000);GadgetConfig.bounded(ac.arcDamage(),0,10000);GadgetConfig.bounded(ac.arcRadius(),0,32);GadgetConfig.bounded(ac.glowSeconds(),0,300);
         var wb=GadgetConfig.read("wind_blower",WindBlower.class,new WindBlower(7,30,10,3,1,8,1.5,1),overrides,apply);
