@@ -86,16 +86,16 @@ public final class WeaponPatch {
     private static final String GENERAL_CATEGORY = "전역";
     private static final Map<String, String> ELEMENT_LABELS = Map.of(
             "elements.burnDamage", "화상 피해 (1회당)", "elements.witherDamage", "위더 피해 (1회당)",
-            "elements.poisonDamage", "독 피해 (1회당)", "elements.explosionMultiplier", "폭발 피해 배수 (이 무기 · 전역 배수에 곱함)");
+            "elements.poisonDamage", "독 피해 (1회당)", "elements.bleedDamage", "출혈 초당 피해", "elements.bleedSeconds", "출혈 시간 (초, 비우면 5)", "elements.explosionMultiplier", "폭발 피해 배수 (이 무기 · 전역 배수에 곱함)");
     /** Secondary weapon-file fields shown, in order (stats.N.value rows follow, labelled by their stat name). */
-    private static final List<String> SECONDARY_FIELDS = List.of("name", "category", "cooldownSeconds", "plantSeconds", "fuseSeconds", "defuseSeconds", "releaseDate", "description", "usage");
+    private static final List<String> SECONDARY_FIELDS = List.of("name", "nameEn", "category", "cooldownSeconds", "plantSeconds", "fuseSeconds", "defuseSeconds", "releaseDate", "description", "usage");
     /** Display stat rows of a secondary ({@code stats.N.name} / {@code stats.N.value}); blank rows after them add new ones. */
     private static final java.util.regex.Pattern STAT_KEY = java.util.regex.Pattern.compile("stats\\.(\\d+)\\.(name|value)");
     /** Empty stat rows offered after a secondary's own (to add display lines), and the most a weapon may have. */
     private static final int NEW_STATS = 2, MAX_STATS = 12;
     /** Max health and movement speed are not edited for secondaries: neither offered nor accepted. */
     private static final Set<String> SECONDARY_HIDDEN = Set.of("maxHealth", "movementSpeed");
-    private static final Map<String, String> SECONDARY_LABELS = Map.of("cooldownSeconds", "쿨타임 (초)", "plantSeconds", "설치 시간 (초)", "fuseSeconds", "폭발 시간 (초)", "defuseSeconds", "해체 시간 (초)");
+    private static final Map<String, String> SECONDARY_LABELS = Map.of("nameEn", "영어 이름 (비우면 한글 이름)", "cooldownSeconds", "쿨타임 (초)", "plantSeconds", "설치 시간 (초)", "fuseSeconds", "폭발 시간 (초)", "defuseSeconds", "해체 시간 (초)");
     /** Labels for one item's own fields ("setting.field"), ahead of {@link #ITEM_LABELS}, where the shared name would mislead. */
     private static final Map<String, String> ITEM_LABELS_OF = Map.of(
             "hermes_boots.dashDistance", "돌진 거리 (블록)", "hermes_boots.dashSeconds", "돌진 시간 (초)",
@@ -168,7 +168,7 @@ public final class WeaponPatch {
             Map.entry("doubleJumpVelocity", "2단 점프 세기 (블록/틱)"), Map.entry("wallClimbVelocity", "벽타기 한 걸음 세기 (블록/틱)"));
     private static final Map<String, String> LABELS = Map.ofEntries(
             Map.entry("windStrength", "송풍기 바람 세기 (0.01 단위)"),
-            Map.entry("name", "이름"), Map.entry("category", "분류"), Map.entry("maxHealth", "최대 체력"), Map.entry("movementSpeed", "이동 속도 (%)"),
+            Map.entry("name", "이름"), Map.entry("nameEn", "영어 이름 (비우면 한글 이름)"), Map.entry("category", "분류"), Map.entry("maxHealth", "최대 체력"), Map.entry("movementSpeed", "이동 속도 (%)"),
             Map.entry("description", "표시 · 설명 (줄바꿈 \\n)"), Map.entry("usage", "표시 · 사용방법 (줄바꿈 \\n)"), Map.entry("releaseDate", "출시일 (yyyy-MM-dd)"),
             Map.entry("specs.damage", "표시 · 피해"), Map.entry("specs.accuracy", "표시 · 정확도"), Map.entry("specs.stability", "표시 · 안정성"),
             Map.entry("specs.range", "표시 · 사거리"), Map.entry("specs.fireRate", "표시 · 연사력"));

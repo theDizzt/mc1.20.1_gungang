@@ -22,7 +22,7 @@ public final class StatusForecast {
 
     public static float pending(LivingEntity body){
         if(!body.isAlive())return 0;
-        double total=KatanaSpin.pendingBleed(body);
+        double total=Bleeding.pending(body);
         int fire=body.getRemainingFireTicks();
         if(fire>0&&!body.fireImmune()){
             double per=AdrenalineDamage.burnDamage(body);

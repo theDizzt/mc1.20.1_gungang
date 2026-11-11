@@ -747,7 +747,7 @@ public final class LobbyManager {
         RESPAWNING.clear();GadgetManager.clearAll(server);CombatGadgets.reset(server);GimmickEpoch.reset(server);
         for(var p:server.getPlayerList().getPlayers()){
             var e=PLAYERS.get(p.getUUID());if(e==null)continue;
-            p.stopUsingItem();p.setCamera(p);teleportSpawn(p,e);p.removeAllEffects();KatanaSpin.clear(p);p.clearFire();p.setAbsorptionAmount(0);p.setAirSupply(p.getMaxAirSupply());
+            p.stopUsingItem();p.setCamera(p);teleportSpawn(p,e);p.removeAllEffects();Bleeding.clear(p);p.clearFire();p.setAbsorptionAmount(0);p.setAirSupply(p.getMaxAirSupply());
             p.getFoodData().setFoodLevel(SprintStamina.FOOD);p.getFoodData().setSaturation(0);SecondaryRuntime.clear(p);
             p.setGameMode(e.team.equals("ALPHA")||e.team.equals("BRAVO")?GameType.byName(activeMap.gameMode()):GameType.SPECTATOR);
             resetMatchEquipment(p,e);p.setHealth(p.getMaxHealth());equipment(p,false);
@@ -1209,7 +1209,7 @@ public final class LobbyManager {
         // Void deaths would otherwise leave the camera below the world.
         Vec3 spot=self?new Vec3(victim.getX(),Math.max(victim.getY(),victim.level().getMinBuildHeight()+2),victim.getZ()):null;
         RESPAWNING.put(victim.getUUID(),new Respawning(server.getTickCount()+duration,duration,killer==null?null:killer.getUUID(),victim.level().dimension(),spot));
-        victim.setHealth(victim.getMaxHealth()); victim.removeAllEffects();KatanaSpin.clear(victim); victim.clearFire(); victim.fallDistance=0;
+        victim.setHealth(victim.getMaxHealth()); victim.removeAllEffects();Bleeding.clear(victim); victim.clearFire(); victim.fallDistance=0;
         victim.setGameMode(GameType.SPECTATOR);
         if(killer!=null&&killer!=victim&&killer.isAlive()&&!killer.isSpectator()&&killer.level()==victim.level()) victim.setCamera(killer);
         for(var player:server.getPlayerList().getPlayers()) player.sendSystemMessage(message);
@@ -1223,7 +1223,7 @@ public final class LobbyManager {
             if(now>=wait.deadline()) {
                 RESPAWNING.remove(id); p.setCamera(p); teleportSpawn(p,entry);
                 if(MatchManager.freeForAll()!=null)MatchManager.freeForAll().protect(p);
-                p.setHealth(p.getMaxHealth()); p.removeAllEffects();KatanaSpin.clear(p); p.clearFire(); p.setAirSupply(p.getMaxAirSupply());
+                p.setHealth(p.getMaxHealth()); p.removeAllEffects();Bleeding.clear(p); p.clearFire(); p.setAirSupply(p.getMaxAirSupply());
                 p.getFoodData().setFoodLevel(SprintStamina.FOOD); p.getFoodData().setSaturation(0); p.setAbsorptionAmount(0);
                 p.setGameMode(GameType.byName(activeMap.gameMode()));
                 if(activeMap.normandy()!=null&&entry.team.equals("BRAVO"))
@@ -1256,7 +1256,7 @@ public final class LobbyManager {
     private static void resetPlayer(ServerPlayer p) {
         LoadoutAttributes.clear(p);GadgetManager.clear(p);SecondaryRuntime.clear(p);
         RESPAWNING.remove(p.getUUID());FREE_SELECTION.remove(p.getUUID());LAST_EQUIPMENT.remove(p.getUUID());
-        p.setCamera(p);p.stopRiding();p.removeAllEffects();KatanaSpin.clear(p);p.clearFire();p.fallDistance=0;
+        p.setCamera(p);p.stopRiding();p.removeAllEffects();Bleeding.clear(p);p.clearFire();p.fallDistance=0;
         clearPlayerInventory(p);
         p.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(100);
         p.setHealth(100);p.setAbsorptionAmount(0);p.setGameMode(GameType.ADVENTURE);

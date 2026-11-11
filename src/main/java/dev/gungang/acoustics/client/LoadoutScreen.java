@@ -50,7 +50,7 @@ final class LoadoutScreen extends ArenaScreen {
         rebuildWidgets();
     }
     private List<Loadouts.Weapon> sortedSource,sorted=List.of();
-    /** The catalog in weapon number order ({@link #byNumber}). */
+    /** The catalog grouped by category, in weapon number order ({@link #byNumber}). */
     private List<Loadouts.Weapon> weapons(){
         var source=primary?state.catalog().primary():state.catalog().secondary();
         if(source!=sortedSource){sortedSource=source;sorted=byNumber(source);}
@@ -61,7 +61,11 @@ final class LoadoutScreen extends ArenaScreen {
      * a number follow alphabetically. Equal numbers keep the server's order.
      */
     static List<Loadouts.Weapon> byNumber(List<Loadouts.Weapon> source){
-        return source.stream().sorted(java.util.Comparator.comparingLong((Loadouts.Weapon w)->number(w.id())).thenComparing(w->number(w.id())==Long.MAX_VALUE?w.id():"")).toList();
+        var order=java.util.Comparator.comparingLong((Loadouts.Weapon w)->number(w.id())).thenComparing(w->number(w.id())==Long.MAX_VALUE?w.id():"");
+        var groups=new java.util.LinkedHashMap<String,List<Loadouts.Weapon>>();
+        for(var weapon:source.stream().sorted(order).toList())groups.computeIfAbsent(weapon.category(),k->new ArrayList<>()).add(weapon);
+        // Groups were created in the order of their lowest number, so this keeps the list reading in number order.
+        return groups.values().stream().flatMap(List::stream).toList();
     }
     static long number(String id){
         int end=0;while(end<id.length()&&end<18&&Character.isDigit(id.charAt(end)))end++;
@@ -110,7 +114,7 @@ final class LoadoutScreen extends ArenaScreen {
             if(worn)label.append(Component.literal("● ").withStyle(net.minecraft.ChatFormatting.GOLD));
             String holder=state.takenBy(primary,weapon.id());
             if(holder!=null)label.append(Component.literal(Lang.tr("선점 ")).withStyle(net.minecraft.ChatFormatting.RED,net.minecraft.ChatFormatting.BOLD));
-            label.append(Component.literal(weapon.name()).withStyle(worn?net.minecraft.ChatFormatting.GOLD:holder!=null?net.minecraft.ChatFormatting.GRAY:net.minecraft.ChatFormatting.WHITE));
+            label.append(Component.literal(Lang.weapon(weapon)).withStyle(worn?net.minecraft.ChatFormatting.GOLD:holder!=null?net.minecraft.ChatFormatting.GRAY:net.minecraft.ChatFormatting.WHITE));
             if(holder!=null)label.append(Component.literal(" · "+holder).withStyle(net.minecraft.ChatFormatting.RED));
             if(ReleaseDateText.upcoming(weapon.releaseDate()))label.append(Component.literal(" ["+Lang.tr(ReleaseDateText.UPCOMING)+"]").withStyle(net.minecraft.ChatFormatting.AQUA));
             // The category is drawn right-aligned over the reserved padding in render().
@@ -132,7 +136,7 @@ final class LoadoutScreen extends ArenaScreen {
         else colorButton(Lang.tr("선택한 무기 장착"),detailX(),height-48,Math.max(40,w-list-82),22,state.allowed(),ACCENT,equip);
         closeButton(x+w-64,height-48,64,22);
     }
-    private int categoryWidth(Loadouts.Weapon weapon){return Math.min(font.width(weapon.category()),Math.max(0,(listWidth()-6)/3))+6;}
+    private int categoryWidth(Loadouts.Weapon weapon){return Math.min(font.width(Lang.tr(weapon.category())),Math.max(0,(listWidth()-6)/3))+6;}
     private PlayerRecord.Preset preset(int slot){return state.presets().stream().filter(p->p.slot()==slot).findFirst().orElse(null);}
     private void selectPreset(int slot){
         presetSlot=slot;confirmDelete=false;colorMode=false;
@@ -294,7 +298,7 @@ final class LoadoutScreen extends ArenaScreen {
     }
     private void renamePreset(){if(preset(presetSlot)!=null)LobbyClient.action("presetRename",Integer.toString(presetSlot),nameDraft.strip());}
     private String weaponName(List<Loadouts.Weapon> group,String id){
-        return group.stream().filter(w->w.id().equals(id)).map(Loadouts.Weapon::name).findFirst().orElse(Lang.tr("등록되지 않은 무기"));
+        return group.stream().filter(w->w.id().equals(id)).map(Lang::weapon).findFirst().orElse(Lang.tr("등록되지 않은 무기"));
     }
     private void renderPresets(GuiGraphics g){
         int x=left()+12,w=body()-24,dx=detailX(),right=x+w;
@@ -346,15 +350,15 @@ final class LoadoutScreen extends ArenaScreen {
         String holder=worn?null:state.takenBy(primary,weapon.id());
         if(holder!=null){String tag=Lang.tr("선점됨 · ")+holder;tagX-=font.width(tag)+8;badge(g,tag,tagX,89,TAKEN);tagX-=4;}
         if(ReleaseDateText.upcoming(weapon.releaseDate())){String tag=Lang.tr(ReleaseDateText.UPCOMING);tagX-=font.width(tag)+8;badge(g,tag,tagX,89,0xFF5FC8E0);tagX-=4;}
-        var title=Component.literal(weapon.name()).withStyle(worn?net.minecraft.ChatFormatting.GOLD:net.minecraft.ChatFormatting.WHITE)
+        var title=Component.literal(Lang.weapon(weapon)).withStyle(worn?net.minecraft.ChatFormatting.GOLD:net.minecraft.ChatFormatting.WHITE)
                 .append(Component.literal(" [id: "+weapon.id()+"]").withStyle(s->s.withColor(0xC8B060).withFont(HudText.UI_FONT)));
         Marquee.draw(g,font,title,dx+6,90,Math.max(1,tagX-dx-10),INK,false);
         int pw=previewWidth(),mh=middleHeight();
         preview(g,weapon,dx+4,PREVIEW_TOP,pw,mh);
         // Overlays sit above the 3D item, which renders at z 150.
         g.pose().pushPose();g.pose().translate(0,0,300);
-        badge(g,weapon.category(),dx+8,PREVIEW_TOP+mh-14,ACCENT);
-        String hint=Lang.tr("드래그 회전 / 휠 확대");int hintRoom=Math.max(1,pw-font.width(weapon.category())-28);
+        badge(g,Lang.tr(weapon.category()),dx+8,PREVIEW_TOP+mh-14,ACCENT);
+        String hint=Lang.tr("드래그 회전 / 휠 확대");int hintRoom=Math.max(1,pw-font.width(Lang.tr(weapon.category()))-28);
         Marquee.draw(g,font,hint,dx+pw-Math.min(hintRoom,font.width(hint)),PREVIEW_TOP+mh-11,hintRoom,DIM,false);
         g.pose().popPose();
         statPanel(g,statRows(weapon),dx+pw+12,PREVIEW_TOP,right-6,mh);
@@ -389,7 +393,7 @@ final class LoadoutScreen extends ArenaScreen {
             renderSilhouettes(g,x);
             for(int i=page;i<Math.min(weapons().size(),page+capacity());i++){
                 var item=weapons().get(i);int cw=categoryWidth(item)-6;int room=Math.max(1,cw);
-                Marquee.draw(g,font,item.category(),x+listWidth()-12-Math.min(room,font.width(item.category())),85+(i-page)*27+8,room,DIM,false);
+                Marquee.draw(g,font,Lang.tr(item.category()),x+listWidth()-12-Math.min(room,font.width(Lang.tr(item.category()))),85+(i-page)*27+8,room,DIM,false);
             }
         }
     }
@@ -462,7 +466,7 @@ final class LoadoutScreen extends ArenaScreen {
         for(int i=0;i<2;i++)for(int j=0;j<2;j++)g.fill(gridX+i*6,top+j*6-1,gridX+i*6+4,top+j*6+3,gridColor);
         g.pose().popPose();
     }
-    // ---- grid view: weapon number order, five square tiles a row ----
+    // ---- grid view: grouped by category in weapon number order, five square tiles a row ----
     private static final int COLUMNS=5,GAP=3,HEADER=14,GRID_TOP=85;
     /** A category header (weapon null) or a weapon tile, in content coordinates (y before scrolling). */
     private record Cell(Loadouts.Weapon weapon,String header,int x,int y){}
@@ -470,7 +474,12 @@ final class LoadoutScreen extends ArenaScreen {
     private int tileSize(){return Math.max(16,(listWidth()-10-GAP*(COLUMNS-1))/COLUMNS);}
     private List<Cell> gridCells(){
         var cells=new ArrayList<Cell>();int x=left()+12,tile=tileSize(),y=0,column=0;
+        String category=null;
         for(var weapon:weapons()){
+            if(!weapon.category().equals(category)){
+                if(category!=null&&column>0)y+=tile+GAP;
+                category=weapon.category();cells.add(new Cell(null,category,x,y));y+=HEADER;column=0;
+            }
             cells.add(new Cell(weapon,null,x+column*(tile+GAP),y));
             if(++column==COLUMNS){column=0;y+=tile+GAP;}
         }
@@ -486,8 +495,9 @@ final class LoadoutScreen extends ArenaScreen {
             int y=GRID_TOP+cell.y()-gridScroll;
             if(y>bottom||y+(cell.weapon()==null?HEADER:tile)<GRID_TOP)continue;
             if(cell.weapon()==null){
-                g.drawString(font,cell.header(),x,y+3,DIM,false);
-                int line=x+font.width(cell.header())+6;if(line<areaRight-6)g.fill(line,y+7,areaRight-6,y+8,TacticalStyle.HAIRLINE);
+                String header=Lang.tr(cell.header());
+                g.drawString(font,header,x,y+3,DIM,false);
+                int line=x+font.width(header)+6;if(line<areaRight-6)g.fill(line,y+7,areaRight-6,y+8,TacticalStyle.HAIRLINE);
                 continue;
             }
             var weapon=cell.weapon();int cx=cell.x();
@@ -511,7 +521,7 @@ final class LoadoutScreen extends ArenaScreen {
             String id=HudText.fitGungang(weapon.id(),Math.max(1,(int)((tile-10)/idScale)));
             small(g,HudText.gungang(id),cx+tile-3-font.width(HudText.gungang(id))*idScale,y+3,idScale,0xFFC8B060);
             g.fill(cx+1,y+tile-9,cx+tile-1,y+tile-1,0x99000000);
-            smallMarquee(g,weapon.name(),cx+3,y+tile-7,nameScale,Math.max(1,(int)((tile-5)/nameScale)),worn?TacticalStyle.GOLD:INK);
+            smallMarquee(g,Lang.weapon(weapon),cx+3,y+tile-7,nameScale,Math.max(1,(int)((tile-5)/nameScale)),worn?TacticalStyle.GOLD:INK);
             String holder=state.takenBy(primary,weapon.id());
             if(holder!=null&&!worn){
                 // A teammate already holds it (duplicates off): dim the tile, red frame and a "선점됨" tag with the holder.

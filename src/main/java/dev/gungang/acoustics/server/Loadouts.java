@@ -16,16 +16,27 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
      * burnDamage / witherDamage / poisonDamage: damage of each status tick on a victim the weapon hit;
      * explosionMultiplier: scales the weapon's explosion damage to players and bots.
      */
-    public record Elements(Double burnDamage, Double witherDamage, Double poisonDamage, Double explosionMultiplier) {
+    /** {@code bleedDamage}: bleeding damage per second on a victim this weapon hits, for {@code bleedSeconds} (blank: 5). */
+    public record Elements(Double burnDamage, Double witherDamage, Double poisonDamage, Double explosionMultiplier, Double bleedDamage, Double bleedSeconds) {
+        public Elements(Double burnDamage, Double witherDamage, Double poisonDamage, Double explosionMultiplier) {
+            this(burnDamage, witherDamage, poisonDamage, explosionMultiplier, null, null);
+        }
+        public static final double BLEED_SECONDS = 5;
+        public double bleedTime() { return bleedSeconds == null ? BLEED_SECONDS : bleedSeconds; }
         void validate(String id) {
-            for (Double value : new Double[]{burnDamage, witherDamage, poisonDamage})
+            if (bleedSeconds != null && (!Double.isFinite(bleedSeconds) || bleedSeconds < 0 || bleedSeconds > 600)) throw new IllegalArgumentException("Invalid bleed time: " + id);
+            for (Double value : new Double[]{burnDamage, witherDamage, poisonDamage, bleedDamage})
                 if (value != null && (!Double.isFinite(value) || value < 0 || value > 10000)) throw new IllegalArgumentException("Invalid elemental damage: " + id);
             if (explosionMultiplier != null && (!Double.isFinite(explosionMultiplier) || explosionMultiplier < 0 || explosionMultiplier > 100)) throw new IllegalArgumentException("Invalid explosion multiplier: " + id);
         }
     }
     public record Weapon(String id, @com.google.gson.annotations.SerializedName(value="itemNbt",alternate={"nbt"}) String itemNbt, String name, String description, Specs specs, String usage, String category,
-                         Double maxHealth, Double movementSpeed, Double cooldownSeconds, String command, boolean jetpackVerticalFlight, String releaseDate, List<Stat> stats, Elements elements, Double windStrength) {
+                         Double maxHealth, Double movementSpeed, Double cooldownSeconds, String command, boolean jetpackVerticalFlight, String releaseDate, List<Stat> stats, Elements elements, Double windStrength,
+                         String nameEn) {
+        /** {@code nameEn}: the name shown when a player's HUD language is English; blank shows {@code name}. */
         public Weapon {
+            nameEn=nameEn==null?"":nameEn.strip();
+            if(nameEn.length()>80||nameEn.chars().anyMatch(Character::isISOControl))throw new IllegalArgumentException("Invalid English weapon name: "+id);
             stats=stats==null?List.of():List.copyOf(stats);
             releaseDate=ArenaMap.releaseDate(releaseDate,id);
             itemNbt=itemNbt==null?"":itemNbt;
@@ -45,6 +56,9 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
         }
         public Weapon(String id,String itemNbt,String name,String description,Specs specs,String usage,String category,Double maxHealth,Double movementSpeed,Double cooldownSeconds,String command,boolean jetpackVerticalFlight,String releaseDate,List<Stat> stats,Elements elements) {
             this(id,itemNbt,name,description,specs,usage,category,maxHealth,movementSpeed,cooldownSeconds,command,jetpackVerticalFlight,releaseDate,stats,elements,null);
+        }
+        public Weapon(String id,String itemNbt,String name,String description,Specs specs,String usage,String category,Double maxHealth,Double movementSpeed,Double cooldownSeconds,String command,boolean jetpackVerticalFlight,String releaseDate,List<Stat> stats,Elements elements,Double windStrength) {
+            this(id,itemNbt,name,description,specs,usage,category,maxHealth,movementSpeed,cooldownSeconds,command,jetpackVerticalFlight,releaseDate,stats,elements,windStrength,"");
         }
         public Weapon(String id,String itemNbt,String name,String description,Specs specs,String usage,String category,Double maxHealth,Double movementSpeed,Double cooldownSeconds,String command,boolean jetpackVerticalFlight,String releaseDate,List<Stat> stats) {
             this(id,itemNbt,name,description,specs,usage,category,maxHealth,movementSpeed,cooldownSeconds,command,jetpackVerticalFlight,releaseDate,stats,null);
@@ -98,7 +112,7 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
                         || (stat.name() + stat.value()).chars().anyMatch(Character::isISOControl)) throw new IllegalArgumentException("Invalid weapon stats: " + id);
             stack();
         }
-        public Weapon view() { return new Weapon(id, "", name, description, specs, usage, category,maxHealth,movementSpeed,cooldownSeconds,"",false,releaseDate,stats); }
+        public Weapon view() { return new Weapon(id, "", name, description, specs, usage, category,maxHealth,movementSpeed,cooldownSeconds,"",false,releaseDate,stats,null,null,nameEn); }
     }
     /** 근접전 primaries, in this order; 88 karambit comes over from the secondaries. */
     static final List<String> MELEE_PRIMARY=List.of("16","28","29"),MELEE_FROM_SECONDARY=List.of("88");
@@ -113,7 +127,7 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
         var list=new ArrayList<Weapon>();
         for(String id:MELEE_PRIMARY)primary.stream().filter(w->w.id().equals(id)).findFirst().ifPresent(list::add);
         for(String id:MELEE_FROM_SECONDARY)secondary.stream().filter(w->w.id().equals(id)).findFirst().ifPresent(k->list.add(new Weapon(k.id(),k.itemNbt(),k.name(),k.description(),k.specs(),
-                "좌클릭 또는 우클릭으로 사용합니다.",k.category(),85d,135d,0d,"",false,k.releaseDate(),k.stats())));
+                "좌클릭 또는 우클릭으로 사용합니다.",k.category(),85d,135d,0d,"",false,k.releaseDate(),k.stats(),null,null,k.nameEn())));
         if(list.isEmpty())return this;
         return new Loadouts(List.copyOf(list),secondary.stream().filter(w->!MELEE_FROM_SECONDARY.contains(w.id())&&!PISTOL_CATEGORY.equals(w.category())).toList(),slot9);
     }

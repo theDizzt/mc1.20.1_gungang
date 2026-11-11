@@ -30,6 +30,11 @@ public final class Lang {
         found = table.get(korean.substring(start, end));
         return found == null ? korean : korean.substring(0, start) + found + korean.substring(end);
     }
+    /** A weapon's display name: its English name (weapon file "nameEn") in English when set, else the dictionary, else Korean. */
+    public static String weapon(dev.gungang.acoustics.server.Loadouts.Weapon weapon) { return weapon(weapon.name(), weapon.nameEn()); }
+    public static String weapon(String korean, String english) {
+        return english() && english != null && !english.isBlank() ? english : tr(korean);
+    }
     /** {@link String#format} on the translated pattern. */
     public static String format(String korean, Object... args) { return String.format(java.util.Locale.ROOT, tr(korean), args); }
     /** Switches KO / EN, saves the client config and rebuilds the open screen in the new language. */

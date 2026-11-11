@@ -16,12 +16,15 @@ public final class CommandFlagEntity extends LivingEntity {
     private static final EntityDataAccessor<String> TEAM=SynchedEntityData.defineId(CommandFlagEntity.class,EntityDataSerializers.STRING);
     private UUID owner;
     private String team="";
+    /** The owner's match side (ALPHA/BRAVO, FFA:uuid): bots sit on no scoreboard team, so allied bots are found by side. */
+    private String side="";
     private int age;
     private ExtraGadgetConfig.CommandFlag config=ExtraGadgetConfig.commandFlag;
     public CommandFlagEntity(EntityType<? extends LivingEntity> type,Level level){super(type,level);setNoGravity(true);}
     @Override protected void defineSynchedData(){super.defineSynchedData();entityData.define(COLOR,0xFFFFFF);entityData.define(TEAM,"");}
     public void setup(ServerPlayer p){
         owner=p.getUUID();team=p.getTeam()==null?"":p.getTeam().getName();
+        side=BotManager.side(p);if(side.isEmpty()&&BotManager.identity(owner))side=BotManager.team(owner);
         entityData.set(TEAM,team);
         Integer fallback=p.getTeam()==null?null:p.getTeam().getColor().getColor();
         entityData.set(COLOR,team.equals("Red")?LobbyManager.options().color("ALPHA"):team.equals("Blue")?LobbyManager.options().color("BRAVO"):fallback==null?0xFFFFFF:fallback);
@@ -39,10 +42,14 @@ public final class CommandFlagEntity extends LivingEntity {
     public double radius(){return age>=ExtraGadgetConfig.ticks(config.defenseUpgradeSeconds())?config.defenseRadius():age>=ExtraGadgetConfig.ticks(config.healingUpgradeSeconds())?config.healingRadius():config.baseRadius();}
     public float healing(){return (float)(age>=ExtraGadgetConfig.ticks(config.healingUpgradeSeconds())?config.upgradedHealPerSecond():config.baseHealPerSecond());}
     public float reduction(){return age>=ExtraGadgetConfig.ticks(config.defenseUpgradeSeconds())?(float)config.damageReductionPercent():0;}
-    public boolean affects(ServerPlayer p){
+    public boolean affects(LivingEntity p){
         return isAlive()&&!isRemoved()&&p.isAlive()&&!p.isSpectator()&&!LobbyManager.respawning(p.getUUID())&&!SafeZones.contains(p)
-                &&(team.isEmpty()?p.getUUID().equals(owner):p.getTeam()!=null&&team.equals(p.getTeam().getName()))
-                &&(global()||p.level()==level()&&distanceToSqr(p)<=radius()*radius());
+                &&ally(p)&&(global()||p.level()==level()&&distanceToSqr(p)<=radius()*radius());
+    }
+    private boolean ally(LivingEntity p){
+        if(p.getUUID().equals(owner))return true;
+        if(p instanceof BotEntity)return !side.isEmpty()&&BotManager.combatant(side)&&side.equals(BotManager.side(p));
+        return !team.isEmpty()&&p.getTeam()!=null&&team.equals(p.getTeam().getName());
     }
     @Override public void tick(){
         super.tick();setDeltaMovement(Vec3.ZERO);
