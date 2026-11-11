@@ -132,6 +132,27 @@ public final class PatchHelp {
         item("throwSpeed", "용도: 던지는 속도(틱당 블록, 추정). 클수록 멀리 날아갑니다.");
         item("throwDamage", "용도: 던져서 맞혔을 때의 피해.");
         item("emissionIntervalTicks", "용도: 파편·투사체를 내보내는 간격(틱, 20틱 = 1초).\n산출식(추정): 발사 수 ≈ 지속 초 × 20 / 간격");
+        item("emissionIntervalSeconds", "전방향 화살 묶음을 발사하는 간격(초). 최초 착탄에도 발사하며, 0.05초 단위로 올림합니다.");
+        for(String key:java.util.List.of("smallHitPadding","largeHitPadding","thirdHitPadding","unlimitedHitPadding"))item(key,"해당 관통 단계에서 TaCZ 기본 명중 상자를 각 방향으로 확장하는 거리(블록). 0이면 기본 판정입니다. 일반탄에는 적용하지 않습니다.");
+        for(String key:java.util.List.of("centerSize","outerSize","shockwaveSize"))item(key,"착지 지점 기준 정사각형의 한 변 길이. 중심 ≤ 외곽 ≤ 충격파여야 합니다. 겹친 대상은 가장 안쪽 구간의 피해를 한 번 받습니다. 반블록의 높이 차이도 포함합니다.");
+        item("outerDamage","공중강습 외곽 구간 피해. 중심 구간 피해와 중첩되지 않습니다.");
+        item("shockwaveDamage","공중강습 충격파 구간 피해. 범위 내 적은 3블록 높이로 상승합니다.");
+        item("hoverSeconds","상승을 시작한 뒤 급강하 방향을 확정할 때까지의 시간(초). 기본 1초입니다.");
+        item("diveRange","시선으로 선택할 수 있는 최대 급강하 거리(블록).");
+        item("diveSeconds","목표 지점까지 급강하하는 시간(초). 장애물·서버 지연에 따라 실제 착지 시간은 달라질 수 있습니다.");
+        item("airborneReductionPercent","공중강습으로 떠 있는 동안 받는 피해의 감소율(%).");
+        item("hitSpeedBonusPercent","공중강습으로 적에게 피해를 주었을 때 이동속도 증가율(%). 같은 효과는 중첩하지 않고 갱신합니다.");
+        item("hitSpeedSeconds","공중강습 명중 후 이동속도 증가가 유지되는 시간(초).");
+        item("pullRange","창이 꽂힌 위치에서 끌어당길 적을 찾는 반경(블록).");
+        item("maxTargets","가장 가까운 순서로 동시에 끌어당길 수 있는 적 수. 한 명이라도 창에 닿으면 폭발하고 모든 연결이 해제됩니다.");
+        item("pullBlocksPerSecond","초당 끌어당기는 블록 수. 기본 5는 4틱당 1블록입니다. 벽을 통과하지 않습니다.");
+        item("scopeRevealSeconds","M95 줌 유지 후 첫 투시까지의 시간(초). 준비 후 2.5초마다 0.5초 표시하며 발사 또는 줌 해제로 초기화됩니다.");
+        item("m95","damage","일반탄 기본 피해. 관통탄 피해와 별도로 설정합니다. TaCZ 거리별 피해 비율·부착물 효과와 헤드샷 배율은 유지됩니다.");
+        item("m95","normalHitCharge","일반탄으로 적에게 피해를 주면 얻는 관통력. 기본 50, 0이면 비활성화. 최대 관통력을 넘지 않으며, 같은 탄환이 같은 대상에게 나누어 주는 피해는 한 번만 계산합니다.");
+        item("m95","piercingDamage","관통탄 기본 피해. 거리 피해 감소 적용 단계는 TaCZ 거리별 피해 비율을 따르고, 미적용 단계는 거리에 따라 감소하지 않습니다. 헤드샷 배율은 별도로 적용됩니다.");
+        for(String key:java.util.List.of("smallDamageFalloff","largeDamageFalloff","thirdDamageFalloff","unlimitedDamageFalloff"))item(key,"해당 단계 관통탄의 거리별 피해 감소 적용 여부. true: TaCZ 거리별 피해 적용, false: 거리 감소 없이 근거리 피해 적용. 기본은 1·2단계 적용, 3·무제한 단계 미적용입니다. 일반탄에는 영향을 주지 않습니다.");
+        item("air_assault","centerDamage","중심 정사각형 안의 적에게 주는 피해. 외곽·충격파 피해와 중첩하지 않습니다.");
+        item("void_anchor","damage","앵커 폭발의 기본 피해. 플레이어·봇에게는 전역 폭발 배수도 적용됩니다(기본 20 × 2 = 40). 설명창 기본 표시는 40입니다.");
         item("burnSeconds", "용도: 맞은 대상이 불타는 시간(초).\n산출식(추정): 화상 총 피해 ≈ 화상 피해 × 화상 시간");
         item("burnDamage", "용도: 화상 1회(약 1초마다)의 피해. 이 아이템이 붙인 불에만 적용됩니다.");
         item("knockback", "용도: 밀어내는 세기. 클수록 멀리 밀립니다(넉백 저항이 있으면 줄어듦).");
@@ -259,6 +280,7 @@ public final class PatchHelp {
 
     /** Hover help of a patch row, or "" when there is none. {@code setting} is the item effect file behind the weapon (or null). */
     public static String of(String key, String setting) {
+        if("m95".equals(setting)&&"tacz:bullet.damage".equals(key))return "거리별 피해 자동 채움에서 사용하는 TaCZ 기준값. 실제 일반탄·관통탄 기본 피해는 각각의 아이템 설정을 사용하며, 이 곡선의 피해 비율을 적용합니다. 거리 감소를 끈 관통 단계에는 감쇠가 적용되지 않습니다.";
         if (key == null) return "";
         if (key.startsWith("tacz:")) return TACZ.getOrDefault(key.substring(5), "용도: TaCZ 총기 데이터 파일의 " + key.substring(5) + " 값.");
         if (key.startsWith("melee:")) return MELEE.getOrDefault(key.substring(6), "용도: 근접 무기 팩 파일의 " + key.substring(6) + " 값.");

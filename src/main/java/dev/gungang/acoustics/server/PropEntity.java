@@ -119,11 +119,21 @@ public final class PropEntity extends LivingEntity {
         if(healthPack())box=box.minmax(new AABB(.3,1.35,.3,.7,1.95,.7));
         return box.move(PropGeometry.thinOffset(this)).move(getX()-.5,getY(),getZ()-.5);
     }
+    /**
+     * Disguises in the world, per side. Every moving entity asks {@link #collisions} every tick, so with none around
+     * (any time outside prop hunt) it returns before searching the level.
+     */
+    private static final java.util.concurrent.atomic.AtomicInteger CLIENT_COUNT=new java.util.concurrent.atomic.AtomicInteger(),SERVER_COUNT=new java.util.concurrent.atomic.AtomicInteger();
+    private static java.util.concurrent.atomic.AtomicInteger count(Level level){return level.isClientSide?CLIENT_COUNT:SERVER_COUNT;}
+    private boolean counted;
+    @Override public void onAddedToWorld(){super.onAddedToWorld();if(!counted){counted=true;count(level()).incrementAndGet();}}
+    @Override public void onRemovedFromWorld(){super.onRemovedFromWorld();if(counted){counted=false;count(level()).decrementAndGet();}}
     /** Real collision shapes of nearby disguises for this mover; the owner walks through its own. */
     public static List<net.minecraft.world.phys.shapes.VoxelShape> collisions(Level level,Entity entity,AABB box){
-        if(entity instanceof PropEntity||entity.isSpectator()||entity.noPhysics)return List.of();
-        var result=new ArrayList<net.minecraft.world.phys.shapes.VoxelShape>();
+        if(count(level).get()<=0||entity instanceof PropEntity||entity.isSpectator()||entity.noPhysics)return List.of();
+        List<net.minecraft.world.phys.shapes.VoxelShape> result=null;
         for(var prop:level.getEntitiesOfClass(PropEntity.class,box.inflate(1),p->!p.isRemoved()&&!entity.getUUID().equals(p.owner()))){
+            if(result==null)result=new ArrayList<>();
             if(prop.item().equals("gungang:nuke_warhead")||PartyBlocks.propBox(prop.item(),prop.state())!=null){result.add(net.minecraft.world.phys.shapes.Shapes.create(prop.getBoundingBox()));continue;}
             for(var part:PropGeometry.parts(prop)){
                 var state=part.state();
@@ -132,7 +142,7 @@ public final class PropEntity extends LivingEntity {
                 if(!shape.isEmpty())result.add(shape.move(prop.getX()-.5+part.offset().getX(),prop.getY()+part.offset().getY(),prop.getZ()-.5+part.offset().getZ()));
             }
         }
-        return result;
+        return result==null?List.of():result;
     }
     /** Anyone in the match can use a disguise like the real block: doors open, chests and tables open their menus. */
     /** Opens a lectern disguise's book on the client (set by ClientSetup). */

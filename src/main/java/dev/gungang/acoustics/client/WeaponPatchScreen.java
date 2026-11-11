@@ -8,7 +8,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 
 /**
- * Live weapon patch ({@code /gungang modify ui}): the primary / secondary tabs and weapon list on the left, the selected
+ * Live weapon patch ({@code /gungang modify ui}): the primary / secondary / 전역 / 맵 tabs and weapon list on the left, the selected
  * weapon's GunGang equipment, display specs, item effect settings (secondaries) and TaCZ gun stats on the right.
  * Changed boxes are marked and sent together on apply.
  */
@@ -279,7 +279,8 @@ public final class WeaponPatchScreen extends ArenaScreen {
     }
 
     /** "weapon" or "secondary"; views from an older server are primaries. */
-    private static String kind(String kind) { return WeaponPatch.SECONDARY.equals(kind) || WeaponPatch.GENERAL.equals(kind) ? kind : WeaponPatch.PRIMARY; }
+    private static String kind(String kind) { return WeaponPatch.SECONDARY.equals(kind) || WeaponPatch.GENERAL.equals(kind) || WeaponPatch.MAP.equals(kind) ? kind : WeaponPatch.PRIMARY; }
+    private boolean map() { return kind(view).equals(WeaponPatch.MAP); }
     private static String kind(WeaponPatch.View view) { return kind(view.kind()); }
     private static String kind(WeaponPatch.Entry entry) { return kind(entry.kind()); }
     /** Secondaries and the 공통 tab save in the lobby only; primaries patch live. */
@@ -362,10 +363,11 @@ public final class WeaponPatchScreen extends ArenaScreen {
         buildLines();
         scroll = Math.max(0, Math.min(scroll, maxScroll()));
         listScroll = Math.max(0, Math.min(listScroll, maxListScroll()));
-        int tabW = (LIST - 8) / 3;
+        int tabW = (LIST - 9) / 4;
         tab("주무기", WeaponPatch.PRIMARY, listX(), tabW);
-        tab("보조무기", WeaponPatch.SECONDARY, listX() + tabW + 4, tabW);
-        tab("전역", WeaponPatch.GENERAL, listX() + (tabW + 4) * 2, LIST - (tabW + 4) * 2);
+        tab("보조", WeaponPatch.SECONDARY, listX() + tabW + 3, tabW);
+        tab("전역", WeaponPatch.GENERAL, listX() + (tabW + 3) * 2, tabW);
+        tab("맵", WeaponPatch.MAP, listX() + (tabW + 3) * 3, LIST - (tabW + 3) * 3);
         var weapons = listed();
         for (int i = 0; i < weapons.size(); i++) {
             int y = listTop() + i * 20 - listScroll;
@@ -374,7 +376,7 @@ public final class WeaponPatchScreen extends ArenaScreen {
             boolean selected = weapon.id().equals(view.id());
             listButton(Component.literal((kind(weapon).equals(WeaponPatch.GENERAL) ? weapon.name() : weapon.id() + " · " + weapon.name())), listX(), y, LIST, 18, !waiting, selected ? ACCENT : MUTED, 9, 40, () -> {
                 if (weapon.id().equals(view.id())) return;
-                if (!changes().isEmpty()) { status("적용하지 않은 변경이 있습니다. 적용하거나 변경 취소 후 다른 무기를 선택하세요."); rebuildWidgets(); return; }
+                if (!changes().isEmpty()) { status("적용하지 않은 변경이 있습니다. 적용하거나 변경 취소 후 다른 항목을 선택하세요."); rebuildWidgets(); return; }
                 request("open", weapon.id(), Map.of());
             });
         }
@@ -422,7 +424,7 @@ public final class WeaponPatchScreen extends ArenaScreen {
         return true;
     }
     @Override public void render(GuiGraphics g, int mx, int my, float partial) {
-        String gun = kind(view).equals(WeaponPatch.GENERAL) ? "전역 설정" : view.gunId() == null || view.gunId().isEmpty() ? "TaCZ 총기 아님" : view.gunId();
+        String gun = kind(view).equals(WeaponPatch.GENERAL) ? "전역 설정" : map() ? "맵 설정" : view.gunId() == null || view.gunId().isEmpty() ? "TaCZ 총기 아님" : view.gunId();
         String file = view.file() == null || view.file().isEmpty() ? "" : " · " + view.file();
         shell(g, view.name() + " · " + gun + file + (view.phase().equals("LOBBY") ? "" : " · 경기 중 패치"));
         int x = formX(), w = formW();
@@ -474,6 +476,7 @@ public final class WeaponPatchScreen extends ArenaScreen {
         int count = changes().size();
         if (view.error() != null && !view.error().isEmpty()) g.drawString(font, font.plainSubstrByWidth(view.error(), statusW), listX(), statusY, 0xFFFF6666, false);
         else if (waiting) g.drawString(font, "서버에 적용하는 중...", listX(), statusY, MUTED, false);
+        else if (count > 0 && map()) g.drawString(font, "변경 " + count + "개 · 로비에서 적용하면 맵 파일에 저장하고 맵을 다시 불러옵니다.", listX(), statusY, ACCENT, false);
         else if (count > 0) g.drawString(font, secondary() ? "변경 " + count + "개 · 로비에서 적용하면 저장되고 다음 지급부터 반영됩니다." : "변경 " + count + "개 · 실시간 적용을 누르면 저장 후 바로 반영됩니다.", listX(), statusY, ACCENT, false);
         else if (view.message() != null && !view.message().isEmpty()) g.drawString(font, font.plainSubstrByWidth(view.message(), statusW), listX(), statusY, READY, false);
         else g.drawString(font, "휠로 스크롤 · 빈칸/회색 글씨는 현재값 · ? 에 커서를 올리면 설명과 산출식", listX(), statusY, DIM, false);

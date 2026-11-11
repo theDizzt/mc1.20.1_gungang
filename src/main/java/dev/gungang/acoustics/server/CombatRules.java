@@ -97,6 +97,8 @@ public final class CombatRules {
         if(!everyone&&!ALLY_KNOCKBACK_GUNS.contains(gun))return;
         if(!(bullet.getOwner() instanceof LivingEntity owner)||!(target instanceof LivingEntity victim)||victim==owner
                 ||!target(victim)||LobbyManager.respawning(victim.getUUID())||SafeZones.contains(victim))return;
+        // The knockback shotgun owns the fall its hit causes, as the blower's wind does (kill and damage credit).
+        if(!everyone&&!owner.isAlliedTo(victim))DamageCredit.wind(victim,owner);
         if(!everyone){
             var team=owner.getTeam();
             if(team==null||team.isAllowFriendlyFire()||!owner.isAlliedTo(victim))return;
