@@ -40,7 +40,8 @@ public final class PartyRenderer implements BlockEntityRenderer<PartyEntity> {
         pose.mulPose(Axis.YP.rotationDegrees(180-yaw));
         switch(kind){
             case CLOCK->clock(pose,buffers,light);
-            case MIRROR->mirror(pose,buffers,light);
+            case MIRROR->{} // invisible until server cleanup
+            case FLAG->CommandFlagRenderer.renderModel(pose,buffers,light,PartyBlocks.Flag.color(state),"");
             case CHANDELIER->chandelier(pose,buffers,light);
             case SLOT->slot(be,pose,buffers,light,time);
             case BALL->ball(be,pose,buffers,light);
@@ -123,31 +124,6 @@ public final class PartyRenderer implements BlockEntityRenderer<PartyEntity> {
     private static void hand(PoseStack pose,MultiBufferSource buffers,int light,Block block,double cy,double degrees,double w,double len,double tail,double z1,double z2){
         pose.pushPose();pose.translate(0,cy/16,0);pose.mulPose(Axis.ZP.rotationDegrees((float)degrees));
         b(pose,buffers,light,block,-w/2,-tail,z1,w/2,len,z2);pose.popPose();
-    }
-
-    // ---- 244 mirror -----------------------------------------------------------------------------------------------
-
-    /** A full-length mirror on little feet: dark wooden frame, glass showing a real reflection (silvery with light streaks when none is ready). */
-    private static void mirror(PoseStack pose,MultiBufferSource buffers,int light){
-        b(pose,buffers,light,Blocks.DARK_OAK_PLANKS,-7,0,-3,-5,2,8);b(pose,buffers,light,Blocks.DARK_OAK_PLANKS,5,0,-3,7,2,8);
-        b(pose,buffers,light,Blocks.DARK_OAK_PLANKS,-8,2,5,8,32,8);
-        b(pose,buffers,light,Blocks.GOLD_BLOCK,-7,3,4.6,7,31,5);
-        int lit=LightTexture.pack(Math.max(9,LightTexture.block(light)),LightTexture.sky(light));
-        float z=4.5f;float[][] glass={{6.4f,3.6f,z},{-6.4f,3.6f,z},{-6.4f,30.4f,z},{6.4f,30.4f,z}};
-        // A real reflection when one is ready for this glass (MirrorReflection); otherwise plain silvery glass.
-        var reflection=MirrorReflection.glass(pose,glass);
-        if(reflection!=null){
-            var t=buffers.getBuffer(RenderType.text(MirrorReflection.texture(reflection)));var m=pose.last().pose();var uv=MirrorReflection.uv(reflection);
-            for(int pass=0;pass<2;pass++)for(int k=0;k<4;k++){int i=pass==0?k:3-k; // both windings: whichever faces the viewer is kept
-                t.vertex(m,glass[i][0]/16,glass[i][1]/16,(glass[i][2]-.01f)/16).color(0xEA,0xF0,0xF5,0xFF).uv(uv[i][0],uv[i][1]).uv2(BRIGHT).endVertex();}
-            return;
-        }
-        var c=buffers.getBuffer(RenderType.entityCutoutNoCull(WHITE));
-        quad(pose,c,lit,glass,new int[]{0x8E9CAB,0x8E9CAB,0xDDE6EF,0xDDE6EF},0,0,-1);
-        float zs=z-.05f;int s=0xF4F8FC;
-        quad(pose,c,lit,new float[][]{{5.5f,18,zs},{3.5f,18,zs},{-2.5f,30.4f,zs},{-.5f,30.4f,zs}},new int[]{s,s,s,s},0,0,-1);
-        quad(pose,c,lit,new float[][]{{6.4f,8,zs},{5.6f,8,zs},{-.4f,20,zs},{.4f,20,zs}},new int[]{s,s,s,s},0,0,-1);
-        quad(pose,c,lit,new float[][]{{1,3.6f,zs},{-.6f,3.6f,zs},{-6.4f,15,zs},{-6.4f,18.2f,zs}},new int[]{s,s,s,s},0,0,-1);
     }
 
     // ---- 246 chandelier -------------------------------------------------------------------------------------------

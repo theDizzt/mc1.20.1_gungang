@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "gungang:block/command_flag_block"
+    }
+  }
+}

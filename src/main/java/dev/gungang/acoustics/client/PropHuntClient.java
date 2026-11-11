@@ -221,6 +221,7 @@ public final class PropHuntClient {
             case "gungang:garden_fountain"->Lang.tr("물 분사");
             case "gungang:easel"->Lang.tr("그림 그리기");
             case "minecraft:light"->Lang.tr("밝기 조절");
+            case "gungang:command_flag_block"->Lang.tr("깃발 색상 변경");
             case "gungang:dice"->Lang.tr("주사위 던지기");
             case "gungang:chandelier"->Lang.tr("천장에 매달리기/떨어지기");
             case "gungang:slot_machine"->Lang.tr("슬롯 돌리기");
