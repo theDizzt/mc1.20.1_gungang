@@ -25,11 +25,12 @@ public final class EscortHud {
         g.pose().pushPose();g.pose().translate(g.guiWidth()/2f,top,0);g.pose().scale(scale,scale,1);
         g.fill(-180,3,180,4,LIGHT);g.fill(-180,6,-179,13,LIGHT);g.fill(179,6,180,13,LIGHT);
         track(g,v,alpha,bravo,next);
-        DeathmatchHud.small(g,"ALPHA · ATK",-166,19,.85f,alpha,false,true);
-        DeathmatchHud.small(g,motion(v),-166,30,.8f,0xFFFFFFFF,false,true);
+        TeamEmblems.draw(g,"ALPHA",-180,15,20);TeamEmblems.draw(g,"BRAVO",160,15,20);
+        DeathmatchHud.small(g,"ALPHA · ATK",-156,19,.85f,alpha,false,true);
+        DeathmatchHud.small(g,motion(v),-156,30,.8f,0xFFFFFFFF,false,true);
         distance(g,meters(next-v.distance())+"m",-72,23);
-        DeathmatchHud.small(g,"BRAVO · DEF",166,19,.85f,bravo,false,false);
-        DeathmatchHud.small(g,v.completed()>=v.checkpoints().size()?"최종 목적지":"체크포인트 "+(v.completed()+1)+" / "+v.checkpoints().size(),166,30,.8f,0xFFFFFFFF,false,false);
+        DeathmatchHud.small(g,"BRAVO · DEF",156,19,.85f,bravo,false,false);
+        DeathmatchHud.small(g,v.completed()>=v.checkpoints().size()?"최종 목적지":"체크포인트 "+(v.completed()+1)+" / "+v.checkpoints().size(),156,30,.8f,0xFFFFFFFF,false,false);
         distance(g,meters(v.length()-v.distance())+"m",72,23);
         if(v.overtimeTicks()>0){
             overtime(g,String.format(Locale.ROOT,"%.1f",v.overtimeTicks()/20.0),17,1.6f,v.overtimeTicks()<=40?0xFFFF6B6B:AMBER);

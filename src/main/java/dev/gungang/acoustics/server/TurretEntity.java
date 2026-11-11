@@ -27,6 +27,8 @@ public final class TurretEntity extends LivingEntity {
     /** Shot end point, then a counter: one synced data packet per tick replaces a particle packet per tracer step and a sound packet. */
     private static final EntityDataAccessor<org.joml.Vector3f> TRACER=SynchedEntityData.defineId(TurretEntity.class,EntityDataSerializers.VECTOR3);
     private static final EntityDataAccessor<Integer> SHOTS=SynchedEntityData.defineId(TurretEntity.class,EntityDataSerializers.INT);
+    private static final EntityDataAccessor<String> TEAM=SynchedEntityData.defineId(TurretEntity.class,EntityDataSerializers.STRING);
+    public String teamName(){return entityData.get(TEAM);}
     private String team="";
     private long reloadUntil;
     private double reloadFraction;
@@ -35,7 +37,7 @@ public final class TurretEntity extends LivingEntity {
     private ItemStack deploymentStack=ItemStack.EMPTY;
     void deployment(ItemStack stack){deploymentStack=stack.copy();}
     public TurretEntity(EntityType<? extends LivingEntity> type,Level level){super(type,level);setNoGravity(true);}
-    @Override protected void defineSynchedData(){super.defineSynchedData();entityData.define(OWNER,Optional.empty());entityData.define(AMMO,120);entityData.define(CAPACITY,120);entityData.define(RELOAD_RANGE,3f);entityData.define(AIM,0f);entityData.define(COLOR,0xFFFFFF);entityData.define(TRACER,new org.joml.Vector3f());entityData.define(SHOTS,0);}
+    @Override protected void defineSynchedData(){super.defineSynchedData();entityData.define(OWNER,Optional.empty());entityData.define(AMMO,120);entityData.define(CAPACITY,120);entityData.define(RELOAD_RANGE,3f);entityData.define(AIM,0f);entityData.define(COLOR,0xFFFFFF);entityData.define(TRACER,new org.joml.Vector3f());entityData.define(SHOTS,0);entityData.define(TEAM,"");}
     public int teamColor(){return entityData.get(COLOR);}
     @Override public int getTeamColor(){return teamColor();}
     public boolean ownerOutline(Player player){return player!=null&&player.getUUID().equals(owner());}
@@ -45,7 +47,7 @@ public final class TurretEntity extends LivingEntity {
     public float reloadRange(){return entityData.get(RELOAD_RANGE);}
     public float aimYaw(){return entityData.get(AIM);}
     public void setup(LivingEntity owner){
-        entityData.set(OWNER,Optional.of(owner.getUUID()));team=owner.getTeam()==null?"":owner.getTeam().getName();
+        entityData.set(OWNER,Optional.of(owner.getUUID()));team=owner.getTeam()==null?"":owner.getTeam().getName();entityData.set(TEAM,team);
         entityData.set(COLOR,team.equals("Red")?LobbyManager.options().color("ALPHA"):team.equals("Blue")?LobbyManager.options().color("BRAVO"):
                 owner.getTeam()!=null&&owner.getTeam().getColor().getColor()!=null?owner.getTeam().getColor().getColor():0xFFFFFF);
         entityData.set(CAPACITY,Turrets.config.capacity());entityData.set(AMMO,capacity());entityData.set(RELOAD_RANGE,(float)Turrets.config.reloadRange());
@@ -153,6 +155,6 @@ public final class TurretEntity extends LivingEntity {
     @Override public HumanoidArm getMainArm(){return HumanoidArm.RIGHT;}
     @Override public void remove(RemovalReason reason){if(!level().isClientSide)Turrets.removed(this);super.remove(reason);}
     @Override public void addAdditionalSaveData(CompoundTag tag){super.addAdditionalSaveData(tag);if(owner()!=null)tag.putUUID("Owner",owner());tag.putString("Team",team);tag.putInt("Ammo",ammo());tag.putInt("Capacity",capacity());}
-    @Override public void readAdditionalSaveData(CompoundTag tag){super.readAdditionalSaveData(tag);entityData.set(OWNER,tag.hasUUID("Owner")?Optional.of(tag.getUUID("Owner")):Optional.empty());team=tag.getString("Team");entityData.set(CAPACITY,Math.max(1,tag.getInt("Capacity")));entityData.set(AMMO,Math.max(0,Math.min(capacity(),tag.getInt("Ammo"))));}
+    @Override public void readAdditionalSaveData(CompoundTag tag){super.readAdditionalSaveData(tag);entityData.set(OWNER,tag.hasUUID("Owner")?Optional.of(tag.getUUID("Owner")):Optional.empty());team=tag.getString("Team");entityData.set(TEAM,team);entityData.set(CAPACITY,Math.max(1,tag.getInt("Capacity")));entityData.set(AMMO,Math.max(0,Math.min(capacity(),tag.getInt("Ammo"))));}
     @Override public net.minecraft.network.protocol.Packet<net.minecraft.network.protocol.game.ClientGamePacketListener> getAddEntityPacket(){return net.minecraftforge.network.NetworkHooks.getEntitySpawningPacket(this);}
 }

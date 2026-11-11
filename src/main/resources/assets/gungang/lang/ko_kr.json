@@ -1,4 +1,6 @@
 {
+    "item.gungang.command_flag": "지휘 깃발",
+    "entity.gungang_acoustics.command_flag": "지휘 깃발",
     "effect.gungang.acid_poison":  "산성 독",
     "block.gungang.war_table":  "전쟁 탁자",
     "block.gungang.armory":  "무기고",

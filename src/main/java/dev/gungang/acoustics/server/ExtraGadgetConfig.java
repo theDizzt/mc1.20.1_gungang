@@ -24,6 +24,12 @@ public final class ExtraGadgetConfig {
     public record VoidAnchor(double health,double pullRange,int maxTargets,double pullBlocksPerSecond,double damage) { }
     public static final VoidAnchor VOID_ANCHOR_DEFAULTS=new VoidAnchor(60,10,1,5,20);
     public static VoidAnchor voidAnchor=VOID_ANCHOR_DEFAULTS;
+    public record CommandFlag(double health,double cooldownSeconds,double placementRange,
+                              double baseRadius,double baseHealPerSecond,double healingUpgradeSeconds,
+                              double upgradedHealPerSecond,double healingRadius,double defenseUpgradeSeconds,
+                              double defenseRadius,double damageReductionPercent,double globalUpgradeSeconds) { }
+    public static final CommandFlag COMMAND_FLAG_DEFAULTS=new CommandFlag(100,75,5,10,1,20,5,20,60,40,15,180);
+    public static CommandFlag commandFlag=COMMAND_FLAG_DEFAULTS;
     public record ArrowGrenade(double damage,double projectileRange,double durationSeconds,double cooldownSeconds,double emissionIntervalSeconds,double projectileSpeed,double throwSpeed) {
         public int emissionIntervalTicks(){return Math.max(1,ticks(emissionIntervalSeconds));}
     }
@@ -118,6 +124,16 @@ public final class ExtraGadgetConfig {
         load(java.util.Map.of(),true);
     }
     static void load(java.util.Map<String,com.google.gson.JsonObject> overrides,boolean apply)throws IOException {
+        var flag=GadgetConfig.read("command_flag",CommandFlag.class,COMMAND_FLAG_DEFAULTS,overrides,apply);
+        GadgetConfig.bounded(flag.health(),1,1024);GadgetConfig.bounded(flag.cooldownSeconds(),0,86400);
+        GadgetConfig.bounded(flag.placementRange(),1,8);
+        for(double radius:new double[]{flag.baseRadius(),flag.healingRadius(),flag.defenseRadius()})GadgetConfig.bounded(radius,.1,128);
+        for(double heal:new double[]{flag.baseHealPerSecond(),flag.upgradedHealPerSecond()})GadgetConfig.bounded(heal,0,10000);
+        GadgetConfig.bounded(flag.healingUpgradeSeconds(),0,86400);
+        GadgetConfig.bounded(flag.defenseUpgradeSeconds(),flag.healingUpgradeSeconds(),86400);
+        GadgetConfig.bounded(flag.globalUpgradeSeconds(),flag.defenseUpgradeSeconds(),86400);
+        GadgetConfig.bounded(flag.damageReductionPercent(),0,100);
+        if(apply)commandFlag=flag;
         var assault=GadgetConfig.read("air_assault",AirAssault.class,AIR_ASSAULT_DEFAULTS,overrides,apply);
         GadgetConfig.bounded(assault.centerSize(),.1,64);GadgetConfig.bounded(assault.outerSize(),assault.centerSize(),64);GadgetConfig.bounded(assault.shockwaveSize(),assault.outerSize(),64);
         for(double d:new double[]{assault.centerDamage(),assault.outerDamage(),assault.shockwaveDamage()})GadgetConfig.bounded(d,0,10000);

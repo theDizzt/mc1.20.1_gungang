@@ -50,6 +50,7 @@ public final class ConfigModify {
             result.put("m95",ExtraGadgetConfig.m95);
             result.put("air_assault",ExtraGadgetConfig.airAssault);
             result.put("void_anchor",ExtraGadgetConfig.voidAnchor);
+            result.put("command_flag",ExtraGadgetConfig.commandFlag);
             result.put("arrow_grenade",ExtraGadgetConfig.arrowGrenade);
             result.put("turret",Turrets.config);
             result.put("landmine",GadgetConfig.mine);result.put("recovery_potion",GadgetConfig.recovery);result.put("adrenaline",GadgetConfig.adrenaline);result.put("barrier",GadgetConfig.barrier);result.put("bear_trap",GadgetConfig.bearTrap);

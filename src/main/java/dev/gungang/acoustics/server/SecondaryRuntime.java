@@ -46,6 +46,7 @@ public final class SecondaryRuntime {
                     .computeIfAbsent(weapon.id(),id->player.level().getGameTime()+ExtraGadgetConfig.ticks(ExtraGadgetConfig.orbital.cooldownSeconds()));
         }
         tag.putLong("GunGangCooldownEnd",DEADLINES.getOrDefault(player.getUUID(),Map.of()).getOrDefault(weapon.id(),0L));
+        if(CombatGadgets.is(stack,"command_flag"))tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(ExtraGadgetConfig.commandFlag.cooldownSeconds()));
         CombatGadgets.configure(player,stack);
     }
     public static long remaining(Player player,ItemStack stack) {

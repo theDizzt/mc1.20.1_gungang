@@ -144,6 +144,18 @@ public final class PatchHelp {
         item("hitSpeedBonusPercent","공중강습으로 적에게 피해를 주었을 때 이동속도 증가율(%). 같은 효과는 중첩하지 않고 갱신합니다.");
         item("hitSpeedSeconds","공중강습 명중 후 이동속도 증가가 유지되는 시간(초).");
         item("pullRange","창이 꽂힌 위치에서 끌어당길 적을 찾는 반경(블록).");
+        item("command_flag","health","설치된 깃발의 최대 체력. 1~1024. 새로 설치하는 깃발부터 적용됩니다.");
+        item("command_flag","cooldownSeconds","깃발 설치 성공 시 시작하는 쿨타임(초). 내장 아이템 설정이 보조무기 기본 쿨타임보다 우선합니다.");
+        item("command_flag","placementRange","플레이어가 깃발을 설치할 수 있는 최대 거리. 1~8블록.");
+        item("baseRadius","회복 강화 전 깃발의 효과 반경. 0.1~128블록.");
+        item("baseHealPerSecond","회복 강화 전 아군의 초당 체력 회복량. 0이면 회복하지 않습니다.");
+        item("healingUpgradeSeconds","설치 후 회복량과 반경이 강화되기까지의 총 생존 시간. 피해 감소 활성화 시간보다 늦을 수 없습니다.");
+        item("upgradedHealPerSecond","회복 강화 후의 초당 체력 회복량. 이후 단계에서도 유지됩니다. 여러 깃발은 가장 높은 회복량만 적용됩니다.");
+        item("healingRadius","회복 강화 후, 피해 감소 활성화 전의 효과 반경. 0.1~128블록.");
+        item("defenseUpgradeSeconds","설치 후 피해 감소와 방어 단계 반경이 활성화되기까지의 총 생존 시간.");
+        item("defenseRadius","피해 감소 활성화 후, 전체 아군 적용 전의 효과 반경. 0.1~128블록.");
+        item("damageReductionPercent","받는 피해를 줄이는 비율. 0~100%. 여러 깃발은 가장 높은 감소율 한 번만 적용됩니다.");
+        item("globalUpgradeSeconds","설치 후 거리·차원 제한 없이 모든 아군에게 적용하기까지의 총 생존 시간. 회복 강화 ≤ 피해 감소 활성화 ≤ 전체 적용 순서여야 합니다. 시간은 0~86400초.");
         item("maxTargets","가장 가까운 순서로 동시에 끌어당길 수 있는 적 수. 한 명이라도 창에 닿으면 폭발하고 모든 연결이 해제됩니다.");
         item("pullBlocksPerSecond","초당 끌어당기는 블록 수. 기본 5는 4틱당 1블록입니다. 벽을 통과하지 않습니다.");
         item("scopeRevealSeconds","M95 줌 유지 후 첫 투시까지의 시간(초). 준비 후 2.5초마다 0.5초 표시하며 발사 또는 줌 해제로 초기화됩니다.");

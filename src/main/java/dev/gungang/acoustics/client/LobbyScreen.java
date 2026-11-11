@@ -147,9 +147,12 @@ final class LobbyScreen extends ArenaScreen {
     private int panelTitle(GuiGraphics g,Box b,String title,String count,String chip,int chipColor,int color){
         int chipX=b.right()-6;
         if(chip!=null){chipX-=font.width(chip)+8;badge(g,chip,chipX,b.y+5,chipColor);}
-        g.fill(b.x+6,b.y+6,b.x+8,b.y+15,color);
-        text(g,title,b.x+12,b.y+7,chipX-b.x-18,INK);
-        int countX=b.x+12+font.width(title)+5;if(countX<chipX-6)text(g,count,countX,b.y+7,chipX-countX-6,DIM);
+        String emblem=title.equals("알파")?"ALPHA":title.equals("브라보")?"BRAVO":"";
+        int titleX=b.x+12;
+        if(TeamEmblems.draw(g,emblem,b.x+4,b.y+1,17))titleX=b.x+24;
+        else g.fill(b.x+6,b.y+6,b.x+8,b.y+15,color);
+        text(g,title,titleX,b.y+7,chipX-titleX-6,INK);
+        int countX=titleX+font.width(title)+5;if(countX<chipX-6)text(g,count,countX,b.y+7,chipX-countX-6,DIM);
         return chipX;
     }
     private void teamPanel(GuiGraphics g,Box b,String title,List<LobbySnapshot.Member> members,int color){

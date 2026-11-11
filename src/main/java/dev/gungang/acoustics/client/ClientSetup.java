@@ -46,6 +46,7 @@ public final class ClientSetup {
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.HAND_AXE_PROJECTILE.get(),HandAxeRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.SHURIKEN_PROJECTILE.get(),ShurikenRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.VOID_ANCHOR_ENTITY.get(),VoidAnchorRenderer::new);
+        event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.COMMAND_FLAG_ENTITY.get(),CommandFlagRenderer::new);
     }
     @SubscribeEvent public static void blockColors(net.minecraftforge.client.event.RegisterColorHandlersEvent.Block event) {
         // In bomb mode a gate takes the colour of the side currently using its spawn (attackers / defenders).
@@ -64,6 +65,10 @@ public final class ClientSetup {
         return LobbyClient.options.color("ALPHA".equals(rule)||"BRAVO".equals(rule)?gate.owner(rule):gate.team);
     }
     @SubscribeEvent public static void itemColors(net.minecraftforge.client.event.RegisterColorHandlersEvent.Item event) {
+        event.register((stack,tint)->{
+            var player=net.minecraft.client.Minecraft.getInstance().player;
+            return tint==0&&player!=null?TeamHud.teamColor(player):0xFFFFFF;
+        },dev.gungang.acoustics.server.GadgetItems.COMMAND_FLAG.get());
         event.register((stack,tint)->LobbyClient.options.color("ALPHA"),dev.gungang.acoustics.server.StationBlocks.ALPHA_GATE.get());
         event.register((stack,tint)->0x3F76E4,dev.gungang.acoustics.server.ToyBlocks.FOUNTAIN.get());
         event.register((stack,tint)->tint==0?0x3F76E4:0xFFFFFF,dev.gungang.acoustics.server.ToyBlocks.AQUARIUM.get());
