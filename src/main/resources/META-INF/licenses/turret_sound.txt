@@ -1,0 +1,4 @@
+Turret firing audio
+User-supplied source: freesound_community-meaty-gunshot-101257.mp3
+Converted to mono, 44100 Hz Ogg Vorbis for Minecraft positional playback.
+The original file was supplied by the project owner; no synthetic gunshot is used in this asset.

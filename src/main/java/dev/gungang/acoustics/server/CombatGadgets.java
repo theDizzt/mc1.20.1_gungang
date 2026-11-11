@@ -160,6 +160,8 @@ public final class CombatGadgets {
         var turret=Turrets.owned(p.getUUID());
         if(turret!=null){gauges.add(new Gauge("turret_health",turret.getHealth(),turret.getMaxHealth(),false));gauges.add(new Gauge("turret_ammo",turret.ammo(),turret.capacity(),false));}
         var m95=M95.gauge(p);if(m95!=null)gauges.add(m95);
+        var scope=M95Echo.scopeGauge(p);if(scope!=null)gauges.add(scope);
+        var observed=M95Echo.observedGauge(p);if(observed!=null)gauges.add(observed);
         if(MatchManager.bomb()!=null){var gauge=MatchManager.bomb().gauge(p);if(gauge!=null)gauges.add(gauge);}
         long jet=SurvivalGadgets.jetRemaining(p);if(jet>0)gauges.add(new Gauge("jetpack",jet,ExtraGadgetConfig.ticks(ExtraGadgetConfig.jet.durationSeconds()),true));
         if(holdingShield(p))gauges.add(new Gauge("shield",shield(p).health,(float)ExtraGadgetConfig.shield.capacity(),false));

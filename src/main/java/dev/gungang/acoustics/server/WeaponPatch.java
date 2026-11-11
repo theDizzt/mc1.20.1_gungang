@@ -68,6 +68,18 @@ public final class WeaponPatch {
     private static final Map<String, String> SECONDARY_LABELS = Map.of("cooldownSeconds", "쿨타임 (초)", "plantSeconds", "설치 시간 (초)", "fuseSeconds", "폭발 시간 (초)", "defuseSeconds", "해체 시간 (초)");
     /** Item effect setting labels; anything not listed shows its field name. */
     private static final Map<String, String> ITEM_LABELS = Map.ofEntries(
+            Map.entry("piercingDamage", "관통탄 기본 피해"),
+            Map.entry("normalHitCharge", "일반탄 명중 시 관통력 획득량"),
+            Map.entry("smallDamageFalloff", "1단계 관통탄 거리 피해 감소 적용"),Map.entry("largeDamageFalloff", "2단계 관통탄 거리 피해 감소 적용"),
+            Map.entry("thirdDamageFalloff", "3단계 관통탄 거리 피해 감소 적용"),Map.entry("unlimitedDamageFalloff", "무제한 관통탄 거리 피해 감소 적용"),
+            Map.entry("smallHitPadding", "1단계 명중 여유 (블록)"),Map.entry("largeHitPadding", "2단계 명중 여유 (블록)"),
+            Map.entry("thirdHitPadding", "3단계 명중 여유 (블록)"),Map.entry("unlimitedHitPadding", "무제한 관통 명중 여유 (블록)"),
+            Map.entry("centerSize", "중심 정사각형 한 변 (블록)"),Map.entry("outerSize", "외곽 정사각형 한 변 (블록)"),Map.entry("shockwaveSize", "충격파 정사각형 한 변 (블록)"),
+            Map.entry("outerDamage", "외곽 피해"),Map.entry("shockwaveDamage", "충격파 피해"),Map.entry("hoverSeconds", "공중 대기 시간 (초)"),
+            Map.entry("diveRange", "급강하 최대 사거리 (블록)"),Map.entry("diveSeconds", "급강하 시간 (초)"),Map.entry("airborneReductionPercent", "공중 피해 감소율 (%)"),
+            Map.entry("hitSpeedBonusPercent", "적 명중 시 이동속도 증가율 (%)"),Map.entry("hitSpeedSeconds", "명중 이동속도 증가 시간 (초)"),
+            Map.entry("pullRange", "끌어당길 적 탐색 반경 (블록)"),Map.entry("maxTargets", "끌어당길 적 최대 인원"),Map.entry("pullBlocksPerSecond", "끌어당기기 속도 (블록/초)"),
+            Map.entry("emissionIntervalSeconds", "전방향 화살 발사 간격 (초)"),
             Map.entry("headshotMultiplier", "헤드샷 배율"),Map.entry("scopeRevealSeconds", "줌 유지 후 투시 대기 시간 (초)"),Map.entry("magazine", "M95 탄창 용량"),
             Map.entry("rechargePerSecond", "초당 관통력 충전"),Map.entry("maximumCharge", "최대 관통력"),
             Map.entry("smallThreshold", "1단계 관통력 비용"),Map.entry("smallBlocks", "1단계 관통 블록 수"),
@@ -244,7 +256,11 @@ public final class WeaponPatch {
         }
         if(M95.is(weapon.stack())){
             // These values are owned by the M95 item settings, not the pack's ballistic defaults.
-            rows.removeIf(row->Set.of("item:damage","tacz:ammo_amount","tacz:bullet.extra_damage.head_shot_multiplier").contains(row.key()));
+            rows.removeIf(row->Set.of("tacz:ammo_amount","tacz:bullet.extra_damage.head_shot_multiplier").contains(row.key()));
+            // The auto-fill editor needs the pack's baseline to build its shared falloff curve.
+            // Actual normal/piercing base damage remains independently owned by the item settings.
+            rows.replaceAll(row->row.key().equals("tacz:bullet.damage")
+                    ?new Row(row.key(),"거리별 피해 감소 기준값 (TaCZ)",row.group(),row.numeric(),row.value()):row);
         }
         speedFirst(rows);
         String setting = itemSetting(weapon);
@@ -308,7 +324,7 @@ public final class WeaponPatch {
         String item = itemSetting(weapon);
         if (item == null) return;
         for (var field : ConfigModify.editable("item", item).entrySet())
-            rows.add(new Row("item:" + field.getKey(), ITEM_LABELS.getOrDefault(field.getKey(), field.getKey()), "item", ConfigModify.numeric("item", item, field.getKey()), number(text(field.getValue()))));
+            rows.add(new Row("item:" + field.getKey(), item.equals("m95")&&field.getKey().equals("damage")?"일반탄 기본 피해":ITEM_LABELS.getOrDefault(field.getKey(), field.getKey()), "item", ConfigModify.numeric("item", item, field.getKey()), number(text(field.getValue()))));
     }
     /** Secondary changes: weapon file and item effect settings (lobby only, like /gungang modify), then TaCZ data. */
     private static String applySecondary(ServerPlayer player, String id, Map<String, String> changes) throws Exception {
