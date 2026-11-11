@@ -20,6 +20,7 @@ import net.minecraftforge.fml.common.Mod;
  * <ul>
  * <li>{@code burnDamage}, {@code witherDamage}, {@code poisonDamage}: damage of each burning / wither / poison tick on a
  * victim this weapon hit, while that status lasts;</li>
+ * <li>{@code bleedDamage} / {@code bleedSeconds}: a hit makes the victim bleed ({@link Bleeding});</li>
  * <li>{@code explosionMultiplier}: scales this weapon's explosion damage to players and bots, on top of the global
  * {@link ExtraGadgetConfig.Combat#explosionPlayerMultiplier()} every explosion gets.</li>
  * </ul>
@@ -108,6 +109,7 @@ public final class ElementalDamage {
         if(e.burnDamage()!=null)marks.put(Element.BURN,new Mark(e.burnDamage(),now));
         if(e.witherDamage()!=null)marks.put(Element.WITHER,new Mark(e.witherDamage(),now));
         if(e.poisonDamage()!=null)marks.put(Element.POISON,new Mark(e.poisonDamage(),now));
+        if(e.bleedDamage()!=null)Bleeding.apply(victim,event.getSource().getEntity() instanceof LivingEntity attacker?attacker:null,ExtraGadgetConfig.ticks(e.bleedTime()),e.bleedDamage());
     }
     @SubscribeEvent public static void died(net.minecraftforge.event.entity.living.LivingDeathEvent event){MARKS.remove(event.getEntity());}
     @SubscribeEvent public static void stopped(net.minecraftforge.event.server.ServerStoppedEvent event){MARKS.clear();indexed=null;index=Map.of();}

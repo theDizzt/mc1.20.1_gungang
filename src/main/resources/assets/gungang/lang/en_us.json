@@ -2,6 +2,7 @@
     "item.gungang.command_flag": "Command Flag",
     "entity.gungang_acoustics.command_flag": "Command Flag",
     "effect.gungang.acid_poison":  "Acid Poison",
+    "effect.gungang.bleeding":  "Bleeding",
     "block.gungang.war_table":  "War Table",
     "block.gungang.armory":  "Armory",
     "block.gungang.alpha_team":  "ALPHA Team Station",

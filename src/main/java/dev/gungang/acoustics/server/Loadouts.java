@@ -16,9 +16,16 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
      * burnDamage / witherDamage / poisonDamage: damage of each status tick on a victim the weapon hit;
      * explosionMultiplier: scales the weapon's explosion damage to players and bots.
      */
-    public record Elements(Double burnDamage, Double witherDamage, Double poisonDamage, Double explosionMultiplier) {
+    /** {@code bleedDamage}: bleeding damage per second on a victim this weapon hits, for {@code bleedSeconds} (blank: 5). */
+    public record Elements(Double burnDamage, Double witherDamage, Double poisonDamage, Double explosionMultiplier, Double bleedDamage, Double bleedSeconds) {
+        public Elements(Double burnDamage, Double witherDamage, Double poisonDamage, Double explosionMultiplier) {
+            this(burnDamage, witherDamage, poisonDamage, explosionMultiplier, null, null);
+        }
+        public static final double BLEED_SECONDS = 5;
+        public double bleedTime() { return bleedSeconds == null ? BLEED_SECONDS : bleedSeconds; }
         void validate(String id) {
-            for (Double value : new Double[]{burnDamage, witherDamage, poisonDamage})
+            if (bleedSeconds != null && (!Double.isFinite(bleedSeconds) || bleedSeconds < 0 || bleedSeconds > 600)) throw new IllegalArgumentException("Invalid bleed time: " + id);
+            for (Double value : new Double[]{burnDamage, witherDamage, poisonDamage, bleedDamage})
                 if (value != null && (!Double.isFinite(value) || value < 0 || value > 10000)) throw new IllegalArgumentException("Invalid elemental damage: " + id);
             if (explosionMultiplier != null && (!Double.isFinite(explosionMultiplier) || explosionMultiplier < 0 || explosionMultiplier > 100)) throw new IllegalArgumentException("Invalid explosion multiplier: " + id);
         }

@@ -86,7 +86,7 @@ public final class WeaponPatch {
     private static final String GENERAL_CATEGORY = "전역";
     private static final Map<String, String> ELEMENT_LABELS = Map.of(
             "elements.burnDamage", "화상 피해 (1회당)", "elements.witherDamage", "위더 피해 (1회당)",
-            "elements.poisonDamage", "독 피해 (1회당)", "elements.explosionMultiplier", "폭발 피해 배수 (이 무기 · 전역 배수에 곱함)");
+            "elements.poisonDamage", "독 피해 (1회당)", "elements.bleedDamage", "출혈 초당 피해", "elements.bleedSeconds", "출혈 시간 (초, 비우면 5)", "elements.explosionMultiplier", "폭발 피해 배수 (이 무기 · 전역 배수에 곱함)");
     /** Secondary weapon-file fields shown, in order (stats.N.value rows follow, labelled by their stat name). */
     private static final List<String> SECONDARY_FIELDS = List.of("name", "nameEn", "category", "cooldownSeconds", "plantSeconds", "fuseSeconds", "defuseSeconds", "releaseDate", "description", "usage");
     /** Display stat rows of a secondary ({@code stats.N.name} / {@code stats.N.value}); blank rows after them add new ones. */

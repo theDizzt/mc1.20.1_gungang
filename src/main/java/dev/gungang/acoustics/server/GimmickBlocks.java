@@ -17,6 +17,7 @@ public final class GimmickBlocks {
     private static final DeferredRegister<FluidType> TYPES=DeferredRegister.create(ForgeRegistries.Keys.FLUID_TYPES,"gungang");
     private static final DeferredRegister<net.minecraft.world.effect.MobEffect> EFFECTS=DeferredRegister.create(ForgeRegistries.MOB_EFFECTS,"gungang");
     public static final RegistryObject<AcidPoisonEffect> ACID_POISON=EFFECTS.register("acid_poison",AcidPoisonEffect::new);
+    public static final RegistryObject<BleedingEffect> BLEEDING=EFFECTS.register("bleeding",BleedingEffect::new);
     private static final DeferredRegister<net.minecraft.sounds.SoundEvent> SOUNDS=DeferredRegister.create(ForgeRegistries.SOUND_EVENTS,"gungang");
     public static final Map<String,RegistryObject<GimmickBlock>> GIMMICKS=new LinkedHashMap<>();
     public static final RegistryObject<Block> BOMB=BLOCKS.register("planted_bomb",()->new Block(net.minecraft.world.level.block.state.BlockBehaviour.Properties.of().strength(-1,3600000).noOcclusion()
