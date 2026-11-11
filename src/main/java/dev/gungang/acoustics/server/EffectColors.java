@@ -25,7 +25,10 @@ public final class EffectColors {
             new Effect("m95","34 M95","탄도선",0x85DBD9,-1),
             new Effect("shuriken","33 수리검","비행 궤적",0xB852FF,-1),
             new Effect("orbital_strike","87 궤도폭격","조준 링·광선",0xFF0DD9,-1),
-            new Effect("jetpack","93 제트팩","비행 글로우",0xFF3B2E,-1));
+            new Effect("jetpack","93 제트팩","비행 글로우",0xFF3B2E,-1),
+            new Effect("turret","90 터렛","레이저 섬광 탄환",0xFF3B2E,-1))
+            .stream().sorted(Comparator.comparingInt(e->Integer.parseInt(e.weapon().substring(0,e.weapon().indexOf(' ')))))
+            .toList();
     /** Colours offered in the picker: a bright row, a pastel row, a deep row and neutrals/metals. */
     public static final int[] PALETTE={
             0xFF4D4D,0xFF9933,0xFFD84D,0xC6FF4D,0x4DFF6A,0x4DFFD2,0x4DE1FF,0x4D9BFF,

@@ -40,3 +40,9 @@ and Galmuri11 Bold as default. u329 removed MaruMinya and renamed the stored
 value `GALMURI_LEGACY` to `GALMURI`, so old configs start on GUNGANG.
 
 External TTFs retain size 9. Timer and dedicated numeric fonts are unchanged.
+
+## Unused source cleanup
+
+Removed the unused MaruMinya, modern LCD and heroine762 TTF files. The four
+bundled fonts are unchanged. Mulmaru.ttf is retained as the source for the
+merged GUNGANG Hangul font described above.
