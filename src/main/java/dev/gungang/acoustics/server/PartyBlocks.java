@@ -39,21 +39,28 @@ import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 
 /**
- * Prop hunt 243~252, also placeable: analog wall clock, mirror, dice, chandelier, 777 slot machine, billiard ball,
+ * Prop hunt 243~252, also placeable: analog wall clock, command flag, dice, chandelier, 777 slot machine, billiard ball,
  * wishing well, the statue of honorary embezzlement, Christmas tree and Sanga's doll. All but the dice are drawn by
  * PartyRenderer from one block entity type; each stands on its cell's floor centred on the cell, so a disguise (drawn
  * around its hider) and the placed block look the same. The big ones keep a one-cell placed footprint (clipped shape)
  * like the nuke warhead; as disguises their full size comes from {@link #propBox}.
  */
+@net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid=dev.gungang.acoustics.GungangAcoustics.ID)
 public final class PartyBlocks {
-    public enum Kind {CLOCK,MIRROR,CHANDELIER,SLOT,BALL,WELL,STATUE,TREE,SANGA,PHOTO,AUTO,SHADOW}
+    @net.minecraftforge.eventbus.api.SubscribeEvent
+    public static void removedItems(net.minecraftforge.registries.MissingMappingsEvent event){
+        for(var mapping:event.getMappings(ForgeRegistries.Keys.ITEMS,"gungang"))
+            if(mapping.getKey().getPath().equals("mirror"))mapping.remap(net.minecraft.world.item.Items.AIR);
+    }
+    public enum Kind {CLOCK,MIRROR,FLAG,CHANDELIER,SLOT,BALL,WELL,STATUE,TREE,SANGA,PHOTO,AUTO,SHADOW}
     private static final DeferredRegister<Block> BLOCKS=DeferredRegister.create(ForgeRegistries.BLOCKS,"gungang");
     private static final DeferredRegister<Item> ITEMS=DeferredRegister.create(ForgeRegistries.ITEMS,"gungang");
     private static final DeferredRegister<BlockEntityType<?>> ENTITIES=DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES,"gungang");
     private static BlockBehaviour.Properties props(Block like){return BlockBehaviour.Properties.copy(like).noOcclusion();}
     // Shapes are pixel boxes for a north-facing block (front towards -z), relative to the cell's corner.
     public static final RegistryObject<Block> WALL_CLOCK=block("wall_clock",()->new Faced(Kind.CLOCK,props(Blocks.DARK_OAK_PLANKS).strength(1),box(-16,0,13,32,32,16)));
-    public static final RegistryObject<Block> MIRROR=block("mirror",()->new Faced(Kind.MIRROR,props(Blocks.GLASS).strength(.6f),box(0,0,12,16,32,16),box(1,0,4,15,2,16)));
+    public static final RegistryObject<Block> MIRROR=BLOCKS.register("mirror",LegacyMirror::new);
+    public static final RegistryObject<Block> COMMAND_FLAG=block("command_flag_block",Flag::new);
     public static final RegistryObject<Dice> DICE=block("dice",Dice::new);
     public static final RegistryObject<Block> CHANDELIER=block("chandelier",()->new Party(Kind.CHANDELIER,props(Blocks.GOLD_BLOCK).strength(1).lightLevel(s->15),box(-16,-14,-16,32,4,32),box(7,4,7,9,16,9)));
     public static final RegistryObject<Block> SLOT_MACHINE=block("slot_machine",()->new Faced(Kind.SLOT,props(Blocks.IRON_BLOCK).strength(2).lightLevel(s->6),box(0,0,2,16,32,16)));
@@ -67,7 +74,7 @@ public final class PartyBlocks {
     public static final RegistryObject<Block> AUTO_UNIT=block("combat_unit",()->new Faced(Kind.AUTO,props(Blocks.IRON_BLOCK).strength(2),box(4,0,4,12,29,12)));
     public static final RegistryObject<Block> SHADOW=block("shadow",()->new Party(Kind.SHADOW,BlockBehaviour.Properties.copy(Blocks.BLACK_CARPET).noCollission().noOcclusion().strength(.1f),box(1,0,1,15,1,15)));
     public static final RegistryObject<BlockEntityType<PartyEntity>> ENTITY=ENTITIES.register("party_block",()->BlockEntityType.Builder.of(PartyEntity::new,
-            WALL_CLOCK.get(),MIRROR.get(),CHANDELIER.get(),SLOT_MACHINE.get(),BILLIARD_BALL.get(),WISHING_WELL.get(),STATUE.get(),TREE.get(),SANGA_DOLL.get(),
+            WALL_CLOCK.get(),MIRROR.get(),COMMAND_FLAG.get(),CHANDELIER.get(),SLOT_MACHINE.get(),BILLIARD_BALL.get(),WISHING_WELL.get(),STATUE.get(),TREE.get(),SANGA_DOLL.get(),
             PHOTO.get(),AUTO_UNIT.get(),SHADOW.get()).build(null));
     private static <T extends Block> RegistryObject<T> block(String name,java.util.function.Supplier<T> factory){
         var b=BLOCKS.register(name,factory);ITEMS.register(name,()->new BlockItem(b.get(),new Item.Properties()));return b;
@@ -75,7 +82,7 @@ public final class PartyBlocks {
     public static void register(IEventBus bus){BLOCKS.register(bus);ITEMS.register(bus);ENTITIES.register(bus);}
     private static AABB box(double x1,double y1,double z1,double x2,double y2,double z2){return new AABB(x1,y1,z1,x2,y2,z2);}
 
-    public static final String CLOCK="gungang:wall_clock",MIRROR_ID="gungang:mirror",DICE_ID="gungang:dice",CHANDELIER_ID="gungang:chandelier",SLOT="gungang:slot_machine",
+    public static final String CLOCK="gungang:wall_clock",FLAG_ID="gungang:command_flag_block",DICE_ID="gungang:dice",CHANDELIER_ID="gungang:chandelier",SLOT="gungang:slot_machine",
             BALL="gungang:billiard_ball",WELL="gungang:wishing_well",STATUE_ID="gungang:embezzlement_statue",TREE_ID="gungang:christmas_tree",SANGA="gungang:sanga_doll",
             PHOTO_ID="gungang:unpleasant_photo",AUTO="gungang:combat_unit",SHADOW_ID="gungang:shadow";
 
@@ -86,6 +93,7 @@ public final class PartyBlocks {
     public static AABB propBox(String item,BlockState state){
         AABB box=switch(item){
             case CLOCK->box(-24,0,5,24,48,8);
+            case FLAG_ID->box(-6,0,-4,6,40,4);
             case CHANDELIER_ID->box(-24,0,-24,24,32,24);
             case WELL->box(-24,0,-24,24,46,24);
             case STATUE_ID->box(-24,0,-24,24,128,24);
@@ -100,7 +108,7 @@ public final class PartyBlocks {
         return new AABB(Math.min(a[0],b[0])/16,box.minY/16,Math.min(a[1],b[1])/16,Math.max(a[0],b[0])/16,box.maxY/16,Math.max(a[1],b[1])/16);
     }
     /** Thin disguises whose hider takes the thin side (like a painting), so they back flat against a wall. */
-    public static boolean thin(String item){return item.equals(CLOCK)||item.equals(MIRROR_ID);}
+    public static boolean thin(String item){return item.equals(CLOCK);}
     /** x/z about the centre turned for {@code facing}, as the renderer turns the model (north as modelled). */
     static double[] turn(double x,double z,Direction facing){
         return switch(facing){case EAST->new double[]{-z,x};case SOUTH->new double[]{-x,-z};case WEST->new double[]{z,-x};default->new double[]{x,z};};
@@ -151,6 +159,28 @@ public final class PartyBlocks {
         @Override public BlockState rotate(BlockState s,Rotation rotation){return s.setValue(FACING,rotation.rotate(s.getValue(FACING)));}
         @Override public BlockState mirror(BlockState s,Mirror mirror){return s.rotate(mirror.getRotation(s.getValue(FACING)));}
     }
+    /** Legacy world compatibility only: no item, no drops, removed when its chunk loads. */
+    private static final class LegacyMirror extends Faced {
+        LegacyMirror(){super(Kind.MIRROR,props(Blocks.GLASS).noCollission().noLootTable(),PartyBlocks.box(0,0,12,16,32,16));}
+        @Override public void tick(BlockState state,net.minecraft.server.level.ServerLevel level,BlockPos pos,RandomSource random){level.removeBlock(pos,false);}
+        @Override public void onPlace(BlockState state,Level level,BlockPos pos,BlockState old,boolean moving){
+            super.onPlace(state,level,pos,old,moving);
+            if(!level.isClientSide)level.scheduleTick(pos,this,1);
+        }
+    }
+    /** 244: decorative command flag with saved and synced colour. */
+    public static final class Flag extends Faced {
+        public static final IntegerProperty COLOR=IntegerProperty.create("color",0,15);
+        Flag(){super(Kind.FLAG,props(Blocks.OAK_PLANKS).strength(1),PartyBlocks.box(2,0,4,14,40,12));registerDefaultState(defaultBlockState().setValue(COLOR,0));}
+        @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> builder){super.createBlockStateDefinition(builder);builder.add(COLOR);}
+        public static BlockState next(BlockState state){return state.cycle(COLOR);}
+        public static int color(BlockState state){return net.minecraft.world.item.DyeColor.byId(state.getValue(COLOR)).getTextColor();}
+        @Override public InteractionResult use(BlockState state,Level level,BlockPos pos,Player player,InteractionHand hand,BlockHitResult hit){
+            if(hand!=InteractionHand.MAIN_HAND||player.isSpectator())return InteractionResult.PASS;
+            if(!level.isClientSide)level.setBlock(pos,next(state),3);
+            return InteractionResult.sidedSuccess(level.isClientSide);
+        }
+    }
     /** 248: one of the fifteen numbered balls, the white cue ball or the yellow / red carom balls. */
     public static final class Ball extends Party {
         public static final int KINDS=18;
@@ -198,6 +228,10 @@ public final class PartyBlocks {
         /** 255: the skin it wears (a seeker's, as the mannequin), or null for the default. */
         public java.util.UUID skin;
         public PartyEntity(BlockPos pos,BlockState state){super(ENTITY.get(),pos,state);}
+        @Override public void onLoad(){
+            super.onLoad();
+            if(level!=null&&!level.isClientSide&&getBlockState().is(MIRROR.get()))level.scheduleTick(worldPosition,MIRROR.get(),1);
+        }
         public Kind kind(){return getBlockState().getBlock() instanceof Party p?p.kind:Kind.MIRROR;}
         void spin(RandomSource random,long time){for(int i=0;i<3;i++)reels[i]=reel(random);spinAt=time;sync();}
         void sync(){setChanged();if(level!=null)level.sendBlockUpdated(worldPosition,getBlockState(),getBlockState(),3);}

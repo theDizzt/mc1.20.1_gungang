@@ -49,7 +49,7 @@ public final class PropGeometry {
         return result;
     }
     /**
-     * 243 wall clock, 244 mirror: their shape sits at the back of the cell (to hang on a wall), but the disguise's thin
+     * 243 wall clock: its shape sits at the back of the cell (to hang on a wall), but the disguise's thin
      * body is centred on the hider, so the model and hitbox are shifted by this much (blocks) to centre them on the
      * body too; otherwise the clock sank into whatever wall the hider stood against. Zero for every other prop.
      */
