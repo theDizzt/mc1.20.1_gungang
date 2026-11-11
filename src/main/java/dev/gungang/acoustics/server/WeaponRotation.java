@@ -21,7 +21,8 @@ public final class WeaponRotation {
         public static View none(){return new View(false,false,false,0,-1,List.of(),-1,List.of());}
     }
     /** One offer as the client draws it: names, item SNBT for the icons ("" for command-only secondaries), category. */
-    public record Card(String primary,String secondary,String primaryItem,String secondaryItem,String category) { }
+    /** {@code primaryEn}/{@code secondaryEn}: the weapons' English names (blank: none). */
+    public record Card(String primary,String secondary,String primaryItem,String secondaryItem,String category,String primaryEn,String secondaryEn) { }
     private static final class Pool {
         final List<Option> offers;final List<Card> cards;
         /** Offer index each member took; a pick is final. */
@@ -170,7 +171,7 @@ public final class WeaponRotation {
     static void joined(ServerPlayer p){if(active)apply(p.getUUID(),offers(1,0).get(0));}
 
     // ---- view ----
-    private static Card card(Option o){return new Card(o.primary().name(),o.secondary().name(),item(o.primary()),item(o.secondary()),o.primary().category());}
+    private static Card card(Option o){return new Card(o.primary().name(),o.secondary().name(),item(o.primary()),item(o.secondary()),o.primary().category(),o.primary().nameEn(),o.secondary().nameEn());}
     private static String item(Loadouts.Weapon w){
         try{var stack=w.stack();return stack.isEmpty()?"":stack.save(new net.minecraft.nbt.CompoundTag()).toString();}catch(RuntimeException unreadable){return "";}
     }
