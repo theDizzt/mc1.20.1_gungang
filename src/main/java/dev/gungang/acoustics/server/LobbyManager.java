@@ -365,6 +365,7 @@ public final class LobbyManager {
             if (action.action().equals("randomLoadout")) { randomLoadout(sender); return; }
             if (action.action().startsWith("preset")) { preset(sender, action); return; }
             if (action.action().equals("effectColor")) { EffectColors.choose(sender, action.value(), action.target()); return; }
+            if (action.action().equals("effectColorSave") || action.action().equals("effectColorForget")) { EffectColors.savedColor(sender, action.value(), action.action().equals("effectColorSave")); return; }
             if (!enabled || !PLAYERS.containsKey(sender.getUUID())) return;
             if (!phase.equals("LOBBY")) throw new IllegalStateException("준비 또는 경기 진행 중에는 로비 설정을 변경할 수 없습니다.");
             switch (action.action()) {

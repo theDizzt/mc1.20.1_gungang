@@ -23,7 +23,10 @@ public final class RapierTrail {
     private static final java.util.Map<java.util.UUID,Long> SAMPLED=new java.util.HashMap<>();
     public static void receive(GungangNetwork.RapierStep packet){
         var mc=Minecraft.getInstance();if(mc.level==null)return;
-        if(mc.level.getEntity(packet.entity()) instanceof net.minecraft.world.entity.player.Player p)RapierDash.start(p,packet.yaw(),packet.distance());
+        if(mc.level.getEntity(packet.entity()) instanceof net.minecraft.world.entity.player.Player p){
+            WeaponFx.rapierDash(p,packet.yaw(),packet.distance());
+            RapierDash.start(p,packet.yaw(),packet.distance());
+        }
     }
     @SubscribeEvent public static void capture(RenderPlayerEvent.Post event){
         if(!(event.getEntity() instanceof AbstractClientPlayer p)||!RapierDash.active(p)||p.isInvisible()||HermesTrail.dashing(p))return;

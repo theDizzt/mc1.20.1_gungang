@@ -39,6 +39,7 @@ public final class AcousticConfigScreen extends Screen {
         options.add(new Option(0, "footstepOcclusion", AcousticConfig.FOOTSTEP_OCCLUSION, Boolean::parseBoolean, true).right());
         options.add(new Option(0, "footstepVolume", AcousticConfig.FOOTSTEP_VOLUME, s -> ConfigInput.integer(s, 0, 300), false).right());
         options.add(new Option(0, "weaponVolume", AcousticConfig.WEAPON_VOLUME, s -> ConfigInput.integer(s, 0, 300), false).right());
+        options.add(new Option(0, "cooldownReadyVolume", AcousticConfig.COOLDOWN_SOUND_VOLUME, s -> ConfigInput.integer(s, 0, 100), false).right());
         // Distance and performance on the left, sound/material lists on the right.
         decimal(1, "referenceDistance", AcousticConfig.REFERENCE_DISTANCE, 0.25, 16);
         decimal(1, "rolloff", AcousticConfig.ROLLOFF, 0.1, 4);
@@ -62,6 +63,7 @@ public final class AcousticConfigScreen extends Screen {
         options.add(new Option(2, "killLog", AcousticConfig.KILL_LOG, Boolean::parseBoolean, true).right());
         options.add(new Option(2, "teamSilhouettes", AcousticConfig.TEAM_SILHOUETTES, Boolean::parseBoolean, true).right());
         options.add(new Option(2, "autoSprint", AcousticConfig.AUTO_SPRINT, Boolean::parseBoolean, true).right());
+        options.add(new Option(2, "cooldownReadySound", AcousticConfig.COOLDOWN_SOUND, Boolean::parseBoolean, true).right());
         // Presets/files on the left, raster settings on the right.
         options.add(new Option(3, "customFont", AcousticConfig.CUSTOM_FONT, Boolean::parseBoolean, true));
         options.add(new Option(3, "fontPreset", AcousticConfig.FONT_PRESET, FontPreset::valueOf, false));

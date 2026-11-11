@@ -20,19 +20,24 @@ public final class EffectColors {
     public record Effect(String key,String weapon,String label,int first,int second) { }
     public static final List<Effect> EFFECTS=List.of(
             new Effect("hermes_boots","74 헤르메스의 부츠","돌진 글로우",0x6FE8FF,0xFFFFFF),
-            new Effect("rapier","28 레이피어","돌진 잔상",0xB3E6FF,-1),
+            new Effect("rapier","28 레이피어","돌진 잔상·섬광",0xB3E6FF,-1),
             new Effect("las5","27 LAS-5","레이저 광선",0xFFDB1A,-1),
             new Effect("m95","34 M95","탄도선",0x85DBD9,-1),
             new Effect("shuriken","33 수리검","비행 궤적",0xB852FF,-1),
-            new Effect("orbital_strike","87 궤도폭격","조준 링·광선",0xFF0DD9,-1));
-    /** Colours offered in the picker. */
+            new Effect("orbital_strike","87 궤도폭격","조준 링·광선",0xFF0DD9,-1),
+            new Effect("jetpack","93 제트팩","비행 글로우",0xFF3B2E,-1));
+    /** Colours offered in the picker: a bright row, a pastel row, a deep row and neutrals/metals. */
     public static final int[] PALETTE={
-            0xFFFFFF,0xFF4D4D,0xFF9933,0xFFD84D,0xC6FF4D,0x4DFF6A,0x4DFFD2,0x4DE1FF,
-            0x4D9BFF,0x6A4DFF,0xA64DFF,0xFF4DE1,0xFF8FB8,0xB3E6FF,0xFFE8A3,0x9AA3AD};
+            0xFF4D4D,0xFF9933,0xFFD84D,0xC6FF4D,0x4DFF6A,0x4DFFD2,0x4DE1FF,0x4D9BFF,
+            0x6A4DFF,0xA64DFF,0xFF4DE1,0xFF8FB8,0xFFB3B3,0xFFD9A3,0xFFF3B0,0xD9FFB3,
+            0xB3FFD9,0xB3E6FF,0xC9C2FF,0xF0C2FF,0xB31A1A,0xC25E00,0xA88A00,0x2E8B2E,
+            0x007A7A,0x1F4FB3,0x5A1FB3,0x99006B,0xFFFFFF,0xC0C6CE,0xD4AF37,0x9AA3AD};
     public static Effect effect(String key){for(var e:EFFECTS)if(e.key().equals(key))return e;return null;}
 
     private static final Map<UUID,Map<String,int[]>> SERVER=new ConcurrentHashMap<>();
     private static volatile Map<UUID,Map<String,int[]>> client=Map.of();
+    /** Client: the local player's saved palette (PlayerRecord.savedColors). */
+    private static volatile List<Integer> saved=List.of();
 
     /** The owner's colours for {@code key} as {first, second(-1: none)}; defaults when unset or unknown. */
     public static int[] colors(boolean clientSide,UUID owner,String key){
@@ -70,6 +75,14 @@ public final class EffectColors {
         ProgressionService.store(ProgressionService.record(p).withEffectColor(key,color));
         load(p);broadcast(p.server);
     }
+    /** Adds ({@code keep}) or removes one "RRGGBB" colour of the player's saved palette. */
+    static void savedColor(ServerPlayer p,String value,boolean keep)throws java.io.IOException{
+        int rgb=hex(value==null?"":value);var record=ProgressionService.record(p);
+        if(keep&&!record.savedColors().contains(rgb)&&record.savedColors().size()>=PlayerRecord.SAVED_COLORS)
+            p.displayClientMessage(net.minecraft.network.chat.Component.literal("저장 색상이 가득 차 가장 오래된 색을 지웠습니다."),true);
+        ProgressionService.store(keep?record.withSavedColor(rgb):record.withoutSavedColor(rgb));
+        sync(p,table(p.server));
+    }
     private static int hex(String text){
         if(!text.strip().matches("[0-9A-Fa-f]{6}"))throw new IllegalArgumentException("색상은 RRGGBB 형식이어야 합니다.");
         return Integer.parseInt(text.strip(),16);
@@ -83,10 +96,20 @@ public final class EffectColors {
     }
     static void broadcast(net.minecraft.server.MinecraftServer server){
         if(server==null)return;
+        var table=table(server);
+        for(var p:server.getPlayerList().getPlayers())sync(p,table);
+    }
+    private static Map<String,Map<String,int[]>> table(net.minecraft.server.MinecraftServer server){
         var table=new HashMap<String,Map<String,int[]>>();
         for(var p:server.getPlayerList().getPlayers()){var map=SERVER.get(p.getUUID());if(map!=null&&!map.isEmpty())table.put(p.getUUID().toString(),map);}
-        String json=ServerFiles.GSON.toJson(table);
-        for(var p:server.getPlayerList().getPlayers())GungangNetwork.send(p,new GungangNetwork.EffectColorSync(json));
+        return table;
+    }
+    /** Everyone's colours plus the receiver's own saved palette: {"table": {...}, "saved": [rgb ...]}. */
+    private static void sync(ServerPlayer p,Map<String,Map<String,int[]>> table){
+        List<Integer> own;
+        try{own=ProgressionService.record(p).savedColors();}catch(IllegalStateException unavailable){own=List.of();}
+        var json=new com.google.gson.JsonObject();json.add("table",ServerFiles.GSON.toJsonTree(table));json.add("saved",ServerFiles.GSON.toJsonTree(own));
+        GungangNetwork.send(p,new GungangNetwork.EffectColorSync(ServerFiles.GSON.toJson(json)));
     }
     @SubscribeEvent public static void login(PlayerEvent.PlayerLoggedInEvent event){
         if(event.getEntity() instanceof ServerPlayer p){load(p);broadcast(p.server);}
@@ -98,7 +121,11 @@ public final class EffectColors {
     /** Client: the table the server sent. */
     public static void receive(String json){
         var parsed=new HashMap<UUID,Map<String,int[]>>();
-        var tree=com.google.gson.JsonParser.parseString(json).getAsJsonObject();
+        var root=com.google.gson.JsonParser.parseString(json).getAsJsonObject();
+        var tree=root.has("table")?root.getAsJsonObject("table"):new com.google.gson.JsonObject();
+        var own=new ArrayList<Integer>();
+        if(root.has("saved"))for(var c:root.getAsJsonArray("saved"))if(own.size()<PlayerRecord.SAVED_COLORS)own.add(c.getAsInt()&0xFFFFFF);
+        saved=List.copyOf(own);
         for(var row:tree.entrySet()){
             var colors=new HashMap<String,int[]>();
             for(var entry:row.getValue().getAsJsonObject().entrySet()){
@@ -111,6 +138,8 @@ public final class EffectColors {
     }
     /** Client: whether the owner picked their own colours for {@code key} (otherwise the defaults apply). */
     public static boolean customized(UUID owner,String key){return owner!=null&&client.getOrDefault(owner,Map.of()).containsKey(key);}
-    public static void clearClient(){client=Map.of();}
+    /** Client: the local player's saved colours, oldest first. */
+    public static List<Integer> saved(){return saved;}
+    public static void clearClient(){client=Map.of();saved=List.of();}
     private EffectColors(){}
 }

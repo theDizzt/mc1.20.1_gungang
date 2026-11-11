@@ -31,6 +31,17 @@ class EffectColorsTest {
         assertThrows(IllegalArgumentException.class,()->new PlayerRecord.EffectColor("rapier",0x1000000,-1));
         assertThrows(IllegalArgumentException.class,()->new PlayerRecord.EffectColor("rapier",0,-2));
     }
+    @Test void savedColorsPersistMoveToEndAndCapAtSixteen() throws Exception {
+        String id=UUID.randomUUID().toString();Path file=directory.resolve("saved.json");
+        var record=PlayerRecord.empty(id,"p");
+        for(int i=0;i<20;i++)record=record.withSavedColor(i);
+        assertEquals(PlayerRecord.SAVED_COLORS,record.savedColors().size());assertEquals(4,record.savedColors().get(0));
+        record=record.withSavedColor(4).withoutSavedColor(19).withNickname("저장").set("xp","5");
+        assertEquals(4,record.savedColors().get(record.savedColors().size()-1));assertFalse(record.savedColors().contains(19));
+        new PlayerDatabase(file).update(record);
+        assertEquals(record.savedColors(),new PlayerDatabase(file).get(id,"p").savedColors());
+        assertThrows(IllegalArgumentException.class,()->PlayerRecord.empty(id,"p").withSavedColor(0x1000000));
+    }
     @Test void blendRunsFromFirstToSecond() {
         int[] pair={0xFF0000,0x0000FF};
         assertEquals(0xFF0000,EffectColors.at(pair,0));assertEquals(0x0000FF,EffectColors.at(pair,1));
