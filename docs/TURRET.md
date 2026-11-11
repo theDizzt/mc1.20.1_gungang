@@ -45,3 +45,11 @@ u263부터 설치자의 보조 체력바는 `터렛 체력 200/200`처럼 터렛
 기본 색상 텍스처만 사용하고 발광·노멀 등 PBR 맵은 적용하지 않습니다. 변환 스크립트는 `scripts/import_turret_model.py`이며 원본은 `models/turret/`에 보관합니다.
 
 This work is based on ["Turret"](https://sketchfab.com/3d-models/turret-e0e03e8eed174fa082c9a890c2217596) by [FeelsBadMan](https://sketchfab.com/FeelsBadMan), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). 원본 출처·라이선스는 배포 JAR의 `META-INF/licenses/turret.txt`에도 포함합니다.
+
+## 레이저 발포 효과
+
+발포음은 sfx/lasgun.mp3를 모노 Ogg Vorbis로 변환한 turret_shot.ogg를 사용합니다. 재생성은 scripts/make_turret_sound.ps1의 InputFile에 해당 MP3를 지정합니다.
+
+탄도는 흰 중심과 색상 글로우를 가진 짧은 레이저 섬광 탄환으로 표시합니다. 기존 서버 즉시 명중 판정, 피해량, 연사 간격은 유지됩니다. 시각 효과는 클라이언트에서만 생성하며 최대 128개로 제한합니다.
+
+무기 선택 → 프리셋 → 이펙트 색상 → 90 터렛에서 1~2색을 선택합니다. 기본은 붉은색이며 2색을 고르면 비행 경로를 따라 색이 변합니다. 저장된 색상은 다른 플레이어에게도 동기화됩니다. 색상 편집기의 무기 목록은 카테고리와 무관하게 ID 숫자 오름차순입니다.

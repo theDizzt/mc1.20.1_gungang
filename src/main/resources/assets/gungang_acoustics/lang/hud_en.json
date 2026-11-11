@@ -729,5 +729,7 @@
   "휠로 스크롤 · 빈칸/회색 글씨는 현재값 · ? 에 커서를 올리면 설명과 산출식": "Scroll with the wheel · blank/grey shows the current value · hover ? for the description and formula",
   "흰색": "White",
   "체력 255. 지휘 깃발. E: 색상 변경 (16색)": "255 health. Command flag. E: cycle colour (16 colours)",
-  "깃발 색상 변경": "Change flag colour"
+  "깃발 색상 변경": "Change flag colour",
+  "90 터렛": "90 Turret",
+  "레이저 섬광 탄환": "Laser bolts"
 }
