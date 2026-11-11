@@ -31,7 +31,37 @@ public final class WeaponPatch {
     public record Request(String id, Map<String, String> changes, String kind) {
         public Request(String id, Map<String, String> changes) { this(id, changes, null); }
     }
-    public static final String PRIMARY = "weapon", SECONDARY = "secondary", GENERAL = "general";
+    public static final String PRIMARY = "weapon", SECONDARY = "secondary", GENERAL = "general", MAP = "map";
+    private static final String MAP_CATEGORY = "맵";
+    /** Map tab: top-level fields shown first, in this order; the rest follow alphabetically. */
+    private static final List<String> MAP_TOP = List.of("name", "description", "enabled", "releaseDate", "timeLimitSeconds", "propHuntMinutes",
+            "gameMode", "dimension", "weather", "timeOfDay", "previewImage");
+    /** Map tab: nested groups in display order, with their headers; others show their path. */
+    private static final Map<String, String> MAP_GROUPS = mapGroups();
+    private static Map<String, String> mapGroups() {
+        var names = new LinkedHashMap<String, String>();
+        names.put("previewArea", "맵 영역 (미리보기 범위)"); names.put("spectatorSpawn", "관전자 스폰");
+        names.put("alphaSpawn", "알파팀 스폰"); names.put("alphaArea", "알파팀 스폰 영역");
+        names.put("bravoSpawn", "브라보팀 스폰"); names.put("bravoArea", "브라보팀 스폰 영역");
+        names.put("bomb", "폭탄전 · 규칙");
+        names.put("bomb.attackSpawn", "폭탄전 · 공격팀 스폰"); names.put("bomb.attackArea", "폭탄전 · 공격팀 스폰 영역");
+        names.put("bomb.defenseSpawn", "폭탄전 · 수비팀 스폰"); names.put("bomb.defenseArea", "폭탄전 · 수비팀 스폰 영역");
+        names.put("bomb.areaA", "폭탄전 · A 지점 영역"); names.put("bomb.areaB", "폭탄전 · B 지점 영역");
+        names.put("bomb.pointA", "폭탄전 · A 지점"); names.put("bomb.pointB", "폭탄전 · B 지점");
+        names.put("capture", "쟁탈전 · 거점"); names.put("capture.area", "쟁탈전 · 거점 영역");
+        names.put("normandy", "이동점령"); names.put("escort", "호위"); names.put("freeForAll", "개인전"); names.put("propHunt", "숨바꼭질");
+        return Collections.unmodifiableMap(names);
+    }
+    private static final Map<String, String> MAP_LABELS = Map.ofEntries(
+            Map.entry("name", "이름"), Map.entry("description", "설명"), Map.entry("enabled", "사용 (true/false)"),
+            Map.entry("releaseDate", "출시일 (yyyy-MM-dd)"), Map.entry("timeLimitSeconds", "제한 시간 (초)"),
+            Map.entry("propHuntMinutes", "숨바꼭질 제한 시간 (분, 비우면 10)"), Map.entry("gameMode", "게임 모드 (adventure/survival/creative)"),
+            Map.entry("dimension", "차원"), Map.entry("weather", "날씨 (clear/fog/rain/snow)"), Map.entry("timeOfDay", "시간대 (day/dusk/night/dawn)"),
+            Map.entry("previewImage", "미리보기 이미지 파일"), Map.entry("rounds", "라운드 수"), Map.entry("swapEveryRounds", "공수 교대 주기 (라운드)"),
+            Map.entry("preparationSeconds", "준비 시간 (초)"), Map.entry("winningScore", "승리 점수"), Map.entry("captureStepTicks", "점령 단계 간격 (틱)"),
+            Map.entry("scoreIntervalTicks", "점수 간격 (틱)"), Map.entry("yaw", "yaw (좌우 방향)"), Map.entry("pitch", "pitch (상하 방향)"),
+            Map.entry("minX", "최소 X"), Map.entry("minY", "최소 Y"), Map.entry("minZ", "최소 Z"), Map.entry("maxX", "최대 X"), Map.entry("maxY", "최대 Y"), Map.entry("maxZ", "최대 Z"));
+    private static final List<String> MAP_LEAF_ORDER = List.of("x", "y", "z", "yaw", "pitch", "minX", "minY", "minZ", "maxX", "maxY", "maxZ");
     /** The 전역 설정 tab's settings (item effect files). */
     private static final Map<String, String> GENERAL_SETTINGS = Map.of("health_regeneration", "체력 재생", "combat", "전투");
     /** GunGang block settings ({@code /gungang modify block}) listed in the same tab, after the item ones, by name. */
@@ -146,7 +176,7 @@ public final class WeaponPatch {
         if (!GungangNetwork.installed(player)) throw new IllegalArgumentException("패치 화면은 GunGang 모드가 설치된 클라이언트에서만 열 수 있습니다.");
         send(player, kindOf(kind), id, "", "");
     }
-    private static String kindOf(String kind) { return SECONDARY.equals(kind) ? SECONDARY : GENERAL.equals(kind) ? GENERAL : PRIMARY; }
+    private static String kindOf(String kind) { return SECONDARY.equals(kind) ? SECONDARY : GENERAL.equals(kind) ? GENERAL : MAP.equals(kind) ? MAP : PRIMARY; }
     /** Server-thread handler for the screen's requests: {@code open} (select a weapon) or {@code apply}. */
     public static void receive(ServerPlayer player, String action, String json) {
         if (player == null) return;
@@ -164,7 +194,8 @@ public final class WeaponPatch {
                     if (now - last < COOLDOWN_MS) throw new IllegalStateException("잠시 후 다시 적용하세요.");
                     LAST_APPLY.put(player.getUUID(), now);
                     var changes = request.changes() == null ? Map.<String, String>of() : request.changes();
-                    send(player, kind, id, kind.equals(SECONDARY) ? applySecondary(player, id, changes) : kind.equals(GENERAL) ? applyGeneral(player, id, changes) : apply(player, id, changes), "");
+                    send(player, kind, id, kind.equals(SECONDARY) ? applySecondary(player, id, changes) : kind.equals(GENERAL) ? applyGeneral(player, id, changes)
+                            : kind.equals(MAP) ? applyMap(player, id, changes) : apply(player, id, changes), "");
                 }
                 default -> throw new IllegalArgumentException("알 수 없는 요청입니다.");
             }
@@ -202,6 +233,16 @@ public final class WeaponPatch {
         for (var w : loadouts.secondary()) entries.add(new Entry(w.id(), w.name(), w.category(), weight(w), w.movementSpeed(), SECONDARY));
         for (var setting : new TreeMap<>(GENERAL_SETTINGS).entrySet()) entries.add(new Entry(setting.getKey(), setting.getValue(), GENERAL_CATEGORY, null, 100, GENERAL));
         for (var setting : BLOCK_SETTINGS.entrySet()) entries.add(new Entry(setting.getKey(), setting.getValue(), GENERAL_CATEGORY, null, 100, GENERAL));
+        var maps = ConfigModify.maps();
+        for (var map : maps.entrySet()) entries.add(new Entry(map.getKey(), map.getValue()[0], MAP_CATEGORY, null, 100, MAP));
+        if (kind.equals(MAP)) {
+            if (maps.isEmpty()) throw new IllegalStateException("등록된 맵이 없습니다.");
+            String id = maps.containsKey(requested) ? requested : maps.keySet().iterator().next();
+            var rows = mapRows(id);
+            var view = new View(entries, id, maps.get(id)[0], "", "server/maps/" + maps.get(id)[1], rows, message, error, LobbyManager.phase(), weightMultiplier(), kind);
+            GungangNetwork.send(player, new GungangNetwork.WeaponPatchView(ServerFiles.GSON.toJson(view)));
+            return;
+        }
         if (kind.equals(GENERAL)) {
             String id = GENERAL_SETTINGS.containsKey(requested) || BLOCK_SETTINGS.containsKey(requested) ? requested : new TreeMap<>(GENERAL_SETTINGS).firstKey();
             String settings = generalKind(id);
@@ -406,6 +447,87 @@ public final class WeaponPatch {
             var row = new com.google.gson.JsonObject(); row.addProperty("name", name); row.addProperty("value", value); out.add(row);
         }
         return out;
+    }
+    /** 맵 tab rows: every value field of the map file, grouped by the object it sits in (spawns, areas, bomb sites ...). */
+    private static List<Row> mapRows(String id) throws Exception {
+        var fields = ConfigModify.typedFields(MAP, id);
+        var keys = new ArrayList<>(fields.keySet());
+        keys.removeIf(key -> key.startsWith("deathZones.")); // legacy, replaced by death zone blocks
+        keys.sort(WeaponPatch::compareMapKeys);
+        var rows = new ArrayList<Row>();
+        for (String key : keys) {
+            var field = fields.get(key);
+            int dot = key.lastIndexOf('.');
+            String parent = dot < 0 ? "" : key.substring(0, dot), leaf = key.substring(dot + 1);
+            rows.add(new Row("map:" + key, MAP_LABELS.getOrDefault(leaf, leaf), mapGroup(parent), field.getValue(), number(text(field.getKey()))));
+        }
+        return rows;
+    }
+    /** Header of a map row group: its known name, or the nearest known parent's name and the rest of the path. */
+    private static String mapGroup(String parent) {
+        if (parent.isEmpty()) return "맵 기본 정보";
+        for (String at = parent; ; ) {
+            if (MAP_GROUPS.containsKey(at)) {
+                if (at.equals(parent)) return MAP_GROUPS.get(at);
+                var rest = new ArrayList<String>();
+                for (String part : parent.substring(at.length() + 1).split("\\.")) rest.add(part.matches("\\d+") ? "#" + (Integer.parseInt(part) + 1) : part);
+                return MAP_GROUPS.get(at) + " · " + String.join(" ", rest);
+            }
+            int dot = at.lastIndexOf('.');
+            if (dot < 0) return parent;
+            at = at.substring(0, dot);
+        }
+    }
+    private static int mapGroupRank(String parent) {
+        var order = new ArrayList<>(MAP_GROUPS.keySet());
+        for (String at = parent; ; ) {
+            int index = order.indexOf(at);
+            if (index >= 0) return index * 2 + (at.equals(parent) ? 0 : 1);
+            int dot = at.lastIndexOf('.');
+            if (dot < 0) return 1000;
+            at = at.substring(0, dot);
+        }
+    }
+    /** Top-level fields first, then groups in display order; numbered list items in number order; x/y/z before yaw/pitch. */
+    private static int compareMapKeys(String a, String b) {
+        int da = a.lastIndexOf('.'), db = b.lastIndexOf('.');
+        String pa = da < 0 ? "" : a.substring(0, da), pb = db < 0 ? "" : b.substring(0, db);
+        String la = a.substring(da + 1), lb = b.substring(db + 1);
+        if (pa.isEmpty() != pb.isEmpty()) return pa.isEmpty() ? -1 : 1;
+        if (pa.isEmpty()) {
+            int ra = MAP_TOP.indexOf(la), rb = MAP_TOP.indexOf(lb);
+            ra = ra < 0 ? MAP_TOP.size() : ra; rb = rb < 0 ? MAP_TOP.size() : rb;
+            return ra != rb ? Integer.compare(ra, rb) : la.compareTo(lb);
+        }
+        if (!pa.equals(pb)) {
+            int ga = mapGroupRank(pa), gb = mapGroupRank(pb);
+            if (ga != gb) return Integer.compare(ga, gb);
+            String[] sa = pa.split("\\."), sb = pb.split("\\.");
+            for (int i = 0; i < Math.min(sa.length, sb.length); i++) {
+                if (sa[i].equals(sb[i])) continue;
+                if (sa[i].matches("\\d+") && sb[i].matches("\\d+")) return Integer.compare(Integer.parseInt(sa[i]), Integer.parseInt(sb[i]));
+                return sa[i].compareTo(sb[i]);
+            }
+            return Integer.compare(sa.length, sb.length);
+        }
+        int ra = MAP_LEAF_ORDER.indexOf(la), rb = MAP_LEAF_ORDER.indexOf(lb);
+        ra = ra < 0 ? MAP_LEAF_ORDER.size() : ra; rb = rb < 0 ? MAP_LEAF_ORDER.size() : rb;
+        return ra != rb ? Integer.compare(ra, rb) : la.compareTo(lb);
+    }
+    /** 맵 tab: map file fields (lobby only, like /gungang modify map); the edited maps are reloaded after saving. */
+    private static String applyMap(ServerPlayer player, String id, Map<String, String> changes) throws Exception {
+        if (!ConfigModify.exists(MAP, id)) throw new IllegalArgumentException("해당 맵이 없습니다: " + id);
+        if (changes.isEmpty()) throw new IllegalArgumentException("변경한 항목이 없습니다.");
+        if (changes.size() > 128) throw new IllegalArgumentException("항목이 너무 많습니다.");
+        var fields = new LinkedHashMap<String, String>();
+        for (var change : changes.entrySet()) {
+            String key = change.getKey(), value = change.getValue() == null ? "" : change.getValue();
+            if (!key.startsWith("map:") || value.length() > 1000) throw new IllegalArgumentException("알 수 없는 항목: " + key);
+            fields.put(key.substring(4), value);
+        }
+        ConfigModify.apply(MAP, id, fields);
+        LogUtils.getLogger().info("GunGang map patch by {}: {} {}", player.getGameProfile().getName(), id, changes);
+        return "맵 설정 저장: " + id + " · " + fields.size() + "개 항목 · 맵을 다시 불러왔습니다.";
     }
     /** 전역 설정 tab: item effect settings such as health_regeneration (lobby only, like /gungang modify item). */
     private static String applyGeneral(ServerPlayer player, String id, Map<String, String> changes) throws Exception {

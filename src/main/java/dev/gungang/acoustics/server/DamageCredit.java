@@ -29,6 +29,14 @@ public final class DamageCredit {
     static void wind(LivingEntity victim,LivingEntity owner){
         if(owner!=victim)WIND.put(victim,new Hit(owner.getUUID(),victim.level().getGameTime()));
     }
+    /** The enemy whose push (blower, knockback shotgun) is still answerable for this victim's fall, or null. */
+    static Entity pusher(LivingEntity victim){
+        if(!(victim.level() instanceof ServerLevel level))return null;
+        var push=WIND.get(victim);
+        if(push==null||level.getGameTime()-push.time()>WIND_WINDOW||LobbyManager.respawning(victim.getUUID()))return null;
+        var owner=level.getServer().getPlayerList().getPlayer(push.attacker());
+        return owner!=null?owner:level.getEntity(push.attacker());
+    }
     private static final Map<LivingEntity,Burn> FIRE=new WeakHashMap<>();
     private static final Map<LivingEntity,Map<MobEffect,Credit>> EFFECTS=new WeakHashMap<>();
 
