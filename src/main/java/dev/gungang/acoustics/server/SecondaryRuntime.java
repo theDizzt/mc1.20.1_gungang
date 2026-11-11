@@ -38,6 +38,10 @@ public final class SecondaryRuntime {
             tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(ExtraGadgetConfig.jet.cooldownSeconds()));
             tag.putBoolean("GunGangJetpackVerticalFlight",weapon.jetpackVerticalFlight()||ExtraGadgetConfig.jet.verticalFlight());
         }
+        if(CombatGadgets.is(stack,"hermes_boots")) {
+            tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(ExtraGadgetConfig.hermes.chargeSeconds()));
+            tag.putInt(CHARGES,ExtraGadgetConfig.hermes.maxCharges());
+        }else tag.remove(CHARGES);
         if(CombatGadgets.is(stack,"orbital_strike")) {
             tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(ExtraGadgetConfig.orbital.cooldownSeconds()));
             // The first equip waits a full cooldown, except in 랜덤 무기, where weapons change every few minutes and
@@ -46,16 +50,41 @@ public final class SecondaryRuntime {
                     .computeIfAbsent(weapon.id(),id->player.level().getGameTime()+ExtraGadgetConfig.ticks(ExtraGadgetConfig.orbital.cooldownSeconds()));
         }
         tag.putLong("GunGangCooldownEnd",DEADLINES.getOrDefault(player.getUUID(),Map.of()).getOrDefault(weapon.id(),0L));
+        if(CombatGadgets.is(stack,"command_flag"))tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(ExtraGadgetConfig.commandFlag.cooldownSeconds()));
         CombatGadgets.configure(player,stack);
     }
-    public static long remaining(Player player,ItemStack stack) {
+    /**
+     * Stored uses of a charged secondary (74 Hermes' Boots). Its {@code GunGangCooldownEnd} is then the time every
+     * charge is back: one use is ready while that lies at most (charges - 1) intervals ahead, and each use pushes it
+     * one interval further, so spent charges refill one after another.
+     */
+    public static final String CHARGES="GunGangCharges";
+    public static int maxCharges(ItemStack stack){return secondary(stack)?Math.max(1,stack.getTag().getInt(CHARGES)):1;}
+    /** Ticks until every charge is back (the plain cooldown for single-use secondaries). */
+    public static long refill(Player player,ItemStack stack) {
         return secondary(stack)&&stack.getTag().getInt("GunGangCooldownTicks")>0?Math.max(0,stack.getTag().getLong("GunGangCooldownEnd")-player.level().getGameTime()):0;
+    }
+    /** Charges ready now, and how far (0..1) the next one has refilled; {@code partial} smooths the HUD. */
+    public static int charges(Player player,ItemStack stack) {
+        int max=maxCharges(stack),interval=Math.max(1,secondary(stack)?stack.getTag().getInt("GunGangCooldownTicks"):1);
+        return (int)Math.max(0,max-(refill(player,stack)+interval-1)/interval);
+    }
+    public static float nextCharge(Player player,ItemStack stack,float partial) {
+        int interval=Math.max(1,secondary(stack)?stack.getTag().getInt("GunGangCooldownTicks"):1);
+        float left=refill(player,stack)-partial;if(left<=0)return 1;
+        return 1-(left%interval==0?interval:left%interval)/interval;
+    }
+    public static long remaining(Player player,ItemStack stack) {
+        long refill=refill(player,stack);
+        if(refill==0||maxCharges(stack)<=1)return refill;
+        return Math.max(0,refill-(long)(maxCharges(stack)-1)*stack.getTag().getInt("GunGangCooldownTicks"));
     }
     public static boolean ready(Player player,ItemStack stack) { return !FreeForAllMatch.blocked(player)&&remaining(player,stack)==0; }
     public static void commit(Player player,ItemStack stack) {
         if(!secondary(stack)||player.level().isClientSide)return;
         BotLearning.event(player,"secondary_cooldown_commit:"+BotLearning.weapon(stack));
-        var tag=stack.getOrCreateTag();long end=player.level().getGameTime()+tag.getInt("GunGangCooldownTicks");
+        var tag=stack.getOrCreateTag();long now=player.level().getGameTime();
+        long end=(maxCharges(stack)>1?Math.max(now,tag.getLong("GunGangCooldownEnd")):now)+tag.getInt("GunGangCooldownTicks");
         tag.putLong("GunGangCooldownEnd",end);
         DEADLINES.computeIfAbsent(player.getUUID(),id->new HashMap<>()).put(tag.getString("GunGangSecondaryId"),end);
         player.inventoryMenu.broadcastChanges();

@@ -13,7 +13,7 @@ final class MissionButton extends Button {
     MissionButton(int x,int y,int size,String mode,String name,boolean selected,boolean supported,boolean editable,Runnable action){
         super(x,y,size,size,Component.literal(name),b->action.run(),DEFAULT_NARRATION);
         this.mode=mode;this.selected=selected;this.supported=supported;active=supported&&editable;
-        setTooltip(Tooltip.create(Component.literal(name+(supported?(selected?" · 선택됨":editable?"":" · 관리자만 변경 가능"):" · 이 맵에서 지원하지 않음"))));
+        setTooltip(Tooltip.create(Component.literal(name+(supported?(selected?Lang.tr(" · 선택됨"):editable?"":Lang.tr(" · 관리자만 변경 가능")):Lang.tr(" · 이 맵에서 지원하지 않음")))));
     }
     @Override protected void renderWidget(GuiGraphics g,int mx,int my,float partial){
         int color=!supported?0xFF454740:selected?ArenaScreen.ACCENT:active?ArenaScreen.INK:ArenaScreen.MUTED;

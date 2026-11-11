@@ -1,0 +1,14 @@
+{
+  "health": 100,
+  "cooldownSeconds": 75,
+  "placementRange": 5,
+  "baseRadius": 10,
+  "baseHealPerSecond": 1,
+  "healingUpgradeSeconds": 20,
+  "upgradedHealPerSecond": 5,
+  "healingRadius": 20,
+  "defenseUpgradeSeconds": 60,
+  "defenseRadius": 40,
+  "damageReductionPercent": 15,
+  "globalUpgradeSeconds": 180
+}

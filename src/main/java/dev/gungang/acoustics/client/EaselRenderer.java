@@ -47,7 +47,7 @@ public final class EaselRenderer implements BlockEntityRenderer<ToyBlocks.EaselE
         private final char[] canvas=new char[ToyBlocks.CANVAS*ToyBlocks.CANVAS];private final java.util.function.Consumer<String> save;
         private int colour=1;
         Painter(String pixels,java.util.function.Consumer<String> save){
-            super(Component.literal("이젤 그리기"));this.save=save;
+            super(Component.literal(Lang.tr("이젤 그리기")));this.save=save;
             String start=ToyBlocks.canvas(pixels);for(int i=0;i<canvas.length;i++)canvas[i]=start.isEmpty()?'0':start.charAt(i);
         }
         private int cell(){return Math.max(6,Math.min(14,(height-90)/ToyBlocks.CANVAS));}
@@ -55,9 +55,9 @@ public final class EaselRenderer implements BlockEntityRenderer<ToyBlocks.EaselE
         private int top(){return 34;}
         @Override protected void init(){
             int y=top()+cell()*ToyBlocks.CANVAS+10;
-            addRenderableWidget(Button.builder(Component.literal("저장"),b->{save.accept(new String(canvas));onClose();}).bounds(width/2-154,y,100,20).build());
-            addRenderableWidget(Button.builder(Component.literal("모두 지우기"),b->java.util.Arrays.fill(canvas,'0')).bounds(width/2-50,y,100,20).build());
-            addRenderableWidget(Button.builder(Component.literal("취소"),b->onClose()).bounds(width/2+54,y,100,20).build());
+            addRenderableWidget(Button.builder(Component.literal(Lang.tr("저장")),b->{save.accept(new String(canvas));onClose();}).bounds(width/2-154,y,100,20).build());
+            addRenderableWidget(Button.builder(Component.literal(Lang.tr("모두 지우기")),b->java.util.Arrays.fill(canvas,'0')).bounds(width/2-50,y,100,20).build());
+            addRenderableWidget(Button.builder(Component.literal(Lang.tr("취소")),b->onClose()).bounds(width/2+54,y,100,20).build());
         }
         @Override public void render(GuiGraphics g,int mx,int my,float partial){
             renderBackground(g);g.drawCenteredString(font,title,width/2,14,0xFFFFFF);
@@ -69,7 +69,7 @@ public final class EaselRenderer implements BlockEntityRenderer<ToyBlocks.EaselE
                 int sx=x+size+12+i/8*20,sy=y+i%8*20;
                 g.fill(sx-1,sy-1,sx+17,sy+17,i==colour?0xFFFFE27A:0xFF202020);g.fill(sx,sy,sx+16,sy+16,0xFF000000|ToyBlocks.PALETTE[i]);
             }
-            g.drawString(font,"좌클릭 칠하기 · 우클릭 지우기",x,y+size+36,0xFFAAAAAA,false);
+            g.drawString(font,Lang.tr("좌클릭 칠하기 · 우클릭 지우기"),x,y+size+36,0xFFAAAAAA,false);
             super.render(g,mx,my,partial);
         }
         private boolean at(double mx,double my,int button){

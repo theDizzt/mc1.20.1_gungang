@@ -8,7 +8,7 @@ import net.minecraft.network.chat.Component;
 /** Gallery opened by /gungang emblem: one row per shape bracket, the player's own level outlined. */
 public final class LevelEmblemScreen extends Screen {
     private static final int LABEL=78;
-    public LevelEmblemScreen() {super(Component.literal("레벨 엠블럼"));}
+    public LevelEmblemScreen() {super(Component.literal(Lang.tr("레벨 엠블럼")));}
     public static void open() {Minecraft.getInstance().setScreen(new LevelEmblemScreen());}
 
     @Override public void render(GuiGraphics g,int mouseX,int mouseY,float partialTick) {
@@ -19,7 +19,7 @@ public final class LevelEmblemScreen extends Screen {
         int hovered=0;
         for(int row=0;row<10;row++) {
             int y=top+row*cell;
-            g.drawString(font,(row*10+1)+(row==9?"":"~"+(row*10+10))+" "+LevelEmblem.SHAPES[row],left,y+(cell-8)/2,0xFFD8D8D8,true);
+            g.drawString(font,(row*10+1)+(row==9?"":"~"+(row*10+10))+" "+Lang.tr(LevelEmblem.SHAPES[row]),left,y+(cell-8)/2,0xFFD8D8D8,true);
             for(int column=0;column<10;column++) {
                 int level=row*10+column+1;if(level>91)break;
                 int x=left+LABEL+column*cell,pad=Math.max(1,cell/12);
@@ -28,8 +28,8 @@ public final class LevelEmblemScreen extends Screen {
                 if(mouseX>=x&&mouseX<x+cell&&mouseY>=y&&mouseY<y+cell)hovered=level;
             }
         }
-        if(hovered>0)g.renderTooltip(font,Component.literal("Lv. "+hovered+" · "+LevelEmblem.SHAPES[LevelEmblem.shape(hovered)]+" · "
-                +(hovered==91?"은하수":LevelEmblem.COLORS[LevelEmblem.digit(hovered)])),mouseX,mouseY);
+        if(hovered>0)g.renderTooltip(font,Component.literal("Lv. "+hovered+" · "+Lang.tr(LevelEmblem.SHAPES[LevelEmblem.shape(hovered)])+" · "
+                +(hovered==91?Lang.tr("은하수"):Lang.tr(LevelEmblem.COLORS[LevelEmblem.digit(hovered)]))),mouseX,mouseY);
         super.render(g,mouseX,mouseY,partialTick);
     }
     @Override public boolean isPauseScreen() {return false;}

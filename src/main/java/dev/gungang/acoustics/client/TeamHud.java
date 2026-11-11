@@ -349,8 +349,7 @@ public final class TeamHud {
         if (info == null) info = mc.getConnection().getPlayerInfo(name.getString());
         // A player's nickname from the Tab list, whatever name the server's death message carried.
         String shown = info != null ? ClientNames.of(info.getProfile().getId()) : name.getString();
-        String label = mc.font.plainSubstrByWidth(shown, 62);
-        int left = right - mc.font.width(label) - 20;
+        int left = right - Math.min(62, mc.font.width(shown)) - 20;
         // Bots have no PlayerInfo: take their profile skin from the match rows, else from the loaded entity.
         String botSkin = info == null && id != null ? botSkin(mc, id) : null;
         var skin = botSkin != null ? BotRenderer.texture(botSkin)
@@ -363,7 +362,7 @@ public final class TeamHud {
         if(team!=null&&team.getName().equals("Blue"))color=LobbyClient.options.color("BRAVO");
         g.fill(left, y, left + 16, y + 16, color);
         PlayerFaceRenderer.draw(g, skin, left + 1, y + 1, 14);
-        g.drawString(mc.font, label, left + 20, y + 4, color, false);
+        Marquee.draw(g, mc.font, shown, left + 20, y + 4, 62, color, false);
         return left;
     }
 

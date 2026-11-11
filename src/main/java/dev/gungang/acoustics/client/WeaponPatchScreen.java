@@ -99,7 +99,7 @@ public final class WeaponPatchScreen extends ArenaScreen {
     private String curve() { return DamageFalloff.CURVES.get(curveIndex); }
     private double input(String key) {
         try { return Double.parseDouble(curveInput.getOrDefault(key, "").strip()); }
-        catch (NumberFormatException e) { throw new IllegalArgumentException("숫자를 입력하세요: " + switch (key) { case "start" -> "시작 거리"; case "end" -> "끝 거리"; case "startValue" -> "시작 값"; case "endValue" -> "임계 값"; default -> "강도 k"; }); }
+        catch (NumberFormatException e) { throw new IllegalArgumentException(Lang.tr("숫자를 입력하세요: ") + switch (key) { case "start" -> Lang.tr("시작 거리"); case "end" -> Lang.tr("끝 거리"); case "startValue" -> Lang.tr("시작 값"); case "endValue" -> Lang.tr("임계 값"); default -> Lang.tr("강도 k"); }); }
     }
     /** The typed falloff, validated; throws with the reason. */
     private DamageFalloff spec() {
@@ -139,9 +139,9 @@ public final class WeaponPatchScreen extends ArenaScreen {
     /** Widgets of one panel line at height y. */
     private void curveWidgets(Object line, int x, int y, int w) {
         if (line == CURVE_TYPE) {
-            button("곡선: " + DamageFalloff.CURVE_NAMES.get(curve()) + " ▸", x + 7, y, 120, 18, !waiting, ACCENT, () -> { curveIndex = (curveIndex + 1) % DamageFalloff.CURVES.size(); curveNote = ""; rebuildWidgets(); });
-            button(curveMode.equals(DamageFalloff.DAMAGE) ? "값: 피해량 ▸" : "값: 감소율 % ▸", x + 131, y, 100, 18, !waiting, ACCENT, () -> { toggleMode(); rebuildWidgets(); });
-            button("현재값 불러오기", x + w - 96, y, 96, 18, !waiting, MUTED, () -> { resetCurve(); pendingFalloff = null; rebuildWidgets(); });
+            button(Lang.tr("곡선: ") + DamageFalloff.CURVE_NAMES.get(curve()) + " ▸", x + 7, y, 120, 18, !waiting, ACCENT, () -> { curveIndex = (curveIndex + 1) % DamageFalloff.CURVES.size(); curveNote = ""; rebuildWidgets(); });
+            button(curveMode.equals(DamageFalloff.DAMAGE) ? Lang.tr("값: 피해량 ▸") : Lang.tr("값: 감소율 % ▸"), x + 131, y, 100, 18, !waiting, ACCENT, () -> { toggleMode(); rebuildWidgets(); });
+            button(Lang.tr("현재값 불러오기"), x + w - 96, y, 96, 18, !waiting, MUTED, () -> { resetCurve(); pendingFalloff = null; rebuildWidgets(); });
         } else if (line == CURVE_RANGE) {
             int seg = (w - 7) / 4, box = Math.min(48, seg - 8);
             String[] keys = {"start", "startValue", "end", "endValue"};
@@ -150,13 +150,13 @@ public final class WeaponPatchScreen extends ArenaScreen {
             int fill = 64, room = w - 7 - fill - 8 - (pendingFalloff != null ? 48 : 0);
             if (curve().equals("custom")) curveBox("expression", x + 50, y, room - 43, false, "d t base vs ve k start end");
             else if (!curve().equals("linear") && !curve().equals("z")) curveBox("k", x + 50, y, 48, true, "4");
-            if (pendingFalloff != null) button("해제", x + w - fill - 52, y, 48, 18, !waiting, MUTED, () -> { pendingFalloff = null; curveNote = ""; rebuildWidgets(); });
-            button("채우기", x + w - fill, y, fill, 18, !waiting, ACCENT, () -> {
+            if (pendingFalloff != null) button(Lang.tr("해제"), x + w - fill - 52, y, 48, 18, !waiting, MUTED, () -> { pendingFalloff = null; curveNote = ""; rebuildWidgets(); });
+            button(Lang.tr("채우기"), x + w - fill, y, fill, 18, !waiting, ACCENT, () -> {
                 try {
                     var spec = spec();
                     int bands = spec.bands(base()).size();
                     pendingFalloff = ServerFiles.GSON.toJson(spec);
-                    curveNote = "채움 대기 · " + bands + "개 구간 · 적용을 누르면 TaCZ 데이터에 저장";
+                    curveNote = Lang.tr("채움 대기 · ") + bands + Lang.tr("개 구간 · 적용을 누르면 TaCZ 데이터에 저장");
                 } catch (IllegalArgumentException invalid) { pendingFalloff = null; curveNote = "! " + invalid.getMessage(); }
                 rebuildWidgets();
             });
@@ -167,14 +167,14 @@ public final class WeaponPatchScreen extends ArenaScreen {
         if (line == CURVE_RANGE) {
             int seg = (w - 7) / 4;
             boolean reduction = curveMode.equals(DamageFalloff.REDUCTION);
-            String[] labels = {"시작 거리", reduction ? "시작 감소%" : "시작 피해", "끝 거리", reduction ? "임계 감소%" : "임계 피해"};
+            String[] labels = {Lang.tr("시작 거리"), reduction ? Lang.tr("시작 감소%") : Lang.tr("시작 피해"), Lang.tr("끝 거리"), reduction ? Lang.tr("임계 감소%") : Lang.tr("임계 피해")};
             for (int i = 0; i < 4; i++) g.drawString(font, labels[i], x + 7 + seg * i, y + 5, MUTED, false);
         } else if (line == CURVE_SHAPE) {
-            String label = curve().equals("custom") ? "f(d) =" : curve().equals("linear") || curve().equals("z") ? "" : "강도 k";
+            String label = curve().equals("custom") ? "f(d) =" : curve().equals("linear") || curve().equals("z") ? "" : Lang.tr("강도 k");
             g.drawString(font, label, x + 7, y + 5, MUTED, false);
-            String note = !curveNote.isEmpty() ? curveNote : curve().equals("custom") ? "" : curve().equals("linear") || curve().equals("z") ? "강도 없음 · 채우기로 1블록 단위 구간 생성" : "";
+            String note = !curveNote.isEmpty() ? curveNote : curve().equals("custom") ? "" : curve().equals("linear") || curve().equals("z") ? Lang.tr("강도 없음 · 채우기로 1블록 단위 구간 생성") : "";
             int noteX = curve().equals("custom") ? x + w - 64 - (pendingFalloff != null ? 56 : 8) - font.width(note) : x + (curve().equals("linear") || curve().equals("z") ? 7 : 104);
-            if (!note.isEmpty() && !curve().equals("custom")) g.drawString(font, font.plainSubstrByWidth(note, x + w - 64 - (pendingFalloff != null ? 56 : 8) - noteX), noteX, y + 5, note.startsWith("!") ? 0xFFFF6666 : pendingFalloff != null ? READY : DIM, false);
+            if (!note.isEmpty() && !curve().equals("custom")) Marquee.draw(g,font,note,noteX,y + 5,x + w - 64 - (pendingFalloff != null ? 56 : 8) - noteX,note.startsWith("!") ? 0xFFFF6666 : pendingFalloff != null ? READY : DIM,false);
         }
     }
     private void drawGraph(GuiGraphics g, int x, int y, int w) {
@@ -209,9 +209,9 @@ public final class WeaponPatchScreen extends ArenaScreen {
         }
         plot(g, gx, gy, gw, gh, blocks, top, d -> currentAt(d, base), 0xFF7A8290);
         if (at != null) { var f = at; plot(g, gx, gy, gw, gh, blocks, top, d -> f.applyAsDouble(Math.floor(d), base), pendingFalloff != null ? READY : ACCENT); }
-        else g.drawString(font, font.plainSubstrByWidth("! " + error, gw - 8), gx + 4, gy + 4, 0xFFFF6666, false);
-        g.drawString(font, "— 현재", gx + gw - 92, gy + 4, 0xFF7A8290, false);
-        g.drawString(font, "— 미리보기", gx + gw - 52, gy + 4, pendingFalloff != null ? READY : ACCENT, false);
+        else Marquee.draw(g,font,"! " + error,gx + 4,gy + 4,gw - 8,0xFFFF6666,false);
+        g.drawString(font, Lang.tr("— 현재"), gx + gw - 92, gy + 4, 0xFF7A8290, false);
+        g.drawString(font, Lang.tr("— 미리보기"), gx + gw - 52, gy + 4, pendingFalloff != null ? READY : ACCENT, false);
         graphRect = new int[]{gx, gy, gw, gh}; graphBlocks = blocks;
     }
     private void plot(GuiGraphics g, int gx, int gy, int gw, int gh, int blocks, double top, java.util.function.DoubleUnaryOperator f, int color) {
@@ -233,12 +233,12 @@ public final class WeaponPatchScreen extends ArenaScreen {
         double base = base();
         int px = gx + (int) Math.round((d + .5) / graphBlocks * gw);
         g.fill(px, Math.max(gy, TOP), px + 1, Math.min(gy + gh, viewBottom()), 0x80FFFFFF);
-        String now = "현재 " + round(currentAt(d, base));
+        String now = Lang.tr("현재 ") + round(currentAt(d, base));
         String line;
         try {
             double value = spec().damageAt(d, base);
-            line = d + "블록 · 적용 후 " + round(value) + (base > 0 ? " (" + Math.round(value / base * 100) + "%)" : "");
-        } catch (IllegalArgumentException invalid) { line = d + "블록"; }
+            line = d + Lang.tr("블록 · 적용 후 ") + round(value) + (base > 0 ? " (" + Math.round(value / base * 100) + "%)" : "");
+        } catch (IllegalArgumentException invalid) { line = d + Lang.tr("블록"); }
         int tw = Math.max(font.width(line), font.width(now)) + 8, tx = Math.min(mx + 10, width - tw - 4), ty = Math.max(4, my - 28);
         g.pose().pushPose(); g.pose().translate(0, 0, 400);
         g.fill(tx, ty, tx + tw, ty + 24, 0xF0101418);
@@ -304,11 +304,11 @@ public final class WeaponPatchScreen extends ArenaScreen {
     }
     /** "TaCZ 무게 30kg (이동속도 -45%) · GunGang 80% → 최종 약 44%", following what is typed. */
     private String weightLine(WeaponPatch.Entry entry) {
-        if (entry.weight() == null) return "TaCZ 무게: 확인 불가 (TaCZ 총기가 아니거나 데이터 파일 없음)";
+        if (entry.weight() == null) return Lang.tr("TaCZ 무게: 확인 불가 (TaCZ 총기가 아니거나 데이터 파일 없음)");
         double weight = typed("tacz:weight", entry.weight()), speed = typed("gg:movementSpeed", entry.movementSpeed());
         double loss = weight * view.weightMultiplier();
-        String tacz = "TaCZ 무게 " + kg(weight) + (loss == 0 ? " (감속 없음)" : " (이동속도 " + (loss > 0 ? "-" : "+") + number(Math.abs(loss) * 100) + "%)");
-        return tacz + " · GunGang " + number(speed) + "% → 최종 약 " + Math.round(Math.max(0, 1 - loss) * speed) + "%";
+        String tacz = Lang.tr("TaCZ 무게 ") + kg(weight) + (loss == 0 ? Lang.tr(" (감속 없음)") : Lang.tr(" (이동속도 ") + (loss > 0 ? "-" : "+") + number(Math.abs(loss) * 100) + "%)");
+        return tacz + " · GunGang " + number(speed) + Lang.tr("% → 최종 약 ") + Math.round(Math.max(0, 1 - loss) * speed) + "%";
     }
     private String current(WeaponPatch.Row row) { return edits.getOrDefault(row.key(), row.value()); }
     private boolean changed(WeaponPatch.Row row) { var v = edits.get(row.key()); return v != null && !v.isBlank() && !v.strip().equals(row.value()); }
@@ -320,7 +320,7 @@ public final class WeaponPatchScreen extends ArenaScreen {
     }
     private void request(String action, String id, Map<String, String> changes) { request(action, kind(view), id, changes); }
     private void request(String action, String kind, String id, Map<String, String> changes) {
-        if (!LobbyClient.connected()) { status("서버 연결이 끊겨 요청을 보낼 수 없습니다."); return; }
+        if (!LobbyClient.connected()) { status(Lang.tr("서버 연결이 끊겨 요청을 보낼 수 없습니다.")); return; }
         waiting = true;
         GungangNetwork.CHANNEL.sendToServer(new GungangNetwork.WeaponPatchRequest(action, ServerFiles.GSON.toJson(new WeaponPatch.Request(id, changes, kind))));
     }
@@ -350,11 +350,11 @@ public final class WeaponPatchScreen extends ArenaScreen {
                 group = row.group();
                 // The falloff auto-fill sits right above the TaCZ data it writes.
                 if (group.equals("tacz") && hasCurve()) {
-                    lines.add("거리별 피해 감소 · 자동 채움 (1블록 단위 구간)");
+                    lines.add(Lang.tr("거리별 피해 감소 · 자동 채움 (1블록 단위 구간)"));
                     lines.add(CURVE_TYPE); lines.add(CURVE_RANGE); lines.add(CURVE_SHAPE); lines.add(GRAPH);
                     for (int i = 1; i < GRAPH_ROWS; i++) lines.add(GRAPH_FILL);
                 }
-                lines.add(GROUPS.getOrDefault(group, group));
+                lines.add(Lang.tr(GROUPS.getOrDefault(group, group)));
             }
             lines.add(row);
         }
@@ -364,10 +364,10 @@ public final class WeaponPatchScreen extends ArenaScreen {
         scroll = Math.max(0, Math.min(scroll, maxScroll()));
         listScroll = Math.max(0, Math.min(listScroll, maxListScroll()));
         int tabW = (LIST - 9) / 4;
-        tab("주무기", WeaponPatch.PRIMARY, listX(), tabW);
-        tab("보조", WeaponPatch.SECONDARY, listX() + tabW + 3, tabW);
-        tab("전역", WeaponPatch.GENERAL, listX() + (tabW + 3) * 2, tabW);
-        tab("맵", WeaponPatch.MAP, listX() + (tabW + 3) * 3, LIST - (tabW + 3) * 3);
+        tab(Lang.tr("주무기"), WeaponPatch.PRIMARY, listX(), tabW);
+        tab(Lang.tr("보조"), WeaponPatch.SECONDARY, listX() + tabW + 3, tabW);
+        tab(Lang.tr("전역"), WeaponPatch.GENERAL, listX() + (tabW + 3) * 2, tabW);
+        tab(Lang.tr("맵"), WeaponPatch.MAP, listX() + (tabW + 3) * 3, LIST - (tabW + 3) * 3);
         var weapons = listed();
         for (int i = 0; i < weapons.size(); i++) {
             int y = listTop() + i * 20 - listScroll;
@@ -376,7 +376,7 @@ public final class WeaponPatchScreen extends ArenaScreen {
             boolean selected = weapon.id().equals(view.id());
             listButton(Component.literal((kind(weapon).equals(WeaponPatch.GENERAL) ? weapon.name() : weapon.id() + " · " + weapon.name())), listX(), y, LIST, 18, !waiting, selected ? ACCENT : MUTED, 9, 40, () -> {
                 if (weapon.id().equals(view.id())) return;
-                if (!changes().isEmpty()) { status("적용하지 않은 변경이 있습니다. 적용하거나 변경 취소 후 다른 항목을 선택하세요."); rebuildWidgets(); return; }
+                if (!changes().isEmpty()) { status(Lang.tr("적용하지 않은 변경이 있습니다. 적용하거나 변경 취소 후 다른 항목을 선택하세요.")); rebuildWidgets(); return; }
                 request("open", weapon.id(), Map.of());
             });
         }
@@ -395,10 +395,10 @@ public final class WeaponPatchScreen extends ArenaScreen {
             addRenderableWidget(box);
         }
         int bottom = bottom(), x = listX(), w = left() + body() - 12 - x, third = (w - 8) / 3;
-        button("변경 취소", x, bottom, third, 20, !waiting, MUTED, () -> { edits.clear(); pendingFalloff = null; curveNote = ""; status(""); rebuildWidgets(); });
-        button(secondary() ? "적용 (로비)" : "실시간 적용", x + third + 4, bottom, third, 20, !waiting, ACCENT, () -> {
+        button(Lang.tr("변경 취소"), x, bottom, third, 20, !waiting, MUTED, () -> { edits.clear(); pendingFalloff = null; curveNote = ""; status(""); rebuildWidgets(); });
+        button(secondary() ? Lang.tr("적용 (로비)") : Lang.tr("실시간 적용"), x + third + 4, bottom, third, 20, !waiting, ACCENT, () -> {
             var changes = changes();
-            if (changes.isEmpty()) { status("변경한 항목이 없습니다."); rebuildWidgets(); return; }
+            if (changes.isEmpty()) { status(Lang.tr("변경한 항목이 없습니다.")); rebuildWidgets(); return; }
             request("apply", view.id(), changes); rebuildWidgets();
         });
         closeButton(x + (third + 4) * 2, bottom, w - (third + 4) * 2, 20);
@@ -408,7 +408,7 @@ public final class WeaponPatchScreen extends ArenaScreen {
         boolean active = kind(view).equals(kind);
         button(label, x, TOP, w, 18, !waiting, active ? ACCENT : MUTED, () -> {
             if (active) return;
-            if (!changes().isEmpty()) { status("적용하지 않은 변경이 있습니다. 적용하거나 변경 취소 후 전환하세요."); rebuildWidgets(); return; }
+            if (!changes().isEmpty()) { status(Lang.tr("적용하지 않은 변경이 있습니다. 적용하거나 변경 취소 후 전환하세요.")); rebuildWidgets(); return; }
             listScroll = 0;
             request("open", kind, "", Map.of());
         });
@@ -424,9 +424,9 @@ public final class WeaponPatchScreen extends ArenaScreen {
         return true;
     }
     @Override public void render(GuiGraphics g, int mx, int my, float partial) {
-        String gun = kind(view).equals(WeaponPatch.GENERAL) ? "전역 설정" : map() ? "맵 설정" : view.gunId() == null || view.gunId().isEmpty() ? "TaCZ 총기 아님" : view.gunId();
+        String gun = kind(view).equals(WeaponPatch.GENERAL) ? Lang.tr("전역 설정") : map() ? Lang.tr("맵 설정") : view.gunId() == null || view.gunId().isEmpty() ? Lang.tr("TaCZ 총기 아님") : view.gunId();
         String file = view.file() == null || view.file().isEmpty() ? "" : " · " + view.file();
-        shell(g, view.name() + " · " + gun + file + (view.phase().equals("LOBBY") ? "" : " · 경기 중 패치"));
+        shell(g, view.name() + " · " + gun + file + (view.phase().equals("LOBBY") ? "" : Lang.tr(" · 경기 중 패치")));
         int x = formX(), w = formW();
         g.enableScissor(x - 2, TOP - 2, x + w + 2, viewBottom());
         graphRect = null; hoverHelp = null;
@@ -448,13 +448,13 @@ public final class WeaponPatchScreen extends ArenaScreen {
             if (lines.get(i) == WEIGHT) {
                 var entry = selected();
                 boolean heavy = entry.weight() != null && typed("tacz:weight", entry.weight()) != 0;
-                g.drawString(font, font.plainSubstrByWidth(weightLine(entry), w - 7), x + 7, y + 5, heavy ? 0xFFFFAA44 : MUTED, false);
+                Marquee.draw(g,font,weightLine(entry),x + 7,y + 5,w - 7,heavy ? 0xFFFFAA44 : MUTED,false);
                 continue;
             }
             var row = (WeaponPatch.Row) lines.get(i);
             boolean changed = changed(row);
             boolean help = row.help() != null && !row.help().isEmpty();
-            g.drawString(font, font.plainSubstrByWidth((changed ? "* " : "") + row.label(), boxX() - x - (help ? 24 : 12)), x + 7, y + 5, changed ? ACCENT : INK, false);
+            Marquee.draw(g,font,(changed ? "* " : "") + row.label(),x + 7,y + 5,boxX() - x - (help ? 24 : 12),changed ? ACCENT : INK,false);
             if (help) {
                 int qx = boxX() - 14;
                 boolean over = mx >= qx - 3 && mx < qx + 9 && my >= Math.max(TOP, y + 1) && my < Math.min(viewBottom(), y + 17);
@@ -462,11 +462,11 @@ public final class WeaponPatchScreen extends ArenaScreen {
                 g.fill(qx - 2, y + 3, qx + 8, y + 15, over ? 0x60FFFFFF : 0x24FFFFFF);
                 g.drawString(font, "?", qx + 1, y + 5, over ? INK : MUTED, false);
             }
-            String note = changed ? "기존 " + row.value() : "";
-            g.drawString(font, font.plainSubstrByWidth(note, x + w - boxX() - BOX - 6), boxX() + BOX + 6, y + 5, MUTED, false);
+            String note = changed ? Lang.tr("기존 ") + row.value() : "";
+            Marquee.draw(g,font,note,boxX() + BOX + 6,y + 5,x + w - boxX() - BOX - 6,MUTED,false);
         }
         g.disableScissor();
-        if (view.rows().isEmpty()) g.drawString(font, "수정할 수 있는 항목이 없습니다.", x + 7, TOP + 5, MUTED, false);
+        if (view.rows().isEmpty()) g.drawString(font, Lang.tr("수정할 수 있는 항목이 없습니다."), x + 7, TOP + 5, MUTED, false);
         if (maxScroll() > 0) {
             int track = viewBottom() - TOP, content = lines.size() * ROW, thumb = Math.max(16, track * track / content), pos = TOP + (track - thumb) * scroll / maxScroll();
             g.fill(x + w + 3, TOP, x + w + 5, viewBottom(), 0x30FFFFFF); g.fill(x + w + 3, pos, x + w + 5, pos + thumb, ACCENT);
@@ -474,12 +474,12 @@ public final class WeaponPatchScreen extends ArenaScreen {
         g.fill(formX() - 6, TOP, formX() - 5, viewBottom(), TacticalStyle.HAIRLINE);
         int statusY = viewBottom() + 4, statusW = left() + body() - 12 - listX();
         int count = changes().size();
-        if (view.error() != null && !view.error().isEmpty()) g.drawString(font, font.plainSubstrByWidth(view.error(), statusW), listX(), statusY, 0xFFFF6666, false);
-        else if (waiting) g.drawString(font, "서버에 적용하는 중...", listX(), statusY, MUTED, false);
-        else if (count > 0 && map()) g.drawString(font, "변경 " + count + "개 · 로비에서 적용하면 맵 파일에 저장하고 맵을 다시 불러옵니다.", listX(), statusY, ACCENT, false);
-        else if (count > 0) g.drawString(font, secondary() ? "변경 " + count + "개 · 로비에서 적용하면 저장되고 다음 지급부터 반영됩니다." : "변경 " + count + "개 · 실시간 적용을 누르면 저장 후 바로 반영됩니다.", listX(), statusY, ACCENT, false);
-        else if (view.message() != null && !view.message().isEmpty()) g.drawString(font, font.plainSubstrByWidth(view.message(), statusW), listX(), statusY, READY, false);
-        else g.drawString(font, "휠로 스크롤 · 빈칸/회색 글씨는 현재값 · ? 에 커서를 올리면 설명과 산출식", listX(), statusY, DIM, false);
+        if (view.error() != null && !view.error().isEmpty()) Marquee.draw(g,font,view.error(),listX(),statusY,statusW,0xFFFF6666,false);
+        else if (waiting) g.drawString(font, Lang.tr("서버에 적용하는 중..."), listX(), statusY, MUTED, false);
+        else if (count > 0 && map()) g.drawString(font, Lang.tr("변경 ") + count + Lang.tr("개 · 로비에서 적용하면 맵 파일에 저장하고 맵을 다시 불러옵니다."), listX(), statusY, ACCENT, false);
+        else if (count > 0) g.drawString(font, secondary() ? Lang.tr("변경 ") + count + Lang.tr("개 · 로비에서 적용하면 저장되고 다음 지급부터 반영됩니다.") : Lang.tr("변경 ") + count + Lang.tr("개 · 실시간 적용을 누르면 저장 후 바로 반영됩니다."), listX(), statusY, ACCENT, false);
+        else if (view.message() != null && !view.message().isEmpty()) Marquee.draw(g,font,view.message(),listX(),statusY,statusW,READY,false);
+        else g.drawString(font, Lang.tr("휠로 스크롤 · 빈칸/회색 글씨는 현재값 · ? 에 커서를 올리면 설명과 산출식"), listX(), statusY, DIM, false);
         super.render(g, mx, my, partial);
         graphTooltip(g, mx, my);
         helpTooltip(g, mx, my);

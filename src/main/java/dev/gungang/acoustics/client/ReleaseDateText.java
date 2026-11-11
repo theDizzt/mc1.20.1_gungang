@@ -9,6 +9,7 @@ public final class ReleaseDateText {
         if(value==null||value.isBlank())return "";
         try {
             var date=LocalDate.parse(value);
+            if(Lang.english())return date.toString(); // 2026-11-21
             return date.getYear()+"년 "+date.getMonthValue()+"월 "+date.getDayOfMonth()+"일";
         } catch(DateTimeParseException ignored) {return value;}
     }

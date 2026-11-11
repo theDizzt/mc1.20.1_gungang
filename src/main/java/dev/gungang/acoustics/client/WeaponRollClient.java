@@ -44,7 +44,7 @@ public final class WeaponRollClient {
         if(!state.active())return;
         var font=Minecraft.getInstance().font;
         if(state.nextSeconds()>=0&&!state.open()){
-            String text="무기 교체까지 "+state.nextSeconds()/60+":"+String.format("%02d",state.nextSeconds()%60);
+            String text=Lang.tr("무기 교체까지 ")+state.nextSeconds()/60+":"+String.format("%02d",state.nextSeconds()%60);
             int w=font.width(text)+12,x=g.guiWidth()/2-w/2;
             g.fill(x,y+2,x+w,y+14,0x90141511);
             g.drawString(font,text,x+6,y+4,0xFFFFD84A,false);
@@ -53,7 +53,7 @@ public final class WeaponRollClient {
         var offers=state.offers();int n=Math.min(9,offers.size()),columns=Math.min(n,ROW),rows=(n+ROW-1)/ROW;
         int width=columns*CARD+(columns-1)*GAP,left=(g.guiWidth()-width)/2,height=rows*CARD_H+(rows-1)*GAP;
         int top=Math.min(Math.round(g.guiHeight()*.56f),g.guiHeight()-height-24);
-        String title=(state.first()?"시작 무기 선택":"다음 무기 선택")+" (선착순) · "+state.seconds()+"초";
+        String title=(state.first()?Lang.tr("시작 무기 선택"):Lang.tr("다음 무기 선택"))+Lang.tr(" (선착순) · ")+state.seconds()+Lang.tr("초");
         g.pose().pushPose();g.pose().translate(0,0,200);
         g.fill(left-6,top-16,left+width+6,top+height+16,0xB0101418);
         g.drawCenteredString(font,title,g.guiWidth()/2,top-12,0xFFFFFFFF);
@@ -63,12 +63,12 @@ public final class WeaponRollClient {
             g.fill(x,cy,x+CARD,cy+CARD_H,picked?0x6070CDBF:taken?0x40000000:0x40FFFFFF);
             g.renderOutline(x,cy,CARD,CARD_H,picked?0xFF70CDBF:taken?0x40FF6B6B:0x60FFFFFF);
             g.drawString(font,"["+(i+1)+"]",x+3,cy+3,picked?0xFF70CDBF:taken?0xFF808080:0xFFFFD84A,true);
-            g.drawString(font,font.plainSubstrByWidth(card.category(),CARD-26),x+22,cy+3,0xFF9AA4B2,false);
-            line(g,icon(card.primaryItem()),"주",card.primary(),x,cy+15);
-            line(g,icon(card.secondaryItem()),"보조",card.secondary(),x,cy+37);
-            if(taken){g.pose().pushPose();g.pose().translate(0,0,300);g.fill(x,cy,x+CARD,cy+CARD_H,0x90101418);g.drawCenteredString(font,"선점됨",x+CARD/2,cy+CARD_H/2-4,0xFFFF6B6B);g.pose().popPose();}
+            Marquee.draw(g,font,card.category(),x+22,cy+3,CARD-26,0xFF9AA4B2,false);
+            line(g,icon(card.primaryItem()),Lang.tr("주"),card.primary(),x,cy+15);
+            line(g,icon(card.secondaryItem()),Lang.tr("보조"),card.secondary(),x,cy+37);
+            if(taken){g.pose().pushPose();g.pose().translate(0,0,300);g.fill(x,cy,x+CARD,cy+CARD_H,0x90101418);g.drawCenteredString(font,Lang.tr("선점됨"),x+CARD/2,cy+CARD_H/2-4,0xFFFF6B6B);g.pose().popPose();}
         }
-        String foot=state.picked()>=0?(state.first()?"선택 완료":"선택 완료 · 교체 시간에 지급"):"숫자 키 1~"+n+" · 선착순 · 미선택 시 남은 무기 중 무작위";
+        String foot=state.picked()>=0?(state.first()?Lang.tr("선택 완료"):Lang.tr("선택 완료 · 교체 시간에 지급")):Lang.tr("숫자 키 1~")+n+Lang.tr(" · 선착순 · 미선택 시 남은 무기 중 무작위");
         g.drawCenteredString(font,foot,g.guiWidth()/2,top+height+4,0xFFB0B0B0);
         g.pose().popPose();
     }
@@ -77,7 +77,7 @@ public final class WeaponRollClient {
         if(!stack.isEmpty())g.renderItem(stack,x+3,y);
         g.pose().pushPose();g.pose().translate(0,0,250);
         g.drawString(font,label,x+22,y,0xFF9AA4B2,false);
-        g.drawString(font,font.plainSubstrByWidth(name,CARD-25),x+22,y+9,0xFFE2E8F0,false);
+        Marquee.draw(g,font,name,x+22,y+9,CARD-25,0xFFE2E8F0,false);
         g.pose().popPose();
     }
     private WeaponRollClient(){}
