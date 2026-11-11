@@ -220,7 +220,7 @@ public final class ConfigModify {
         for(String key:ELEMENT_FIELDS)if(target.fields.containsKey(key)&&!value(target.effective,key).isJsonNull())result.put(key,value(target.effective,key));
         return result;
     }
-    static final List<String> ELEMENT_FIELDS=List.of("elements.burnDamage","elements.witherDamage","elements.poisonDamage","elements.explosionMultiplier");
+    static final List<String> ELEMENT_FIELDS=List.of("elements.burnDamage","elements.witherDamage","elements.poisonDamage","elements.bleedDamage","elements.bleedSeconds","elements.explosionMultiplier");
     /** Every value field of a setting (secondary weapon, item effect ...) with its current effective value. */
     static Map<String,JsonElement> editable(String kind,String id)throws Exception{
         var target=target(kind,id);var result=new LinkedHashMap<String,JsonElement>();
