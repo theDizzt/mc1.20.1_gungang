@@ -108,8 +108,8 @@ public final class TurretEntity extends LivingEntity {
         // TRACER is defined before SHOTS, so it is already applied. tickCount 0 is the spawn packet, not a shot.
         if(!level().isClientSide||!SHOTS.equals(key)||tickCount==0)return;
         Vec3 from=muzzle(),to=new Vec3(entityData.get(TRACER));
-        int steps=Math.min(24,Math.max(1,(int)Math.ceil(from.distanceTo(to))));
-        for(int i=1;i<=steps;i++){Vec3 point=from.lerp(to,(double)i/steps);level().addParticle(ParticleTypes.CRIT,point.x,point.y,point.z,0,0,0);}
+        net.minecraftforge.fml.DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
+                ()->()->dev.gungang.acoustics.client.TurretLaser.shot(from,to,owner()));
         level().playLocalSound(getX(),getY(),getZ(),TurretSounds.SHOT.get(),net.minecraft.sounds.SoundSource.BLOCKS,.55f,.96f+random.nextFloat()*.08f,false);
     }
     /** Barrel axis of the model (948 units at 1/800 block), on the yaw pivot. */
