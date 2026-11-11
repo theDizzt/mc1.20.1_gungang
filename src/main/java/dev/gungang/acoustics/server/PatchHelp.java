@@ -115,6 +115,8 @@ public final class PatchHelp {
         gear("elements.burnDamage", "용도: 이 무기에 맞아 불이 붙은 동안 화상 1회(약 1초마다)의 피해.\n산출식(추정): 화상 총 피해 ≈ 이 값 × 불붙은 초");
         gear("elements.witherDamage", "용도: 이 무기가 건 위더 효과의 1회당 피해(위더 I은 약 2초마다).\n산출식(추정): 총 피해 ≈ 이 값 × 지속 초 / 2");
         gear("elements.poisonDamage", "용도: 이 무기가 건 독 효과의 1회당 피해(독 I은 약 1.25초마다).\n산출식(추정): 총 피해 ≈ 이 값 × 지속 초 / 1.25");
+        gear("elements.bleedDamage", "용도: 이 무기에 맞은 대상이 출혈 상태가 되어 1초마다 받는 피해.\n산출식: 출혈 총 피해 = 이 값 × 출혈 시간. 이미 출혈 중이면 더 센 피해·더 긴 시간이 남습니다. 회복 키트로 치료됩니다.");
+        gear("elements.bleedSeconds", "용도: 이 무기가 건 출혈의 지속 시간(초). 비우면 5초.");
         gear("elements.explosionMultiplier", "용도: 이 무기 폭발이 플레이어·봇에게 주는 피해 배수.\n산출식: 폭발 피해 × 전역 '폭발 피해 배수' × 이 값");
 
         // ---- GunGang item effect settings (generic by field name) -----------------------------------------------

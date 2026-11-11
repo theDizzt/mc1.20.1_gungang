@@ -29,8 +29,15 @@ public final class CommandFlags {
         float heal=0;for(var flag:FLAGS)if(flag.affects(p))heal=Math.max(heal,flag.healing());
         if(heal>0)p.heal(heal);
     }
+    /** Allied bots stand on no scoreboard team: they get the same healing on their own tick. */
+    @SubscribeEvent public static void bot(net.minecraftforge.event.entity.living.LivingEvent.LivingTickEvent event){
+        if(!(event.getEntity() instanceof BotEntity bot)||bot.level().isClientSide||bot.tickCount%20!=0||!BotManager.live(bot))return;
+        float heal=0;for(var flag:FLAGS)if(flag.affects(bot))heal=Math.max(heal,flag.healing());
+        if(heal>0)bot.heal(heal);
+    }
     @SubscribeEvent(priority=EventPriority.LOWEST) public static void damage(net.minecraftforge.event.entity.living.LivingHurtEvent event){
-        if(!(event.getEntity() instanceof net.minecraft.server.level.ServerPlayer p)||event.getSource().is(net.minecraft.tags.DamageTypeTags.BYPASSES_INVULNERABILITY))return;
+        var p=event.getEntity();
+        if(!(p instanceof net.minecraft.server.level.ServerPlayer||p instanceof BotEntity)||event.getSource().is(net.minecraft.tags.DamageTypeTags.BYPASSES_INVULNERABILITY))return;
         float reduction=0;for(var flag:FLAGS)if(flag.affects(p))reduction=Math.max(reduction,flag.reduction());
         if(reduction>0)event.setAmount(event.getAmount()*(1-reduction/100f));
     }

@@ -212,7 +212,7 @@ public final class ConfigModify {
     /** Weapon fields the patch screen edits, in display order, with their current effective values. */
     static Map<String,JsonElement> weaponFields(String id)throws Exception{
         var target=target("weapon",id);var result=new LinkedHashMap<String,JsonElement>();
-        for(String key:List.of("name","category","description","usage","releaseDate","maxHealth","movementSpeed","windStrength","specs.damage","specs.accuracy","specs.stability","specs.range","specs.fireRate"))
+        for(String key:List.of("name","nameEn","category","description","usage","releaseDate","maxHealth","movementSpeed","windStrength","specs.damage","specs.accuracy","specs.stability","specs.range","specs.fireRate"))
             if(target.fields.containsKey(key))result.put(key,value(target.effective,key));
         // Card stat lines (stats.N.value), labelled by their name on the patch screen.
         for(String key:target.fields.keySet())if(key.matches("stats\\.\\d+\\.(name|value)"))result.put(key,value(target.effective,key));
@@ -220,7 +220,7 @@ public final class ConfigModify {
         for(String key:ELEMENT_FIELDS)if(target.fields.containsKey(key)&&!value(target.effective,key).isJsonNull())result.put(key,value(target.effective,key));
         return result;
     }
-    static final List<String> ELEMENT_FIELDS=List.of("elements.burnDamage","elements.witherDamage","elements.poisonDamage","elements.explosionMultiplier");
+    static final List<String> ELEMENT_FIELDS=List.of("elements.burnDamage","elements.witherDamage","elements.poisonDamage","elements.bleedDamage","elements.bleedSeconds","elements.explosionMultiplier");
     /** Every value field of a setting (secondary weapon, item effect ...) with its current effective value. */
     static Map<String,JsonElement> editable(String kind,String id)throws Exception{
         var target=target(kind,id);var result=new LinkedHashMap<String,JsonElement>();

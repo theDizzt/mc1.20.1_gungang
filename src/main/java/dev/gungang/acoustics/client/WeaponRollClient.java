@@ -63,9 +63,9 @@ public final class WeaponRollClient {
             g.fill(x,cy,x+CARD,cy+CARD_H,picked?0x6070CDBF:taken?0x40000000:0x40FFFFFF);
             g.renderOutline(x,cy,CARD,CARD_H,picked?0xFF70CDBF:taken?0x40FF6B6B:0x60FFFFFF);
             g.drawString(font,"["+(i+1)+"]",x+3,cy+3,picked?0xFF70CDBF:taken?0xFF808080:0xFFFFD84A,true);
-            Marquee.draw(g,font,card.category(),x+22,cy+3,CARD-26,0xFF9AA4B2,false);
-            line(g,icon(card.primaryItem()),Lang.tr("주"),card.primary(),x,cy+15);
-            line(g,icon(card.secondaryItem()),Lang.tr("보조"),card.secondary(),x,cy+37);
+            Marquee.draw(g,font,Lang.tr(card.category()),x+22,cy+3,CARD-26,0xFF9AA4B2,false);
+            line(g,icon(card.primaryItem()),Lang.tr("주"),Lang.weapon(card.primary(),card.primaryEn()),x,cy+15);
+            line(g,icon(card.secondaryItem()),Lang.tr("보조"),Lang.weapon(card.secondary(),card.secondaryEn()),x,cy+37);
             if(taken){g.pose().pushPose();g.pose().translate(0,0,300);g.fill(x,cy,x+CARD,cy+CARD_H,0x90101418);g.drawCenteredString(font,Lang.tr("선점됨"),x+CARD/2,cy+CARD_H/2-4,0xFFFF6B6B);g.pose().popPose();}
         }
         String foot=state.picked()>=0?(state.first()?Lang.tr("선택 완료"):Lang.tr("선택 완료 · 교체 시간에 지급")):Lang.tr("숫자 키 1~")+n+Lang.tr(" · 선착순 · 미선택 시 남은 무기 중 무작위");

@@ -68,7 +68,7 @@ public final class BombMatch {
     public void eliminate(ServerPlayer p){
         if(dead(p.getUUID()))return;
         dead.add(p.getUUID());cancelUse(p);p.stopUsingItem();removeObjectives(p);
-        p.setHealth(p.getMaxHealth());p.removeAllEffects();KatanaSpin.clear(p);p.clearFire();p.fallDistance=0;p.setGameMode(GameType.SPECTATOR);
+        p.setHealth(p.getMaxHealth());p.removeAllEffects();Bleeding.clear(p);p.clearFire();p.fallDistance=0;p.setGameMode(GameType.SPECTATOR);
         updateSpectator(p,0);
         p.sendSystemMessage(Component.literal("다음 라운드까지 팀원을 관전합니다. 마우스 휠로 관전 대상을 변경하세요."));
     }
