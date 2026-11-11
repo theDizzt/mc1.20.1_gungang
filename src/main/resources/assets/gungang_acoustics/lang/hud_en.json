@@ -614,7 +614,6 @@
   "체력 255. E: 약 2.5초 동안 눈물이 흐르고 낑낑 소리(3초 쿨타임)": "255 health. E: cries and whimpers for about 2.5s (3s cooldown)",
   "체력 255. 마네킹과 같은 모습에 미니건. 직접 조작 불가: 찾는 시간에 가장 가까운 술래를 찾아가 탄창 무제한 미니건으로 사격(초당 10발, 발당 3.5). 휠: 다른 시점 관전(계속 자율 전투) / R: 내 시점": "255 health. A mannequin with a minigun. No direct control: during seek time it hunts the nearest seeker and fires an unlimited minigun (10 rounds/s, 3.5 each). Wheel: watch another view (keeps fighting) / R: my view",
   "체력 255. 장식등이 깜빡이는 크리스마스 트리. E: 장식등 켜기/끄기": "255 health. A Christmas tree with twinkling lights. E: lights on/off",
-  "체력 255. 전신 거울. 앞쪽 풍경과 사람이 실제로 비침": "255 health. A full-length mirror that really reflects what is in front of it",
   "체력 255. 폭 2블록·높이 2블록. E: 캔버스에 16×16 그림 그리기. 누구나 볼 수 있음": "255 health. 2 blocks wide and tall. E: paint a 16×16 picture on the canvas. Everyone can see it",
   "체력 400. 2×2×2 크기의 잔디 블록": "400 health. A 2×2×2 grass block",
   "체력 999": "999 health",
@@ -728,5 +727,9 @@
   "휠 확대 / 드래그 이동": "Wheel to zoom / drag to move",
   "휠로 스크롤": "Scroll with the wheel",
   "휠로 스크롤 · 빈칸/회색 글씨는 현재값 · ? 에 커서를 올리면 설명과 산출식": "Scroll with the wheel · blank/grey shows the current value · hover ? for the description and formula",
-  "흰색": "White"
+  "흰색": "White",
+  "체력 255. 지휘 깃발. E: 색상 변경 (16색)": "255 health. Command flag. E: cycle colour (16 colours)",
+  "깃발 색상 변경": "Change flag colour",
+  "90 터렛": "90 Turret",
+  "레이저 섬광 탄환": "Laser bolts"
 }

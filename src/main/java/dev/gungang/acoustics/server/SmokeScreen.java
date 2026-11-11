@@ -14,7 +14,8 @@ import net.minecraft.world.phys.Vec3;
  * 40 ticks after the throw and keeps spawning puffs within about 5.5 blocks across and 4.5 up/down of itself until
  * it expires; the puffs then linger about a second. Bots treat a sightline through that volume as blocked.
  */
-final class SmokeScreen {
+@net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid=dev.gungang.acoustics.GungangAcoustics.ID)
+public final class SmokeScreen {
     private static final ResourceLocation GRENADE = new ResourceLocation("lrtactical", "smoke_grenade_entity");
     private static final int RELEASE = 40, LINGER = 20;
     /** Dense core of the cloud; the triangular puff spread thins out toward 5.5 / 4.5 blocks. */
@@ -25,15 +26,57 @@ final class SmokeScreen {
     private record Cloud(Vec3 center, int seen) { }
     private static final Map<ServerLevel, Map<UUID, Cloud>> CLOUDS = new java.util.WeakHashMap<>();
     private static final Map<ServerLevel, Integer> SCANNED = new java.util.WeakHashMap<>();
+    private static final Map<ServerLevel, java.util.Set<UUID>> GRENADES = new java.util.WeakHashMap<>();
+
+    private static boolean grenade(Entity entity) {
+        return GRENADE.equals(EntityType.getKey(entity.getType()));
+    }
+
+    @net.minecraftforge.eventbus.api.SubscribeEvent(priority=net.minecraftforge.eventbus.api.EventPriority.LOWEST)
+    public static void joined(net.minecraftforge.event.entity.EntityJoinLevelEvent event) {
+        if(event.getLevel() instanceof ServerLevel level && grenade(event.getEntity())) {
+            var tracked=GRENADES.get(level);
+            if(tracked!=null)tracked.add(event.getEntity().getUUID());
+        }
+    }
+
+    @net.minecraftforge.eventbus.api.SubscribeEvent
+    public static void left(net.minecraftforge.event.entity.EntityLeaveLevelEvent event) {
+        if(event.getLevel() instanceof ServerLevel level) {
+            var tracked=GRENADES.get(level);
+            if(tracked!=null)tracked.remove(event.getEntity().getUUID());
+        }
+    }
+
+    @net.minecraftforge.eventbus.api.SubscribeEvent
+    public static void unloaded(net.minecraftforge.event.level.LevelEvent.Unload event) {
+        if(event.getLevel() instanceof ServerLevel level) {
+            GRENADES.remove(level);CLOUDS.remove(level);SCANNED.remove(level);
+        }
+    }
+
+    @net.minecraftforge.eventbus.api.SubscribeEvent
+    public static void stopped(net.minecraftforge.event.server.ServerStoppedEvent event) {
+        GRENADES.clear();CLOUDS.clear();SCANNED.clear();
+    }
 
     private static Map<UUID, Cloud> clouds(ServerLevel level) {
         int now = level.getServer().getTickCount();
         var clouds = CLOUDS.computeIfAbsent(level, l -> new HashMap<>());
         Integer last = SCANNED.put(level, now);
         if (last == null || last != now) {
-            for (Entity entity : level.getAllEntities())
-                if (entity.tickCount >= RELEASE && !entity.isRemoved() && GRENADE.equals(EntityType.getKey(entity.getType())))
+            // Bootstrap once, then follow entity lifecycle events. UUIDs do not retain unloaded entities/levels.
+            var tracked=GRENADES.computeIfAbsent(level,l->{
+                var ids=new java.util.HashSet<UUID>();
+                for(var entity:l.getAllEntities())if(grenade(entity))ids.add(entity.getUUID());
+                return ids;
+            });
+            for(var iterator=tracked.iterator();iterator.hasNext();) {
+                Entity entity=level.getEntity(iterator.next());
+                if(entity==null||entity.isRemoved()){iterator.remove();continue;}
+                if (entity.tickCount >= RELEASE)
                     clouds.put(entity.getUUID(), new Cloud(entity.position(), now));
+            }
             clouds.values().removeIf(c -> now - c.seen() > LINGER);
         }
         return clouds;

@@ -74,7 +74,7 @@ public final class PropRenderer extends EntityRenderer<PropEntity> {
         }else{
             if(entity.item().equals("gungang:dried_ghast"))pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(180-net.minecraft.util.Mth.rotLerp(partial,entity.yRotO,entity.getYRot())));
             pose.translate(-.5,0,-.5);
-            // 243 / 244 hang at the back of their cell; centred on the hider's thin body instead (as the hitbox is).
+            // 243 hangs at the back of their cell; centred on the hider's thin body instead (as the hitbox is).
             var thin=dev.gungang.acoustics.server.PropGeometry.thinOffset(entity);pose.translate(thin.x,0,thin.z);
             // Slightly larger than a block around its centre, so where a disguise overlaps world blocks
             // (a sunk health pack in the floor, a prop against a wall) the disguise's faces win the depth test.

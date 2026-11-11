@@ -3,7 +3,6 @@ package dev.gungang.acoustics.server;
 import dev.gungang.acoustics.GungangAcoustics;
 import java.util.*;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraftforge.event.TickEvent;
@@ -18,7 +17,40 @@ import net.minecraftforge.fml.common.Mod;
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID)
 public final class StatusForecast {
     static final int PERIOD=4;
-    private static final Map<UUID,Integer> SENT=new HashMap<>();
+    private record Snapshot(List<Integer> ids,List<Float> amounts,List<Float> heals){}
+    private static final Map<UUID,Snapshot> SENT=new HashMap<>();
+    private static final Map<ServerLevel,Set<UUID>> BOTS=new WeakHashMap<>();
+
+    @SubscribeEvent(priority=net.minecraftforge.eventbus.api.EventPriority.LOWEST)
+    public static void joined(net.minecraftforge.event.entity.EntityJoinLevelEvent event){
+        if(event.getEntity() instanceof BotEntity&&event.getLevel() instanceof ServerLevel level){
+            var tracked=BOTS.get(level);
+            if(tracked!=null)tracked.add(event.getEntity().getUUID());
+        }
+    }
+    @SubscribeEvent public static void left(net.minecraftforge.event.entity.EntityLeaveLevelEvent event){
+        if(event.getEntity() instanceof BotEntity&&event.getLevel() instanceof ServerLevel level){
+            var tracked=BOTS.get(level);
+            if(tracked!=null)tracked.remove(event.getEntity().getUUID());
+        }
+    }
+    @SubscribeEvent public static void unloaded(net.minecraftforge.event.level.LevelEvent.Unload event){
+        if(event.getLevel() instanceof ServerLevel level)BOTS.remove(level);
+    }
+    private static void addBots(ServerLevel level,List<LivingEntity> bodies){
+        // Include all loaded bots, even ones outside BotManager's active match roster.
+        // Bootstrap once per level; UUIDs avoid retaining entities or their worlds.
+        var tracked=BOTS.computeIfAbsent(level,l->{
+            var ids=new LinkedHashSet<UUID>();
+            for(var entity:l.getAllEntities())if(entity instanceof BotEntity)ids.add(entity.getUUID());
+            return ids;
+        });
+        for(var iterator=tracked.iterator();iterator.hasNext();){
+            var entity=level.getEntity(iterator.next());
+            if(entity instanceof BotEntity bot&&!bot.isRemoved())bodies.add(bot);
+            else iterator.remove();
+        }
+    }
 
     public static float pending(LivingEntity body){
         if(!body.isAlive())return 0;
@@ -60,23 +92,25 @@ public final class StatusForecast {
             if(level.players().isEmpty())continue;
             var ids=new ArrayList<Integer>();var amounts=new ArrayList<Float>();var heals=new ArrayList<Float>();
             var bodies=new ArrayList<LivingEntity>(level.players());
-            for(var entity:level.getAllEntities())if(entity instanceof BotEntity bot)bodies.add(bot);
+            addBots(level,bodies);
             for(var body:bodies){
                 float amount=Math.round(pending(body)*2)/2f,heal=Math.round(pendingHeal(body)*2)/2f;
                 if(amount>0||heal>0){ids.add(body.getId());amounts.add(amount);heals.add(heal);}
             }
-            int hash=Objects.hash(ids,amounts,heals);
+            var snapshot=new Snapshot(List.copyOf(ids),List.copyOf(amounts),List.copyOf(heals));
+            GungangNetwork.StatusDamage packet=null;
             for(var player:level.players()){
-                Integer last=SENT.get(player.getUUID());
-                if(last!=null&&last==hash)continue;
-                SENT.put(player.getUUID(),hash);
-                if(GungangNetwork.installed(player))GungangNetwork.send(player,new GungangNetwork.StatusDamage(ids.stream().mapToInt(Integer::intValue).toArray(),toArray(amounts),toArray(heals)));
+                if(!GungangNetwork.installed(player)||snapshot.equals(SENT.get(player.getUUID())))continue;
+                // The encoder only reads these arrays: construct once for all recipients in this dimension.
+                if(packet==null)packet=new GungangNetwork.StatusDamage(ids.stream().mapToInt(Integer::intValue).toArray(),toArray(amounts),toArray(heals));
+                GungangNetwork.send(player,packet);
+                SENT.put(player.getUUID(),snapshot);
             }
         }
     }
     private static float[] toArray(List<Float> values){var out=new float[values.size()];for(int i=0;i<out.length;i++)out[i]=values.get(i);return out;}
     @SubscribeEvent public static void changed(net.minecraftforge.event.entity.player.PlayerEvent.PlayerChangedDimensionEvent event){SENT.remove(event.getEntity().getUUID());}
     @SubscribeEvent public static void logout(net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent event){SENT.remove(event.getEntity().getUUID());}
-    @SubscribeEvent public static void stopped(net.minecraftforge.event.server.ServerStoppedEvent event){SENT.clear();}
+    @SubscribeEvent public static void stopped(net.minecraftforge.event.server.ServerStoppedEvent event){SENT.clear();BOTS.clear();}
     private StatusForecast(){}
 }

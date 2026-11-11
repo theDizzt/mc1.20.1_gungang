@@ -261,7 +261,7 @@ public final class PropListScreen extends Screen {
         d("gungang:easel",Lang.tr("체력 255. 폭 2블록·높이 2블록. E: 캔버스에 16×16 그림 그리기. 누구나 볼 수 있음"));
         d("light",Lang.tr("보이지 않는 빛 블록(같은 팀에게만 표시). 이동속도 3배, 해로운 상태 이상·화상을 받지 않음. E: 밝기 15→12→9→6→3→0 순환. 마우스 휠: 밝기 1씩 조절"));
         d("gungang:wall_clock",Lang.tr("체력 255. 3×3 크기의 둥근 아날로그 벽시계(두께는 표지판 정도). 현재 시각을 시·분·초침으로 보여 줌"));
-        d("gungang:mirror",Lang.tr("체력 255. 전신 거울. 앞쪽 풍경과 사람이 실제로 비침"));
+        d("gungang:command_flag_block",Lang.tr("체력 255. 지휘 깃발. E: 색상 변경 (16색)"));
         d("gungang:dice",Lang.tr("E: 주사위 던지기. 굴러가다 멈춘 눈(1~6)을 문구로 띄움"));
         d("gungang:chandelier",Lang.tr("체력 255. 3×2×3 크기. E: 가까운 천장(12블록 안)에 매달리기 / 다시 E로 떨어지기"));
         d("gungang:slot_machine",Lang.tr("E: 슬롯 돌리기(쿨타임 없음, 릴이 멈춘 뒤 다시 돌리기). 777 잭팟이면 당첨 버저와 함께 모든 술래에게 돈벼락, 술래는 5초 동안 맞다가 사망(찾는 시간에만)"));

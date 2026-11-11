@@ -29,7 +29,7 @@ public final class PropInteraction {
         if(prop.state().hasProperty(BlockStateProperties.OPEN))prop.state(prop.state().setValue(BlockStateProperties.OPEN,open));
     }
     /** Disguises whose E does something of its own (an ability, arrows, a blast, sinking), shown as "특수" by the name. */
-    private static final Set<String> SPECIAL=Set.of("minecraft:anvil","minecraft:flower_pot","minecraft:spawner","minecraft:nether_portal","minecraft:lodestone",
+    private static final Set<String> SPECIAL=Set.of(PartyBlocks.FLAG_ID,"minecraft:anvil","minecraft:flower_pot","minecraft:spawner","minecraft:nether_portal","minecraft:lodestone",
             "gungang:blue_jump_pad","gungang:lime_jump_pad","gungang:conveyor_belt","minecraft:command_block","minecraft:oak_sign","minecraft:oak_hanging_sign","minecraft:infested_stone",
             "gungang:mannequin","minecraft:beacon","minecraft:end_crystal","minecraft:sculk_sensor","minecraft:sculk_shrieker","gungang:hologram_projector",
             "gungang:shutter","minecraft:sea_pickle","minecraft:turtle_egg","minecraft:note_block","minecraft:jukebox","minecraft:brewing_stand","minecraft:bell",

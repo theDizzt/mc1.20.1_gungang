@@ -114,10 +114,10 @@ public final class PropAbilities {
         if(item.equals(PartyBlocks.BALL)&&prop.state().hasProperty(PartyBlocks.Ball.BALL))prop.state(prop.state().setValue(PartyBlocks.Ball.BALL,p.getRandom().nextInt(PartyBlocks.Ball.KINDS)));
         if(item.equals(PartyBlocks.DICE_ID)&&prop.state().hasProperty(PartyBlocks.Dice.VALUE))prop.state(prop.state().setValue(PartyBlocks.Dice.VALUE,1+p.getRandom().nextInt(6)));
     }
-    /** Sturdy disguises (tagged "견고"): mannequins and dolls, (crying) obsidian, end crystal, geyser, war table, armory, 243 wall clock, 244 mirror 255; big grass block 400; bedrock 999; every other block 50. */
+    /** Sturdy disguises (tagged "견고"): mannequins and dolls, (crying) obsidian, end crystal, geyser, war table, armory, 243 wall clock, 244 command flag 255; big grass block 400; bedrock 999; every other block 50. */
     public static double maxHealth(String item){
         return Set.of("gungang:mannequin",EUNBI,HANBI,"minecraft:obsidian","minecraft:crying_obsidian","minecraft:end_crystal","gungang:geyser","gungang:war_table","gungang:armory").contains(item)?255
-                :Set.of("gungang:easel","gungang:garden_fountain",PartyBlocks.CLOCK,PartyBlocks.MIRROR_ID,PartyBlocks.CHANDELIER_ID,PartyBlocks.WELL,PartyBlocks.TREE_ID,PartyBlocks.SANGA).contains(item)?255
+                :Set.of("gungang:easel","gungang:garden_fountain",PartyBlocks.CLOCK,PartyBlocks.FLAG_ID,PartyBlocks.CHANDELIER_ID,PartyBlocks.WELL,PartyBlocks.TREE_ID,PartyBlocks.SANGA).contains(item)?255
                 :item.equals(PartyBlocks.STATUE_ID)?999:item.equals(PartyBlocks.AUTO)?255:item.equals(NUKE)||item.equals("gungang:capsule_machine")?100
                 :item.equals("gungang:big_grass_block")?400:item.equals("minecraft:bedrock")?999:50;
     }
@@ -305,6 +305,7 @@ public final class PropAbilities {
             }
             case "gungang:mannequin",EUNBI,HANBI,PartyBlocks.SANGA->prop.mode((prop.mode()+1)%6);
             // 245: the die tumbles for a second (a little hop), then its top face pops up as text.
+            case PartyBlocks.FLAG_ID->{if(prop.state().hasProperty(PartyBlocks.Flag.COLOR))prop.state(PartyBlocks.Flag.next(prop.state()));}
             case PartyBlocks.DICE_ID->{
                 r.diceUntil=now+DICE_TICKS;r.cooldown=now+cooldown(item);
                 if(p.onGround())PropHuntMatch.impulse(p,new Vec3(p.getDeltaMovement().x,.32,p.getDeltaMovement().z));
