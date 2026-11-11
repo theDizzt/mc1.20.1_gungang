@@ -156,10 +156,10 @@ public final class MatchHud {
         g.fillGradient(left,top,right,bottom,0xB01D1F18,0xB010110E);
         g.fillGradient(left,top,right,top+HEAD,rgb|0x50000000,rgb|0x08000000);
         g.fill(left,top,right,top+2,color|0xFF000000);
-        g.fill(left+8,top+9,left+10,top+19,color|0xFF000000);
-        g.drawString(font,name,left+14,top+7,0xFFFFFFFF,false);
+        TeamEmblems.draw(g,name,left+5,top+4,25);
+        g.drawString(font,name,left+34,top+7,0xFFFFFFFF,false);
         long kills=rows.stream().mapToLong(MatchSnapshot.Row::kills).sum();
-        g.drawString(font,rows.size()+"명 · "+kills+" 킬",left+14,top+17,TacticalStyle.MUTED,false);
+        g.drawString(font,rows.size()+"명 · "+kills+" 킬",left+34,top+17,TacticalStyle.MUTED,false);
         String total=String.valueOf(score);
         g.pose().pushPose();g.pose().translate(right-8-HudText.numberWidth(total)*2,top+6,0);g.pose().scale(2,2,1);
         HudText.drawNumber(g,HudText.number(total),0,0,leading?0xFFFFFFFF:0xFFB4C0CE);g.pose().popPose();

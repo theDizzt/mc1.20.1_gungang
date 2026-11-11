@@ -47,9 +47,18 @@ public final class UtilityHud {
             gauge(g,center,y,width,height,protection.protectionTicks(),protection.protectionTotal(),"무적 "+(protection.protectionTicks()+19)/20+"초",partial);
             y-=height+4;
         }
+        String flagRange="";
         CombatGadgets.Gauge turretAmmo=null;
         for(var gauge:state.gauges())if(gauge.kind().equals("turret_ammo"))turretAmmo=gauge;
         for(var gauge:state.gauges()) {
+            if(gauge.kind().equals("command_flag_range")){flagRange=" · "+HudHealth.number(gauge.remaining())+"블럭";continue;}
+            if(gauge.kind().equals("command_flag_health")){
+                gauge(g,center,y,width,height,gauge.remaining(),gauge.maximum(),"깃발 체력 "+HudHealth.number(gauge.remaining())+"/"+HudHealth.number(gauge.maximum()),partial);y-=height+4;continue;
+            }
+            if(gauge.kind().equals("command_flag_age")){
+                float age=gauge.remaining()+Math.max(0,mc.level.getGameTime()-received+partial);
+                gauge(g,center,y,width,height,age,gauge.maximum(),"깃발 생존 "+(int)(age/20)+"초"+(age>=gauge.maximum()?" · 모든 아군":flagRange),partial);y-=height+4;continue;
+            }
             if(gauge.kind().equals("m95_observed"))continue;
             if(gauge.kind().equals("m95_scope")){
                 float remaining=Math.max(0,gauge.remaining()-(mc.level.getGameTime()-received+partial));
@@ -86,13 +95,13 @@ public final class UtilityHud {
         HudHealthBars.fill(g,x+1,y+1,width-2,height-2,fraction,0xFF65D9FF);
         HudHealthBars.stripes(g,x+1,y+1,width-2,height-2,fraction,((Minecraft.getInstance().player==null?0:Minecraft.getInstance().player.tickCount)+partial)/20.0);
         ShooterHud.finish(g,x+1,y+1,width-2,height-2,fraction);
-        HudText.healthOutlined(g,label,x+3,y+1,width-6,height-2,0xFFFFFFFF);
+        HudText.gungangOutlined(g,label,x+3,y+1,width-6,height-2,0xFFFFFFFF);
     }
     /** "탄약: 120/120 (100%)" centred just above the turret bar at {@code barY}, digits in the GUNGANG number font; returns the new top. */
     private static int turretAmmo(GuiGraphics g,int center,int barY,CombatGadgets.Gauge ammo) {
         int count=Math.round(ammo.remaining()),capacity=Math.max(1,Math.round(ammo.maximum()));
         int percent=Math.round(100f*count/capacity);
-        var text=net.minecraft.network.chat.Component.literal("탄약: ").append(HudText.numbers(count+"/"+capacity+" ("+percent+"%)").copy());
+        var text=HudText.gungang("탄약: "+count+"/"+capacity+" ("+percent+"%)");
         // The number font's glyphs fill the whole 9-pixel line; the Hangul label keeps the regular font.
         var font=Minecraft.getInstance().font;int width=font.width(text),y=barY-11;
         int color=count<=0?0xFFFF5555:count<=capacity*.25?0xFFFFFF55:0xFFFFFFFF;

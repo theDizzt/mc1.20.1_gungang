@@ -27,6 +27,12 @@ import javax.imageio.ImageIO;
  *  Finished maps are kept in server/maps/data/<id>.png and reused until the map JSON changes. */
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID)
 public final class MapPreviewGenerator {
+    private static BufferedImage emblem(String side){
+        try(var input=MapPreviewGenerator.class.getResourceAsStream("/assets/gungang/textures/team/"+side+".png")){
+            return input==null?null:ImageIO.read(input);
+        }catch(java.io.IOException ignored){return null;}
+    }
+    private static final BufferedImage ALPHA_EMBLEM=emblem("alpha"),BRAVO_EMBLEM=emblem("bravo");
     private static final Map<ArenaMap,byte[]> CACHE=new LinkedHashMap<>();
     private static final Map<ArenaMap,Job> JOBS=new LinkedHashMap<>();
     private record Pixel(int px,int pz,int x,int z) {}
@@ -103,6 +109,12 @@ public final class MapPreviewGenerator {
             for(int dx=-1;dx<=1;dx++)for(int dz=-1;dz<=1;dz++)if(dx!=0||dz!=0)g.drawString(label,x+dx,z+dz);
             g.setColor(Color.WHITE);g.drawString(label,x,z);
         }
+        void emblemMarker(Graphics2D g,double wx,double wz,BufferedImage logo){
+            if(logo==null||map.previewArea().u(wx)<0||map.previewArea().u(wx)>=1||map.previewArea().v(wz)<0||map.previewArea().v(wz)>=1)return;
+            int cx=Math.max(12,Math.min(width*unit-12,x(wx))),cy=Math.max(12,Math.min(height*unit-12,z(wz)));
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g.drawImage(logo,cx-12,cy-12,24,24,null);
+        }
         byte[] finish() throws Exception {
             var g=image.createGraphics();g.setFont(new Font(Font.SANS_SERIF,Font.BOLD,11));g.setClip(0,0,width*unit,height*unit);
             var options=LobbyManager.options();var red=new Color(options.color("ALPHA")&0xFFFFFF);var blue=new Color(options.color("BRAVO")&0xFFFFFF);var gold=new Color(210,155,20);var orange=new Color(240,120,20);
@@ -111,6 +123,11 @@ public final class MapPreviewGenerator {
             boolean bomb=map.bomb()!=null;
             marker(g,map.alphaSpawn().x(),map.alphaSpawn().z(),bomb?"":"A",red,false);
             marker(g,map.bravoSpawn().x(),map.bravoSpawn().z(),bomb?"":"B",blue,false);
+            // Bomb spawns swap sides between rounds: those remain role-neutral circles.
+            if(!bomb){
+                emblemMarker(g,map.alphaSpawn().x(),map.alphaSpawn().z(),ALPHA_EMBLEM);
+                emblemMarker(g,map.bravoSpawn().x(),map.bravoSpawn().z(),BRAVO_EMBLEM);
+            }
             if(map.capture()!=null){var a=map.capture().area();area(g,a,orange);marker(g,(a.minX()+a.maxX())/2,(a.minZ()+a.maxZ())/2,"C",orange,true);}
             if(map.bomb()!=null){
                 var sites=new BombRules.Site[]{map.bomb().areaA(),map.bomb().areaB()};var points=new BombRules.Point[]{map.bomb().pointA(),map.bomb().pointB()};
@@ -123,13 +140,18 @@ public final class MapPreviewGenerator {
             }
             if(map.normandy()!=null){int i=1;for(var p:map.normandy().points())marker(g,p.center().x(),p.center().z(),""+i++,orange,true);}
             g.setClip(null);g.setColor(new Color(20,26,35));g.fillRect(0,height*unit,image.getWidth(),42);g.setColor(Color.WHITE);
-            g.drawString(map.bomb()==null?"N ^  |  A: ALPHA / B: BRAVO":"N ^  |  Circles: Attack / Defend spawn",5,height*unit+14);
+            if(bomb)g.drawString("N ^  |  Circles: Attack / Defend spawn",5,height*unit+14);
+            else {
+                g.drawString("N ^",5,height*unit+14);
+                g.drawImage(ALPHA_EMBLEM,38,height*unit+1,18,18,null);g.drawString("ALPHA",59,height*unit+14);
+                g.drawImage(BRAVO_EMBLEM,110,height*unit+1,18,18,null);g.drawString("BRAVO",131,height*unit+14);
+            }
             g.drawString((map.bomb()!=null?"Orange area A/B: bomb site":"Orange diamond: capture point")+(missing?"  |  ! Unexplored":""),5,height*unit+30);g.dispose();
             var bytes=new ByteArrayOutputStream();ImageIO.write(image,"png",bytes);var png=bytes.toByteArray();MapPreviewFiles.dimensions(png);return png;
         }
     }
     // Bump when the rendering changes so old files are regenerated.
-    private static final String FORMAT="3";
+    private static final String FORMAT="4-team-emblems";
     private static final String KEYWORD="gungang-map",SEPARATOR=String.valueOf((char)0);
     public static Path directory(){return ServerFiles.root().resolve("server/maps/data");}
     private static Path file(String id){return directory().resolve(id+".png");}

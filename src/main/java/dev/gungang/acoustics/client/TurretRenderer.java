@@ -16,6 +16,8 @@ public final class TurretRenderer extends EntityRenderer<TurretEntity> {
     @Override public void render(TurretEntity turret,float yaw,float partial,PoseStack pose,MultiBufferSource buffers,int light){
         pose.pushPose();pose.scale(2,2,2);
         part(BASE,pose,buffers,light);
+        TeamEmblems.decal(pose,buffers,light,turret.teamName(),0,.12f,-.505f,.28f,false);
+        TeamEmblems.decal(pose,buffers,light,turret.teamName(),0,.12f,.505f,.28f,true);
         pose.mulPose(Axis.YP.rotationDegrees(-turret.aimYaw()));
         part(HEAD,pose,buffers,light);
         pose.popPose();

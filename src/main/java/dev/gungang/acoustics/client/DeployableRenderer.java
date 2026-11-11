@@ -15,7 +15,13 @@ public final class DeployableRenderer extends EntityRenderer<DeployableEntity> {
         if(entity.wall()) {
             if(entity.east())pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(90));
             wall(pose,buffers,light);
+            TeamEmblems.decal(pose,buffers,light,entity.teamName(),0,2.12f,-.205f,.65f,false);
+            TeamEmblems.decal(pose,buffers,light,entity.teamName(),0,2.12f,.205f,.65f,true);
         } else {
+            if(entity.mineOutlineVisibleTo(net.minecraft.client.Minecraft.getInstance().player)){
+                pose.pushPose();pose.translate(0,.155,0);pose.mulPose(com.mojang.math.Axis.XP.rotationDegrees(90));
+                TeamEmblems.decal(pose,buffers,light,entity.teamName(),0,-.12f,0,.24f,false);pose.popPose();
+            }
             // OBJ already matches the old installed plate's 0.6125-block footprint, with its bottom at Y=0.
             pose.translate(-.5,0,-.5);
             var model=net.minecraft.client.Minecraft.getInstance().getItemRenderer().getModel(mine,entity.level(),null,0);

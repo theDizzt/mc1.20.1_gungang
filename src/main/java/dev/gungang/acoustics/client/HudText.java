@@ -109,6 +109,17 @@ public final class HudText {
         centered(g, value, x, y, width, height, color, sizeMultiplier, 8, HudText::styled);
     }
     /** {@link #health} with a black outline one font pixel thick, for labels over bright bars. */
+    public static void gungangOutlined(GuiGraphics g, String value, int x, int y, int width, int height, int color) {
+        float px = healthSize(height, 1f);
+        for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++) {
+            if (dx == 0 && dy == 0) continue;
+            g.pose().pushPose();
+            g.pose().translate(dx * px, dy * px, 0);
+            centered(g, value, x, y, width, height, 0xFF000000, 1f, 8, HudText::gungang);
+            g.pose().popPose();
+        }
+        centered(g, value, x, y, width, height, color, 1f, 8, HudText::gungang);
+    }
     public static void healthOutlined(GuiGraphics g, String value, int x, int y, int width, int height, int color) {
         float px = healthSize(height, 1f);
         for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++) {

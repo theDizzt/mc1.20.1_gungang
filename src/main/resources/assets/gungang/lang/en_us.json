@@ -1,4 +1,6 @@
 {
+    "item.gungang.command_flag": "Command Flag",
+    "entity.gungang_acoustics.command_flag": "Command Flag",
     "effect.gungang.acid_poison":  "Acid Poison",
     "block.gungang.war_table":  "War Table",
     "block.gungang.armory":  "Armory",

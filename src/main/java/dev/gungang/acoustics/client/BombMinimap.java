@@ -31,6 +31,7 @@ final class BombMinimap {
         int w=(int)Math.round(spanX*scale),h=(int)Math.round(spanZ*scale),left=x+(size-w)/2,top=y+(size-h)/2;
         g.fill(left-2,top-13,left+w+2,top+h+2,0xC00B121C);g.fill(left-2,top+h+1,left+w+2,top+h+2,0xFF70CDBF);
         g.drawString(font,"미니맵",left,top-11,0xFF9AAABD,false);
+        if(mc.player!=null&&mc.player.getTeam()!=null)TeamEmblems.draw(g,mc.player.getTeam().getName(),left+w-12,top-12,11);
         boolean image=background(g,v.mapId(),v.previewArea(),left,top,w,h);
         // Sites: orange area, white A/B with a black outline. The generated map image already carries them.
         for(int i=0;i<2&&!image;i++){
@@ -53,8 +54,12 @@ final class BombMinimap {
         for(var m:v.mates()==null?java.util.List.<BombMatch.Mate>of():v.mates()){
             int px=sx(m.x(),b,left,scale),pz=sz(m.z(),b,top,scale);
             if(px<left||px>=left+w||pz<top||pz>=top+h)continue;
-            boolean me=m.id().equals(self);int color=me?0xFFFFFFFF:options.color(m.team())|0xFF000000,r=me?3:2;
-            g.fill(px-r-1,pz-r-1,px+r+1,pz+r+1,0xFF000000);g.fill(px-r,pz-r,px+r,pz+r,color);
+            boolean me=m.id().equals(self);int color=me?0xFFFFFFFF:options.color(m.team())|0xFF000000,r=5;
+            // Keep the white self border and the configurable team colour under the emblem.
+            int mx=Math.max(left+r+1,Math.min(left+w-r-1,px)),mz=Math.max(top+r+1,Math.min(top+h-r-1,pz));
+            g.fill(mx-r-1,mz-r-1,mx+r+1,mz+r+1,color);
+            g.fill(mx-r,mz-r,mx+r,mz+r,0xFF101820);
+            TeamEmblems.draw(g,m.team(),mx-r,mz-r,r*2);
             // Facing tick: Minecraft yaw 0 looks toward +Z (down on the map).
             double yaw=Math.toRadians(m.yaw());int dx=(int)Math.round(-Math.sin(yaw)*(r+3)),dz=(int)Math.round(Math.cos(yaw)*(r+3));
             g.fill(px+dx-1,pz+dz-1,px+dx+1,pz+dz+1,color);
@@ -104,8 +109,12 @@ final class BombMinimap {
         for(var m:marks){
             int px=sx(m.x(),b,left,scale),pz=sz(m.z(),b,top,scale);
             if(px<left||px>=left+w||pz<top||pz>=top+h)continue;
-            boolean me=m.id().equals(self);int color=me?0xFFFFFFFF:options.color(m.team())|0xFF000000,r=me?3:2;
-            g.fill(px-r-1,pz-r-1,px+r+1,pz+r+1,0xFF000000);g.fill(px-r,pz-r,px+r,pz+r,color);
+            boolean me=m.id().equals(self);int color=me?0xFFFFFFFF:options.color(m.team())|0xFF000000,r=5;
+            // Keep the white self border and the configurable team colour under the emblem.
+            int mx=Math.max(left+r+1,Math.min(left+w-r-1,px)),mz=Math.max(top+r+1,Math.min(top+h-r-1,pz));
+            g.fill(mx-r-1,mz-r-1,mx+r+1,mz+r+1,color);
+            g.fill(mx-r,mz-r,mx+r,mz+r,0xFF101820);
+            TeamEmblems.draw(g,m.team(),mx-r,mz-r,r*2);
         }
     }
     private static int sx(double world,double[] b,int left,double scale){return left+(int)Math.round((world-b[0])*scale);}

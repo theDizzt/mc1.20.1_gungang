@@ -98,6 +98,16 @@ public final class WeaponPatch {
     private static final Map<String, String> SECONDARY_LABELS = Map.of("cooldownSeconds", "쿨타임 (초)", "plantSeconds", "설치 시간 (초)", "fuseSeconds", "폭발 시간 (초)", "defuseSeconds", "해체 시간 (초)");
     /** Item effect setting labels; anything not listed shows its field name. */
     private static final Map<String, String> ITEM_LABELS = Map.ofEntries(
+            Map.entry("placementRange", "설치 최대 거리 (블록)"),
+            Map.entry("baseRadius", "깃발 기본 효과 반경 (블록)"),
+            Map.entry("baseHealPerSecond", "깃발 기본 초당 회복량"),
+            Map.entry("healingUpgradeSeconds", "회복 강화까지 생존 시간 (초)"),
+            Map.entry("upgradedHealPerSecond", "깃발 강화 초당 회복량"),
+            Map.entry("healingRadius", "회복 강화 후 반경 (블록)"),
+            Map.entry("defenseUpgradeSeconds", "피해 감소 활성화까지 생존 시간 (초)"),
+            Map.entry("defenseRadius", "피해 감소 활성화 후 반경 (블록)"),
+            Map.entry("damageReductionPercent", "받는 피해 감소율 (%)"),
+            Map.entry("globalUpgradeSeconds", "모든 아군 적용까지 생존 시간 (초)"),
             Map.entry("piercingDamage", "관통탄 기본 피해"),
             Map.entry("normalHitCharge", "일반탄 명중 시 관통력 획득량"),
             Map.entry("smallDamageFalloff", "1단계 관통탄 거리 피해 감소 적용"),Map.entry("largeDamageFalloff", "2단계 관통탄 거리 피해 감소 적용"),
