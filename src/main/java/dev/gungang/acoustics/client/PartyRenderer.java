@@ -310,7 +310,7 @@ public final class PartyRenderer implements BlockEntityRenderer<PartyEntity> {
         b(pose,buffers,light,Blocks.SMOOTH_STONE,-20,6,-20,20,18,20);
         b(pose,buffers,light,Blocks.CHISELED_STONE_BRICKS,-22,18,-22,22,20,22);
         b(pose,buffers,light,Blocks.GOLD_BLOCK,-10,9,-20.4,10,15,-20);
-        text(pose,buffers,"명예횡령상",0,12,-20.45,3.2f,0x3A2A00,light);
+        text(pose,buffers,Lang.tr("명예횡령상"),0,12,-20.45,3.2f,0x3A2A00,light);
         float k=2.5f;double feet=20;
         pose.pushPose();pose.translate(0,feet/16,0);pose.scale(k,k,k);
         figure(pose,buffers,light,STATUE_SKIN,root->{root.getChild("right_arm").xRot=(float)-Math.PI;root.getChild("left_arm").xRot=-.9f;root.getChild("left_arm").zRot=-.08f;});

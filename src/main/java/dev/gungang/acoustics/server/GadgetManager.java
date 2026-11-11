@@ -48,7 +48,7 @@ public final class GadgetManager {
         PLACED.put(entity.getUUID(),entity);
     }
     public static void use(ServerPlayer p,ItemStack stack,String kind) {
-        if(p.getPersistentData().hasUUID("VoidAnchorTether")&&(kind.equals("air_assault")||kind.equals("jetpack")))return;
+        if(p.getPersistentData().hasUUID("VoidAnchorTether")&&(kind.equals("air_assault")||kind.equals("jetpack")||kind.equals("hermes_boots")))return;
         if(SurvivalGadgets.jetting(p))return;
         if((kind.equals("landmine")||kind.equals("molotov")||kind.equals("arrow_grenade")||kind.equals("orbital_strike")||kind.equals("bear_trap")||kind.equals("turret"))&&SafeZones.contains(p))return;
         if(!p.isAlive()||p.isSpectator()||LobbyManager.respawning(p.getUUID())||!SecondaryRuntime.ready(p,stack))return;
@@ -61,6 +61,7 @@ public final class GadgetManager {
             p.level().playSound(null,p.blockPosition(),net.minecraft.sounds.SoundEvents.TRIDENT_THROW,net.minecraft.sounds.SoundSource.PLAYERS,1,.7f);return;
         }
         if(kind.equals("air_assault")) {AirAssault.start(p,stack);return;}
+        if(kind.equals("hermes_boots")) {HermesBoots.dash(p,stack);return;}
         if(kind.equals("jetpack")) {
             // Prop hunt seekers fly only while hunting, never from the waiting room.
             var hunt=MatchManager.propHunt();

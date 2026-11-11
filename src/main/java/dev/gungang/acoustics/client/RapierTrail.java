@@ -18,7 +18,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 /** A few faint frozen skin poses, fading out in 0.3 seconds. */
 @net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid=dev.gungang.acoustics.GungangAcoustics.ID,value=Dist.CLIENT)
 public final class RapierTrail {
-    private record Ghost(PlayerModel<AbstractClientPlayer> model,ResourceLocation skin,Vec3 pos,float yaw,long born,int light){}
+    private record Ghost(PlayerModel<AbstractClientPlayer> model,ResourceLocation skin,Vec3 pos,float yaw,long born,int light,int color){}
     private static final java.util.ArrayDeque<Ghost> GHOSTS=new java.util.ArrayDeque<>();
     private static final java.util.Map<java.util.UUID,Long> SAMPLED=new java.util.HashMap<>();
     public static void receive(GungangNetwork.RapierStep packet){
@@ -26,7 +26,7 @@ public final class RapierTrail {
         if(mc.level.getEntity(packet.entity()) instanceof net.minecraft.world.entity.player.Player p)RapierDash.start(p,packet.yaw(),packet.distance());
     }
     @SubscribeEvent public static void capture(RenderPlayerEvent.Post event){
-        if(!(event.getEntity() instanceof AbstractClientPlayer p)||!RapierDash.active(p)||p.isInvisible())return;
+        if(!(event.getEntity() instanceof AbstractClientPlayer p)||!RapierDash.active(p)||p.isInvisible()||HermesTrail.dashing(p))return;
         long now=p.level().getGameTime();if(now-SAMPLED.getOrDefault(p.getUUID(),Long.MIN_VALUE/2)<2)return;
         SAMPLED.put(p.getUUID(),now);
         var mc=Minecraft.getInstance();boolean slim=p.getModelName().equals("slim");
@@ -35,7 +35,10 @@ public final class RapierTrail {
         model.young=source.young;model.riding=source.riding;model.crouching=source.crouching;
         var from=parts(source);var to=parts(model);
         for(int i=0;i<Math.min(from.size(),to.size());i++){to.get(i).loadPose(from.get(i).storePose());to.get(i).visible=from.get(i).visible;}
-        GHOSTS.addLast(new Ghost(model,p.getSkinTextureLocation(),p.getPosition(event.getPartialTick()),p.yBodyRot,now,event.getPackedLight()));
+        // The owner's rapier effect colour; with two, successive afterimages alternate between them.
+        var colors=dev.gungang.acoustics.server.EffectColors.client(p.getUUID(),"rapier");
+        int color=dev.gungang.acoustics.server.EffectColors.at(colors,(now/2)%2==0?0:1);
+        GHOSTS.addLast(new Ghost(model,p.getSkinTextureLocation(),p.getPosition(event.getPartialTick()),p.yBodyRot,now,event.getPackedLight(),color));
         while(GHOSTS.size()>96)GHOSTS.removeFirst();
     }
     private static java.util.List<net.minecraft.client.model.geom.ModelPart> parts(PlayerModel<?> m){
@@ -51,7 +54,11 @@ public final class RapierTrail {
         for(var ghost:GHOSTS){
             pose.pushPose();pose.translate(ghost.pos.x-camera.x,ghost.pos.y-camera.y,ghost.pos.z-camera.z);
             pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(180-ghost.yaw));pose.scale(-1,-1,1);pose.translate(0,-1.501,0);
-            ghost.model.renderToBuffer(pose,buffer.getBuffer(RenderType.entityTranslucent(ghost.skin)),ghost.light,OverlayTexture.NO_OVERLAY,.7f,.9f,1f,(float)(.18*(1-(now-ghost.born)/6)));
+            // Emissive and full-bright like the boots trail: a skin multiplied by a tint at low alpha under world light
+            // hid the owner's colour entirely.
+            float fade=(float)(1-(now-ghost.born)/6);
+            ghost.model.renderToBuffer(pose,buffer.getBuffer(RenderType.entityTranslucentEmissive(ghost.skin)),net.minecraft.client.renderer.LightTexture.FULL_BRIGHT,OverlayTexture.NO_OVERLAY,
+                    dev.gungang.acoustics.server.EffectColors.red(ghost.color),dev.gungang.acoustics.server.EffectColors.green(ghost.color),dev.gungang.acoustics.server.EffectColors.blue(ghost.color),.42f*fade*fade);
             pose.popPose();
         }
         buffer.endBatch();

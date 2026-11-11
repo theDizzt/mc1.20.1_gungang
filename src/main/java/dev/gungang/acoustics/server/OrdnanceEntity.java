@@ -15,13 +15,18 @@ public final class OrdnanceEntity extends Entity {
     // Visual-only state for the client: fuse length for the beam ramp, and the detonation edge for shake/flash.
     private static final EntityDataAccessor<Integer> FUSE=SynchedEntityData.defineId(OrdnanceEntity.class,EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> DETONATED=SynchedEntityData.defineId(OrdnanceEntity.class,EntityDataSerializers.BOOLEAN);
+    /** The caller's orbital_strike effect colours ({@link EffectColors}) when the strike was called; second -1: none. */
+    private static final EntityDataAccessor<Integer> COLOR=SynchedEntityData.defineId(OrdnanceEntity.class,EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> COLOR2=SynchedEntityData.defineId(OrdnanceEntity.class,EntityDataSerializers.INT);
     /** Ticks the smoke column and embers linger after the blast; purely cosmetic. */
     public static final int AFTERMATH=120;
     private UUID owner;
     private long expires;
     private int detonatedAt=-1;
     public OrdnanceEntity(EntityType<? extends OrdnanceEntity> type,Level level) {super(type,level);setNoGravity(true);}
-    @Override protected void defineSynchedData() {entityData.define(ORBITAL,false);entityData.define(FUSE,100);entityData.define(DETONATED,false);}
+    @Override protected void defineSynchedData() {entityData.define(ORBITAL,false);entityData.define(FUSE,100);entityData.define(DETONATED,false);
+        var defaults=EffectColors.effect("orbital_strike");entityData.define(COLOR,defaults.first());entityData.define(COLOR2,defaults.second());}
+    public int[] colors() {return new int[]{entityData.get(COLOR),entityData.get(COLOR2)};}
     public boolean orbital() {return entityData.get(ORBITAL);}
     public int fuse() {return entityData.get(FUSE);}
     public boolean detonated() {return entityData.get(DETONATED);}
@@ -37,6 +42,7 @@ public final class OrdnanceEntity extends Entity {
     }
     public void setup(Entity owner,boolean orbital) {
         this.owner=owner==null?null:owner.getUUID();entityData.set(ORBITAL,orbital);
+        if(orbital){int[] colors=EffectColors.server(this.owner,"orbital_strike");entityData.set(COLOR,colors[0]);entityData.set(COLOR2,colors[1]);}
         int ticks=orbital?ExtraGadgetConfig.ticks(ExtraGadgetConfig.orbital.delaySeconds()):ExtraGadgetConfig.ticks(ExtraGadgetConfig.molotov.durationSeconds());
         expires=level().getGameTime()+ticks;entityData.set(FUSE,Math.max(1,ticks));
     }
@@ -58,7 +64,7 @@ public final class OrdnanceEntity extends Entity {
             // The warning ring pulses faster and the sky starts raining light in the final two seconds.
             if(tickCount%(remaining<=40?2:5)==0)for(int i=0;i<96;i++) {
                 double angle=i*Math.PI*2/96;
-                level.sendParticles(new net.minecraft.core.particles.DustParticleOptions(new org.joml.Vector3f(1,.05f,.8f),remaining<=40?2.2f:1.5f),
+                level.sendParticles(new net.minecraft.core.particles.DustParticleOptions(EffectColors.vector(EffectColors.at(colors(),i%2==0?0:1)),remaining<=40?2.2f:1.5f),
                         getX()+Math.cos(angle)*ExtraGadgetConfig.orbital.radius(),getY()+.15,getZ()+Math.sin(angle)*ExtraGadgetConfig.orbital.radius(),1,0,.08,0,0);
             }
             if(remaining<=40) {
@@ -133,7 +139,8 @@ public final class OrdnanceEntity extends Entity {
             level.sendParticles(ParticleTypes.LAVA,x,y+.5,z,Math.round(6*fade),radius*.25,.2,radius*.25,0);
         }
     }
-    @Override protected void addAdditionalSaveData(CompoundTag tag) {tag.putBoolean("Orbital",orbital());tag.putBoolean("Detonated",detonated());tag.putInt("Fuse",fuse());tag.putLong("Expires",expires);if(owner!=null)tag.putUUID("Owner",owner);}
-    @Override protected void readAdditionalSaveData(CompoundTag tag) {entityData.set(ORBITAL,tag.getBoolean("Orbital"));entityData.set(DETONATED,tag.getBoolean("Detonated"));if(tag.contains("Fuse"))entityData.set(FUSE,tag.getInt("Fuse"));expires=tag.getLong("Expires");owner=tag.hasUUID("Owner")?tag.getUUID("Owner"):null;}
+    @Override protected void addAdditionalSaveData(CompoundTag tag) {tag.putBoolean("Orbital",orbital());tag.putBoolean("Detonated",detonated());tag.putInt("Fuse",fuse());tag.putLong("Expires",expires);if(owner!=null)tag.putUUID("Owner",owner);tag.putInt("Color",entityData.get(COLOR));tag.putInt("Color2",entityData.get(COLOR2));}
+    @Override protected void readAdditionalSaveData(CompoundTag tag) {entityData.set(ORBITAL,tag.getBoolean("Orbital"));entityData.set(DETONATED,tag.getBoolean("Detonated"));if(tag.contains("Fuse"))entityData.set(FUSE,tag.getInt("Fuse"));expires=tag.getLong("Expires");owner=tag.hasUUID("Owner")?tag.getUUID("Owner"):null;
+        if(tag.contains("Color"))entityData.set(COLOR,tag.getInt("Color")&0xFFFFFF);if(tag.contains("Color2"))entityData.set(COLOR2,tag.getInt("Color2")<0?-1:tag.getInt("Color2")&0xFFFFFF);}
     @Override public net.minecraft.network.protocol.Packet<net.minecraft.network.protocol.game.ClientGamePacketListener> getAddEntityPacket() {return net.minecraftforge.network.NetworkHooks.getEntitySpawningPacket(this);}
 }

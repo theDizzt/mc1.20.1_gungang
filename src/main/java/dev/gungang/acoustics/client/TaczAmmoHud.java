@@ -71,7 +71,7 @@ public final class TaczAmmoHud {
         }
         float scale=(float)(2.0/mc.getWindow().getGuiScale());g.pose().pushPose();g.pose().scale(scale,scale,1);
         rapierSilhouette(g,l.iconX(),l.iconY()+6,alert?0xB3FF4D4D:0xB3000000);
-        String title="레이피어 · 대시 "+DASH_COST;
+        String title=Lang.tr("레이피어 · 대시 ")+DASH_COST;
         text(g,mc.font,title,right-mc.font.width(title),l.rowTop()-11,0xFFE2E8F0);
         // Bar: eased fill with the same spent/gained flash and refill sheen as gun magazines.
         float shown=RAPIER_BAR.update(amount/100f);int fill=Math.round(w*shown),barTop=l.barTop();
@@ -152,8 +152,8 @@ public final class TaczAmmoHud {
             text(g,font,mode,x,l.rowTop()-11,modes[i]==current?0xFFFFFFFF:0xFF5A6474);
             if(i>0)x-=font.width(" ");
         }
-        String name=font.plainSubstrByWidth(stack.getHoverName().getString(),Math.max(1,mc.getWindow().getWidth()/4-MARGIN-(right-x+8)));
-        text(g,font,name,x-8-font.width(name),l.rowTop()-11,0xFFE2E8F0);
+        String name=stack.getHoverName().getString();int room=Math.max(1,mc.getWindow().getWidth()/4-MARGIN-(right-x+8));
+        textMarquee(g,font,name,x-8-Math.min(room,font.width(name)),l.rowTop()-11,room,0xFFE2E8F0);
         g.pose().popPose();
     }
     /** Seconds per round of the shuriken count's run-down, and when it last stepped. */
@@ -326,8 +326,8 @@ public final class TaczAmmoHud {
             if(i>0)x-=font.width(" ");
         }
         int nameRight=modes.isEmpty()?right:x-8;
-        String name=font.plainSubstrByWidth(stack.getHoverName().getString(),Math.max(1,width/2-MARGIN-(right-nameRight)));
-        text(g,font,name,nameRight-font.width(name),rowTop-11,0xFFE2E8F0);
+        String name=stack.getHoverName().getString();int room=Math.max(1,width/2-MARGIN-(right-nameRight));
+        textMarquee(g,font,name,nameRight-Math.min(room,font.width(name)),rowTop-11,room,0xFFE2E8F0);
         g.pose().popPose();
     }
     /** Ammo bar easing and the last count seen, per held gun. */
@@ -355,6 +355,12 @@ public final class TaczAmmoHud {
         }
     }
     /** Text with a translucent drop shadow instead of vanilla's opaque one. */
+    /** {@link #text} in a box {@code width} wide, scrolling when longer (Marquee); shadow and text move together. */
+    static void textMarquee(GuiGraphics g,net.minecraft.client.gui.Font font,String text,int x,int y,int width,int color) {
+        if(font.width(text)<=width){text(g,font,text,x,y,color);return;}
+        Marquee.draw(g,font,text,x+1,y+1,width,SHADOW,false);
+        Marquee.draw(g,font,text,x,y,width,color,false);
+    }
     static void text(GuiGraphics g,net.minecraft.client.gui.Font font,String text,int x,int y,int color) {
         // Black text (the "은신" tag) would vanish into its shadow: a light outline instead.
         if((color&0xFFFFFF)==0){for(int dx=-1;dx<=1;dx++)for(int dy=-1;dy<=1;dy++)if(dx!=0||dy!=0)g.drawString(font,text,x+dx,y+dy,0xFFC8CED6,false);g.drawString(font,text,x,y,color,false);return;}

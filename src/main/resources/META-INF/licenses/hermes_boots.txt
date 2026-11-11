@@ -1,0 +1,3 @@
+"Boots of Swiftness" model (boots-of-swiftness.zip), supplied by the project owner.
+The GLB carries no author or license metadata; confirm the terms before redistribution.
+Modifications: glTF (GLB) converted to OBJ; untextured edge faces dropped; textures exported to PNG.

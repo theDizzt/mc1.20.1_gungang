@@ -33,7 +33,7 @@ final class GameOptionsScreen extends ArenaScreen {
         boolean oldEditable=editable();String oldMode=state.selectedMode(),oldMap=state.selectedMap();state=next;
         if(oldEditable!=editable()||!oldMode.equals(next.selectedMode())||!oldMap.equals(next.selectedMap()))rebuildWidgets();
     }
-    void receiveError(String message){error=message==null||message.isBlank()?"게임 옵션을 적용하지 못했습니다.":message;}
+    void receiveError(String message){error=message==null||message.isBlank()?Lang.tr("게임 옵션을 적용하지 못했습니다."):message;}
     private boolean editable(){return state.administrator()&&state.phase().equals("LOBBY");}
     private String mode(){return state.selectedMode();}
     private GameOptions defaults(){return state.defaults();}
@@ -103,88 +103,88 @@ final class GameOptionsScreen extends ArenaScreen {
         rows.clear();var d=defaults();
         switch(mode()){
             case "CONTROL"->{
-                var c=d.control();header("점령전 (쟁탈전)");
+                var c=d.control();header(Lang.tr("점령전 (쟁탈전)"));
                 time("control.time",c.timeSeconds());prep("control.prep",c.preparationSeconds());
-                rows.add(new Row("control.capture","점령 속도 (완전 점령까지 걸리는 초)",Kind.SECONDS,text(c.captureSeconds())));
-                rows.add(new Row("control.score","목표 점수",Kind.INTEGER,text(c.targetScore())));
+                rows.add(new Row("control.capture",Lang.tr("점령 속도 (완전 점령까지 걸리는 초)"),Kind.SECONDS,text(c.captureSeconds())));
+                rows.add(new Row("control.score",Lang.tr("목표 점수"),Kind.INTEGER,text(c.targetScore())));
             }
             case "NORMANDY"->{
-                var n=d.normandy();header("이동 점령");
+                var n=d.normandy();header(Lang.tr("이동 점령"));
                 time("normandy.time",n.timeSeconds());prep("normandy.prep",n.preparationSeconds());
                 int count=Math.max(points().size(),n.captureSeconds().size());
                 for(int i=0;i<count;i++){
                     String name=i<points().size()?points().get(i):Integer.toString(i+1);
-                    rows.add(new Row("normandy.capture."+i,"점령 속도 · "+name+" 거점 (점령까지 초)",Kind.SECONDS,text(n.capture(i))));
+                    rows.add(new Row("normandy.capture."+i,Lang.tr("점령 속도 · ")+name+Lang.tr(" 거점 (점령까지 초)"),Kind.SECONDS,text(n.capture(i))));
                 }
             }
             case "PROP_HUNT"->{
-                var p=d.propHunt();header("숨바꼭질");
-                rows.add(new Row("prop.time","게임 제한 시간 (찾는 시간, 초)",Kind.SECONDS,text(p.timeSeconds())));
-                rows.add(new Row("prop.prep","게임 준비 시간 (숨는 시간, 초)",Kind.SECONDS,text(p.preparationSeconds())));
-                rows.add(new Row("prop.excluded","제외 블록 (블록 번호, 띄어쓰기/쉼표 구분)",Kind.TEXT,"없음",()->true,this::excludedNote));
-                rows.add(new Row("prop.changes","변신 횟수",Kind.INTEGER,text(p.changes()),()->hunt()>=120,s->changesNote()));
-                rows.add(new Row("prop.choice","변신 시 블록 선택",Kind.CHOICE,"BASIC"));
-                rows.add(new Row("prop.cling","Q키로 벽에 붙기",Kind.TOGGLE,"true"));
+                var p=d.propHunt();header(Lang.tr("숨바꼭질"));
+                rows.add(new Row("prop.time",Lang.tr("게임 제한 시간 (찾는 시간, 초)"),Kind.SECONDS,text(p.timeSeconds())));
+                rows.add(new Row("prop.prep",Lang.tr("게임 준비 시간 (숨는 시간, 초)"),Kind.SECONDS,text(p.preparationSeconds())));
+                rows.add(new Row("prop.excluded",Lang.tr("제외 블록 (블록 번호, 띄어쓰기/쉼표 구분)"),Kind.TEXT,Lang.tr("없음"),()->true,this::excludedNote));
+                rows.add(new Row("prop.changes",Lang.tr("변신 횟수"),Kind.INTEGER,text(p.changes()),()->hunt()>=120,s->changesNote()));
+                rows.add(new Row("prop.choice",Lang.tr("변신 시 블록 선택"),Kind.CHOICE,"BASIC"));
+                rows.add(new Row("prop.cling",Lang.tr("Q키로 벽에 붙기"),Kind.TOGGLE,"true"));
             }
             case "ESCORT"->{
-                var e=d.escort();header("호위 임무");
-                rows.add(new Row("escort.time","게임 제한 시간 (시작 시 주어지는 시간, 초)",Kind.SECONDS,text(e.timeSeconds())));
+                var e=d.escort();header(Lang.tr("호위 임무"));
+                rows.add(new Row("escort.time",Lang.tr("게임 제한 시간 (시작 시 주어지는 시간, 초)"),Kind.SECONDS,text(e.timeSeconds())));
                 prep("escort.prep",e.preparationSeconds());
-                for(int i=0;i<3;i++)rows.add(new Row("escort.bonus."+i,"체크포인트 "+(i+1)+" 통과 후 추가 시간 (초)",Kind.SECONDS,text(e.bonus(i))));
-                rows.add(new Row("escort.overtime","제한 시간 종료 후 추가 시간 (초)",Kind.SECONDS,text(e.overtimeSeconds())));
-                rows.add(new Row("escort.speed","수레 속도 (블록/초)",Kind.DECIMAL,text(e.speed())));
-                rows.add(new Row("escort.max","수레 최대 배속 (4명 이상일 때, 최소 1.00)",Kind.DECIMAL,text(e.maxMultiplier()),()->true,this::multiplierNote));
-                rows.add(new Row("escort.reverse","수레 후진 속도 (블록/초)",Kind.DECIMAL,text(e.reverseSpeed())));
-                rows.add(new Row("escort.stop","체크포인트 도달 시 정차 시간 (초)",Kind.SECONDS,text(e.stopSeconds())));
+                for(int i=0;i<3;i++)rows.add(new Row("escort.bonus."+i,Lang.tr("체크포인트 ")+(i+1)+Lang.tr(" 통과 후 추가 시간 (초)"),Kind.SECONDS,text(e.bonus(i))));
+                rows.add(new Row("escort.overtime",Lang.tr("제한 시간 종료 후 추가 시간 (초)"),Kind.SECONDS,text(e.overtimeSeconds())));
+                rows.add(new Row("escort.speed",Lang.tr("수레 속도 (블록/초)"),Kind.DECIMAL,text(e.speed())));
+                rows.add(new Row("escort.max",Lang.tr("수레 최대 배속 (4명 이상일 때, 최소 1.00)"),Kind.DECIMAL,text(e.maxMultiplier()),()->true,this::multiplierNote));
+                rows.add(new Row("escort.reverse",Lang.tr("수레 후진 속도 (블록/초)"),Kind.DECIMAL,text(e.reverseSpeed())));
+                rows.add(new Row("escort.stop",Lang.tr("체크포인트 도달 시 정차 시간 (초)"),Kind.SECONDS,text(e.stopSeconds())));
             }
             case "BOMB"->{
-                var b=d.bomb();header("폭탄전 (실험 중)");
-                rows.add(new Row("bomb.time","게임 제한 시간 (라운드별, 초)",Kind.SECONDS,text(b.timeSeconds())));
+                var b=d.bomb();header(Lang.tr("폭탄전 (실험 중)"));
+                rows.add(new Row("bomb.time",Lang.tr("게임 제한 시간 (라운드별, 초)"),Kind.SECONDS,text(b.timeSeconds())));
                 prep("bomb.prep",b.preparationSeconds());
-                rows.add(new Row("bomb.rounds","라운드 수 (최소 2)",Kind.INTEGER,text(b.rounds()),()->true,s->roundsNote()));
-                rows.add(new Row("bomb.swap","공수교대 라운드 수 (최소 1)",Kind.INTEGER,text(b.swapEveryRounds()),()->true,s->swapNote()));
-                rows.add(new Row("bomb.plant","폭탄 설치 시간 (초)",Kind.DECIMAL_SECONDS,text(b.plantSeconds())));
-                rows.add(new Row("bomb.fuse","폭탄 폭파 시간 (초)",Kind.DECIMAL_SECONDS,text(b.fuseSeconds())));
-                rows.add(new Row("bomb.defuse","폭탄 해체 시간 (초)",Kind.DECIMAL_SECONDS,text(b.defuseSeconds())));
+                rows.add(new Row("bomb.rounds",Lang.tr("라운드 수 (최소 2)"),Kind.INTEGER,text(b.rounds()),()->true,s->roundsNote()));
+                rows.add(new Row("bomb.swap",Lang.tr("공수교대 라운드 수 (최소 1)"),Kind.INTEGER,text(b.swapEveryRounds()),()->true,s->swapNote()));
+                rows.add(new Row("bomb.plant",Lang.tr("폭탄 설치 시간 (초)"),Kind.DECIMAL_SECONDS,text(b.plantSeconds())));
+                rows.add(new Row("bomb.fuse",Lang.tr("폭탄 폭파 시간 (초)"),Kind.DECIMAL_SECONDS,text(b.fuseSeconds())));
+                rows.add(new Row("bomb.defuse",Lang.tr("폭탄 해체 시간 (초)"),Kind.DECIMAL_SECONDS,text(b.defuseSeconds())));
             }
             case "DEATHMATCH"->{
-                var t=d.deathmatch();header("팀 데스매치");
+                var t=d.deathmatch();header(Lang.tr("팀 데스매치"));
                 weapons("tdm.");
                 time("tdm.time",randomWeapons("tdm.")?Integer.valueOf(GameOptions.RANDOM_TIME_SECONDS):t.timeSeconds());prep("tdm.prep",t.preparationSeconds());
-                rows.add(new Row("tdm.score","목표 점수 (킬)",Kind.INTEGER,text(t.targetScore())));
+                rows.add(new Row("tdm.score",Lang.tr("목표 점수 (킬)"),Kind.INTEGER,text(t.targetScore())));
                 rotation("tdm.");
             }
             case "FREE_FOR_ALL"->{
-                var f=d.freeForAll();header("개인전");
+                var f=d.freeForAll();header(Lang.tr("개인전"));
                 weapons("ffa.");
                 time("ffa.time",randomWeapons("ffa.")?Integer.valueOf(GameOptions.RANDOM_TIME_SECONDS):f.timeSeconds());
-                rows.add(new Row("ffa.prep","게임 준비 시간 (시작 무적, 제한 시간에 포함, 초)",Kind.SECONDS,text(f.preparationSeconds())));
-                rows.add(new Row("ffa.protection","리스폰 후 무적 시간 (초)",Kind.SECONDS,text(f.protectionSeconds())));
-                rows.add(new Row("ffa.score","목표 점수",Kind.INTEGER,text(f.targetScore())));
+                rows.add(new Row("ffa.prep",Lang.tr("게임 준비 시간 (시작 무적, 제한 시간에 포함, 초)"),Kind.SECONDS,text(f.preparationSeconds())));
+                rows.add(new Row("ffa.protection",Lang.tr("리스폰 후 무적 시간 (초)"),Kind.SECONDS,text(f.protectionSeconds())));
+                rows.add(new Row("ffa.score",Lang.tr("목표 점수"),Kind.INTEGER,text(f.targetScore())));
                 rotation("ffa.");
             }
             default->{}
         }
         var c=d.common();boolean team=GameOptions.teamMode(mode());
-        header("공통 설정");
-        rows.add(new Row("common.handicapSecondary","핸디캡: 인원 많은 팀 보조무기 금지",Kind.TOGGLE,"false",()->team,s->team?"":"팀 모드 전용"));
-        rows.add(new Row("common.handicapLargeHealth","핸디캡: 인원 많은 팀 체력 (50~100%)",Kind.INTEGER,text(c.handicapLargeHealth()),()->team,s->team?"%":"팀 모드 전용"));
-        rows.add(new Row("common.handicapHealth","핸디캡: 인원 적은 팀 체력 배수 (1.00~5.00)",Kind.DECIMAL,text(c.handicapHealth()),()->team,s->team?"x 배":"팀 모드 전용"));
-        rows.add(new Row("common.dupPrimary","같은 팀 주무기 중복",Kind.TOGGLE,"false"));
-        rows.add(new Row("common.dupSecondary","같은 팀 보조무기 중복",Kind.TOGGLE,"true"));
-        rows.add(new Row("common.respawn","리스폰 시간 (초)",Kind.SECONDS,text(c.respawnSeconds()),()->!mode().equals("PROP_HUNT"),s->mode().equals("PROP_HUNT")?"숨바꼭질 미사용":null));
+        header(Lang.tr("공통 설정"));
+        rows.add(new Row("common.handicapSecondary",Lang.tr("핸디캡: 인원 많은 팀 보조무기 금지"),Kind.TOGGLE,"false",()->team,s->team?"":Lang.tr("팀 모드 전용")));
+        rows.add(new Row("common.handicapLargeHealth",Lang.tr("핸디캡: 인원 많은 팀 체력 (50~100%)"),Kind.INTEGER,text(c.handicapLargeHealth()),()->team,s->team?"%":Lang.tr("팀 모드 전용")));
+        rows.add(new Row("common.handicapHealth",Lang.tr("핸디캡: 인원 적은 팀 체력 배수 (1.00~5.00)"),Kind.DECIMAL,text(c.handicapHealth()),()->team,s->team?Lang.tr("x 배"):Lang.tr("팀 모드 전용")));
+        rows.add(new Row("common.dupPrimary",Lang.tr("같은 팀 주무기 중복"),Kind.TOGGLE,"false"));
+        rows.add(new Row("common.dupSecondary",Lang.tr("같은 팀 보조무기 중복"),Kind.TOGGLE,"true"));
+        rows.add(new Row("common.respawn",Lang.tr("리스폰 시간 (초)"),Kind.SECONDS,text(c.respawnSeconds()),()->!mode().equals("PROP_HUNT"),s->mode().equals("PROP_HUNT")?Lang.tr("숨바꼭질 미사용"):null));
     }
     /** 무기 방식: 클래식 (each picks a loadout), 랜덤 무기, or 근접전 (melee primaries only). */
-    private void weapons(String prefix){rows.add(new Row(prefix+"weapons","무기 방식",Kind.WEAPONS,"CLASSIC"));}
+    private void weapons(String prefix){rows.add(new Row(prefix+"weapons",Lang.tr("무기 방식"),Kind.WEAPONS,"CLASSIC"));}
     /** 랜덤 무기 timing, editable only while the section plays 랜덤 무기. */
     private void rotation(String prefix){
-        Supplier<Boolean> on=()->randomWeapons(prefix);Function<String,String> off=s->randomWeapons(prefix)?null:"랜덤 무기 전용";
-        rows.add(new Row(prefix+"rotation","랜덤 무기: 무기 교체 간격 (초)",Kind.SECONDS,Integer.toString(GameOptions.ROTATION_SECONDS),on,off));
-        rows.add(new Row(prefix+"choice","랜덤 무기: 교체 전 선택 시간 (초)",Kind.SECONDS,Integer.toString(GameOptions.CHOICE_SECONDS),on,off));
+        Supplier<Boolean> on=()->randomWeapons(prefix);Function<String,String> off=s->randomWeapons(prefix)?null:Lang.tr("랜덤 무기 전용");
+        rows.add(new Row(prefix+"rotation",Lang.tr("랜덤 무기: 무기 교체 간격 (초)"),Kind.SECONDS,Integer.toString(GameOptions.ROTATION_SECONDS),on,off));
+        rows.add(new Row(prefix+"choice",Lang.tr("랜덤 무기: 교체 전 선택 시간 (초)"),Kind.SECONDS,Integer.toString(GameOptions.CHOICE_SECONDS),on,off));
     }
     private void header(String label){rows.add(new Row("",label,Kind.HEADER,""));}
-    private void time(String key,Integer fallback){rows.add(new Row(key,"게임 제한 시간 (초)",Kind.SECONDS,text(fallback)));}
-    private void prep(String key,Integer fallback){rows.add(new Row(key,"게임 준비 시간 (초)",Kind.SECONDS,text(fallback)));}
+    private void time(String key,Integer fallback){rows.add(new Row(key,Lang.tr("게임 제한 시간 (초)"),Kind.SECONDS,text(fallback)));}
+    private void prep(String key,Integer fallback){rows.add(new Row(key,Lang.tr("게임 준비 시간 (초)"),Kind.SECONDS,text(fallback)));}
 
     // ---- Notes beside the boxes -----------------------------------------------------------------------------
 
@@ -195,43 +195,43 @@ final class GameOptionsScreen extends ArenaScreen {
     }
     private String changesNote(){
         int hunt=hunt();
-        if(hunt<120)return "§c제한 시간 120초 이상 필요";
+        if(hunt<120)return Lang.tr("§c제한 시간 120초 이상 필요");
         Integer changes;try{changes=integer("prop.changes");}catch(NumberFormatException e){return "";}
         int max=(hunt-60)/60;
-        if(changes==null)return "기본: 3분마다 · 최대 "+max+"회";
-        if(changes==0)return "변신 없음";
-        if(!GameOptions.PropHunt.allowed(hunt,changes))return "§c최대 "+max+"회 ("+(60+60*changes)+"초 필요)";
-        return "대기 "+duration(GameOptions.PropHunt.interval(hunt,changes))+"마다";
+        if(changes==null)return Lang.tr("기본: 3분마다 · 최대 ")+max+Lang.tr("회");
+        if(changes==0)return Lang.tr("변신 없음");
+        if(!GameOptions.PropHunt.allowed(hunt,changes))return Lang.tr("§c최대 ")+max+Lang.tr("회 (")+(60+60*changes)+Lang.tr("초 필요)");
+        return Lang.tr("대기 ")+duration(GameOptions.PropHunt.interval(hunt,changes))+Lang.tr("마다");
     }
     private String excludedNote(String text){
         int count=0;for(var s:text.split("[,\\s]+"))if(!s.isBlank())count++;
-        return count==0?"":count+"개 제외";
+        return count==0?"":count+Lang.tr("개 제외");
     }
     private String multiplierNote(String text){
         Double max;try{max=decimal("escort.max");}catch(NumberFormatException e){return "";}
         if(max==null)max=defaults().escort().maxMultiplier();
         if(max==null)return "";
         double step=(max-1)/3;
-        return "2명 x"+number2(1+step)+" · 3명 x"+number2(1+2*step);
+        return Lang.tr("2명 x")+number2(1+step)+Lang.tr(" · 3명 x")+number2(1+2*step);
     }
     private int rounds(){try{var r=integer("bomb.rounds");if(r!=null)return r;}catch(NumberFormatException ignored){}var d=defaults().bomb().rounds();return d==null?5:d;}
-    private String roundsNote(){return rounds()/2+1+"선승"+(rounds()%2==0?" · 동점 무승부":"");}
+    private String roundsNote(){return rounds()/2+1+Lang.tr("선승")+(rounds()%2==0?Lang.tr(" · 동점 무승부"):"");}
     private String swapNote(){
         Integer swap;try{swap=integer("bomb.swap");}catch(NumberFormatException e){return "";}
         if(swap==null)swap=defaults().bomb().swapEveryRounds();
         if(swap==null)return "";
-        return swap>rounds()?"§c라운드 수 이하":swap+"라운드마다 교대";
+        return swap>rounds()?Lang.tr("§c라운드 수 이하"):swap+Lang.tr("라운드마다 교대");
     }
 
     /** Minutes and seconds ("3분 30초", "45초", "1시간 5분"). */
     static String duration(double seconds){
-        if(seconds<60)return number(seconds)+"초";
+        if(seconds<60)return number(seconds)+Lang.tr("초");
         long whole=(long)Math.floor(seconds);double fraction=seconds-whole;
         long h=whole/3600,m=whole%3600/60;double s=whole%60+fraction;
         var b=new StringBuilder();
-        if(h>0)b.append(h).append("시간 ");
-        if(m>0)b.append(m).append("분 ");
-        if(s>0)b.append(number(s)).append("초");
+        if(h>0)b.append(h).append(Lang.tr("시간 "));
+        if(m>0)b.append(m).append(Lang.tr("분 "));
+        if(s>0)b.append(number(s)).append(Lang.tr("초"));
         return b.toString().strip();
     }
     private static String number(double value){return value==Math.rint(value)?Long.toString((long)value):String.format(Locale.ROOT,"%.2f",value).replaceAll("0+$","").replaceAll("\\.$","");}
@@ -242,7 +242,7 @@ final class GameOptionsScreen extends ArenaScreen {
         if(row.kind()==Kind.SECONDS||row.kind()==Kind.DECIMAL_SECONDS){
             String shown=v.isEmpty()||v.equals(".")?row.placeholder():v;
             String time="";
-            try{if(!shown.isEmpty())time="= "+duration(Double.parseDouble(shown))+(v.isEmpty()?" (기본)":"");}catch(NumberFormatException ignored){}
+            try{if(!shown.isEmpty())time="= "+duration(Double.parseDouble(shown))+(v.isEmpty()?Lang.tr(" (기본)"):"");}catch(NumberFormatException ignored){}
             return extra==null||extra.isEmpty()?time:extra;
         }
         return extra==null?"":extra;
@@ -258,6 +258,7 @@ final class GameOptionsScreen extends ArenaScreen {
     private int w(){return body()-24;}
     private int boxX(){return x()+w()-BOX-NOTE-6;}
     @Override protected void init(){
+        languageButton();
         buildRows();boxes.clear();scroll=Math.max(0,Math.min(scroll,maxScroll()));
         for(int i=0;i<rows.size();i++){
             var row=rows.get(i);int y=TOP+i*ROW-scroll;
@@ -266,17 +267,17 @@ final class GameOptionsScreen extends ArenaScreen {
             switch(row.kind()){
                 case TOGGLE->{
                     String v=value(row.key());boolean on=Boolean.parseBoolean(v.isEmpty()?row.placeholder():v);
-                    String label=(on?"켜기":"끄기")+(v.isEmpty()?" (기본)":"");
+                    String label=(on?Lang.tr("켜기"):Lang.tr("끄기"))+(v.isEmpty()?Lang.tr(" (기본)"):"");
                     button(label,boxX(),y,BOX,18,enabled,on?ACCENT:MUTED,()->{boolean cur=Boolean.parseBoolean(value(row.key()).isEmpty()?row.placeholder():value(row.key()));values.put(row.key(),Boolean.toString(!cur));rebuildWidgets();});
                 }
                 case WEAPONS->{
                     String v=value(row.key());var current=GameOptions.WeaponMode.valueOf(v.isEmpty()?row.placeholder():v);
-                    String label=switch(current){case CLASSIC->"클래식 (직접 선택)";case RANDOM->"랜덤 무기 (주기마다 교체)";case MELEE->"근접전 (근접 주무기·중복 허용)";}+(v.isEmpty()?" · 기본":"");
+                    String label=switch(current){case CLASSIC->Lang.tr("클래식 (직접 선택)");case RANDOM->Lang.tr("랜덤 무기 (주기마다 교체)");case MELEE->Lang.tr("근접전 (근접 주무기·중복 허용)");}+(v.isEmpty()?Lang.tr(" · 기본"):"");
                     button(label,boxX(),y,BOX+NOTE+6,18,enabled,ACCENT,()->{var next=GameOptions.WeaponMode.values()[(current.ordinal()+1)%GameOptions.WeaponMode.values().length];values.put(row.key(),next.name());rebuildWidgets();});
                 }
                 case CHOICE->{
                     String v=value(row.key());var current=GameOptions.Choice.valueOf(v.isEmpty()?row.placeholder():v);
-                    String label=switch(current){case OFF->"끄기 (무작위)";case BASIC->"기본 (3개 중 선택)";case FIRST_COME->"선착순";}+(v.isEmpty()?" · 기본":"");
+                    String label=switch(current){case OFF->Lang.tr("끄기 (무작위)");case BASIC->Lang.tr("기본 (3개 중 선택)");case FIRST_COME->Lang.tr("선착순");}+(v.isEmpty()?Lang.tr(" · 기본"):"");
                     button(label,boxX(),y,BOX+NOTE+6,18,enabled,ACCENT,()->{var next=GameOptions.Choice.values()[(current.ordinal()+1)%GameOptions.Choice.values().length];values.put(row.key(),next.name());rebuildWidgets();});
                 }
                 default->{
@@ -297,9 +298,9 @@ final class GameOptionsScreen extends ArenaScreen {
             }
         }
         int bottom=bottom(),x=x(),w=w(),third=(w-8)/3;
-        button("기본값",x,bottom,third,20,editable(),MUTED,this::reset);
-        button("적용",x+third+4,bottom,third,20,editable(),ACCENT,this::save);
-        button("돌아가기",x+(third+4)*2,bottom,w-(third+4)*2,20,true,MUTED,this::onClose);
+        button(Lang.tr("기본값"),x,bottom,third,20,editable(),MUTED,this::reset);
+        button(Lang.tr("적용"),x+third+4,bottom,third,20,editable(),ACCENT,this::save);
+        button(Lang.tr("돌아가기"),x+(third+4)*2,bottom,w-(third+4)*2,20,true,MUTED,this::onClose);
     }
     @Override public boolean mouseScrolled(double mx,double my,double delta){
         int next=Math.max(0,Math.min(maxScroll(),scroll-(int)Math.signum(delta)*ROW));
@@ -307,22 +308,22 @@ final class GameOptionsScreen extends ArenaScreen {
         return true;
     }
     private void save(){
-        if(!editable()){receiveError("관리자만 로비 대기 중 게임 옵션을 변경할 수 있습니다.");return;}
+        if(!editable()){receiveError(Lang.tr("관리자만 로비 대기 중 게임 옵션을 변경할 수 있습니다."));return;}
         try{
             var game=collect();
             if(mode().equals("PROP_HUNT")&&game.propHunt().changes()!=null&&!GameOptions.PropHunt.allowed(hunt(),game.propHunt().changes()))
-                throw new IllegalArgumentException(hunt()<120?"변신 횟수는 제한 시간 120초 이상일 때만 설정할 수 있습니다.":"변신 "+game.propHunt().changes()+"회에는 제한 시간 "+(60+60*game.propHunt().changes())+"초 이상이 필요합니다.");
+                throw new IllegalArgumentException(hunt()<120?Lang.tr("변신 횟수는 제한 시간 120초 이상일 때만 설정할 수 있습니다."):Lang.tr("변신 ")+game.propHunt().changes()+Lang.tr("회에는 제한 시간 ")+(60+60*game.propHunt().changes())+Lang.tr("초 이상이 필요합니다."));
             if(mode().equals("BOMB")){
                 Integer swap=game.bomb().swapEveryRounds()!=null?game.bomb().swapEveryRounds():defaults().bomb().swapEveryRounds();
-                if(swap!=null&&swap>rounds())throw new IllegalArgumentException("공수교대 라운드 수는 라운드 수("+rounds()+") 이하여야 합니다.");
+                if(swap!=null&&swap>rounds())throw new IllegalArgumentException(Lang.tr("공수교대 라운드 수는 라운드 수(")+rounds()+Lang.tr(") 이하여야 합니다."));
             }
-            if(!LobbyClient.connected()){receiveError("서버 연결이 끊겨 게임 옵션을 적용할 수 없습니다.");return;}
+            if(!LobbyClient.connected()){receiveError(Lang.tr("서버 연결이 끊겨 게임 옵션을 적용할 수 없습니다."));return;}
             LobbyClient.action("gameOptions",ServerFiles.GSON.toJson(game),"");onClose();
-        }catch(NumberFormatException e){receiveError("숫자 형식이 올바르지 않은 칸이 있습니다.");}
+        }catch(NumberFormatException e){receiveError(Lang.tr("숫자 형식이 올바르지 않은 칸이 있습니다."));}
         catch(IllegalArgumentException e){receiveError(e.getMessage());}
         catch(RuntimeException failure){
             com.mojang.logging.LogUtils.getLogger().error("Could not submit lobby game options",failure);
-            receiveError("게임 옵션을 적용하지 못했습니다. 입력값은 유지됩니다. 로그를 확인해 주세요.");
+            receiveError(Lang.tr("게임 옵션을 적용하지 못했습니다. 입력값은 유지됩니다. 로그를 확인해 주세요."));
         }
     }
     @Override public void onClose(){
@@ -330,11 +331,11 @@ final class GameOptionsScreen extends ArenaScreen {
         try{LobbyClient.action("lobby","","");minecraft.setScreen(new LobbyScreen(state));}
         catch(RuntimeException failure){
             com.mojang.logging.LogUtils.getLogger().warn("Could not return to lobby",failure);
-            receiveError("로비로 돌아가지 못했습니다. 서버 연결을 확인해 주세요.");
+            receiveError(Lang.tr("로비로 돌아가지 못했습니다. 서버 연결을 확인해 주세요."));
         }
     }
     @Override public void render(GuiGraphics g,int mx,int my,float partial){
-        shell(g,LobbyScreen.modeName(mode())+" · 빈칸은 맵 기본값(회색 글씨) · 변경하면 참가자의 준비가 해제됩니다.");
+        shell(g,LobbyScreen.modeName(mode())+Lang.tr(" · 빈칸은 맵 기본값(회색 글씨) · 변경하면 참가자의 준비가 해제됩니다."));
         int x=x(),w=w();
         for(var e:boxes.entrySet()){boolean on=editable()&&e.getKey().enabled().get();e.getValue().setEditable(on);e.getValue().active=on;}
         g.enableScissor(x-2,TOP-2,x+w+2,viewBottom());
@@ -348,11 +349,11 @@ final class GameOptionsScreen extends ArenaScreen {
                 continue;
             }
             boolean enabled=row.enabled().get();
-            g.drawString(font,font.plainSubstrByWidth(row.label(),boxX()-x-12),x+7,y+5,enabled?INK:MUTED,false);
+            Marquee.draw(g,font,row.label(),x+7,y+5,boxX()-x-12,enabled?INK:MUTED,false);
             if(row.kind()!=Kind.CHOICE&&row.kind()!=Kind.WEAPONS){
                 String note=note(row);boolean warn=note.startsWith("§c");if(warn)note=note.substring(2);
                 int noteX=row.kind()==Kind.TEXT?boxX()+BOX+NOTE-42:boxX()+BOX+6;
-                g.drawString(font,font.plainSubstrByWidth(note,x+w-noteX),noteX,y+5,warn?0xFFFF6666:MUTED,false);
+                Marquee.draw(g,font,note,noteX,y+5,x+w-noteX,warn?0xFFFF6666:MUTED,false);
             }
         }
         g.disableScissor();
@@ -360,8 +361,8 @@ final class GameOptionsScreen extends ArenaScreen {
             int track=viewBottom()-TOP,thumb=Math.max(16,track*track/contentHeight()),pos=TOP+(track-thumb)*scroll/maxScroll();
             g.fill(x+w+3,TOP,x+w+5,viewBottom(),0x30FFFFFF);g.fill(x+w+3,pos,x+w+5,pos+thumb,ACCENT);
         }
-        if(!error.isEmpty())g.drawString(font,font.plainSubstrByWidth(error,w),x,viewBottom()+4,0xFFFF6666,false);
-        else if(maxScroll()>0)g.drawString(font,"휠로 스크롤",x,viewBottom()+4,DIM,false);
+        if(!error.isEmpty())Marquee.draw(g,font,error,x,viewBottom()+4,w,0xFFFF6666,false);
+        else if(maxScroll()>0)g.drawString(font,Lang.tr("휠로 스크롤"),x,viewBottom()+4,DIM,false);
         super.render(g,mx,my,partial);
     }
 }

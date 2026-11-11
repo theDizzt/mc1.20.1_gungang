@@ -231,6 +231,11 @@ public final class PatchHelp {
         item("health_regeneration", "intervalSeconds", "용도: 자연 재생 1회의 간격(초).\n산출식: 1회 회복 = 최대 체력 × 초당% / 100 × 간격");
         item("orbital_strike", "range", "용도: 폭격 위치를 지정할 수 있는 최대 거리(블록).");
         item("orbital_strike", "delaySeconds", "용도: 위치를 확정한 뒤 폭격이 떨어지기까지의 시간(초).");
+        item("hermes_boots", "dashDistance", "용도: 돌진 1회에 앞으로 이동하는 거리(블록). 벽에 닿으면 그 자리에서 멈춥니다.");
+        item("hermes_boots", "dashSeconds", "용도: 돌진에 걸리는 시간(초). 0.05초(1틱) 단위로 반올림됩니다.\n산출식: 돌진 속도(블록/초) = 돌진 거리 / 돌진 시간");
+        item("hermes_boots", "maxCharges", "용도: 모아 둘 수 있는 돌진 횟수(1~10). 보조 체력바가 이 수만큼 나뉘어 표시됩니다.");
+        item("hermes_boots", "chargeSeconds", "용도: 사용한 돌진 1회가 다시 채워지는 시간(초). 한 번에 1회씩 차례로 충전됩니다.\n산출식: 0회에서 가득 = 1회 충전 시간 × 최대 충전 횟수");
+        item("hermes_boots", "trailSeconds", "용도: 돌진 후 글로우 잔상이 사라지기까지의 시간(초). 색상은 각 플레이어가 무기 선택 > 프리셋 > 이펙트 색상에서 정합니다.");
         item("jetpack", "speed", "용도: 비행 속도(틱당 블록). 초당 블록 ≈ 값 × 20.\n산출식: 비행 거리 ≈ 속도 × 20 × 지속 시간");
         item("jetpack", "burnDamage", "용도: 불꽃에 닿아 붙은 화상의 초당 피해.\n산출식: 화상 총 피해 = 화상 피해 × 화상 시간");
         item("fallout", "radius", "용도: 낙진 구름의 반경(블록). 아군에게도 피해가 들어갑니다.");

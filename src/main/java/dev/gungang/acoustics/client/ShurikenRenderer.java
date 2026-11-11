@@ -44,10 +44,13 @@ public final class ShurikenRenderer extends EntityRenderer<ShurikenEntity> {
         var camera=entityRenderDispatcher.camera.getPosition();
         var buffer=buffers.getBuffer(RenderType.lightning());
         var matrix=pose.last().pose();
-        ribbon(buffer,matrix,points,origin,camera,WIDTH,.72f,.30f,1f,.55f);
-        ribbon(buffer,matrix,points,origin,camera,CORE,.95f,.85f,1f,.75f);
+        // The thrower's effect colours (key "shuriken"): blade end in the first, tail in the second.
+        int[] colors=shuriken.colors();
+        ribbon(buffer,matrix,points,origin,camera,WIDTH,colors,0,.55f);
+        ribbon(buffer,matrix,points,origin,camera,CORE,colors,.7f,.75f);
     }
-    private static void ribbon(VertexConsumer buffer,Matrix4f matrix,java.util.List<Vec3> points,Vec3 origin,Vec3 camera,float width,float r,float g,float b,float alpha){
+    /** {@code wash}: how far each colour is lifted toward white (the pale core). */
+    private static void ribbon(VertexConsumer buffer,Matrix4f matrix,java.util.List<Vec3> points,Vec3 origin,Vec3 camera,float width,int[] colors,float wash,float alpha){
         int n=points.size();
         for(int i=0;i+1<n;i++){
             var a=points.get(i);var c=points.get(i+1);
@@ -58,6 +61,8 @@ public final class ShurikenRenderer extends EntityRenderer<ShurikenEntity> {
             var unit=side.normalize();var s0=unit.scale(width*(1-t0));var s1=unit.scale(width*(1-t1));
             float a0=alpha*(1-t0),a1=alpha*(1-t1);
             var p0=a.subtract(origin);var p1=c.subtract(origin);
+            int color=dev.gungang.acoustics.server.EffectColors.at(new int[]{dev.gungang.acoustics.server.EffectColors.at(colors,t0),0xFFFFFF},wash);
+            float r=dev.gungang.acoustics.server.EffectColors.red(color),g=dev.gungang.acoustics.server.EffectColors.green(color),b=dev.gungang.acoustics.server.EffectColors.blue(color);
             // Both windings: the ribbon is seen from either side as the camera passes it.
             quad(buffer,matrix,p0.add(s0),p0.subtract(s0),p1.subtract(s1),p1.add(s1),r,g,b,a0,a1);
             quad(buffer,matrix,p1.add(s1),p1.subtract(s1),p0.subtract(s0),p0.add(s0),r,g,b,a1,a0);

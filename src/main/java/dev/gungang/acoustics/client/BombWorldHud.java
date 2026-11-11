@@ -46,7 +46,7 @@ public final class BombWorldHud {
             String text=site;
             if(site.equals(view.plantedSite())&&view.plantedPosition()==null){
                 float ticks=Math.max(0,view.fuseTicks()-(mc.level.getGameTime()-received)-event.getPartialTick());
-                text=String.format(java.util.Locale.ROOT,"%.1f초",ticks/20f);
+                text=String.format(java.util.Locale.ROOT,Lang.tr("%.1f초"),ticks/20f);
             }
             if(!site.equals(view.plantedSite())||view.plantedPosition()==null)
                 mc.font.drawInBatch(text,-mc.font.width(text)/2f,0,0xFFFFFFFF,true,pose.last().pose(),buffers,net.minecraft.client.gui.Font.DisplayMode.NORMAL,0x80000000,15728880);
@@ -56,7 +56,7 @@ public final class BombWorldHud {
             var p=view.plantedPosition();pose.pushPose();pose.translate(p.x()+.5-camera.x,p.y()+1.6-camera.y,p.z()+.5-camera.z);
             pose.mulPose(mc.getEntityRenderDispatcher().cameraOrientation());pose.scale(-.025f,-.025f,.025f);
             float ticks=Math.max(0,view.fuseTicks()-(mc.level.getGameTime()-received)-event.getPartialTick());
-            String text=String.format(java.util.Locale.ROOT,"%.1f초",ticks/20f);
+            String text=String.format(java.util.Locale.ROOT,Lang.tr("%.1f초"),ticks/20f);
             mc.font.drawInBatch(text,-mc.font.width(text)/2f,0,0xFFFFFFFF,true,pose.last().pose(),buffers,net.minecraft.client.gui.Font.DisplayMode.NORMAL,0x80000000,15728880);pose.popPose();
         }
         var check=plantCheck();
@@ -94,10 +94,10 @@ public final class BombWorldHud {
         if(!planter())return null;
         var p=Minecraft.getInstance().player;
         if(!nearSite(p.getBlockX(),p.getBlockY()-1,p.getBlockZ()))return null;
-        if(!p.onGround())return new PlantCheck(null,null,"바닥에 서세요");
+        if(!p.onGround())return new PlantCheck(null,null,Lang.tr("바닥에 서세요"));
         var place=BombRules.standing(p.level(),p.getOnPos());var placement=place.cell();
         String site=place.ok()?BombRules.siteAt(view.areaA(),view.areaB(),view.pointA(),view.pointB(),placement.getX(),placement.getY()-1,placement.getZ()):null;
-        return new PlantCheck(placement,site,!place.ok()?place.reason():site==null?"설치 영역 밖입니다":"");
+        return new PlantCheck(placement,site,!place.ok()?place.reason():site==null?Lang.tr("설치 영역 밖입니다"):"");
     }
     /** A living defender aiming at the planted bomb within reach (mirrors BombMatch.aimed). */
     private static boolean defusable(){
@@ -129,8 +129,8 @@ public final class BombWorldHud {
         var mc=Minecraft.getInstance();if(mc.screen!=null||mc.options.hideGui||!HudVisibility.enabled())return;
         String text;int color;
         var check=plantCheck();
-        if(check!=null){boolean ok=check.site()!=null;text=ok?"설치 가능 · "+check.site()+" 지점 · "+KEY.getTranslatedKeyMessage().getString()+" 길게 "+seconds(view!=null&&view.plantSeconds()>0?view.plantSeconds():BombEquipment.timing.plantSeconds())+"초":"설치 불가 · "+check.reason();color=ok?0xFF7BE07B:0xFFFF6B6B;}
-        else if(defusable()){text="폭탄 해체 · "+KEY.getTranslatedKeyMessage().getString()+" 길게 "+seconds(view!=null&&view.defuseSeconds()>0?view.defuseSeconds():BombEquipment.timing.defuseSeconds())+"초";color=0xFF8CC8FF;}
+        if(check!=null){boolean ok=check.site()!=null;text=ok?Lang.tr("설치 가능 · ")+check.site()+Lang.tr(" 지점 · ")+KEY.getTranslatedKeyMessage().getString()+Lang.tr(" 길게 ")+seconds(view!=null&&view.plantSeconds()>0?view.plantSeconds():BombEquipment.timing.plantSeconds())+Lang.tr("초"):Lang.tr("설치 불가 · ")+check.reason();color=ok?0xFF7BE07B:0xFFFF6B6B;}
+        else if(defusable()){text=Lang.tr("폭탄 해체 · ")+KEY.getTranslatedKeyMessage().getString()+Lang.tr(" 길게 ")+seconds(view!=null&&view.defuseSeconds()>0?view.defuseSeconds():BombEquipment.timing.defuseSeconds())+Lang.tr("초");color=0xFF8CC8FF;}
         else return;
         var g=event.getGuiGraphics();
         int w=mc.font.width(text)+12,x=(g.guiWidth()-w)/2,y=g.guiHeight()/2+14;

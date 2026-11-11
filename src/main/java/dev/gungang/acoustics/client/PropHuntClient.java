@@ -103,7 +103,7 @@ public final class PropHuntClient {
         if(row==null)return null;
         // Only while spectating someone else: the own disguise is already in the control guide.
         if(watched.equals(mc.player.getUUID()))return null;
-        if(!row.team().equals("ALPHA"))return "술래";
+        if(!row.team().equals("ALPHA"))return Lang.tr("술래");
         return row.found()||row.block().isEmpty()?null:PropCatalog.name(row.block(),net.minecraft.world.level.block.Block.stateById(row.state())).getString()+" ["+PropCatalog.number(row.block())+"]";
     }
     /** Player behind the camera: a watched player, or the owner when the camera follows a disguise. */
@@ -196,9 +196,9 @@ public final class PropHuntClient {
      */
     static List<String> guide(){
         var mc=Minecraft.getInstance();if(!hider()||mc.player==null||mc.screen!=null)return List.of();
-        var lines=new ArrayList<String>();lines.add("숨는 팀 조작");
+        var lines=new ArrayList<String>();lines.add(Lang.tr("숨는 팀 조작"));
         // A block with its own E effect is tagged "특수" in yellow (§e) after its name.
-        if(System.currentTimeMillis()<noticeUntil)lines.add("변신: "+disguise(self().block())+(PropInteraction.tagText(self().block()).isEmpty()?"":" "+PropInteraction.tagText(self().block()).trim()+"§r"));
+        if(System.currentTimeMillis()<noticeUntil)lines.add(Lang.tr("변신: ")+disguise(self().block())+(PropInteraction.tagText(self().block()).isEmpty()?"":" "+PropInteraction.tagText(self().block()).trim()+"§r"));
         // TNT and gas barrels blast with E (30 s cooldown on the server).
         // Dispensers shoot an arrow with E (1 s cooldown) and turn through six facings with R.
         String block=self().block();boolean blast=block.equals("minecraft:tnt")||block.equals("gungang:gas_barrel"),shoot=block.equals("minecraft:dispenser")||block.equals("minecraft:dropper");
@@ -206,70 +206,70 @@ public final class PropHuntClient {
         // E only where it does something: turning a block is R's job alone.
         var blockState=net.minecraft.world.level.block.Block.stateById(self().state());
         boolean interactive=PropInteraction.interactive(block,blockState.isAir()?PropCatalog.state(block):blockState);
-        String use=blast?"폭발":shoot?(block.equals("minecraft:dropper")?"폭죽 발사":"화살 발사"):switch(block){
-            case "minecraft:sculk_sensor","minecraft:sculk_shrieker"->"비명 켜기/끄기";
-            case "gungang:hologram_projector"->"홀로그램 크기";
-            case "gungang:shutter"->"열기/닫기";
-            case "minecraft:note_block"->"연주";
-            case "minecraft:cartography_table"->"미니맵 보기";
-            case "minecraft:farmland"->"작물 바꾸기";
-            case "minecraft:piston","minecraft:sticky_piston"->"피스톤 작동";
-            case "gungang:desk_clock"->"알람 켜기/끄기";
-            case "gungang:money_cart"->"현금 인출기 소리";
-            case "gungang:chameleon_block"->"맞닿은 블록으로 위장";
-            case "gungang:capsule_machine"->"팀원 블록 뽑기 (1회)";
-            case "gungang:garden_fountain"->"물 분사";
-            case "gungang:easel"->"그림 그리기";
-            case "minecraft:light"->"밝기 조절";
-            case "gungang:dice"->"주사위 던지기";
-            case "gungang:chandelier"->"천장에 매달리기/떨어지기";
-            case "gungang:slot_machine"->"슬롯 돌리기";
-            case "gungang:billiard_ball"->"공 바꾸기";
-            case "gungang:wishing_well"->"두레박 내리기/올리기";
-            case "gungang:embezzlement_statue"->"돈벼락";
-            case "gungang:christmas_tree"->"장식등 켜기/끄기";
-            case "gungang:sanga_doll"->"포즈 바꾸기";
-            case "minecraft:lightning_rod"->"충전 켜기/끄기";
-            case "minecraft:jukebox"->"CD 발사";
-            case "minecraft:brewing_stand"->"팀 물약 효과";
-            case "minecraft:bell"->"타종";
-            case "minecraft:bubble_column"->"물살 방향";
-            case "minecraft:respawn_anchor"->"팀원 불러오기";
-            case "minecraft:armor_stand"->"갑옷·포즈 바꾸기";
-            case "minecraft:daylight_detector"->"낮/밤 바꾸기";
-            case "minecraft:lectern"->"책 쓰기";
-            case "minecraft:end_portal_frame"->"엔더의 눈 순간이동";
-            case "minecraft:crying_obsidian"->"울기";
-            case "gungang:prettiest_block"->"사랑 뿜뿜";
-            case "minecraft:tnt_minecart"->"TNT 설치";
-            case "gungang:nozzle"->"대량 분사";
-            case "minecraft:conduit"->"번개 폭풍";
-            case "minecraft:repeater"->"모양 바꾸기";
-            case "minecraft:redstone_torch"->"켜기/끄기";
-            case "gungang:mannequin","gungang:eunbi_doll","gungang:hanbi_doll"->"포즈 바꾸기";
-            case "gungang:small_health_pack","gungang:large_health_pack","gungang:conveyor_belt"->"바닥에 넣기/꺼내기";
-            default->block.endsWith("candle_cake")?"촛불 켜기/끄기":PropInteraction.special(block)?"특수 효과":"상호작용";
+        String use=blast?Lang.tr("폭발"):shoot?(block.equals("minecraft:dropper")?Lang.tr("폭죽 발사"):Lang.tr("화살 발사")):switch(block){
+            case "minecraft:sculk_sensor","minecraft:sculk_shrieker"->Lang.tr("비명 켜기/끄기");
+            case "gungang:hologram_projector"->Lang.tr("홀로그램 크기");
+            case "gungang:shutter"->Lang.tr("열기/닫기");
+            case "minecraft:note_block"->Lang.tr("연주");
+            case "minecraft:cartography_table"->Lang.tr("미니맵 보기");
+            case "minecraft:farmland"->Lang.tr("작물 바꾸기");
+            case "minecraft:piston","minecraft:sticky_piston"->Lang.tr("피스톤 작동");
+            case "gungang:desk_clock"->Lang.tr("알람 켜기/끄기");
+            case "gungang:money_cart"->Lang.tr("현금 인출기 소리");
+            case "gungang:chameleon_block"->Lang.tr("맞닿은 블록으로 위장");
+            case "gungang:capsule_machine"->Lang.tr("팀원 블록 뽑기 (1회)");
+            case "gungang:garden_fountain"->Lang.tr("물 분사");
+            case "gungang:easel"->Lang.tr("그림 그리기");
+            case "minecraft:light"->Lang.tr("밝기 조절");
+            case "gungang:dice"->Lang.tr("주사위 던지기");
+            case "gungang:chandelier"->Lang.tr("천장에 매달리기/떨어지기");
+            case "gungang:slot_machine"->Lang.tr("슬롯 돌리기");
+            case "gungang:billiard_ball"->Lang.tr("공 바꾸기");
+            case "gungang:wishing_well"->Lang.tr("두레박 내리기/올리기");
+            case "gungang:embezzlement_statue"->Lang.tr("돈벼락");
+            case "gungang:christmas_tree"->Lang.tr("장식등 켜기/끄기");
+            case "gungang:sanga_doll"->Lang.tr("포즈 바꾸기");
+            case "minecraft:lightning_rod"->Lang.tr("충전 켜기/끄기");
+            case "minecraft:jukebox"->Lang.tr("CD 발사");
+            case "minecraft:brewing_stand"->Lang.tr("팀 물약 효과");
+            case "minecraft:bell"->Lang.tr("타종");
+            case "minecraft:bubble_column"->Lang.tr("물살 방향");
+            case "minecraft:respawn_anchor"->Lang.tr("팀원 불러오기");
+            case "minecraft:armor_stand"->Lang.tr("갑옷·포즈 바꾸기");
+            case "minecraft:daylight_detector"->Lang.tr("낮/밤 바꾸기");
+            case "minecraft:lectern"->Lang.tr("책 쓰기");
+            case "minecraft:end_portal_frame"->Lang.tr("엔더의 눈 순간이동");
+            case "minecraft:crying_obsidian"->Lang.tr("울기");
+            case "gungang:prettiest_block"->Lang.tr("사랑 뿜뿜");
+            case "minecraft:tnt_minecart"->Lang.tr("TNT 설치");
+            case "gungang:nozzle"->Lang.tr("대량 분사");
+            case "minecraft:conduit"->Lang.tr("번개 폭풍");
+            case "minecraft:repeater"->Lang.tr("모양 바꾸기");
+            case "minecraft:redstone_torch"->Lang.tr("켜기/끄기");
+            case "gungang:mannequin","gungang:eunbi_doll","gungang:hanbi_doll"->Lang.tr("포즈 바꾸기");
+            case "gungang:small_health_pack","gungang:large_health_pack","gungang:conveyor_belt"->Lang.tr("바닥에 넣기/꺼내기");
+            default->block.endsWith("candle_cake")?Lang.tr("촛불 켜기/끄기"):PropInteraction.special(block)?Lang.tr("특수 효과"):Lang.tr("상호작용");
         };
         String q=TeamPointHud.POINT.getTranslatedKeyMessage().getString().toUpperCase(Locale.ROOT);
         if(free()){
-            lines.add("자유 관전 중");lines.add("이동 키·점프·Shift  비행");lines.add(q+"  자유 관전 해제");lines.add("휠  다른 시점");lines.add("R  내 시점");lines.add("T  고정 해제");
+            lines.add(Lang.tr("자유 관전 중"));lines.add(Lang.tr("이동 키·점프·Shift  비행"));lines.add(q+Lang.tr("  자유 관전 해제"));lines.add(Lang.tr("휠  다른 시점"));lines.add(Lang.tr("R  내 시점"));lines.add(Lang.tr("T  고정 해제"));
         }else if(auto()){
-            lines.add("자율 전투 중 · 조작 불가");lines.add("찾는 시간에 술래를 찾아가 미니건 사격");lines.add("휠  다른 시점");lines.add("R  내 시점");lines.add("G  경적");
+            lines.add(Lang.tr("자율 전투 중 · 조작 불가"));lines.add(Lang.tr("찾는 시간에 술래를 찾아가 미니건 사격"));lines.add(Lang.tr("휠  다른 시점"));lines.add(Lang.tr("R  내 시점"));lines.add(Lang.tr("G  경적"));
         }else if(fixed()){
-            lines.add("T  고정 해제");lines.add("휠  다른 시점");lines.add(q+"  자유 관전");lines.add("R  내 시점");lines.add("G  경적");
+            lines.add(Lang.tr("T  고정 해제"));lines.add(Lang.tr("휠  다른 시점"));lines.add(q+Lang.tr("  자유 관전"));lines.add(Lang.tr("R  내 시점"));lines.add(Lang.tr("G  경적"));
             if(blast||shoot)lines.add("E  "+use);
         }else if(clinging()!=null){
-            lines.add("이동 키  벽에서 위치 조정");lines.add(q+"  벽에서 떨어지기");if(interactive)lines.add("E  "+use);lines.add("G  경적");lines.add("T  고정");
-            lines.add("벽에서는 점프·정렬 불가");
+            lines.add(Lang.tr("이동 키  벽에서 위치 조정"));lines.add(q+Lang.tr("  벽에서 떨어지기"));if(interactive)lines.add("E  "+use);lines.add(Lang.tr("G  경적"));lines.add(Lang.tr("T  고정"));
+            lines.add(Lang.tr("벽에서는 점프·정렬 불가"));
         }else{
-            if(sticky()&&!liquid()){lines.add("벽·천장에 닿으면 붙어서 이동");if(stuck)lines.add("E  떨어지기");lines.add("점프 불가");}
-            else if(skater()&&!liquid()){lines.add(ride!=null?"벽 타는 중 · 시선으로 방향":"앞으로 달려 벽에 닿으면 벽 타기");lines.add(ride!=null?"점프  벽 차고 뛰기":"점프 길게  높이 충전");}
-            else lines.add(liquid()?"점프  헤엄쳐 오르기":"점프 길게  높이 충전");
-            lines.add("Shift  정렬");if(interactive)lines.add("E  "+use);lines.add("G  경적");lines.add("T  고정");
-            lines.add("R  "+(shoot||block.endsWith("piston")?"방향 전환":hologram?"회전 속도":block.equals("minecraft:note_block")?"곡 바꾸기":"90° 회전"));if(!state.clingOff())lines.add(q+"  벽에 붙기");
-            if(block.equals("minecraft:light"))lines.add("휠  밝기 ±1");
-            if(block.equals("gungang:eunbi_doll"))lines.add("좌클릭 (꾹)  광선");
-            if(block.equals("gungang:hanbi_doll"))lines.add("좌클릭 (꾹)  투명화·무적");
+            if(sticky()&&!liquid()){lines.add(Lang.tr("벽·천장에 닿으면 붙어서 이동"));if(stuck)lines.add(Lang.tr("E  떨어지기"));lines.add(Lang.tr("점프 불가"));}
+            else if(skater()&&!liquid()){lines.add(ride!=null?Lang.tr("벽 타는 중 · 시선으로 방향"):Lang.tr("앞으로 달려 벽에 닿으면 벽 타기"));lines.add(ride!=null?Lang.tr("점프  벽 차고 뛰기"):Lang.tr("점프 길게  높이 충전"));}
+            else lines.add(liquid()?Lang.tr("점프  헤엄쳐 오르기"):Lang.tr("점프 길게  높이 충전"));
+            lines.add(Lang.tr("Shift  정렬"));if(interactive)lines.add("E  "+use);lines.add(Lang.tr("G  경적"));lines.add(Lang.tr("T  고정"));
+            lines.add("R  "+(shoot||block.endsWith("piston")?Lang.tr("방향 전환"):hologram?Lang.tr("회전 속도"):block.equals("minecraft:note_block")?Lang.tr("곡 바꾸기"):Lang.tr("90° 회전")));if(!state.clingOff())lines.add(q+Lang.tr("  벽에 붙기"));
+            if(block.equals("minecraft:light"))lines.add(Lang.tr("휠  밝기 ±1"));
+            if(block.equals("gungang:eunbi_doll"))lines.add(Lang.tr("좌클릭 (꾹)  광선"));
+            if(block.equals("gungang:hanbi_doll"))lines.add(Lang.tr("좌클릭 (꾹)  투명화·무적"));
         }
         return lines;
     }

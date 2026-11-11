@@ -46,11 +46,11 @@ public final class FreeForAllHud {
             plate(g,true,me,mine+1,goal,lead);
             if(rows.size()>1)plate(g,false,rows.get(rival),rival+1,goal,null);
         }
-        DeathmatchHud.small(g,"목표 "+goal,0,37,.8f,DeathmatchHud.MUTED,true);
+        DeathmatchHud.small(g,Lang.tr("목표 ")+goal,0,37,.8f,DeathmatchHud.MUTED,true);
     }
     private static void plate(GuiGraphics g,boolean left,MatchSnapshot.Row row,int rank,int goal,Integer lead) {
         String note=lead==null?"":lead>0?"+"+lead:lead==0?"±0":String.valueOf(lead);
-        MatchRibbonHud.wing(g,left,0xFF000000|row.color(),row.score(),goal,rank+"위 · "+row.name(),note);
+        MatchRibbonHud.wing(g,left,0xFF000000|row.color(),row.score(),goal,rank+Lang.tr("위 · ")+row.name(),note);
     }
     static int capacity(int height){return Math.max(1,(height-HEAD-COLS-FOOT)/ROW);}
     static int pages(MatchSnapshot s,int height){return Math.max(1,(s.players().size()+capacity(height)-1)/capacity(height));}
@@ -64,23 +64,23 @@ public final class FreeForAllHud {
         g.fillGradient(x,y,right,bottom,0xB01D1F18,0xB010110E);
         g.fillGradient(x,y,right,y+HEAD,rgb|0x50000000,rgb|0x08000000);
         g.fill(x,y,right,y+2,ACCENT);g.fill(x+8,y+9,x+10,y+19,ACCENT);
-        g.drawString(font,"개인전",x+14,y+7,0xFFFFFFFF,false);
+        g.drawString(font,Lang.tr("개인전"),x+14,y+7,0xFFFFFFFF,false);
         long kills=s.players().stream().mapToLong(MatchSnapshot.Row::kills).sum();
-        g.drawString(font,s.players().size()+"명 · "+kills+" 킬 · 목표 "+s.point().goal()+"점",x+14,y+17,TacticalStyle.MUTED,false);
+        g.drawString(font,s.players().size()+Lang.tr("명 · ")+kills+Lang.tr(" 킬 · 목표 ")+s.point().goal()+Lang.tr("점"),x+14,y+17,TacticalStyle.MUTED,false);
         var leader=s.players().isEmpty()?null:s.players().get(0);
         if(leader!=null) {
-            String total=String.valueOf(leader.score()),label="1위";
+            String total=String.valueOf(leader.score()),label=Lang.tr("1위");
             g.pose().pushPose();g.pose().translate(right-8-HudText.numberWidth(total)*2,y+6,0);g.pose().scale(2,2,1);
             HudText.drawNumber(g,HudText.number(total),0,0,0xFFFFFFFF);g.pose().popPose();
             g.drawString(font,label,right-12-HudText.numberWidth(total)*2-font.width(label),y+13,GOLD,false);
         }
         int dmg=right-8,assist=dmg-46,death=assist-22,kill=death-22,score=kill-30,face=x+26,nameX=face+30,cy=y+HEAD;
         g.fill(x,cy,right,cy+COLS,0x30000000);g.fill(x,cy+COLS-1,right,cy+COLS,TacticalStyle.EDGE);
-        g.drawString(font,"#",x+8,cy+3,DIM,false);g.drawString(font,"플레이어",face,cy+3,DIM,false);
-        MatchHud.column(g,"점수",score,cy+3,DIM);MatchHud.column(g,"K",kill,cy+3,DIM);MatchHud.column(g,"D",death,cy+3,DIM);
+        g.drawString(font,"#",x+8,cy+3,DIM,false);g.drawString(font,Lang.tr("플레이어"),face,cy+3,DIM,false);
+        MatchHud.column(g,Lang.tr("점수"),score,cy+3,DIM);MatchHud.column(g,"K",kill,cy+3,DIM);MatchHud.column(g,"D",death,cy+3,DIM);
         MatchHud.column(g,"A",assist,cy+3,DIM);MatchHud.column(g,"DMG",dmg,cy+3,DIM);
         String self=mc.player==null?"":mc.player.getUUID().toString();
-        if(s.players().isEmpty())g.drawString(font,"플레이어 없음",x+(width-font.width("플레이어 없음"))/2,cy+COLS+5,DIM,false);
+        if(s.players().isEmpty())g.drawString(font,Lang.tr("플레이어 없음"),x+(width-font.width(Lang.tr("플레이어 없음")))/2,cy+COLS+5,DIM,false);
         for(int i=page*count;i<Math.min(s.players().size(),(page+1)*count);i++){
             var r=s.players().get(i);int ry=cy+COLS+(i-page*count)*ROW,rank=i+1,color=0xFF000000|r.color();boolean mine=r.id().equals(self);
             if(mine)g.fill(x,ry,right,ry+ROW,(r.color()&0xFFFFFF)|0x38000000);
@@ -91,7 +91,7 @@ public final class FreeForAllHud {
             g.fill(face-1,ry+2,face+13,ry+16,mine?color:TacticalStyle.EDGE);
             PlayerFaceRenderer.draw(g,MatchHud.skin(r.id()),face,ry+3,12);
             PlayerLevels.draw(g,r.id(),face+15,ry+3,12);
-            g.drawString(font,font.plainSubstrByWidth(r.name(),Math.max(1,score-30-nameX)),nameX,ry+5,mine?0xFFFFFFFF:color,false);
+            Marquee.draw(g,font,r.name(),nameX,ry+5,Math.max(1,score-30-nameX),mine?0xFFFFFFFF:color,false);
             MatchHud.column(g,String.valueOf(r.score()),score,ry+5,0xFFFFFFFF);
             MatchHud.column(g,String.valueOf(r.kills()),kill,ry+5,TacticalStyle.INK);
             MatchHud.column(g,String.valueOf(r.deaths()),death,ry+5,0xFFE08A8A);
