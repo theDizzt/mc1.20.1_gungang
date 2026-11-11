@@ -51,6 +51,10 @@ public final class GungangNetwork {
     public record ConveyorSet(net.minecraft.core.BlockPos pos,int speed,boolean reverse) { }
     public record SecretBlockSync(boolean full,long[] positions,byte[] modes) { }
     public record RapierStep(int entity,float yaw,float distance) { }
+    /** Every online player's chosen effect colours ({@link EffectColors}), as JSON {uuid: {key: [first, second]}}. */
+    public record EffectColorSync(String json) { }
+    /** A 74 Hermes' Boots dash: the client replays the fixed-step motion and draws the owner's glow trail. */
+    public record HermesDash(int entity,float yaw,float distance,int ticks,float trailSeconds) { }
     /** One LAS-5 shot: shooter entity id (-1: none), bullet start and the server-side hit point. */
     public record Las5Shot(int owner,double fx,double fy,double fz,double tx,double ty,double tz) { }
     public record M95Shot(int owner,double fx,double fy,double fz,double tx,double ty,double tz) { }
@@ -116,6 +120,13 @@ public final class GungangNetwork {
         CHANNEL.registerMessage(42,M95Shot.class,(p,b)->{b.writeVarInt(p.owner+1);b.writeDouble(p.fx);b.writeDouble(p.fy);b.writeDouble(p.fz);b.writeDouble(p.tx);b.writeDouble(p.ty);b.writeDouble(p.tz);},
                 b->new M95Shot(b.readVarInt()-1,b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble()),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.Las5Beam.receive(p)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(45,EffectColorSync.class,(p,b)->b.writeUtf(p.json,262144),b->new EffectColorSync(b.readUtf(262144)),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->EffectColors.receive(p.json())));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(46,HermesDash.class,(p,b)->{b.writeVarInt(p.entity);b.writeFloat(p.yaw);b.writeFloat(p.distance);b.writeVarInt(p.ticks);b.writeFloat(p.trailSeconds);},
+                b->new HermesDash(b.readVarInt(),b.readFloat(),b.readFloat(),b.readVarInt(),b.readFloat()),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.HermesTrail.receive(p)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(44,M95Observed.class,(p,b)->b.writeCollection(p.targets,(buf,id)->buf.writeUUID(id)),b->{
             int size=b.readVarInt();if(size<0||size>512)throw new IllegalArgumentException("Too many observed targets");

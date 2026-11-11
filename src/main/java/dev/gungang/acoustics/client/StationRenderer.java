@@ -33,7 +33,7 @@ public final class StationRenderer implements BlockEntityRenderer<StationEntity>
                     LightTexture.FULL_BRIGHT,OverlayTexture.NO_OVERLAY,pose,buffers,entity.getLevel(),0);
         }else{
             String label=block.healthPack()?String.format(Locale.ROOT,"%.1f",Math.max(0,entity.remaining()-partial)/20.0):switch(block.kind){
-                case WAR_TABLE->"War Table";case ARMORY->"무기고";case ALPHA->"ALPHA";case BRAVO->"BRAVO";default->"";
+                case WAR_TABLE->"War Table";case ARMORY->Lang.tr("무기고");case ALPHA->"ALPHA";case BRAVO->"BRAVO";default->"";
             };
             int color=block.kind==StationBlock.Kind.ALPHA?LobbyClient.options.color("ALPHA"):
                     block.kind==StationBlock.Kind.BRAVO?LobbyClient.options.color("BRAVO"):0xFFFFFFFF;

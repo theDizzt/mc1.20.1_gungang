@@ -78,7 +78,7 @@ public final class GadgetClient {
     }
     @SubscribeEvent public static void hint(RenderGuiEvent.Post e) {
         if(preview.isEmpty())return;var mc=Minecraft.getInstance();if(mc.screen!=null||mc.options.hideGui||!HudVisibility.enabled())return;
-        String text="G 길게 눌러 설치 · 우클릭 설치 · 좌클릭/H 취소";var g=e.getGuiGraphics();
+        String text=Lang.tr("G 길게 눌러 설치 · 우클릭 설치 · 좌클릭/H 취소");var g=e.getGuiGraphics();
         g.drawString(mc.font,text,(g.guiWidth()-mc.font.width(text))/2,g.guiHeight()/2+25,0xFFFFFFFF,true);
     }
     @SubscribeEvent public static void world(RenderLevelStageEvent e) {

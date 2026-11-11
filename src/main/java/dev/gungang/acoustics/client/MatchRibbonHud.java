@@ -72,8 +72,8 @@ final class MatchRibbonHud {
         var font=Minecraft.getInstance().font;
         // Reserve the inner 30px for the score so longer names cannot overlap it.
         TeamEmblems.draw(g,left?"ALPHA":"BRAVO",left?-180:160,14,20);
-        DeathmatchHud.small(g,font.plainSubstrByWidth(label,90),left?-156:156,16,.85f,rgb,false,left);
-        DeathmatchHud.small(g,font.plainSubstrByWidth(note,104),left?-156:156,27,.8f,DeathmatchHud.MUTED,false,left);
+        DeathmatchHud.smallMarquee(g,label,left?-156:156,16,.85f,rgb,left,90);
+        DeathmatchHud.smallMarquee(g,note,left?-156:156,27,.8f,DeathmatchHud.MUTED,left,104);
         String score=String.valueOf(value);
         DeathmatchHud.score(g,left?0:1,value,score,left?-53:53,22,Math.min(2f,28f/Math.max(1,HudText.numberWidth(score))),true);
     }

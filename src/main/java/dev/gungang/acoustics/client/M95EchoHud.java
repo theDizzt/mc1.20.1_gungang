@@ -82,12 +82,12 @@ public final class M95EchoHud {
     @SubscribeEvent public static void hud(RenderGuiEvent.Post event){
         var mc=Minecraft.getInstance();if(!visible()||mc.options.hideGui||mc.level.getGameTime()>=until)return;
         var g=event.getGuiGraphics();int color=0xFF85DBD9;
-        int labelHalfWidth=mc.font.width("적")/2;
+        int labelHalfWidth=mc.font.width(Lang.tr("적"))/2;
         for(int i=0;i<screenCount;i++){var point=screen.get(i);int x=Math.round(point.x),y=Math.round(point.y);
             g.fill(x-6,y-9,x+7,y-8,color);g.fill(x-6,y+8,x+7,y+9,color);
             g.fill(x-6,y-9,x-5,y+9,color);g.fill(x+6,y-9,x+7,y+9,color);
             // HUD overlay is rendered after the world and remains visible through blocks.
-            g.drawString(mc.font,"적",x-labelHalfWidth,y+12,color,true);
+            g.drawString(mc.font,Lang.tr("적"),x-labelHalfWidth,y+12,color,true);
         }
     }
     private M95EchoHud(){}

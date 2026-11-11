@@ -21,9 +21,9 @@ public final class PreviewCache {
         REQUESTS.put(key,now);LobbyClient.action(action,id,group);
     }
     public static MapImage image(LobbySnapshot.MapView map){
-        if(map.previewImage()==null||map.previewImage().isBlank())return new MapImage(null,0,0,"등록된 미리보기가 없습니다");
+        if(map.previewImage()==null||map.previewImage().isBlank())return new MapImage(null,0,0,Lang.tr("등록된 미리보기가 없습니다"));
         if(!MAPS.containsKey(map.id()))request("map:"+map.id(),"mapPreview",map.id(),"");
-        return MAPS.getOrDefault(map.id(),new MapImage(null,0,0,"전장 이미지 불러오는 중…"));
+        return MAPS.getOrDefault(map.id(),new MapImage(null,0,0,Lang.tr("전장 이미지 불러오는 중…")));
     }
     /** Generated map image by map ID (the in-match TAB minimap); requested once and then cached. */
     public static MapImage image(String id){
@@ -47,7 +47,7 @@ public final class PreviewCache {
                 var texture=mc.getTextureManager().register("gungang_map_preview",new DynamicTexture(image));
                 value=new MapImage(texture,w,h,"");
             }
-        }catch(Exception failure){value=new MapImage(null,0,0,"이미지를 표시할 수 없습니다");}
+        }catch(Exception failure){value=new MapImage(null,0,0,Lang.tr("이미지를 표시할 수 없습니다"));}
         var previous=MAPS.put(packet.id(),value);if(previous!=null&&previous.texture()!=null)mc.getTextureManager().release(previous.texture());
         while(MAPS.size()>8){String oldest=MAPS.keySet().iterator().next();var old=MAPS.remove(oldest);if(old.texture()!=null)mc.getTextureManager().release(old.texture());}
     }

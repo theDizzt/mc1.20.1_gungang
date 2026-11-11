@@ -177,14 +177,11 @@ public final class HudText {
                                    Function<String, Component> style) {
         var font = Minecraft.getInstance().font;
         Component text = style.apply(value);
-        while (!value.isEmpty() && font.width(text) * scale > maxWidth) {
-            value = value.substring(0, value.offsetByCodePoints(value.length(), -1));
-            text = style.apply(value);
-        }
         graphics.pose().pushPose();
         graphics.pose().translate(x, y, 0);
         graphics.pose().scale(scale, scale, 1);
-        graphics.drawString(font, text, 0, 0, color, false);
+        // Too wide for maxWidth: scrolls as a banner (Marquee) instead of losing its end.
+        Marquee.draw(graphics, font, text, 0, 0, (int) Math.floor(maxWidth / scale), color, false);
         graphics.pose().popPose();
     }
     private HudText() { }

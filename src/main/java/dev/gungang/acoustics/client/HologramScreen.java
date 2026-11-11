@@ -19,7 +19,7 @@ public final class HologramScreen extends AbstractContainerScreen<HologramMenu> 
     private void send(int button){if(minecraft.gameMode!=null)minecraft.gameMode.handleInventoryButtonClick(menu.containerId,button);}
     @Override public void render(GuiGraphics g,int mx,int my,float partial){
         renderBackground(g);smaller.active=menu.size()>25;larger.active=menu.size()<300;
-        rotation.setMessage(Component.literal("회전: "+switch(menu.rotation()){case 0->"OFF";case 1->"느리게";case 3->"빠르게";case 4->"매우 빠르게";default->"보통";}));
+        rotation.setMessage(Component.literal(Lang.tr("회전: ")+switch(menu.rotation()){case 0->"OFF";case 1->Lang.tr("느리게");case 3->Lang.tr("빠르게");case 4->Lang.tr("매우 빠르게");default->Lang.tr("보통");}));
         super.render(g,mx,my,partial);renderTooltip(g,mx,my);
     }
     @Override protected void renderBg(GuiGraphics g,float partial,int mx,int my){
@@ -30,8 +30,8 @@ public final class HologramScreen extends AbstractContainerScreen<HologramMenu> 
     }
     @Override protected void renderLabels(GuiGraphics g,int mx,int my){
         g.drawCenteredString(font,title,imageWidth/2,8,0xE4F8FF);
-        g.drawCenteredString(font,"영사 아이템",imageWidth/2,19,0xB7D4E4);
-        g.drawCenteredString(font,"크기: "+menu.size()+"%",imageWidth/2,61,0xFFFFFF);
+        g.drawCenteredString(font,Lang.tr("영사 아이템"),imageWidth/2,19,0xB7D4E4);
+        g.drawCenteredString(font,Lang.tr("크기: ")+menu.size()+"%",imageWidth/2,61,0xFFFFFF);
         g.drawString(font,playerInventoryTitle,8,inventoryLabelY,0xD4E8F5,false);
     }
 }

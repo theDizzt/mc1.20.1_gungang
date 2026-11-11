@@ -31,7 +31,7 @@ public final class LobbyClient {
         }catch(RuntimeException failure){
             com.mojang.logging.LogUtils.getLogger().warn("Rejected invalid lobby snapshot; keeping the previous screen",failure);
             var mc=Minecraft.getInstance();
-            if(mc.screen instanceof GameOptionsScreen screen)screen.receiveError("서버의 게임 옵션을 읽지 못했습니다. 로그를 확인해 주세요.");
+            if(mc.screen instanceof GameOptionsScreen screen)screen.receiveError(Lang.tr("서버의 게임 옵션을 읽지 못했습니다. 로그를 확인해 주세요."));
             return;
         }
         var previousOptions=options;
@@ -90,7 +90,7 @@ public final class LobbyClient {
         var mc=Minecraft.getInstance();
         boolean safe=SafeZones.contains(mc.player);
         boolean show=safe||mc.player!=null&&mc.screen==null&&equipment!=null&&equipment.spawnHint();
-        if(safe)mc.gui.setOverlayMessage(Component.literal("비무장 지대"),false);
+        if(safe)mc.gui.setOverlayMessage(Component.literal(Lang.tr("비무장 지대")),false);
         else if(show)mc.gui.setOverlayMessage(Component.translatable("gungang.loadout.hint",LOADOUT.getTranslatedKeyMessage()),false);
         else if(hintVisible)mc.gui.setOverlayMessage(Component.empty(),false);
         hintVisible=show;

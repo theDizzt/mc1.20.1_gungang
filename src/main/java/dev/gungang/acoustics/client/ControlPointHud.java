@@ -26,12 +26,12 @@ final class ControlPointHud {
                 int value=Math.round(progress);
                 DeathmatchHud.score(g,2+i,value,String.valueOf(value),(start+end)/2f,24,1.8f,true);
             }
-            status(g,point.contested()?"경합 중":point.completed()>=4?"점령 완료":"거점 "+(char)('A'+point.completed()),point.contested()?0:point.completed()>=4?-1:point.progress());
+            status(g,point.contested()?Lang.tr("경합 중"):point.completed()>=4?Lang.tr("점령 완료"):Lang.tr("거점 ")+(char)('A'+point.completed()),point.contested()?0:point.completed()>=4?-1:point.progress());
             gauge(g,point.completed()>=4?-100:point.progress(),alpha,bravo); // BRAVO attacks: negative progress
         } else {
-            MatchRibbonHud.wing(g,true,alpha,state.alphaScore(),point.goal(),"ALPHA","목표 "+point.goal());
-            MatchRibbonHud.wing(g,false,bravo,state.bravoScore(),point.goal(),"BRAVO","목표 "+point.goal());
-            String status=point.contested()?"경합 중":point.owner()>0?"ALPHA":point.owner()<0?"BRAVO":"중립";
+            MatchRibbonHud.wing(g,true,alpha,state.alphaScore(),point.goal(),"ALPHA",Lang.tr("목표 ")+point.goal());
+            MatchRibbonHud.wing(g,false,bravo,state.bravoScore(),point.goal(),"BRAVO",Lang.tr("목표 ")+point.goal());
+            String status=point.contested()?Lang.tr("경합 중"):point.owner()>0?"ALPHA":point.owner()<0?"BRAVO":Lang.tr("중립");
             // Colour follows whoever is capturing; a settled point keeps its owner's colour.
             float side=point.contested()?0:point.progress()!=0?point.progress():point.owner();
             status(g,status+" · "+Math.round(Math.abs(point.progress()))+"%",side);

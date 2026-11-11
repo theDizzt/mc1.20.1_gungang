@@ -96,12 +96,12 @@ public final class ShooterHud {
         var info = watched == null || watched.equals(mc.player.getUUID()) || mc.getConnection() == null ? null : mc.getConnection().getPlayerInfo(watched);
         String watchedName = info != null ? ClientNames.of(watched) : watching ? (player instanceof net.minecraft.world.entity.player.Player named ? ClientNames.of(named) : player.getName().getString()) : null;
         if (watchedName != null) {
-            graphics.drawCenteredString(mc.font, "관전 중: " + watchedName, barX + barWidth / 2, captionY, 0xFFFFFFFF);
+            graphics.drawCenteredString(mc.font, Lang.tr("관전 중: ") + watchedName, barX + barWidth / 2, captionY, 0xFFFFFFFF);
             captionY -= 11;
         }
         String disguise = PropHuntClient.caption();
         if (disguise != null) {
-            int captionColor = disguise.equals("술래") ? PropHuntHud.SEEKER : PropHuntHud.HIDER;
+            int captionColor = disguise.equals(Lang.tr("술래")) ? PropHuntHud.SEEKER : PropHuntHud.HIDER;
             graphics.drawCenteredString(mc.font, disguise, barX + barWidth / 2, captionY, captionColor);
         }
         UtilityHud.gauges(graphics,barX+barWidth/2,barY,barWidth/2,HEALTH_HEIGHT/2,partialTick);

@@ -213,7 +213,7 @@ public final class AcousticConfigScreen extends Screen {
         Component message = !status.getString().isEmpty() ? status :
                 options.stream().anyMatch(o -> !o.valid()) ? text("invalid") : text("hint." + page);
         if (status.getString().isEmpty() && options.stream().anyMatch(o -> o.page == page && AcousticPolicy.locked(o.value)))
-            message = Component.literal("서버 음향 설정 적용 중 · 서버에서 변경할 수 있습니다.");
+            message = Component.literal(Lang.tr("서버 음향 설정 적용 중 · 서버에서 변경할 수 있습니다."));
         graphics.drawCenteredString(font, message, width / 2, height - 43, 0xCCCCCC);
         super.render(graphics, mouseX, mouseY, partialTick);
     }

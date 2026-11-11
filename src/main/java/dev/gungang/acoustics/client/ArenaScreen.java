@@ -34,8 +34,13 @@ abstract class ArenaScreen extends Screen {
     void tabButton(String text,int x,int y,int w,int h,boolean selected,Runnable action) {
         addButton(Component.literal(text),x,y,w,h,true,selected?ACCENT:MUTED,Look.TAB,8,5,action);
     }
+    /** 한국어 / English switch at the right of the header (weapon selection, lobby, mode settings). */
+    void languageButton() {
+        int w = Math.max(56, font.width(Lang.toggleLabel()) + 16);
+        button(Lang.toggleLabel(), left() + body() - 12 - w, 21, w, 16, true, MUTED, Lang::toggle);
+    }
     void closeButton(int x,int y,int w,int h) {
-        colorButton("닫기",x,y,w,h,true,0xFFCC3333,this::onClose);
+        colorButton(Lang.tr("닫기"),x,y,w,h,true,0xFFCC3333,this::onClose);
     }
     private enum Look { PLAIN, ROW, FILLED, TAB }
     private void addButton(Component text,int x,int y,int w,int h,boolean enabled,int accent,Look look,int padLeft,int padRight,Runnable action) {
@@ -60,7 +65,8 @@ abstract class ArenaScreen extends Screen {
         g.fillGradient(l, 16, r, 54, clear?0xB422231B:0xFF22231B, clear?0x8C181914:0xF0181914);
         g.fill(l, 14, r, 15, ACCENT);g.fill(l, 15, l + 96, 16, ACCENT);
         g.fill(l + 12, 25, l + 14, 35, ACCENT);
-        g.drawString(font, title, l + 19, 26, INK, false);
+        // Titles are kept in Korean and translated here, so they follow a language switch on an open screen.
+        g.drawString(font, Lang.tr(title.getString()), l + 19, 26, INK, false);
         g.enableScissor(l+12,36,r-12,55);
         g.drawString(font, subtitle, l + 19, 40, MUTED, false);
         g.flush();g.disableScissor();
@@ -76,8 +82,8 @@ abstract class ArenaScreen extends Screen {
         g.fillGradient(x1, y1 + 2, x2, y1 + 16, blend(PANEL, color, .18f), PANEL);
         g.drawString(font, label, x1 + 6, y1 + 5, color, false);
         if (note != null && !note.isEmpty()) {
-            String text = font.plainSubstrByWidth(note, Math.max(1, x2 - x1 - font.width(label) - 18));
-            g.drawString(font, text, x2 - 6 - font.width(text), y1 + 5, MUTED, false);
+            int room = Math.max(1, x2 - x1 - font.width(label) - 18), shown = Math.min(room, font.width(note));
+            Marquee.draw(g, font, note, x2 - 6 - shown, y1 + 5, room, MUTED, false);
         }
     }
     /** Compact rounded status chip; returns its width. */
@@ -123,9 +129,10 @@ abstract class ArenaScreen extends Screen {
                 textColor=!active?DIM:filled?blend(accent,0xFFFFFFFF,.45f):highlighted?accent:INK;
             }
             var font = Minecraft.getInstance().font;
-            var label = net.minecraft.locale.Language.getInstance().getVisualOrder(font.substrByWidth(getMessage(), Math.max(1,width - padLeft - padRight)));
-            int textX = look == Look.ROW ? x1 + padLeft : x1 + Math.max(padLeft, (width - font.width(label)) / 2);
-            g.drawString(font, label, textX, y1 + (height - 8) / 2, textColor, false);
+            // A label wider than the button scrolls (Marquee) instead of being cut off.
+            int room = Math.max(1, width - padLeft - padRight), labelWidth = font.width(getMessage());
+            int textX = look == Look.ROW || labelWidth > room ? x1 + padLeft : x1 + Math.max(padLeft, (width - labelWidth) / 2);
+            Marquee.draw(g, font, getMessage(), textX, y1 + (height - 8) / 2, room, textColor, false);
         }
     }
 }

@@ -30,7 +30,7 @@ final class BombMinimap {
         double spanX=b[2]-b[0],spanZ=b[3]-b[1],scale=size/Math.max(spanX,spanZ);
         int w=(int)Math.round(spanX*scale),h=(int)Math.round(spanZ*scale),left=x+(size-w)/2,top=y+(size-h)/2;
         g.fill(left-2,top-13,left+w+2,top+h+2,0xC00B121C);g.fill(left-2,top+h+1,left+w+2,top+h+2,0xFF70CDBF);
-        g.drawString(font,"미니맵",left,top-11,0xFF9AAABD,false);
+        g.drawString(font,Lang.tr("미니맵"),left,top-11,0xFF9AAABD,false);
         if(mc.player!=null&&mc.player.getTeam()!=null)TeamEmblems.draw(g,mc.player.getTeam().getName(),left+w-12,top-12,11);
         boolean image=background(g,v.mapId(),v.previewArea(),left,top,w,h);
         // Sites: orange area, white A/B with a black outline. The generated map image already carries them.
@@ -103,7 +103,7 @@ final class BombMinimap {
         double spanX=b[2]-b[0],spanZ=b[3]-b[1],scale=size/Math.max(spanX,spanZ);
         int w=(int)Math.round(spanX*scale),h=(int)Math.round(spanZ*scale),left=x+(size-w)/2,top=y+(size-h)/2;
         g.fill(left-2,top-13,left+w+2,top+h+2,0xC00B121C);g.fill(left-2,top+h+1,left+w+2,top+h+2,0xFF70CDBF);
-        g.drawString(font,"지도 제작대 · "+scout.seconds()+"초",left,top-11,0xFF9AAABD,false);
+        g.drawString(font,Lang.tr("지도 제작대 · ")+scout.seconds()+Lang.tr("초"),left,top-11,0xFF9AAABD,false);
         background(g,scout.mapId(),a,left,top,w,h);
         String self=mc.player==null?"":mc.player.getUUID().toString();
         for(var m:marks){
