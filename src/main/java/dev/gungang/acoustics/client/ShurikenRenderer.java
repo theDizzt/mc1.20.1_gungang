@@ -50,7 +50,7 @@ public final class ShurikenRenderer extends EntityRenderer<ShurikenEntity> {
         ribbon(buffer,matrix,points,origin,camera,CORE,colors,.7f,.75f);
     }
     /** {@code wash}: how far each colour is lifted toward white (the pale core). */
-    private static void ribbon(VertexConsumer buffer,Matrix4f matrix,java.util.List<Vec3> points,Vec3 origin,Vec3 camera,float width,int[] colors,float wash,float alpha){
+    static void ribbon(VertexConsumer buffer,Matrix4f matrix,java.util.List<Vec3> points,Vec3 origin,Vec3 camera,float width,int[] colors,float wash,float alpha){
         int n=points.size();
         for(int i=0;i+1<n;i++){
             var a=points.get(i);var c=points.get(i+1);

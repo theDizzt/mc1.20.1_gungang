@@ -68,9 +68,9 @@ public final class ShooterHud {
         HudText.drawFit(graphics, player instanceof net.minecraft.world.entity.player.Player named ? ClientNames.of(named) : player.getName().getString(), detailX, y + 19, WIDTH - 68, 0xFFFFFFFF);
         // Slot 1 is always inventory index 0, independent of the player's selected slot.
         if (player instanceof net.minecraft.world.entity.player.Player self && !watching)
-            slot(graphics, self.getInventory().getItem(0), detailX, y + 32, self.getInventory().selected == 0, team);
-        else slot(graphics, player.getMainHandItem(), detailX, y + 32, true, team);
-        slot(graphics, player.getOffhandItem(), detailX + 38, y + 32, false, team);
+            slot(graphics, self.getInventory().getItem(0), detailX, y + 32, self.getInventory().selected == 0, team, partialTick);
+        else slot(graphics, player.getMainHandItem(), detailX, y + 32, true, team, partialTick);
+        slot(graphics, player.getOffhandItem(), detailX + 38, y + 32, false, team, partialTick);
         UtilityHud.placements(graphics,x+WIDTH+8,y+35);
 
         float health = player.getHealth(), maximum = player.getMaxHealth();
@@ -183,7 +183,7 @@ public final class ShooterHud {
         return camera instanceof net.minecraft.world.entity.LivingEntity living && camera != mc.player && living.isAlive()
                 && (camera instanceof net.minecraft.world.entity.player.Player || camera instanceof dev.gungang.acoustics.server.BotEntity) ? living : mc.player;
     }
-    private static void slot(GuiGraphics graphics, ItemStack stack, int x, int y, boolean selected, int team) {
+    private static void slot(GuiGraphics graphics, ItemStack stack, int x, int y, boolean selected, int team, float partial) {
         Minecraft mc = Minecraft.getInstance();
         if (selected) {
             card(graphics, x, y, 34, 32, team | 0xFF000000, SURFACE, team | 0xFF000000);
@@ -197,24 +197,44 @@ public final class ShooterHud {
             graphics.renderItemDecorations(mc.font, stack, 0, 0);
             graphics.pose().popPose();
             long cooldown=dev.gungang.acoustics.server.SecondaryRuntime.remaining(mc.player,stack);
-            if(cooldown>0) {
+            float ready=CooldownCue.flash(stack,partial);
+            if(cooldown>0||ready>0) {
                 graphics.flush();
                 graphics.pose().pushPose();
                 // Item models and decorations write depth up to z=200; keep both overlay layers above them.
                 graphics.pose().translate(0,0,300);
-                int total=Math.max(1,stack.getTag().getInt("GunGangCooldownTicks"));
-                graphics.fill(x+1,y+31-Math.round(30*Math.min(1,cooldown/(float)total)),x+33,y+31,0xAA101820);
-                String seconds=String.format(java.util.Locale.ROOT,"%.1f",cooldown/20.0);
-                float textScale=Math.min(1f,30f/Math.max(1,mc.font.width(seconds)));
-                graphics.pose().translate(x+17,y+16-4*textScale,1);
-                graphics.pose().scale(textScale,textScale,1);
-                graphics.drawString(mc.font,seconds,-mc.font.width(seconds)/2,0,0xFFFFFFFF,true);
+                if(cooldown>0){
+                    int total=Math.max(1,stack.getTag().getInt("GunGangCooldownTicks"));
+                    float left=Math.max(0,cooldown-partial),fraction=Math.min(1,left/total);
+                    // The shade shrinks every frame, not per tick, and fades in over the first few ticks of the cooldown.
+                    float fadeIn=Math.min(1,(total-left)/FADE_IN);
+                    int alpha=Math.round(0xAA*(fadeIn*fadeIn*(3-2*fadeIn)));
+                    graphics.pose().pushPose();
+                    // Anchored at the bottom: the top edge sits at 30*fraction above it (a positive scale keeps the quad's winding).
+                    graphics.pose().translate(x+1,y+31-30*fraction,0);graphics.pose().scale(1,fraction,1);
+                    graphics.fill(0,0,32,30,alpha<<24|0x101820);
+                    graphics.pose().popPose();
+                    // Seconds in the GunGang font with a black shadow.
+                    var seconds=HudText.gungang(String.format(java.util.Locale.ROOT,"%.1f",left/20.0));
+                    float textScale=Math.min(1f,30f/Math.max(1,mc.font.width(seconds)));
+                    graphics.pose().pushPose();
+                    graphics.pose().translate(x+17,y+16-4*textScale,1);
+                    graphics.pose().scale(textScale,textScale,1);
+                    int textX=-mc.font.width(seconds)/2;
+                    graphics.drawString(mc.font,seconds,textX+1,1,0xFF000000,false);
+                    graphics.drawString(mc.font,seconds,textX,0,0xFFFFFFFF,false);
+                    graphics.pose().popPose();
+                }
+                // The moment it is ready: a white glow over the slot that fades out.
+                if(ready>0&&cooldown==0)graphics.fill(x+1,y+1,x+33,y+31,Math.round(0x90*ready*ready)<<24|0xFFFFFF);
                 graphics.flush();
                 graphics.pose().popPose();
             }
         }
     }
     static final int SURFACE = TacticalStyle.PANEL, EDGE = TacticalStyle.EDGE, BAR_EDGE = 0xFF77786B;
+    /** Ticks a fresh cooldown's shade takes to fade in. */
+    private static final float FADE_IN = 4;
     /** Opaque card: soft edge, faint top highlight and an optional accent underline inside the border. */
     static void card(GuiGraphics g, int x, int y, int width, int height, int edge, int background, int accent) {
         panel(g, x, y, width, height, edge, background);

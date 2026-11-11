@@ -24,7 +24,15 @@ public final class UtilityHud {
     @SubscribeEvent public static void input(InputEvent.InteractionKeyMappingTriggered event) {
         if(FreeForAllHud.blocked()||CombatGadgets.holdingShield(Minecraft.getInstance().player)) {event.setCanceled(true);event.setSwingHand(false);}
     }
+    /**
+     * Fill colours of the stacked secondary bars, from the one nearest the health bar: blue (the original), then
+     * pastel green, yellow, orange and red; a sixth starts over.
+     */
+    static final int[] GAUGE_COLORS={0xFF65D9FF,0xFF8EE6A6,0xFFF2E17D,0xFFFFBC85,0xFFFF9A9A};
+    private static int drawn;
+    private static int nextColor(){return GAUGE_COLORS[drawn++%GAUGE_COLORS.length];}
     static void gauges(GuiGraphics g,int center,int healthBarY,int width,int height,float partial) {
+        drawn=0;
         var mc=Minecraft.getInstance();if(mc.player==null||!mc.player.isAlive()||mc.player.isSpectator())return;
         int y=healthBarY-36-height;
         y=PropAbilityHud.gauges(g,center,y,width,height,partial);
@@ -94,7 +102,7 @@ public final class UtilityHud {
     static void gauge(GuiGraphics g,int center,int y,int width,int height,float remaining,float maximum,String label,float partial) {
         float fraction=Math.min(1,remaining/Math.max(1,maximum));int x=center-width/2;
         ShooterHud.card(g,x,y,width,height,ShooterHud.BAR_EDGE,ShooterHud.SURFACE,0);
-        HudHealthBars.fill(g,x+1,y+1,width-2,height-2,fraction,0xFF65D9FF);
+        HudHealthBars.fill(g,x+1,y+1,width-2,height-2,fraction,nextColor());
         HudHealthBars.stripes(g,x+1,y+1,width-2,height-2,fraction,((Minecraft.getInstance().player==null?0:Minecraft.getInstance().player.tickCount)+partial)/20.0);
         ShooterHud.finish(g,x+1,y+1,width-2,height-2,fraction);
         HudText.gungangOutlined(g,label,x+3,y+1,width-6,height-2,0xFFFFFFFF);
@@ -107,14 +115,14 @@ public final class UtilityHud {
         var mc=Minecraft.getInstance();
         int max=SecondaryRuntime.maxCharges(boots),ready=SecondaryRuntime.charges(mc.player,boots);
         float next=SecondaryRuntime.nextCharge(mc.player,boots,partial);
-        int x=center-width/2,gap=2,inner=width-2,cell=(inner-gap*(max-1))/max;
+        int x=center-width/2,gap=2,inner=width-2,cell=(inner-gap*(max-1))/max,color=nextColor();
         ShooterHud.card(g,x,y,width,height,ShooterHud.BAR_EDGE,ShooterHud.SURFACE,0);
         double seconds=(mc.player.tickCount+partial)/20.0;
         for(int i=0;i<max;i++){
             int cx=x+1+i*(cell+gap),cw=i==max-1?x+width-1-cx:cell;
             if(i>0)g.fill(cx-gap,y+1,cx,y+height-1,ShooterHud.BAR_EDGE);
             float fill=i<ready?1:i==ready?next:0;
-            HudHealthBars.fill(g,cx,y+1,cw,height-2,fill,i<ready?0xFF65D9FF:0x8065D9FF);
+            HudHealthBars.fill(g,cx,y+1,cw,height-2,fill,i<ready?color:(color&0xFFFFFF)|0x80000000);
             if(i<ready)HudHealthBars.stripes(g,cx,y+1,cw,height-2,1,seconds);
             ShooterHud.finish(g,cx,y+1,cw,height-2,fill);
         }
