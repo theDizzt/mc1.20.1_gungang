@@ -60,6 +60,10 @@ public final class GadgetConfig {
         var json=overrides.containsKey(id)?overrides.get(id):Files.exists(path)?com.google.gson.JsonParser.parseString(Files.readString(path)).getAsJsonObject():new com.google.gson.JsonObject();
         var merged=ServerFiles.GSON.toJsonTree(defaults).getAsJsonObject();
         for(var e:json.entrySet()) {
+            if(id.equals("arrow_grenade")&&e.getKey().equals("emissionIntervalTicks")){
+                if(!json.has("emissionIntervalSeconds"))merged.addProperty("emissionIntervalSeconds",e.getValue().getAsDouble()/20);
+                continue;
+            }
             // M95 now uses a damage multiplier; old fixed headshot damage is superseded.
             if(id.equals("m95")&&e.getKey().equals("headshotDamage"))continue;
             // Pre-throw-only hand axes had these keys. Ignore them when upgrading existing servers.

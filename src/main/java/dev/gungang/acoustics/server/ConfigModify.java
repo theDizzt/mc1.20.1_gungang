@@ -22,7 +22,7 @@ public final class ConfigModify {
         try{work.run();return 1;}catch(Exception ex){source.sendFailure(Component.literal("설정 편집 실패: "+ex.getMessage()));return 0;}
     }
     public static void register(LiteralArgumentBuilder<CommandSourceStack> root){
-        var modify=Commands.literal("modify").requires(s->s.hasPermission(2)).executes(c->{say(c.getSource(),"/gungang modify <map|weapon|secondary|item|block> [ID] [항목] [값] · 생략하면 목록/현재값 조회 · /gungang modify ui [무기ID] 무기 실시간 패치 화면 · /gungang modify ui secondary [ID] 보조무기 수치 편집 · /gungang modify ui general 전역 설정(체력 재생)");return 1;});
+        var modify=Commands.literal("modify").requires(s->s.hasPermission(2)).executes(c->{say(c.getSource(),"/gungang modify <map|weapon|secondary|item|block> [ID] [항목] [값] · 생략하면 목록/현재값 조회 · /gungang modify ui [무기ID] 무기 실시간 패치 화면 · /gungang modify ui secondary [ID] 보조무기 수치 편집 · /gungang modify ui general 전역 설정(체력 재생) · /gungang modify ui map [맵ID] 맵 설정 편집");return 1;});
         for(String kind:KINDS)modify.then(Commands.literal(kind)
                 .executes(c->run(c.getSource(),()->list(c.getSource(),kind)))
                 .then(Commands.argument("id",StringArgumentType.word()).suggests((c,b)->suggestIds(kind,b))
@@ -33,6 +33,9 @@ public final class ConfigModify {
                                         .executes(c->run(c.getSource(),()->edit(c.getSource(),kind,StringArgumentType.getString(c,"id"),StringArgumentType.getString(c,"field"),StringArgumentType.getString(c,"value"))))))));
         modify.then(Commands.literal("ui").executes(c->run(c.getSource(),()->WeaponPatch.open(c.getSource().getPlayerOrException(),"")))
                 .then(Commands.literal("general").executes(c->run(c.getSource(),()->WeaponPatch.open(c.getSource().getPlayerOrException(),WeaponPatch.GENERAL,""))))
+                .then(Commands.literal("map").executes(c->run(c.getSource(),()->WeaponPatch.open(c.getSource().getPlayerOrException(),WeaponPatch.MAP,"")))
+                        .then(Commands.argument("id",StringArgumentType.word()).suggests((c,b)->suggestIds("map",b))
+                                .executes(c->run(c.getSource(),()->WeaponPatch.open(c.getSource().getPlayerOrException(),WeaponPatch.MAP,StringArgumentType.getString(c,"id"))))))
                 .then(Commands.literal("secondary").executes(c->run(c.getSource(),()->WeaponPatch.open(c.getSource().getPlayerOrException(),WeaponPatch.SECONDARY,"")))
                         .then(Commands.argument("id",StringArgumentType.word()).suggests((c,b)->suggestIds("secondary",b))
                                 .executes(c->run(c.getSource(),()->WeaponPatch.open(c.getSource().getPlayerOrException(),WeaponPatch.SECONDARY,StringArgumentType.getString(c,"id"))))))
@@ -45,6 +48,8 @@ public final class ConfigModify {
         var result=new TreeMap<String,Object>();
         if(kind.equals("item")){
             result.put("m95",ExtraGadgetConfig.m95);
+            result.put("air_assault",ExtraGadgetConfig.airAssault);
+            result.put("void_anchor",ExtraGadgetConfig.voidAnchor);
             result.put("arrow_grenade",ExtraGadgetConfig.arrowGrenade);
             result.put("turret",Turrets.config);
             result.put("landmine",GadgetConfig.mine);result.put("recovery_potion",GadgetConfig.recovery);result.put("adrenaline",GadgetConfig.adrenaline);result.put("barrier",GadgetConfig.barrier);result.put("bear_trap",GadgetConfig.bearTrap);
@@ -219,6 +224,20 @@ public final class ConfigModify {
     static Map<String,JsonElement> editable(String kind,String id)throws Exception{
         var target=target(kind,id);var result=new LinkedHashMap<String,JsonElement>();
         for(String key:target.fields.keySet())result.put(key,value(target.effective,key));
+        return result;
+    }
+    /** Every value field with its current effective value and whether it is numeric, from a single read (map patch screen). */
+    static Map<String,Map.Entry<JsonElement,Boolean>> typedFields(String kind,String id)throws Exception{
+        var target=target(kind,id);var result=new LinkedHashMap<String,Map.Entry<JsonElement,Boolean>>();
+        for(var field:target.fields.entrySet()){var type=field.getValue();
+            result.put(field.getKey(),Map.entry(value(target.effective,field.getKey()),type!=String.class&&type!=boolean.class&&type!=Boolean.class));}
+        return result;
+    }
+    /** Map ids with their display name and file name, in id order. */
+    static Map<String,String[]> maps()throws Exception{
+        var result=new LinkedHashMap<String,String[]>();
+        for(var entry:ids("map").entrySet()){var json=read(entry.getValue());
+            result.put(entry.getKey(),new String[]{json.has("name")&&json.get("name").isJsonPrimitive()?json.get("name").getAsString():entry.getKey(),entry.getValue().getFileName().toString()});}
         return result;
     }
     /** Whether {@code id} names an existing setting of this kind (e.g. an item effect file such as "turret"). */

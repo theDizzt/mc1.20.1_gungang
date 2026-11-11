@@ -16,9 +16,10 @@ public abstract class PropCollisionMixin {
     @Redirect(method="collide",at=@At(value="INVOKE",target="Lnet/minecraft/world/level/Level;getEntityCollisions(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/phys/AABB;)Ljava/util/List;"))
     private List<VoxelShape> gungang$propCollisions(Level level,Entity entity,AABB box) {
         var shapes=level.getEntityCollisions(entity,box);
-        var props=new java.util.ArrayList<VoxelShape>(PropEntity.collisions(level,entity,box));
-        props.addAll(dev.gungang.acoustics.server.EscortCart.collisions(level,entity,box));
-        if(props.isEmpty())return shapes;
-        var merged=new java.util.ArrayList<VoxelShape>(shapes);merged.addAll(props);return merged;
+        // Runs for every moving entity every tick: no copies unless a disguise or cart is actually there.
+        var props=PropEntity.collisions(level,entity,box);
+        var carts=dev.gungang.acoustics.server.EscortCart.collisions(level,entity,box);
+        if(props.isEmpty()&&carts.isEmpty())return shapes;
+        var merged=new java.util.ArrayList<VoxelShape>(shapes.size()+props.size()+carts.size());merged.addAll(shapes);merged.addAll(props);merged.addAll(carts);return merged;
     }
 }

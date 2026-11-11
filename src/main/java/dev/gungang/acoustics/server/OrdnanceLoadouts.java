@@ -10,7 +10,7 @@ final class OrdnanceLoadouts {
                         "포물선으로 날아가며 수평 사거리 40블록에 도달하면 전진·상승을 멈추고 지상으로 낙하하는 투창. 꽂힌 창은 높이 2블록, 체력 60, 지속 6초. 10블록 내 가장 가까운 적 1명을 4틱당 1블록의 일정한 속도로 끌어당깁니다. 주변 10블록 내 끌어당길 적이 없으면 즉시 2×2×2 범위에 피해 40을 주고 소멸합니다. 접촉 시 5×5×5 범위에 피해 40, 시간 초과 시 2×2×2 범위에 피해 40을 주고 소멸합니다. 창 파괴 시 끌어당기기 해제. 사용자 사망 후에도 유지됩니다.",null,
                         "우클릭으로 투창합니다. 장애물에 막힌 적은 벽을 통과하지 않습니다. 쿨타임 30초.","투척형",100d,100d,30d,"",false,"2026-11-21"),
                 new Loadouts.Weapon("77","{id:'gungang:air_assault',Count:1b}","공중강습",
-                        "5블록 위로 상승하고 1초 뒤 바라보는 15블록 이내의 지점으로 급강하합니다. 조준한 지점이 없으면 전방 최대 15블록으로 급강하합니다. 착지 지점 중심 4×4 범위의 적에게 피해 60, 반블록 위를 포함한 10×10 범위의 적을 10블록 위로 띄웁니다. 착지 전 사망하면 취소됩니다.",null,
+                        "5블록 위로 상승하고 1초 뒤 바라보는 최대 15블록 이내 지점으로 약 0.3초 동안 급강하합니다. 중심 2×2 피해 60, 외곽 4×4 피해 45, 충격파 12×12 피해 10. 범위별 피해는 중첩되지 않으며 반블록 위를 포함한 범위 안 적을 3블록 띄웁니다. 공중에서 받는 피해 15% 감소. 적에게 피해를 주면 이동속도가 1.25초간 15% 증가합니다. 착지 전 사망하면 취소됩니다.",null,
                         "우클릭으로 사용합니다. 공중 대기 중 시점을 돌려 급강하 방향을 정합니다. 쿨타임 40초.","지원·방어",100d,100d,40d,"",false,"2026-11-21"),
                 new Loadouts.Weapon("81","{id:'gungang:molotov',Count:1b}","몰로토프 칵테일",
                         "착탄 즉시 반지름 5블록의 불장판이 8초간 유지됩니다. 범위 안의 대상에게 화상 3초. 자신과 아군도 피해를 받습니다.",null,
@@ -35,11 +35,24 @@ final class OrdnanceLoadouts {
                 new Loadouts.Weapon("79","{id:'gungang:arrow_grenade',Count:1b}","화살분열 수류탄",
                         "착탄 지점에서 12초 동안 1초마다 전방향으로 화살 34발을 동시에 발사합니다. 화살 피해 16, 최대 이동 거리 6블록. 벽에 막히며 쿨타임은 투척부터 30초입니다.",null,
                         ARROW_USAGE,"투척형",100d,100d,30d,"",false,"2026-10-27",
-                        List.of(new Loadouts.Stat("투사체 피해","16"),new Loadouts.Stat("투사체 사거리","6블록"),new Loadouts.Stat("지속 시간","6초"),new Loadouts.Stat("발사 속도","20발/초"))),
+                        List.of(new Loadouts.Stat("투사체 피해","16"),new Loadouts.Stat("투사체 사거리","6블록"),new Loadouts.Stat("지속 시간","12초"),new Loadouts.Stat("발사 간격","1초마다 전방향 34발"))),
                 new Loadouts.Weapon("80","{id:'gungang:hand_axe',Count:1b}","투척용 손도끼",
                         "우클릭을 길게 눌렀다 떼면 조준 방향으로 곧게 던져 일반 명중 66 피해, 헤드샷 99 피해. 중력을 받아 멀리 갈수록 조금씩 떨어집니다. 투척 거리는 누른 시간에 따라 5블록에서 최대 24블록까지 늘어납니다. 던진 뒤 16초 동안 다시 사용할 수 없습니다. 내구도 없음.",null,
                         "왼손 아이템 우클릭 후 복귀 매크로 키를 홀드하여 충전하고 놓으면 투척 후 복귀합니다. 주손에서는 우클릭을 길게 눌렀다 떼서 투척합니다.","투척형",100d,100d,16d,"",false,"2026-10-22",
                         List.of(new Loadouts.Stat("헤드샷 피해","99"),new Loadouts.Stat("투척 피해","66"),new Loadouts.Stat("투척 거리","5~24블록"),new Loadouts.Stat("투척 쿨타임","16초"))));
+    }
+    static void migrateBalanceDescriptions(java.nio.file.Path directory)throws java.io.IOException {
+        var marker=directory.resolve(".ordnance-balance-v4");if(java.nio.file.Files.exists(marker))return;
+        var defaults=new java.util.HashMap<String,Loadouts.Weapon>();for(var weapon:defaults())if(java.util.Set.of("76","77","79").contains(weapon.id()))defaults.put(weapon.id(),weapon);
+        try(var files=java.nio.file.Files.list(directory)){
+            for(var path:files.filter(p->p.toString().endsWith(".json")).toList()){
+                var json=com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(path)).getAsJsonObject();
+                var weapon=json.has("id")?defaults.get(json.get("id").getAsString()):null;if(weapon==null)continue;
+                json.addProperty("description",weapon.description());json.add("stats",ServerFiles.GSON.toJsonTree(weapon.stats()));
+                java.nio.file.Files.writeString(path,ServerFiles.GSON.toJson(json));
+            }
+        }
+        java.nio.file.Files.writeString(marker,"Ordnance balance descriptions updated.\n");
     }
     static Loadouts.Weapon upgradePlaceholder(Loadouts.Weapon weapon) {
         if(weapon.itemNbt().contains("gungang:arrow_grenade")&&"왼손 아이템 좌클릭 후 복귀 매크로 키(기본 G)로 투척합니다. 주손에 든 경우 우클릭으로 던질 수 있습니다.".equals(weapon.usage()))

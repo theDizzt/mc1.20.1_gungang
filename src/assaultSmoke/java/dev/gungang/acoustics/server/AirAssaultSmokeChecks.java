@@ -37,16 +37,19 @@ public final class AirAssaultSmokeChecks {
         var level=server.overworld();long start=level.getGameTime();
         for(var pos:BlockPos.betweenClosed(new BlockPos(20,240,20),new BlockPos(50,255,50)))
             level.setBlock(pos,pos.getY()==240?Blocks.STONE.defaultBlockState():Blocks.AIR.defaultBlockState(),3);
-        var owner=player(level,"AssaultOwner",30.5,30.5);
-        var enemy=player(level,"AssaultEnemy",23.5,30.5);
-        var ally=player(level,"AssaultAlly",23.5,31.5);
-        var outer=player(level,"AssaultOuter",28.5,30.5);
-        var outside=player(level,"AssaultOutside",29.5,30.5);
+        var owner=player(level,"AssaultOwner",40.5,30.5);
+        var enemy=player(level,"AssaultEnemy",25.5,30.5);
+        var ally=player(level,"AssaultAlly",25.5,31.5);
+        var outer=player(level,"AssaultOuter",27.25,30.5);
+        level.setBlock(new BlockPos(27,240,30),Blocks.STONE_SLAB.defaultBlockState(),3);outer.setPos(27.25,240.5,30.5);
+        var shock=player(level,"AssaultShock",30.5,30.5);
+        var outside=player(level,"AssaultOutside",32,30.5);
+        double originalSpeed=owner.getAttributeValue(Attributes.MOVEMENT_SPEED);
         var board=server.getScoreboard();var team=board.addPlayerTeam("assault_test");
         board.addPlayerToTeam(owner.getScoreboardName(),team);board.addPlayerToTeam(ally.getScoreboardName(),team);
-        var bot=BotEntity.TYPE.get().create(level);bot.setPos(23.5,241,29.5);
+        var bot=BotEntity.TYPE.get().create(level);bot.setPos(25.5,241,29.75);
         bot.getAttribute(Attributes.MAX_HEALTH).setBaseValue(100);bot.setHealth(100);level.addFreshEntity(bot);
-        var monster=net.minecraft.world.entity.EntityType.SKELETON.create(level);monster.setPos(22.5,241,30.5);
+        var monster=net.minecraft.world.entity.EntityType.SKELETON.create(level);monster.setPos(25,241,30.5);
         monster.getAttribute(Attributes.MAX_HEALTH).setBaseValue(100);monster.setHealth(100);level.addFreshEntity(monster);
         var stack=new net.minecraft.world.item.ItemStack(GadgetItems.AIR_ASSAULT.get());
         stack.getOrCreateTag().putInt("GunGangIssued",40);
@@ -56,34 +59,42 @@ public final class AirAssaultSmokeChecks {
         check(SecondaryRuntime.remaining(owner,stack)==800,"Right click must commit 40-second cooldown");
         check(owner.getY()==241,"Activation must not teleport");
         double previous=owner.getY(),peak=previous;
+        int landingTick=0;
         for(int tick=1;tick<=48;tick++) {
             // Replay the server-authored motion through the same collision step used by the client mixin.
             AirAssaultMotion.receive(owner,true,owner.getDeltaMovement());
             owner.travel(new Vec3(1,0,1)); // Real travel mixin must override movement input and vanilla gravity.
             check(owner.getY()-previous<=.5001,"Rise must be gradual");
             peak=Math.max(peak,owner.getY());previous=owner.getY();
-            if(tick==25){owner.setYRot(90);owner.setXRot(0);}
+            if(tick==10){owner.setYRot(90);owner.setXRot(0);}
             server.getWorldData().overworldData().setGameTime(start+tick);
             AirAssault.tick(new TickEvent.PlayerTickEvent(TickEvent.Phase.END,owner));
-            if(tick<40)check(enemy.getHealth()==100,"No damage before dive");
-            if(!owner.isNoGravity())break;
+            if(tick<=20)check(enemy.getHealth()==100,"No damage before dive");
+            if(tick==12){var damage=new net.minecraftforge.event.entity.living.LivingHurtEvent(owner,owner.damageSources().generic(),100);AirAssault.airborneDamage(damage);check(Math.abs(damage.getAmount()-85)<.001,"Airborne reduction 15%");}
+            if(!owner.isNoGravity()){landingTick=tick;break;}
         }
         check(Math.abs(peak-246)<.01,"Five-block ascent: "+peak);
-        check(Math.abs(owner.getX()-23.5)<.1&&Math.abs(owner.getZ()-30.5)<.1,"Dive follows changed facing: "+owner.position());
+        check(Math.abs(owner.getX()-25.5)<.1&&Math.abs(owner.getZ()-30.5)<.1,"Dive follows changed facing: "+owner.position());
+        check(landingTick==26,"Dive lands in six ticks: "+landingTick);
         check(owner.getY()==241&&!owner.isNoGravity(),"Landed and restored gravity");
         check(owner.getYRot()==90&&owner.getXRot()==0,"Movement must not overwrite camera");
         check(enemy.getHealth()==40,"Enemy player receives 60 damage: "+enemy.getHealth());
         check(bot.getHealth()==40,"Enemy bot receives 60 damage: "+bot.getHealth());
         check(monster.getHealth()==40,"Hostile monster receives 60 damage: "+monster.getHealth());
         check(ally.getHealth()==100&&ally.getDeltaMovement().y==0,"Ally unaffected");
-        check(outer.getHealth()==100&&outer.getDeltaMovement().y>1,"Outer area launches without damage");
-        check(outside.getHealth()==100&&outside.getDeltaMovement().y==0,"Outside 10x10 unaffected");
+        check(outer.getHealth()==55&&outer.getDeltaMovement().y>0,"Slab outer area receives 45 and launches: "+outer.getHealth());
+        check(shock.getHealth()==90&&shock.getDeltaMovement().y>0,"Shockwave receives 10 and launches");
+        check(outside.getHealth()==100&&outside.getDeltaMovement().y==0,"Outside 12x12 unaffected");
+        check(Math.abs(owner.getAttributeValue(Attributes.MOVEMENT_SPEED)/originalSpeed-1.15)<.0001,"Hit speed bonus 15%");
         var motion=enemy.getDeltaMovement();double height=0;
         for(double v=motion.y;v>0;v=(v-.08)*.98)height+=v;
-        check(Math.abs(height-10)<.001,"Launch apex ten blocks");
+        check(Math.abs(height-3)<.001,"Launch apex three blocks");
+        server.getWorldData().overworldData().setGameTime(start+landingTick+25);
+        AirAssault.effects(new TickEvent.ServerTickEvent(TickEvent.Phase.END,()->true,server));
+        check(Math.abs(owner.getAttributeValue(Attributes.MOVEMENT_SPEED)-originalSpeed)<.0001,"Speed expires after 25 ticks");
         AirAssault.start(owner,stack);owner.setHealth(0);
         AirAssault.tick(new TickEvent.PlayerTickEvent(TickEvent.Phase.END,owner));
         check(!owner.isNoGravity()&&enemy.getHealth()==40,"Death before landing cancels effect");
-        System.out.println("ASSAULT_CHECKS ascent=5 gradual=true aim=free damage=60 ally=safe launch=10 death=cancel cooldown=800");
+        System.out.println("ASSAULT_CHECKS ascent=5 gradual=true aim=free dive=6 zones=60/45/10 slab=true ally=safe launch=3 reduction=15 speed=15/25ticks death=cancel cooldown=800");
     }
 }

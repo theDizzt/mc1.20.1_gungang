@@ -411,20 +411,25 @@ final class BotPropHunt {
         record Option(BlockPos feet,double score){}
         var options=new ArrayList<Option>();
         var graph=BotNavGraph.of(arena,level);
+        // Every candidate gets the cheap part of the score (blocks around, walls, light, distances); only the best few
+        // also get the raycasts and ground probes (sight lines, exits, seekers' view), which cost far more per spot.
+        var others=hunt.disguises();
         if(graph!=null&&!avoidSeen)for(int i=0;i<16;i++){
             var feet=graph.roamSpot(bot.position(),random);if(feet==null)continue;
             double distance=bot.position().distanceTo(Vec3.atBottomCenterOf(feet));
             if(distance<16||recentSpots.stream().anyMatch(p->p.distSqr(feet)<144))continue;
             if(exposed(feet,now))continue;
-            double quality=level.hasChunkAt(feet)?score(a,hunt,prop,feet):0;
+            double quality=level.hasChunkAt(feet)?quick(a,prop,feet,others):0;
             options.add(new Option(feet,quality+Math.min(4,distance/16)));
         }
         for(int i=0;i<40;i++){
             double angle=random.nextDouble()*Math.PI*2,r=3+random.nextDouble()*searchRadius;
             var sample=searchCentre.add(Math.cos(angle)*r,random.nextInt(9)-4,Math.sin(angle)*r);
             var feet=BotMovement.ground(bot,arena,sample);if(feet==null)continue;
-            if(!exposed(feet,now))options.add(new Option(feet,score(a,hunt,prop,feet)));
+            if(!exposed(feet,now))options.add(new Option(feet,quick(a,prop,feet,others)));
         }
+        if(options.size()>THOROUGH){options.sort(Comparator.comparingDouble(Option::score).reversed());options.subList(THOROUGH,options.size()).clear();}
+        options.replaceAll(o->level.hasChunkAt(o.feet())?new Option(o.feet(),o.score()+thorough(a,o.feet())):o);
         // Blocks that belong on walls (paintings, signs, torches...) also try hanging there (Q), well above the floor.
         Direction wallChoice=null;double heightChoice=0;
         if(wallBlock(prop)&&!options.isEmpty()){
@@ -458,8 +463,12 @@ final class BotPropHunt {
         searchRadius=Math.max(8,searchRadius*.8);
         if(now-calmSince>200&&options.isEmpty()){spot=bot.blockPosition();settle(a,hunt,prop,now);}
     }
+    /** Candidate spots per search that get the full (raycast) score. */
+    private static final int THOROUGH=12;
     /** How good a hiding spot this cell is for this block. */
-    private double score(BotAgent a,PropHuntMatch hunt,PropEntity prop,BlockPos feet){
+    private double score(BotAgent a,PropHuntMatch hunt,PropEntity prop,BlockPos feet){return quick(a,prop,feet,hunt.disguises())+thorough(a,feet);}
+    /** The score's block lookups: what is around, walls, roof, light, spawns, other hiders, recent spots (plus noise). */
+    private double quick(BotAgent a,PropEntity prop,BlockPos feet,List<PropEntity> others){
         var bot=a.bot;var level=bot.level();var arena=BotManager.arena();var mine=prop.state();var point=Vec3.atBottomCenterOf(feet);
         double s=0;int same=0,similar=0;
         for(var q:BlockPos.betweenClosed(feet.offset(-3,-1,-3),feet.offset(3,2,3))){
@@ -474,6 +483,19 @@ final class BotPropHunt {
         if(prop.item().equals("minecraft:painting")&&wall==null)s-=3;
         for(int up=2;up<=5;up++){var roof=feet.above(up);if(!level.getBlockState(roof).getCollisionShape(level,roof).isEmpty()){s+=.4;break;}}
         s+=(15-level.getMaxLocalRawBrightness(feet))/15.0*.8;
+        var seekers=arena.bravoSpawn();double far=point.distanceTo(new Vec3(seekers.x(),seekers.y(),seekers.z()));
+        s+=Math.min(1.2,far/30);
+        if(BotMovement.nearSpawn(arena,"BRAVO",point))s-=4;
+        if(BotMovement.nearSpawn(arena,"ALPHA",point))s-=.8;
+        for(var other:others)if(other!=prop&&other.position().distanceToSqr(point)<25)s-=1.5;
+        if(!level.getFluidState(feet).isEmpty()&&!(mine.getBlock() instanceof NozzleBlock)&&!prop.item().equals("minecraft:water"))s-=1;
+        // Roaming goes somewhere new, not back to a spot used a moment ago.
+        for(var used:recentSpots)if(used.distSqr(feet)<25)s-=2;
+        return s+random.nextDouble()*.3;
+    }
+    /** The score's sight lines and ground probes: open directions, ways out, and whether a seeker seen lately could see it. */
+    private double thorough(BotAgent a,BlockPos feet){
+        var bot=a.bot;var level=bot.level();var point=Vec3.atBottomCenterOf(feet);double s=0;
         int open=0;
         for(int i=0;i<8;i++){
             double angle=i*Math.PI/4;var to=point.add(Math.cos(angle)*7,.5,Math.sin(angle)*7);
@@ -481,16 +503,8 @@ final class BotPropHunt {
         }
         s-=open*.15;
         int ways=exits(bot,feet);s+=ways>=2?1.5:ways==1?-2:-5;
-        var seekers=arena.bravoSpawn();double far=point.distanceTo(new Vec3(seekers.x(),seekers.y(),seekers.z()));
-        s+=Math.min(1.2,far/30);
-        if(BotMovement.nearSpawn(arena,"BRAVO",point))s-=4;
-        if(BotMovement.nearSpawn(arena,"ALPHA",point))s-=.8;
-        for(var other:hunt.disguises())if(other!=prop&&other.position().distanceToSqr(point)<25)s-=1.5;
-        if(!level.getFluidState(feet).isEmpty()&&!(mine.getBlock() instanceof NozzleBlock)&&!prop.item().equals("minecraft:water"))s-=1;
-        // Roaming goes somewhere new, not back to a spot used a moment ago.
-        for(var used:recentSpots)if(used.distSqr(feet)<25)s-=2;
         if(avoidSeen)for(var seen:remembered.values())if(seen.distanceTo(point)<20&&clear(level,seen.add(0,1.5,0),point.add(0,.5,0),bot))s-=2.5;
-        return s+random.nextDouble()*.3;
+        return s;
     }
     private void travel(BotAgent a,PropHuntMatch hunt,PropEntity prop,int now){
         var bot=a.bot;mode=hunt.hiding()?"숨을 곳으로 이동":roaming?"배회 중":"새 은신처로 이동";

@@ -36,6 +36,10 @@ public final class ShurikenItem extends Item {
     /** Semi-mode follow-up throws still to come: player, game time due, damage. */
     private record Pending(UUID player,long due,double damage) { }
     private static final List<Pending> PENDING=new ArrayList<>();
+    /** Length of the client throw animation (ShurikenAnimation.THROW_TICKS); an auto reload waits for it. */
+    private static final int THROW_ANIMATION_TICKS=7;
+    /** Auto reloads after the last throw of a magazine: player → game time due, once its queued throws have flown. */
+    private static final Map<UUID,Long> AUTO_RELOAD=new HashMap<>();
 
     public ShurikenItem(){super(new Properties().stacksTo(1));}
     public static boolean is(ItemStack stack){return stack.getItem() instanceof ShurikenItem;}
@@ -96,6 +100,7 @@ public final class ShurikenItem extends Item {
         if(p.level().isClientSide||!is(stack)||!usable(p))return;
         var c=config();var tag=stack.getOrCreateTag();
         if(tag.getLong(RELOAD_END)>0||ammo(stack)>=c.capacity())return;
+        AUTO_RELOAD.remove(p.getUUID());
         int ticks=Math.max(1,ExtraGadgetConfig.ticks(c.reloadSeconds()));
         tag.putLong(RELOAD_END,p.level().getGameTime()+ticks);tag.putInt(RELOAD_TICKS,ticks);
         // Pending semi throws belong to the magazine being swapped out.
@@ -120,7 +125,7 @@ public final class ShurikenItem extends Item {
         long now=p.level().getGameTime();var data=p.getPersistentData();
         if(data.contains(LAST_THROW)&&now-data.getLong(LAST_THROW)>=0&&now-data.getLong(LAST_THROW)<Math.max(1,interval(c)-THROW_JITTER_TICKS))return;
         int ammo=ammo(stack);
-        if(ammo<c.ammoPerThrow()){reload(p);return;}
+        if(ammo<c.ammoPerThrow()){if(!AUTO_RELOAD.containsKey(p.getUUID()))reload(p);return;}
         data.putLong(LAST_THROW,now);
         tag.putInt(AMMO,ammo-c.ammoPerThrow());
         switch(mode(stack)){
@@ -135,7 +140,12 @@ public final class ShurikenItem extends Item {
             case RICOCHET->launch(p,p.getLookAngle(),c.ricochetDamage(1),1);
         }
         p.level().playSound(null,p.blockPosition(),SoundEvents.TRIDENT_THROW,SoundSource.PLAYERS,.7f,1.7f);
-        if(ammo-c.ammoPerThrow()<c.ammoPerThrow())reload(p);
+        // The last throw of a magazine: reload once its semi follow-ups have flown and the throw animation is done
+        // (reloading at once dropped the queued throws and cut the animation short).
+        if(ammo-c.ammoPerThrow()<c.ammoPerThrow()){
+            long queued=mode(stack)==Mode.SEMI?2L*c.semiIntervalTicks():0;
+            AUTO_RELOAD.put(p.getUUID(),now+Math.max(queued+1,THROW_ANIMATION_TICKS));
+        }
         p.inventoryMenu.broadcastChanges();
     }
     /** {@code hop}: 0 for semi/burst, 1 for the first ricochet throw. */
@@ -148,8 +158,8 @@ public final class ShurikenItem extends Item {
         p.level().addFreshEntity(shuriken);
     }
     @SubscribeEvent public static void serverTick(TickEvent.ServerTickEvent event){
-        if(event.phase!=TickEvent.Phase.END||PENDING.isEmpty())return;
-        var server=net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();if(server==null){PENDING.clear();return;}
+        if(event.phase!=TickEvent.Phase.END||PENDING.isEmpty()&&AUTO_RELOAD.isEmpty())return;
+        var server=net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();if(server==null){PENDING.clear();AUTO_RELOAD.clear();return;}
         for(var it=PENDING.iterator();it.hasNext();){
             var pending=it.next();var p=server.getPlayerList().getPlayer(pending.player());
             if(p==null){it.remove();continue;}
@@ -158,6 +168,13 @@ public final class ShurikenItem extends Item {
             if(!usable(p)||is(p.getMainHandItem())&&reloadEnd(p.getMainHandItem())>0)continue;
             launch(p,p.getLookAngle(),pending.damage(),0);
             p.level().playSound(null,p.blockPosition(),SoundEvents.TRIDENT_THROW,SoundSource.PLAYERS,.5f,1.9f);
+        }
+        for(var it=AUTO_RELOAD.entrySet().iterator();it.hasNext();){
+            var entry=it.next();var p=server.getPlayerList().getPlayer(entry.getKey());
+            if(p==null){it.remove();continue;}
+            if(p.level().getGameTime()<entry.getValue())continue;
+            it.remove();
+            reload(p);
         }
     }
     /** Whether the player carries a shuriken (the double jump comes with the weapon, not only while it is held). */
@@ -203,8 +220,8 @@ public final class ShurikenItem extends Item {
             if(!event.getEntity().level().isClientSide)attack(event.getEntity());
         }
     }
-    @SubscribeEvent public static void logout(net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent event){PENDING.removeIf(p->p.player().equals(event.getEntity().getUUID()));}
-    @SubscribeEvent public static void stopped(net.minecraftforge.event.server.ServerStoppedEvent event){PENDING.clear();}
+    @SubscribeEvent public static void logout(net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent event){PENDING.removeIf(p->p.player().equals(event.getEntity().getUUID()));AUTO_RELOAD.remove(event.getEntity().getUUID());}
+    @SubscribeEvent public static void stopped(net.minecraftforge.event.server.ServerStoppedEvent event){PENDING.clear();AUTO_RELOAD.clear();}
     @Override public void appendHoverText(ItemStack stack,Level level,List<net.minecraft.network.chat.Component> lines,TooltipFlag flag){
         lines.add(net.minecraft.network.chat.Component.literal(mode(stack).label+" · "+ammo(stack)+"/"+capacity(stack)).withStyle(net.minecraft.ChatFormatting.GRAY));
     }

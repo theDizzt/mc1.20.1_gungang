@@ -51,12 +51,14 @@ public final class MatchManager {
         if(map==null||!java.util.Set.of("ALPHA","BRAVO").contains(LobbyManager.team(player.getUUID()))||player.isSpectator()||!player.isAlive())return;
         if(freeForAll!=null&&freeForAll.opening()){freeForAll.openingDeath(player);return;}
         if(propHunt!=null){propHunt.eliminate(player,null);return;}
+        var pusher=DamageCredit.pusher(player);float health=player.getHealth();
         boolean died;
         if(bomb!=null){
             if(bomb.dead(player.getUUID())||bomb.game.phase()==BombGame.Phase.ROUND_END)return;
             bomb.eliminate(player);died=true;
             for(var p:server.getPlayerList().getPlayers())p.sendSystemMessage(deathZoneMessage(player));
         }else died=LobbyManager.beginRespawn(player,null,true);
+        if(died)fallDamage(pusher,player,health);
         if(died&&freeForAll!=null)freeForAll.death(player,null);
         if(died)ledger.death(player.getUUID(),player.getUUID(),server.getTickCount(),deathmatch!=null);
     }
@@ -237,6 +239,16 @@ public final class MatchManager {
         bots=false;floor.reset();NormandyBeacon.get(server).restore(server);presence.clear(); send(result);if(bomb!=null)bomb.close();bomb=null;if(escort!=null)escort.close();escort=null;EscortTracks.showMarkers(); map=null; running=false;
     }
     public static String format(int seconds) { return MatchReport.time(seconds); }
+    /**
+     * A push (blower, knockback shotgun) into a death zone or the void kills without a damage event; the health the
+     * victim still had counts toward the pusher's damage, as a falling hit's damage does.
+     */
+    private static void fallDamage(net.minecraft.world.entity.Entity pusher,net.minecraft.world.entity.LivingEntity victim,float health){
+        if(!running||map==null||pusher==null||pusher==victim||!(health>0))return;
+        if(!(pusher instanceof ServerPlayer||BotManager.owns(pusher)))return;
+        if(BotManager.owns(pusher)&&ledger.enemies(pusher.getUUID(),victim.getUUID()))BotManager.damageDealt(pusher,health);
+        ledger.damage(pusher.getUUID(),victim.getUUID(),health,server.getTickCount());
+    }
     @SubscribeEvent(priority=EventPriority.LOWEST) public static void damage(LivingDamageEvent event) {
         if(!running||map==null||event.isCanceled())return;
         var victim=event.getEntity();var attacker=DamageCredit.attacker(victim,event.getSource());
@@ -293,6 +305,8 @@ public final class MatchManager {
         if(freeForAll!=null&&freeForAll.opening()){BotManager.openingDeath(bot);return;}
         // 폭탄전: nobody dies between rounds (players are healed the same way).
         if(bomb!=null&&!bomb.activePlay()){BotManager.revive(bot);return;}
+        // A death zone or void fall (no killer): health the bot still had counts as its pusher's damage.
+        if(killer==null){var alive=BotManager.body(bot);if(alive!=null)fallDamage(DamageCredit.pusher(alive),alive,alive.getHealth());}
         var body=BotManager.deathBody(bot);
         if(body!=null){
             net.minecraft.world.entity.Entity attacker=killer==null?null:server.getPlayerList().getPlayer(killer);

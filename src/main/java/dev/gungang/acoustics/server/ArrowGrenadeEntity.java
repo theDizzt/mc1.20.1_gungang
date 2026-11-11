@@ -83,7 +83,6 @@ public final class ArrowGrenadeEntity extends ThrowableItemProjectile {
         super.readAdditionalSaveData(tag);entityData.set(ACTIVE,tag.getBoolean("Active"));anchor=position();
         expires=tag.getLong("Expires");nextShot=tag.getLong("NextShot");damage=tag.getDouble("ShardDamage");
         range=tag.getDouble("ShardRange");speed=tag.getDouble("ShardSpeed");interval=Math.max(1,tag.getInt("Interval"));
-        if(interval==1){interval=20;nextShot=level().getGameTime()+interval;}
         if(active()){setNoGravity(true);setDeltaMovement(Vec3.ZERO);}
     }
     @Override public net.minecraft.network.protocol.Packet<net.minecraft.network.protocol.game.ClientGamePacketListener> getAddEntityPacket(){return net.minecraftforge.network.NetworkHooks.getEntitySpawningPacket(this);}

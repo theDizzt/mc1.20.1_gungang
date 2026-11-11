@@ -16,21 +16,24 @@ import net.minecraft.world.phys.*;
 public final class VoidAnchorEntity extends LivingEntity {
     private static final EntityDataAccessor<Boolean> PLANTED=SynchedEntityData.defineId(VoidAnchorEntity.class,EntityDataSerializers.BOOLEAN);
     private static final String TETHER="VoidAnchorTether";
-    private UUID owner,victim;
+    private UUID owner;
+    private record Pull(LivingEntity target,boolean gravity){}
+    private final Map<UUID,Pull> victims=new LinkedHashMap<>();
+    private ExtraGadgetConfig.VoidAnchor config=ExtraGadgetConfig.voidAnchor;
     private String team="";
     private Vec3 flight=Vec3.ZERO;
-    private static final double PULL_SPEED=1.0/4; // One block per four ticks, applied smoothly every tick.
+    private static final DustParticleOptions TETHER_DUST=new DustParticleOptions(new org.joml.Vector3f(.025f,.015f,.04f),1.15f);
     private double distance;
     private long expires;
-    private boolean victimGravity;
-    private LivingEntity pulled;
     public VoidAnchorEntity(EntityType<? extends LivingEntity> type,Level level) {super(type,level);setNoGravity(true);}
     @Override protected void defineSynchedData() {super.defineSynchedData();entityData.define(PLANTED,false);}
     public boolean planted() {return entityData.get(PLANTED);}
     public void launch(ServerPlayer p) {
         owner=p.getUUID();team=p.getTeam()==null?"":p.getTeam().getName();
         setPos(p.getEyePosition().add(p.getLookAngle().scale(.4)));flight=VoidAnchorFlight.launch(p.getLookAngle());
-        setYRot(p.getYRot());setXRot(p.getXRot());setHealth(60);
+        config=ExtraGadgetConfig.voidAnchor;
+        getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(config.health());
+        setYRot(p.getYRot());setXRot(p.getXRot());setHealth((float)config.health());
     }
     @Override public void travel(Vec3 input) { }
     @Override public void move(MoverType type,Vec3 movement) { }
@@ -62,23 +65,24 @@ public final class VoidAnchorEntity extends LivingEntity {
         }
         if(SafeZones.contains(this)) {discard();return;}
         if(level.getGameTime()>=expires) {explode(1);return;}
-        if(victim==null) {acquire(level);return;}
-        var entity=level.getEntity(victim);
-        if(!(entity instanceof LivingEntity target)||!enemy(target)||target.isPassenger()) {release();return;}
-        pulled=target;
+        if(victims.isEmpty()) {if(tickCount%5==0)acquire(level);return;}
+        for(var iterator=victims.values().iterator();iterator.hasNext();){
+        var pull=iterator.next();var target=pull.target();
+        if(target.isRemoved()||target.level()!=level||!enemy(target)||target.isPassenger()) {release(pull);iterator.remove();continue;}
         Vec3 offset=position().subtract(target.position());
         if(getBoundingBox().intersects(target.getBoundingBox())) {explode(2.5);return;}
-        Vec3 motion=offset.length()>PULL_SPEED?offset.normalize().scale(PULL_SPEED):offset;
+        double speed=config.pullBlocksPerSecond()/20;
+        Vec3 motion=offset.lengthSqr()>speed*speed?offset.normalize().scale(speed):offset;
         target.setNoGravity(true);target.fallDistance=0;
         if(target instanceof ServerPlayer p) {
             PlayerImpulse.apply(p,motion);
             GungangNetwork.send(p,new GungangNetwork.AnchorPull(getUUID(),true,motion.x,motion.y,motion.z));
         } else {target.setDeltaMovement(Vec3.ZERO);target.move(MoverType.SELF,motion);target.setDeltaMovement(Vec3.ZERO);}
-        if(tickCount%2==0) {
+        if(tickCount%4==0) {
             Vec3 a=position().add(0,1,0),b=target.getBoundingBox().getCenter();
-            int steps=Math.max(2,(int)(a.distanceTo(b)*5));
-            var dust=new DustParticleOptions(new org.joml.Vector3f(.025f,.015f,.04f),1.15f);
-            for(int i=0;i<=steps;i++) {var at=a.lerp(b,i/(double)steps);level.sendParticles(dust,at.x,at.y,at.z,1,.015,.015,.015,0);}
+            int steps=Math.min(24,Math.max(2,(int)(a.distanceTo(b)*2)));
+            for(int i=0;i<=steps;i++) {var at=a.lerp(b,i/(double)steps);level.sendParticles(TETHER_DUST,at.x,at.y,at.z,1,.015,.015,.015,0);}
+        }
         }
     }
     private boolean enemy(LivingEntity e) {
@@ -88,16 +92,17 @@ public final class VoidAnchorEntity extends LivingEntity {
         return team.isEmpty()||e.getTeam()==null||!team.equals(e.getTeam().getName());
     }
     private void acquire(ServerLevel level) {
-        var nearby=level.getEntitiesOfClass(LivingEntity.class,getBoundingBox().inflate(10),e->enemy(e)&&targetDistance(e)<=100);
+        double range=config.pullRange();
+        var nearby=level.getEntitiesOfClass(LivingEntity.class,getBoundingBox().inflate(range),e->enemy(e)&&targetDistance(e)<=range*range);
         // An enemy that cannot currently be pulled is not the same as an empty area.
         if(nearby.isEmpty()) {explode(1);return;}
-        var target=nearby.stream().filter(e->!e.isPassenger()&&!tethered(level,e))
-                .min(Comparator.comparingDouble(this::targetDistance)).orElse(null);
-        if(target==null)return;
+        nearby.removeIf(e->e.isPassenger()||tethered(level,e));nearby.sort(Comparator.comparingDouble(this::targetDistance));
+        for(var target:nearby){
+        if(victims.size()>=config.maxTargets())break;
         if(target instanceof ServerPlayer p) {AirAssault.clear(p);SurvivalGadgets.stopJet(p);}
-        victim=target.getUUID();pulled=target;victimGravity=target.isNoGravity();
+        victims.put(target.getUUID(),new Pull(target,target.isNoGravity()));
         target.getPersistentData().putUUID(TETHER,getUUID());
-
+        }
     }
     private double targetDistance(LivingEntity target) {
         // Measure to the body, not just its feet: slabs/steps must not push a nearby target outside the radius.
@@ -109,17 +114,18 @@ public final class VoidAnchorEntity extends LivingEntity {
         var tag=target.getPersistentData();if(!tag.hasUUID(TETHER))return false;
         var entity=level.getEntity(tag.getUUID(TETHER));
         if(entity instanceof VoidAnchorEntity anchor&&anchor.isAlive()&&!anchor.isRemoved()
-                &&target.getUUID().equals(anchor.victim)&&level.getGameTime()<anchor.expires)return true;
+                &&anchor.victims.containsKey(target.getUUID())&&level.getGameTime()<anchor.expires)return true;
         tag.remove(TETHER);return false;
     }
     private void release() {
-        LivingEntity target=pulled;
-        if(target==null&&victim!=null&&level() instanceof ServerLevel level&&level.getEntity(victim) instanceof LivingEntity e)target=e;
+        for(var pull:victims.values())release(pull);victims.clear();
+    }
+    private void release(Pull pull) {
+        var target=pull.target();
         if(target!=null&&target.getPersistentData().hasUUID(TETHER)&&target.getPersistentData().getUUID(TETHER).equals(getUUID())) {
-            target.getPersistentData().remove(TETHER);target.setNoGravity(victimGravity);target.setDeltaMovement(Vec3.ZERO);target.fallDistance=0;
+            target.getPersistentData().remove(TETHER);target.setNoGravity(pull.gravity());target.setDeltaMovement(Vec3.ZERO);target.fallDistance=0;
             if(target instanceof ServerPlayer p) {VoidAnchorPull.receive(p,getUUID(),false,Vec3.ZERO);PlayerImpulse.sync(p);GungangNetwork.send(p,new GungangNetwork.AnchorPull(getUUID(),false,0,0,0));}
         }
-        victim=null;pulled=null;
     }
     private void explode(double half) {
         if(!(level() instanceof ServerLevel level))return;
@@ -127,8 +133,8 @@ public final class VoidAnchorEntity extends LivingEntity {
         var ownerEntity=owner==null?null:level.getEntity(owner);
         var source=damageSources().explosion(this,ownerEntity);
         var area=new AABB(getX()-half,getY()-half,getZ()-half,getX()+half,getY()+half,getZ()+half);
-        for(var target:level.getEntitiesOfClass(LivingEntity.class,area,this::enemy))target.hurt(source,40);
-        GimmickEntity.blast(level,position(),half,40);
+        for(var target:level.getEntitiesOfClass(LivingEntity.class,area,this::enemy))target.hurt(source,(float)config.damage());
+        GimmickEntity.blast(level,position(),half,(float)config.damage());
         level.sendParticles(ParticleTypes.EXPLOSION,getX(),getY()+.5,getZ(),1,0,0,0,0);
         level.sendParticles(ParticleTypes.SMOKE,getX(),getY()+.5,getZ(),36,half*.5,half*.5,half*.5,.06);
         level.playSound(null,blockPosition(),net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,net.minecraft.sounds.SoundSource.PLAYERS,1,.65f);

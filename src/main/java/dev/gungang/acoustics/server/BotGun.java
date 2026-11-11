@@ -145,7 +145,8 @@ final class BotGun {
     }
     String fire(float pitch,float yaw)throws ReflectiveOperationException{
         if(reloading())return "RELOADING";
-        api.aim.invoke(operator,true);
+        // Aiming the twin blades is their guard, which blocks every swing: bots swing them from the hip.
+        api.aim.invoke(operator,!TwinBlades.is(entity.getMainHandItem()));
         var result=api.shoot.invoke(operator,(Supplier<Float>)()->pitch,(Supplier<Float>)()->yaw);
         String state=((Enum<?>)result).name();
         if(state.equals("NO_AMMO"))reload();
