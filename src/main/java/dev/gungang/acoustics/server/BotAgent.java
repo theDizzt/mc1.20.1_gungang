@@ -82,7 +82,7 @@ final class BotAgent {
             String oldPrimary=lastLife==null?null:weapon.id(),oldSecondary=lastLife==null||secondary==null?null:secondary.id();
             weapon=choose(primaryChoices,settings.weapon(),oldPrimary,false);
             secondary=choose(secondaryChoices,settings.secondary(),oldSecondary,true);
-            choiceReason=lastLife==null?"첫 출전: 체력·이동·사거리·화력·장비 역할 비교":
+            choiceReason=lastLife==null?"첫 출전: 다른 봇이 덜 쓰는 무기 중 무작위":
                     !lastLife.combat()?"비전투 사망: 장비 유지":lastLife.productive()?"직전 교전 성과 양호: 자동 장비 유지":
                     "직전 교전 성과 낮음: 교전 거리·무기 성능·최근 장비별 성과로 대안 비교";
             chooseOnSpawn=false;
@@ -208,6 +208,9 @@ final class BotAgent {
         if(server!=null){GadgetManager.clearOwned(server,id);BearTraps.clear(server,id);}
         gadgets.clearCooldowns();remove();
     }
+    private static final Random RANDOM=new Random();
+    /** False while this bot is about to choose again (first spawn, or after a death): its old ids do not count as in use. */
+    boolean chosen(){return !chooseOnSpawn;}
     private Loadouts.Weapon choose(List<Loadouts.Weapon> choices,String fixed,String previous,boolean secondarySlot){
         choices=choices.stream().filter(w->!LobbyManager.teamWeaponTaken(id,team,!secondarySlot,w.id())).toList();
         String requested=fixed;
@@ -222,7 +225,8 @@ final class BotAgent {
                     melee?0:role.isEmpty()?profile.near():0,melee?3:role.isEmpty()?profile.far():0,
                     data.damage(),data.rpm(),data.magazine(),data.reloadSeconds(),role);
         }).toList();
-        String chosen=BotLoadoutChoice.choose(options,fixed,previous,lastLife,secondarySlot,secondarySlot?secondaryHistory:primaryHistory);
+        String chosen=BotLoadoutChoice.choose(options,fixed,previous,lastLife,secondarySlot,secondarySlot?secondaryHistory:primaryHistory,
+                BotManager.usage(id,!secondarySlot),RANDOM);
         return chosen==null?null:choices.stream().filter(w->w.id().equals(chosen)).findFirst().orElseThrow();
     }
     /** Sprinting player pace per unit of forward input: speed 0.1 × sprint 1.3. */

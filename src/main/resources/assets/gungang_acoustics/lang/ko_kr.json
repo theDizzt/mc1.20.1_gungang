@@ -71,6 +71,7 @@
   "gungang.options.title": "GunGangRealistic 설정",
   "gungang.options.tab.3": "폰트",
   "gungang.options.cooldownReadyVolume": "쿨타임 완료 효과음 음량(%)",
+  "gungang.options.gungangSoundVolume": "GunGang 효과음",
   "gungang.options.cooldownReadyVolume.tip": "0~100%, 기본 80%. 보조무기 쿨타임이 끝날 때 나는 효과음의 음량입니다. 켜고 끄기는 HUD·팀 탭에서 합니다.",
   "gungang.options.cooldownReadySound": "쿨타임 완료 효과음",
   "gungang.options.cooldownReadySound.tip": "보조무기 쿨타임이 끝나면(충전식은 1회 충전될 때마다) 효과음을 재생합니다. 음량은 음향 탭에서 조절합니다.",
