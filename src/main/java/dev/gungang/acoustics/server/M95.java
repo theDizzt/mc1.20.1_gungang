@@ -103,16 +103,16 @@ public final class M95 {
         refreshDescription(directory);
     }
     private static void refreshDescription(java.nio.file.Path directory)throws java.io.IOException {
-        var marker=directory.resolve(".m95-balance-pulse-v4");if(java.nio.file.Files.exists(marker))return;
+        var marker=directory.resolve(".m95-balance-37-33-v5");if(java.nio.file.Files.exists(marker))return;
         try(var files=java.nio.file.Files.list(directory)){
             for(var path:files.filter(p->p.toString().endsWith(".json")).toList()){
                 var json=com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(path)).getAsJsonObject();
                 if(!json.has("id")||!json.get("id").getAsString().equals("34"))continue;
-                json.addProperty("maxHealth",85);json.addProperty("movementSpeed",100);
-                json.addProperty("description","M95 대물 저격총 · 체력 85, 이동속도 100%, 탄창 3발. 헤드샷 ×1.33. 일반탄은 TaCZ 기본 효과와 거리별 피해를 사용합니다. 관통력은 초당 15 충전, 최대 200입니다. 관통력 10은 1블록, 50은 3블록, 100은 10블록, 150은 모든 블록을 관통하며 사용한 단계의 비용만 소모합니다. 100 이상 소모한 관통탄은 거리 감쇠가 없고, 50 이상 단계의 기본 명중 여유는 0.4블록입니다. 관통탄은 #85dbd9 레이저 잔상 0.5초. 줌을 10초 유지하면 벽 너머 적의 현재 위치를 2.5초마다 0.5초 표시합니다. 관측된 적에게 관측됨이 1초 표시되며 발사·줌 해제 시 준비 시간이 초기화됩니다.");
+                if(!java.nio.file.Files.exists(directory.resolve(".m95-balance-pulse-v4"))){json.addProperty("maxHealth",85);json.addProperty("movementSpeed",100);}
+                json.addProperty("description","M95 대물 저격총 · 체력 85, 이동속도 100%, 탄창 3발. 헤드샷 ×1.33. 일반탄 기본 피해 37, 관통탄 기본 피해 33. 일반탄은 TaCZ 기본 효과와 거리별 피해를 사용합니다. 일반탄 적 명중 시 관통력 50 획득. 관통력은 초당 10 충전, 최대 200입니다. 관통력 10은 1블록, 75는 2블록, 125는 4블록, 200은 모든 블록을 관통하며 사용한 단계의 비용만 소모합니다. 125 이상 단계는 거리 감쇠가 없고, 75 이상 단계의 명중 여유는 0.4블록입니다. 관통탄은 #85dbd9 레이저 잔상 0.5초. 줌을 5초 유지하면 벽 너머 적의 현재 위치를 2.5초마다 0.5초 표시합니다. 관측된 적에게는 파란 스캔 효과와 스캔됨 표시, 스캔 효과음이 나오며 발사·줌 해제 시 준비 시간이 초기화됩니다.");
                 json.addProperty("usage","T키: 일반탄 ↔ 관통탄. 일반탄은 TaCZ 기본 탄환 효과를 사용하고 관통력을 소모하지 않습니다. 관통탄은 충전량에 따라 사용 가능한 가장 높은 단계의 비용을 소모하며, 경로의 건강모드 파괴 가능 블록을 파괴합니다. 투시에는 관통력 200이 필요하지 않습니다. /gungang modify ui 34에서 투시 대기 시간과 무기 수치를 변경할 수 있습니다.");
-                json.add("specs",ServerFiles.GSON.toJsonTree(new Loadouts.Specs("TaCZ 거리별 피해 / 헤드샷 ×1.33","일반탄 / 관통탄 히트스캔","","관통탄 256블록","")));
-                json.add("stats",ServerFiles.GSON.toJsonTree(List.of(new Loadouts.Stat("탄창","3발"),new Loadouts.Stat("관통력","초당 15 / 최대 200"),new Loadouts.Stat("관통 단계","10: 1블록 / 50: 3블록 / 100: 10블록 / 150: 무제한"),new Loadouts.Stat("투시","줌 10초 유지 · 2.5초마다 0.5초 · 발사 시 초기화"))));
+                json.add("specs",ServerFiles.GSON.toJsonTree(new Loadouts.Specs("일반탄 37 / 관통탄 33 / 헤드샷 ×1.33","일반탄 / 관통탄 히트스캔","","관통탄 256블록","")));
+                json.add("stats",ServerFiles.GSON.toJsonTree(List.of(new Loadouts.Stat("탄창","3발"),new Loadouts.Stat("관통력","초당 10 / 최대 200"),new Loadouts.Stat("관통 단계","10: 1블록 / 75: 2블록 / 125: 4블록 / 200: 무제한"),new Loadouts.Stat("투시","줌 5초 유지 · 2.5초마다 0.5초 · 발사 시 초기화"))));
                 java.nio.file.Files.writeString(path,ServerFiles.GSON.toJson(json));
                 java.nio.file.Files.writeString(marker,"M95 scope and penetration description updated.\n");return;
             }
