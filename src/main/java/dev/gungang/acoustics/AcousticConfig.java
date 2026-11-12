@@ -19,6 +19,8 @@ public final class AcousticConfig {
     /** cooldown_ready when a secondary's cooldown ends: on/off and its volume in percent. */
     public static final ForgeConfigSpec.BooleanValue COOLDOWN_SOUND;
     public static final ForgeConfigSpec.IntValue COOLDOWN_SOUND_VOLUME;
+    /** Volume of every sound GunGang adds (gungang: sound events), on the vanilla Music & Sounds screen. */
+    public static final ForgeConfigSpec.DoubleValue GUNGANG_SOUND_VOLUME;
     public static final ForgeConfigSpec.IntValue HUD_TEXT_SIZE;
     public static final ForgeConfigSpec.BooleanValue TEAM_HUD, LEGACY_TEAM_HUD, TEAM_WEAPON_NUMBERS, COMBO_HUD, KILL_LOG, TEAM_SILHOUETTES, COMPASS, AUTO_SPRINT;
     public static final ForgeConfigSpec.BooleanValue ENABLED, DIFFRACTION, LOW_PASS, SHOOTER_HUD;
@@ -55,6 +57,8 @@ public final class AcousticConfig {
         COOLDOWN_SOUND = b.comment("Play a chime when a secondary weapon's cooldown is over (and when a charge of a charged secondary refills).")
                 .define("cooldownReadySound", true);
         COOLDOWN_SOUND_VOLUME = b.comment("Cooldown chime volume percent, 0..100.").defineInRange("cooldownReadyVolume", 80, 0, 100);
+        GUNGANG_SOUND_VOLUME = b.comment("Volume of all GunGang sound effects (gungang: sounds), 0..1. Set on the Music & Sounds screen; master volume still applies.")
+                .defineInRange("gungangSoundVolume", 1.0, 0.0, 1.0);
         HUD_LANGUAGE = b.comment("Language of the GunGang HUD and screens: KO or EN. Also switchable in the loadout, lobby, prop hunt block list and mode settings screens.")
                 .define("hudLanguage", "KO", value -> "KO".equals(value) || "EN".equals(value));
         COMPASS = b.comment("Show heading compass and enemy gunshot bearings above the player health bar.").define("compass", true);

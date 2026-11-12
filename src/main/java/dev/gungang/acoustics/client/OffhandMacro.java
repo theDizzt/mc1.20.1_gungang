@@ -71,6 +71,10 @@ public final class OffhandMacro {
         boolean placeDown=placementDown(),cancelDown=placementKeyDown(GLFW.GLFW_KEY_H);
         boolean placeEdge=placeDown&&!previousPlaceDown,cancelEdge=cancelDown&&!previousCancelDown;
         previousPlaceDown=placeDown;previousCancelDown=cancelDown;
+        if(mc.player!=null&&!HermesBootsLayer.worn(mc.player).isEmpty()&&owner==null&&attackEdge){
+            if(canStart(mc))LobbyClient.action("hermesDash","360","");
+            return;
+        }
         if(TurretClient.servicing())return;
         if (GadgetClient.placing()) {
             if (cancelEdge) GadgetClient.cancel();

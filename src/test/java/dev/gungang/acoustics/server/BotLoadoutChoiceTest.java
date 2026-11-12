@@ -43,6 +43,34 @@ class BotLoadoutChoiceTest {
         assertEquals("pistol",BotLoadoutChoice.choose(options,"","old",poor,true));
         assertEquals("old",BotLoadoutChoice.choose(options.subList(0,2),"","old",poor,true));
     }
+    @Test void weaponsOtherBotsCarryScoreLower(){
+        var a=new BotLoadoutChoice.Option("a",100,100,false);var b=new BotLoadoutChoice.Option("b",100,100,false);
+        assertEquals("b",BotLoadoutChoice.choose(List.of(a,b),"",null,null,false,java.util.Map.of(),java.util.Map.of("a",1),null));
+        assertEquals("a",BotLoadoutChoice.choose(List.of(a,b),"",null,null,false,java.util.Map.of(),java.util.Map.of("b",2),null));
+    }
+    @Test void weightedDrawSpreadsEqualBotsButSkipsFarWorseOptions(){
+        var options=List.of(new BotLoadoutChoice.Option("a",100,100,false),new BotLoadoutChoice.Option("b",100,100,false),
+                new BotLoadoutChoice.Option("c",100,100,false),new BotLoadoutChoice.Option("bad",0,0,false,30,40,0,0,0,0,""));
+        var random=new java.util.Random(7);var seen=new java.util.HashSet<String>();
+        for(int i=0;i<200;i++)seen.add(BotLoadoutChoice.choose(options,"",null,poor,false,java.util.Map.of(),java.util.Map.of(),random));
+        assertEquals(java.util.Set.of("a","b","c"),seen);
+        // A productive previous weapon is still kept, random or not.
+        assertEquals("c",BotLoadoutChoice.choose(options,"","c",new BotLoadoutChoice.Outcome(true,75,100,12),false,java.util.Map.of(),java.util.Map.of("c",3),random));
+    }
+    @Test void firstSpawnIsUniformAmongLeastCarriedWeapons(){
+        var minigun=new BotLoadoutChoice.Option("minigun",125,80,false,3,24,8,1200,200,6,"");
+        var options=List.of(minigun,new BotLoadoutChoice.Option("pistol",100,110,false,0,16,6,300,12,2,""),
+                new BotLoadoutChoice.Option("knife",100,120,true),new BotLoadoutChoice.Option("bow",100,100,false,10,40,10,40,1,1,""));
+        var random=new java.util.Random(3);var counts=new java.util.HashMap<String,Integer>();
+        for(int i=0;i<400;i++)counts.merge(BotLoadoutChoice.choose(options,"",null,null,false,java.util.Map.of(),java.util.Map.of(),random),1,Integer::sum);
+        assertEquals(4,counts.size());
+        counts.values().forEach(n->assertTrue(n>60,"uneven first picks: "+counts));
+        // Weapons other bots already carry are left out while an uncarried one remains.
+        for(int i=0;i<50;i++)assertEquals("bow",BotLoadoutChoice.choose(options,"",null,null,false,java.util.Map.of(),
+                java.util.Map.of("minigun",1,"pistol",1,"knife",2),random));
+        // Without a random source (tests, fixed policy) the first pick stays the deterministic best score.
+        assertEquals("minigun",BotLoadoutChoice.choose(options,"",null,null,false,java.util.Map.of(),java.util.Map.of(),null));
+    }
     @Test void emptyAndSingleChoiceAreSafe(){
         assertNull(BotLoadoutChoice.choose(List.of(),"",null,poor,true));
         assertEquals("fast",BotLoadoutChoice.choose(guns.subList(0,1),"","fast",poor,false));

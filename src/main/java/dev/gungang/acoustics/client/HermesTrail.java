@@ -36,7 +36,7 @@ public final class HermesTrail {
     public static void receive(GungangNetwork.HermesDash packet){
         var mc=Minecraft.getInstance();if(mc.level==null)return;
         if(!(mc.level.getEntity(packet.entity()) instanceof net.minecraft.world.entity.player.Player p))return;
-        RapierDash.start(p,packet.yaw(),packet.distance(),packet.ticks());
+        RapierDash.start(p,packet.yaw(),packet.pitch(),packet.distance(),packet.ticks());
         long now=mc.level.getGameTime();
         DASHES.put(p.getId(),new Dash(now,now+Math.max(1,packet.ticks()),Math.max(1,packet.trailSeconds()*20)));
         burst(p,EffectColors.client(p.getUUID(),"hermes_boots"),14);

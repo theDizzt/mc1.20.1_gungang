@@ -64,6 +64,7 @@ public final class CombatRules {
     private static boolean guarded(LivingEntity victim){return victim instanceof Player||victim instanceof BotEntity;}
     /** The push this hit should give: a TaCZ bullet's own knockback, otherwise vanilla's. */
     private static double strength(Entity direct){
+        if(ArcThrower.pellet(direct))return 0;
         if(!(direct instanceof Las5Damage.BulletAccess))return HIT_STRENGTH;
         if(bulletKnockbackMissing)return HIT_STRENGTH;
         try{
@@ -95,8 +96,16 @@ public final class CombatRules {
         String gun=String.valueOf(access.getGunId());
         boolean everyone=PUSH_GUNS.contains(gun);
         if(!everyone&&!ALLY_KNOCKBACK_GUNS.contains(gun))return;
+        if(everyone&&!(target instanceof LivingEntity)&&bullet.getOwner() instanceof LivingEntity windOwner
+                &&target!=windOwner&&target.isAlive()&&!target.isSpectator()&&!SafeZones.contains(target)
+                &&windOwner.distanceTo(target)<=ExtraGadgetConfig.windBlower.windRange()){
+            double wind=1;var loaded=LobbyManager.loaded();
+            if(loaded!=null)for(var weapon:loaded.primary())if(weapon.itemNbt().contains("bf1:wex")){wind=weapon.windStrength();break;}
+            var direction=bullet.getDeltaMovement().normalize();if(direction.lengthSqr()<1e-8)direction=windOwner.getLookAngle();
+            if(wind>0)WindBlower.push(target,direction,wind*.1);return;
+        }
         if(!(bullet.getOwner() instanceof LivingEntity owner)||!(target instanceof LivingEntity victim)||victim==owner
-                ||!target(victim)||LobbyManager.respawning(victim.getUUID())||SafeZones.contains(victim))return;
+                ||(!everyone&&!target(victim))||LobbyManager.respawning(victim.getUUID())||SafeZones.contains(victim))return;
         // The knockback shotgun owns the fall its hit causes, as the blower's wind does (kill and damage credit).
         if(!everyone&&!owner.isAlliedTo(victim))DamageCredit.wind(victim,owner);
         if(!everyone){
@@ -119,6 +128,7 @@ public final class CombatRules {
             // Damage handlers and AI can restore velocity during the hit. Apply after entity ticking instead.
             WIND.put(victim,new Wind(direction.scale(wind*.1),owner));
             DamageCredit.wind(victim,owner);
+            return;
         }
         double strength=strength(bullet);
         if(strength<=0)return;
@@ -140,7 +150,7 @@ public final class CombatRules {
     @SubscribeEvent(priority=EventPriority.LOWEST,receiveCanceled=true) public static void knockback(LivingKnockBackEvent event){
         var victim=event.getEntity();
         if(victim.level().isClientSide)return;
-        if(quiet()){event.setCanceled(true);PENDING.remove(victim);return;}
+        if(quiet()||ArcShock.justHit(victim)){event.setCanceled(true);PENDING.remove(victim);return;}
         // A push gun already pushed this victim this tick: drop the extra push of its own damage hit.
         if(!pushing&&pushedNow(victim)){event.setCanceled(true);PENDING.remove(victim);return;}
         if(pushing)return;

@@ -63,7 +63,10 @@ public final class ShurikenEntity extends ThrowableItemProjectile implements net
         if(!SafeZones.contains(target)&&!LobbyManager.respawning(target.getUUID())){
             // Three shuriken can land in the same tick: each one is its own hit.
             target.invulnerableTime=0;
-            target.hurt(damageSources().thrown(this,getOwner()),(float)damage);
+            CombatRules.quietly(()->{
+                if(target.hurt(damageSources().thrown(this,getOwner()),(float)damage)&&getOwner() instanceof net.minecraft.server.level.ServerPlayer shooter)
+                    shooter.playNotifySound(net.minecraft.sounds.SoundEvents.ARROW_HIT_PLAYER,net.minecraft.sounds.SoundSource.PLAYERS,1,1);
+            });
         }
         level().playSound(null,target.blockPosition(),net.minecraft.sounds.SoundEvents.TRIDENT_HIT,net.minecraft.sounds.SoundSource.PLAYERS,.6f,1.6f);
         if(hop>=1&&hop<MAX_HOPS)ricochet(target);

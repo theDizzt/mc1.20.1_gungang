@@ -212,6 +212,16 @@ public final class BotManager {
                 .filter(BotManager::supportedPrimary).findFirst()
                 .orElseThrow(()->new IllegalArgumentException("봇 주무기는 TaCZ 총기·활·석궁·컴파운드 보우·근접 무기여야 합니다. /gungang bot weapon <주무기 ID>"));
     }
+    /** How many bots other than {@code self} that have settled on a loadout carry each weapon id now (primary or secondary slot). */
+    static Map<String,Integer> usage(UUID self,boolean primary){
+        var result=new HashMap<String,Integer>();
+        for(var a:agents){
+            if(a.id.equals(self)||!a.chosen())continue;
+            var w=primary?a.weapon:a.secondary;
+            if(w!=null)result.merge(w.id(),1,Integer::sum);
+        }
+        return result;
+    }
     static boolean weaponTaken(UUID player,String team,boolean primary,String id){return weaponHolder(player,team,primary,id)!=null;}
     /** The bot on this team (other than player) holding the weapon, or null. */
     static UUID weaponHolder(UUID player,String team,boolean primary,String id){

@@ -12,6 +12,8 @@ public final class TurretSounds {
     public static final RegistryObject<SoundEvent> STIM_START=sound("stim_start");
     /** A secondary's cooldown is over (played on the owner's client only, client/CooldownCue). */
     public static final RegistryObject<SoundEvent> COOLDOWN_READY=sound("cooldown_ready");
+    /** Played to a player an enemy M95 scope pulse has just revealed (ScanAlert). */
+    public static final RegistryObject<SoundEvent> SCAN=sound("scan");
     private static RegistryObject<SoundEvent> sound(String id){return SOUNDS.register(id,()->SoundEvent.createVariableRangeEvent(new ResourceLocation("gungang",id)));}
     public static void register(net.minecraftforge.eventbus.api.IEventBus bus){SOUNDS.register(bus);}
     private TurretSounds(){}
