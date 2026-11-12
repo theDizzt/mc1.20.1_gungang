@@ -16,7 +16,8 @@ public final class ExtraGadgetConfig {
         }
         public M95 withScopeDelay(double seconds){return new M95(damage,headshotMultiplier,magazine,rechargePerSecond,maximumCharge,smallThreshold,smallBlocks,largeThreshold,largeBlocks,thirdThreshold,thirdBlocks,unlimitedThreshold,hitscanRange,seconds,smallHitPadding,largeHitPadding,thirdHitPadding,unlimitedHitPadding,smallDamageFalloff,largeDamageFalloff,thirdDamageFalloff,unlimitedDamageFalloff,piercingDamage,normalHitCharge);}
     }
-    public static M95 m95=new M95(51,1.33,3,15,200,10,1,50,3,100,10,150,256,10);
+    public static final M95 M95_DEFAULTS=new M95(37,1.33,3,10,200,10,1,75,2,125,4,200,256,5,0,.4,.4,.4,true,true,false,false,33,50);
+    public static M95 m95=M95_DEFAULTS;
     public record AirAssault(double centerSize,double centerDamage,double outerSize,double outerDamage,double shockwaveSize,double shockwaveDamage,
                              double hoverSeconds,double diveRange,double diveSeconds,double airborneReductionPercent,double hitSpeedBonusPercent,double hitSpeedSeconds) { }
     public static final AirAssault AIR_ASSAULT_DEFAULTS=new AirAssault(2,60,4,45,12,10,1,15,.3,15,15,1.25);
@@ -180,7 +181,7 @@ public final class ExtraGadgetConfig {
         GadgetConfig.bounded(fo.radius(),.1,32);GadgetConfig.bounded(fo.durationSeconds(),.05,300);GadgetConfig.bounded(fo.intervalSeconds(),.05,60);
         for(double d:new double[]{fo.startDamage(),fo.damageStep(),fo.maxDamage()})GadgetConfig.bounded(d,0,10000);
         var ac=GadgetConfig.read("arc_thrower",ArcThrower.class,new ArcThrower(36,24,3,1),overrides,apply);
-        var sniper=GadgetConfig.read("m95",M95.class,new M95(51,1.33,3,15,200,10,1,50,3,100,10,150,256,10),overrides,apply);
+        var sniper=GadgetConfig.read("m95",M95.class,M95_DEFAULTS,overrides,apply);
         var penetrationMigration=ServerFiles.root().resolve("item/.m95-penetration10-v3");
         if(!overrides.containsKey("m95")&&!java.nio.file.Files.exists(penetrationMigration)&&sniper.maximumCharge()==240&&sniper.smallThreshold()==20&&sniper.unlimitedThreshold()==100){
             sniper=new M95(sniper.damage(),1.33,sniper.magazine(),15,200,10,1,50,3,100,10,150,sniper.hitscanRange(),sniper.scopeRevealSeconds());
@@ -198,6 +199,11 @@ public final class ExtraGadgetConfig {
                 if(apply)java.nio.file.Files.writeString(ServerFiles.root().resolve("item/m95.json"),ServerFiles.GSON.toJson(sniper));
             }
             if(apply)java.nio.file.Files.writeString(scopeMigration,"M95 default scope delay upgraded to 10 seconds.\n");
+        }
+        var balanceMigration=ServerFiles.root().resolve("item/.m95-balance-37-33-v5");
+        if(!overrides.containsKey("m95")&&!java.nio.file.Files.exists(balanceMigration)){
+            sniper=new M95(37,sniper.headshotMultiplier(),sniper.magazine(),10,Math.max(200,sniper.maximumCharge()),10,1,75,2,125,4,200,sniper.hitscanRange(),5,0,.4,.4,.4,true,true,false,false,33,sniper.normalHitCharge());
+            if(apply){java.nio.file.Files.writeString(ServerFiles.root().resolve("item/m95.json"),ServerFiles.GSON.toJson(sniper));java.nio.file.Files.writeString(balanceMigration,"M95 37/33 balance applied once. Further modify edits are preserved.\n");}
         }
         GadgetConfig.bounded(sniper.damage(),0,10000);GadgetConfig.bounded(sniper.headshotMultiplier(),0,10000);
         GadgetConfig.bounded(sniper.piercingDamage(),0,10000);

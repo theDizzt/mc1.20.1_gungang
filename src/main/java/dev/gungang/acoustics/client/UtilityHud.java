@@ -11,6 +11,7 @@ import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID,value=Dist.CLIENT)
 public final class UtilityHud {
+    private static final net.minecraft.resources.ResourceLocation OBSERVED_ICON=new net.minecraft.resources.ResourceLocation("gungang","textures/gui/m95_observed.png");
     private static CombatGadgets.Hud state=new CombatGadgets.Hud(java.util.List.of(),0,0,3,1,"");
     private static long received;
     public static void receive(String json) {state=ServerFiles.GSON.fromJson(json,CombatGadgets.Hud.class);BearTraps.clientArmed=state.bearTrapArmed();var level=Minecraft.getInstance().level;received=level==null?0:level.getGameTime();}
@@ -96,8 +97,21 @@ public final class UtilityHud {
             y-=height+4;
         }
         for(var gauge:state.gauges())if(gauge.kind().equals("m95_observed")&&gauge.remaining()-(mc.level.getGameTime()-received+partial)>0){
-            g.drawString(mc.font,Lang.tr("관측됨"),center-mc.font.width(Lang.tr("관측됨"))/2,y,0xFFFF7777,true);break;
+            observedWarning(g,center,y);break;
         }
+    }
+    private static void observedWarning(GuiGraphics g,int center,int aboveY){
+        var mc=Minecraft.getInstance();String label=Lang.tr("관측됨");
+        int textWidth=(int)Math.ceil(mc.font.width(label)*1.5f);
+        int panelWidth=Math.max(108,textWidth+44),left=center-panelWidth/2,top=Math.max(6,aboveY-24);
+        boolean bright=(mc.level.getGameTime()/4)%2==0;
+        int edge=bright?0xFFFF5252:0xFFAE3038;
+        g.fill(left,top,left+panelWidth,top+30,0xEE25090D);
+        g.fill(left,top,left+panelWidth,top+2,edge);g.fill(left,top+28,left+panelWidth,top+30,edge);
+        g.fill(left,top,left+2,top+30,edge);g.fill(left+panelWidth-2,top,left+panelWidth,top+30,edge);
+        g.blit(OBSERVED_ICON,left+4,top+3,24,24,0f,0f,64,64,64,64);
+        g.pose().pushPose();g.pose().translate(left+34,top+9,0);g.pose().scale(1.5f,1.5f,1);
+        g.drawString(mc.font,label,0,0,bright?0xFFFFFFFF:0xFFFFB4B4,true);g.pose().popPose();
     }
     static void gauge(GuiGraphics g,int center,int y,int width,int height,float remaining,float maximum,String label,float partial) {
         float fraction=Math.min(1,remaining/Math.max(1,maximum));int x=center-width/2;
