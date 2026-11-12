@@ -654,6 +654,7 @@
   "태양": "Sun",
   "터렛": "Turret",
   "터렛 체력": "Turret health",
+  "터렛 탄약": "Turret ammo",
   "텍스처가 없는 블록": "Blocks without a texture",
   "통과 후 추가 시간 (초)": "Extra time after passing (s)",
   "투명화 %.1f초": "Invisible %.1fs",
@@ -745,5 +746,10 @@
   "· 다른 항목(%s)의 설정": "· from another item (%s)",
   "가져오기 (%s)": "Imported (%s)",
   "· 변경 %d개 · 동일 %d개": "· %d changed · %d unchanged",
-  "· 건너뜀 %d개": "· %d skipped"
+  "· 건너뜀 %d개": "· %d skipped",
+  "광선": "Beam",
+  "수평 이동": "Hover",
+  "투명화": "Cloak",
+  "콤보 · ×%.2f · %s": "Combo · ×%.2f · %s",
+  "투시까지": "Wallhack in"
 }

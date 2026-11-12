@@ -118,7 +118,9 @@ public final class RapierItem extends Item {
     }
     @net.minecraftforge.eventbus.api.SubscribeEvent public static void tick(net.minecraftforge.event.TickEvent.PlayerTickEvent event){
         var p=event.player;if(event.phase!=net.minecraftforge.event.TickEvent.Phase.END||p.level().isClientSide)return;
-        if(!(p.getMainHandItem().getItem() instanceof RapierItem)||!p.isAlive())resetCombo(p);
+        // Using a secondary (the G/H macro swaps it into the main hand and the rapier into the off hand) keeps the
+        // combo: it is neither reset nor advanced, and its 3 s timer keeps running. Any other weapon change resets it.
+        if(!(p.getMainHandItem().getItem() instanceof RapierItem)&&!(p.getOffhandItem().getItem() instanceof RapierItem)||!p.isAlive())resetCombo(p);
         if(p.getPersistentData().contains(ENERGY)&&p.getPersistentData().getInt(ENERGY)<100)save(p,energy(p).tick());
         dashContacts(p);
     }
@@ -169,6 +171,8 @@ public final class RapierItem extends Item {
     /** Shared left-click damage path, also used once per enemy touched by a dash. */
     static boolean hit(Player p,net.minecraft.world.entity.LivingEntity target){
         if(!target.isAlive()||SafeZones.contains(target)||target instanceof Player victim&&!p.canHarmPlayer(victim))return false;
+        // Only the rapier's own thrust or dash advances or refreshes the combo, never a secondary in the main hand.
+        if(!(p.getMainHandItem().getItem() instanceof RapierItem))return false;
         var next=combo(p).hit(p.level().getGameTime());
         int immunity=target.invulnerableTime;float before=target.getHealth()+target.getAbsorptionAmount();target.invulnerableTime=0;
         if(!target.hurt(p.damageSources().playerAttack(p),RapierCombo.damage(next.stacks()))||target.getHealth()+target.getAbsorptionAmount()>=before){target.invulnerableTime=immunity;return false;}
