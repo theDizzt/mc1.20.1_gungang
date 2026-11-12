@@ -71,7 +71,7 @@ public final class WeaponPatch {
         names.put("small_health_pack", "블록 · 소형 힐팩"); names.put("large_health_pack", "블록 · 대형 힐팩");
         names.put("uxo", "블록 · 불발탄"); names.put("gas_barrel", "블록 · 가스통");
         names.put("acid", "블록 · 산성 용액"); names.put("acid_nozzle", "블록 · 산성 분수 노즐"); names.put("nozzle", "블록 · 물 분수 노즐"); names.put("puddle", "블록 · 물웅덩이");
-        names.put("cracked_oak_planks", "블록 · 금 간 참나무 판자"); names.put("cracked_glass", "블록 · 금 간 유리"); names.put("cracked_glass_pane", "블록 · 금 간 유리판");
+        names.put("cracked_oak_planks", "블록 · 금 간 참나무 판자"); names.put(BarrierPlankBlock.ID, "블록 · 방벽 판자"); names.put("cracked_glass", "블록 · 금 간 유리"); names.put("cracked_glass_pane", "블록 · 금 간 유리판");
         var colors = Map.ofEntries(Map.entry("white", "흰색"), Map.entry("orange", "주황색"), Map.entry("magenta", "자홍색"), Map.entry("light_blue", "하늘색"),
                 Map.entry("yellow", "노란색"), Map.entry("lime", "연두색"), Map.entry("pink", "분홍색"), Map.entry("gray", "회색"), Map.entry("light_gray", "회백색"),
                 Map.entry("cyan", "청록색"), Map.entry("purple", "보라색"), Map.entry("blue", "파란색"), Map.entry("brown", "갈색"), Map.entry("green", "초록색"),

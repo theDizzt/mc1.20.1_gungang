@@ -49,7 +49,7 @@ public final class GimmickBlocks {
     public static final RegistryObject<AcidBlock> ACID_BLOCK=BLOCKS.register("acid",AcidBlock::new);
     public static final RegistryObject<Item> ACID_BUCKET=ITEMS.register("acid_bucket",()->new BucketItem(ACID_SOURCE,new Item.Properties().craftRemainder(Items.BUCKET).stacksTo(1)));
     private static ForgeFlowingFluid.Properties acidProperties(){return new ForgeFlowingFluid.Properties(ACID_TYPE,ACID_SOURCE,ACID_FLOWING).bucket(ACID_BUCKET).block(ACID_BLOCK);}
-    private static RegistryObject<GimmickBlock> block(String id){var b=BLOCKS.register(id,()->id.endsWith("nozzle")?new NozzleBlock(id):id.equals("gas_barrel")?new GasBarrelBlock():new GimmickBlock(id));GIMMICKS.put(id,b);ITEMS.register(id,()->new BlockItem(b.get(),new Item.Properties()));return b;}
+    private static RegistryObject<GimmickBlock> block(String id){var b=BLOCKS.register(id,()->id.endsWith("nozzle")?new NozzleBlock(id):id.equals("gas_barrel")?new GasBarrelBlock():id.equals(BarrierPlankBlock.ID)?new BarrierPlankBlock():new GimmickBlock(id));GIMMICKS.put(id,b);ITEMS.register(id,()->new BlockItem(b.get(),new Item.Properties()));return b;}
     public static void register(IEventBus bus){BLOCKS.register(bus);ITEMS.register(bus);BES.register(bus);ENTITIES.register(bus);FLUIDS.register(bus);TYPES.register(bus);SOUNDS.register(bus);EFFECTS.register(bus);}
     private GimmickBlocks(){}
 }
