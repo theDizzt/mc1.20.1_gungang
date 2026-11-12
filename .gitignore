@@ -10,3 +10,4 @@ run-server/
 logs/
 server_resource/
 maps/
+!docs/server-examples/config/gungang/server/maps/

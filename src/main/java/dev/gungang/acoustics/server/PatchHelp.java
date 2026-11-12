@@ -311,6 +311,8 @@ public final class PatchHelp {
         if (key.startsWith("item:")) {
             String field = key.substring(5);
             String text = setting == null ? null : ITEM_OF.get(setting + "." + field);
+            if (text == null && setting != null && setting.equals(BarrierPlankBlock.ID) && field.equals("health"))
+                text = "용도: 방벽 판자 블록 1칸의 체력. 총알·근접·투사체·폭발 피해가 쌓여 0이 되면 그 칸만 구멍이 나고(나머지 판자와 진입금지 표지는 그대로), 경기(맵)가 다시 시작되면 복구됩니다.\n산출식: 부수는 데 필요한 탄 수 ≈ 체력 / 1발 피해";
             if (text == null && setting != null && setting.startsWith("cracked_") && field.equals("health"))
                 text = "용도: 금 간 블록의 체력. 총알·폭발 피해가 쌓여 0이 되면 부서지고, 경기(맵)가 다시 시작되면 복구됩니다.\n산출식: 부수는 데 필요한 탄 수 ≈ 체력 / 1발 피해";
             if (text == null) text = ITEM.get(field);

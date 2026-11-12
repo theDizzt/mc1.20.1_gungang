@@ -54,7 +54,7 @@ public final class WeaponPatchScreen extends ArenaScreen {
         boolean saved = switched || next.error() == null || next.error().isEmpty();
         if (saved) { edits.clear(); pendingFalloff = null; }
         if (switched) scroll = 0;
-        view = next; waiting = false;
+        view = next; waiting = false; notice = "";
         if (saved) resetCurve();
         rebuildWidgets();
     }
@@ -394,14 +394,119 @@ public final class WeaponPatchScreen extends ArenaScreen {
             box.setResponder(s -> edits.put(row.key(), s));
             addRenderableWidget(box);
         }
-        int bottom = bottom(), x = listX(), w = left() + body() - 12 - x, third = (w - 8) / 3;
-        button(Lang.tr("변경 취소"), x, bottom, third, 20, !waiting, MUTED, () -> { edits.clear(); pendingFalloff = null; curveNote = ""; status(""); rebuildWidgets(); });
-        button(secondary() ? Lang.tr("적용 (로비)") : Lang.tr("실시간 적용"), x + third + 4, bottom, third, 20, !waiting, ACCENT, () -> {
+        int bottom = bottom(), x = listX(), w = left() + body() - 12 - x, fifth = (w - 16) / 5;
+        button(Lang.tr("변경 취소"), x, bottom, fifth, 20, !waiting, MUTED, () -> { edits.clear(); pendingFalloff = null; curveNote = ""; notice = ""; status(""); rebuildWidgets(); });
+        button(Lang.tr("내보내기"), x + fifth + 4, bottom, fifth, 20, !waiting && !view.rows().isEmpty(), MUTED, () -> { exportSettings(); rebuildWidgets(); });
+        button(Lang.tr("가져오기"), x + (fifth + 4) * 2, bottom, fifth, 20, !waiting && !view.rows().isEmpty(), MUTED, () -> { importSettings(); rebuildWidgets(); });
+        button(secondary() ? Lang.tr("적용 (로비)") : Lang.tr("실시간 적용"), x + (fifth + 4) * 3, bottom, fifth, 20, !waiting, ACCENT, () -> {
             var changes = changes();
             if (changes.isEmpty()) { status(Lang.tr("변경한 항목이 없습니다.")); rebuildWidgets(); return; }
+            notice = "";
             request("apply", view.id(), changes); rebuildWidgets();
         });
-        closeButton(x + (third + 4) * 2, bottom, w - (third + 4) * 2, 20);
+        closeButton(x + (fifth + 4) * 4, bottom, w - (fifth + 4) * 4, 20);
+    }
+
+    // ---- Export / import -------------------------------------------------------------------------------------
+
+    /** Marks an exported settings file / clipboard text. */
+    private static final String EXPORT_FORMAT = "gungang-modify-ui";
+    /** Client-side status line of the last export / import (green), shown until the next server answer or edit action. */
+    private String notice = "";
+    private static java.nio.file.Path exportDir() { return Minecraft.getInstance().gameDirectory.toPath().resolve("gungang").resolve("modify_ui_exports"); }
+    private static String safe(String text) { return text == null || text.isEmpty() ? "_" : text.replaceAll("[^A-Za-z0-9_.-]", "_"); }
+    private void info(String text) { notice = text; status(""); }
+
+    /**
+     * Writes every row's shown value (typed edits included) and a queued falloff curve to
+     * {@code <game>/gungang/modify_ui_exports/<kind>_<id>_<time>.json} and copies the same JSON to the clipboard.
+     */
+    private void exportSettings() {
+        var root = new com.google.gson.JsonObject();
+        root.addProperty("format", EXPORT_FORMAT);
+        root.addProperty("version", 1);
+        root.addProperty("kind", kind(view));
+        root.addProperty("id", view.id());
+        root.addProperty("name", view.name());
+        var values = new com.google.gson.JsonObject();
+        for (var row : view.rows()) values.addProperty(row.key(), current(row).strip());
+        root.add("values", values);
+        if (pendingFalloff != null && hasCurve()) root.add(WeaponPatch.FALLOFF, com.google.gson.JsonParser.parseString(pendingFalloff));
+        String json = ServerFiles.GSON.toJson(root);
+        Minecraft.getInstance().keyboardHandler.setClipboard(json);
+        try {
+            var dir = exportDir();
+            java.nio.file.Files.createDirectories(dir);
+            String stamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            var file = dir.resolve(safe(kind(view)) + "_" + safe(view.id()) + "_" + stamp + ".json");
+            java.nio.file.Files.writeString(file, json, java.nio.charset.StandardCharsets.UTF_8);
+            info(Lang.format("내보내기 완료 · %d개 항목 · 클립보드 복사 · %s", values.size(), "gungang/modify_ui_exports/" + file.getFileName()));
+        } catch (java.io.IOException | RuntimeException failure) {
+            info(Lang.tr("클립보드에 복사했습니다 (파일 저장 실패: ") + failure.getMessage() + ")");
+        }
+    }
+
+    /**
+     * Reads an export from the clipboard, or else this item's newest export file, and puts the values that differ
+     * from the saved ones into the edit boxes. Nothing is sent: the usual apply button saves them.
+     */
+    private void importSettings() {
+        com.google.gson.JsonObject root = parseExport(Minecraft.getInstance().keyboardHandler.getClipboard());
+        String source = Lang.tr("클립보드");
+        if (root == null) {
+            var file = newestExport();
+            if (file == null) { status(Lang.tr("가져올 설정이 없습니다. 내보낸 JSON을 클립보드에 복사하거나 이 항목을 먼저 내보내세요.")); return; }
+            try { root = parseExport(java.nio.file.Files.readString(file, java.nio.charset.StandardCharsets.UTF_8)); }
+            catch (java.io.IOException failure) { root = null; }
+            if (root == null) { status(Lang.tr("내보낸 파일을 읽을 수 없습니다: ") + file.getFileName()); return; }
+            source = file.getFileName().toString();
+        }
+        String kind = root.has("kind") ? kind(root.get("kind").getAsString()) : WeaponPatch.PRIMARY;
+        if (!kind.equals(kind(view))) { status(Lang.tr("다른 탭의 설정입니다. 같은 탭(주무기/보조/전역/맵)의 항목에만 가져올 수 있습니다.")); return; }
+        var values = root.has("values") && root.get("values").isJsonObject() ? root.getAsJsonObject("values") : new com.google.gson.JsonObject();
+        var rows = new HashMap<String, WeaponPatch.Row>();
+        for (var row : view.rows()) rows.put(row.key(), row);
+        int changed = 0, same = 0, skipped = 0;
+        for (var entry : values.entrySet()) {
+            var row = rows.get(entry.getKey());
+            var value = entry.getValue();
+            if (row == null || value == null || !value.isJsonPrimitive()) { skipped++; continue; }
+            String text = value.getAsString().strip();
+            if (row.numeric() && !text.matches("-?[0-9]*\\.?[0-9]*")) { skipped++; continue; }
+            if (text.equals(row.value())) { edits.remove(row.key()); same++; }
+            else { edits.put(row.key(), text); changed++; }
+        }
+        boolean curve = false;
+        if (root.has(WeaponPatch.FALLOFF) && root.get(WeaponPatch.FALLOFF).isJsonObject() && hasCurve()) {
+            try {
+                var spec = ServerFiles.GSON.fromJson(root.get(WeaponPatch.FALLOFF), DamageFalloff.class);
+                spec.validate();
+                pendingFalloff = ServerFiles.GSON.toJson(spec); curve = true;
+            } catch (RuntimeException invalid) { skipped++; }
+        }
+        String from = root.has("id") && !root.get("id").getAsString().equals(view.id())
+                ? Lang.format(" · 다른 항목(%s)의 설정", root.get("id").getAsString()) : "";
+        info(Lang.format("가져오기 (%s)", source) + from + Lang.format(" · 변경 %d개 · 동일 %d개", changed, same)
+                + (skipped > 0 ? Lang.format(" · 건너뜀 %d개", skipped) : "") + (curve ? Lang.tr(" · 거리별 피해 곡선") : "")
+                + Lang.tr(" · 적용을 눌러야 저장됩니다"));
+    }
+    /** The export JSON in {@code text}, or null when it is not one. */
+    private static com.google.gson.JsonObject parseExport(String text) {
+        if (text == null || text.isBlank()) return null;
+        try {
+            var element = com.google.gson.JsonParser.parseString(text.strip());
+            if (!element.isJsonObject()) return null;
+            var root = element.getAsJsonObject();
+            return root.has("format") && EXPORT_FORMAT.equals(root.get("format").getAsString()) ? root : null;
+        } catch (RuntimeException malformed) { return null; }
+    }
+    /** This item's most recent export file, or null. */
+    private java.nio.file.Path newestExport() {
+        String prefix = safe(kind(view)) + "_" + safe(view.id()) + "_";
+        try (var files = java.nio.file.Files.list(exportDir())) {
+            return files.filter(p -> { String n = p.getFileName().toString(); return n.startsWith(prefix) && n.endsWith(".json") && n.length() == prefix.length() + 20; })
+                    .max(Comparator.comparing(p -> p.getFileName().toString())).orElse(null);
+        } catch (java.io.IOException | RuntimeException missing) { return null; }
     }
     /** Switches the list to primaries or secondaries (opening that tab's first weapon), unless edits are pending. */
     private void tab(String label, String kind, int x, int w) {
@@ -476,6 +581,7 @@ public final class WeaponPatchScreen extends ArenaScreen {
         int count = changes().size();
         if (view.error() != null && !view.error().isEmpty()) Marquee.draw(g,font,view.error(),listX(),statusY,statusW,0xFFFF6666,false);
         else if (waiting) g.drawString(font, Lang.tr("서버에 적용하는 중..."), listX(), statusY, MUTED, false);
+        else if (!notice.isEmpty()) Marquee.draw(g,font,notice,listX(),statusY,statusW,READY,false);
         else if (count > 0 && map()) g.drawString(font, Lang.tr("변경 ") + count + Lang.tr("개 · 로비에서 적용하면 맵 파일에 저장하고 맵을 다시 불러옵니다."), listX(), statusY, ACCENT, false);
         else if (count > 0) g.drawString(font, secondary() ? Lang.tr("변경 ") + count + Lang.tr("개 · 로비에서 적용하면 저장되고 다음 지급부터 반영됩니다.") : Lang.tr("변경 ") + count + Lang.tr("개 · 실시간 적용을 누르면 저장 후 바로 반영됩니다."), listX(), statusY, ACCENT, false);
         else if (view.message() != null && !view.message().isEmpty()) Marquee.draw(g,font,view.message(),listX(),statusY,statusW,READY,false);

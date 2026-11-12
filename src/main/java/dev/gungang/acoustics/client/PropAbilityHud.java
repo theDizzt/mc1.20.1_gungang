@@ -116,15 +116,15 @@ final class PropAbilityHud {
     static int gauges(GuiGraphics g,int center,int y,int width,int height,float partial){
         var row=PropHuntClient.ability();if(row==null)return y;
         float active=Math.max(0,row.active()-PropHuntClient.elapsed(partial));
-        if(active>0){UtilityHud.gauge(g,center,y,width,height,active,100,String.format(java.util.Locale.ROOT,Lang.tr("수평 이동 %.1f초"),active/20),partial);y-=height+4;}
+        if(active>0){AuxBar.draw(g,center,y,width,height,AuxBar.Kind.COOLDOWN,active,100,AuxBar.seconds(active),Lang.tr("수평 이동"),partial);y-=height+4;}
         if(row.auxiliaryMax()>0){
             // Dolls show their gauge in seconds (184 beam, 191 cloak); a spawner its spider's health.
-            String label=switch(row.block()){
-                case "gungang:eunbi_doll"->String.format(java.util.Locale.ROOT,Lang.tr("광선 %.1f초"),row.auxiliary());
-                case "gungang:hanbi_doll"->String.format(java.util.Locale.ROOT,Lang.tr("투명화 %.1f초"),row.auxiliary());
-                default->Lang.tr("독거미 ")+HudHealth.number(row.auxiliary())+"/"+HudHealth.number(row.auxiliaryMax());
-            };
-            UtilityHud.gauge(g,center,y,width,height,row.auxiliary(),row.auxiliaryMax(),label,partial);y-=height+4;
+            switch(row.block()){
+                case "gungang:eunbi_doll"->AuxBar.draw(g,center,y,width,height,AuxBar.Kind.COOLDOWN,row.auxiliary(),row.auxiliaryMax(),AuxBar.seconds(row.auxiliary()*20),Lang.tr("광선"),partial);
+                case "gungang:hanbi_doll"->AuxBar.draw(g,center,y,width,height,AuxBar.Kind.COOLDOWN,row.auxiliary(),row.auxiliaryMax(),AuxBar.seconds(row.auxiliary()*20),Lang.tr("투명화"),partial);
+                default->AuxBar.draw(g,center,y,width,height,AuxBar.Kind.HEALTH,row.auxiliary(),row.auxiliaryMax(),AuxBar.ratio(row.auxiliary(),row.auxiliaryMax()),Lang.tr("독거미"),partial);
+            }
+            y-=height+4;
         }
         return y;
     }

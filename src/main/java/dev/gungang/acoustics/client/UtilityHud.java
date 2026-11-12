@@ -13,8 +13,11 @@ import net.minecraftforge.fml.common.Mod;
 public final class UtilityHud {
     private static CombatGadgets.Hud state=new CombatGadgets.Hud(java.util.List.of(),0,0,3,1,"");
     private static long received;
-    public static void receive(String json) {state=ServerFiles.GSON.fromJson(json,CombatGadgets.Hud.class);BearTraps.clientArmed=state.bearTrapArmed();var level=Minecraft.getInstance().level;received=level==null?0:level.getGameTime();}
-    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event) {state=new CombatGadgets.Hud(java.util.List.of(),0,0,3,1,"");received=0;BearTraps.clientArmed=false;}
+    public static void receive(String json) {
+        state=ServerFiles.GSON.fromJson(json,CombatGadgets.Hud.class);BearTraps.clientArmed=state.bearTrapArmed();var level=Minecraft.getInstance().level;received=level==null?0:level.getGameTime();
+        for(var gauge:state.gauges())if(gauge.kind().equals("m95_observed")&&gauge.remaining()>0)ScanAlert.observed(received,gauge.remaining());
+    }
+    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event) {state=new CombatGadgets.Hud(java.util.List.of(),0,0,3,1,"");received=0;BearTraps.clientArmed=false;ScanAlert.clear();}
     /** Pinned by an enemy bear trap: movement input is dropped so the client does not fight the server's anchor. */
     static boolean rooted() {
         var mc=Minecraft.getInstance();if(mc.level==null)return false;
@@ -24,25 +27,19 @@ public final class UtilityHud {
     @SubscribeEvent public static void input(InputEvent.InteractionKeyMappingTriggered event) {
         if(FreeForAllHud.blocked()||CombatGadgets.holdingShield(Minecraft.getInstance().player)) {event.setCanceled(true);event.setSwingHand(false);}
     }
-    /**
-     * Fill colours of the stacked secondary bars, from the one nearest the health bar: blue (the original), then
-     * pastel green, yellow, orange and red; a sixth starts over.
-     */
-    static final int[] GAUGE_COLORS={0xFF65D9FF,0xFF8EE6A6,0xFFF2E17D,0xFFFFBC85,0xFFFF9A9A};
-    private static int drawn;
-    private static int nextColor(){return GAUGE_COLORS[drawn++%GAUGE_COLORS.length];}
+    /** Stacked secondary bars ({@link AuxBar}) above the health bar at {@code healthBarY}, nearest first. */
     static void gauges(GuiGraphics g,int center,int healthBarY,int width,int height,float partial) {
-        drawn=0;
         var mc=Minecraft.getInstance();if(mc.player==null||!mc.player.isAlive()||mc.player.isSpectator())return;
         int y=healthBarY-36-height;
         y=PropAbilityHud.gauges(g,center,y,width,height,partial);
-        var blade=mc.player.getMainHandItem();
+        // While a secondary is in use the rapier sits in the off hand; its combo keeps counting down there.
+        var blade=mc.player.getMainHandItem().getItem() instanceof RapierItem?mc.player.getMainHandItem():mc.player.getOffhandItem();
         if(blade.getItem() instanceof RapierItem&&blade.hasTag()){
             var tag=blade.getTag();int stacks=tag.getInt(RapierItem.COMBO);
             float left=tag.getLong(RapierItem.COMBO_END)-mc.level.getGameTime()-partial;
             if(stacks>0&&left>0&&left<=RapierCombo.DURATION){
-                String label=String.format(java.util.Locale.ROOT,Lang.tr("콤보 %d/5 · ×%.2f · %.1fs"),stacks,RapierCombo.damage(stacks)/21f,left/20f);
-                gauge(g,center,y,width,height,left,RapierCombo.DURATION,label,partial);y-=height+4;
+                String caption=Lang.format("콤보 · ×%.2f · %s",RapierCombo.damage(stacks)/21f,AuxBar.seconds(left));
+                AuxBar.draw(g,center,y,width,height,AuxBar.Kind.OTHER,left,RapierCombo.DURATION,stacks+"/5",caption,partial);y-=height+4;
             }
         }
         var boots=HermesBootsLayer.worn(mc.player);
@@ -50,98 +47,77 @@ public final class UtilityHud {
         var awn=PropAwn.is(mc.player.getMainHandItem())?mc.player.getMainHandItem():mc.player.getOffhandItem();
         if(PropAwn.is(awn)){
             long remaining=SecondaryRuntime.remaining(mc.player,awn);
-            if(remaining>0){gauge(g,center,y,width,height,remaining,600,Lang.tr("AWN 재장전 ")+(remaining+19)/20+Lang.tr("초"),partial);y-=height+4;}
+            if(remaining>0){AuxBar.draw(g,center,y,width,height,AuxBar.Kind.COOLDOWN,remaining,600,AuxBar.seconds(remaining),Lang.tr("AWN 재장전"),partial);y-=height+4;}
         }
         var protection=FreeForAllHud.row(mc.player.getUUID());
         if(protection!=null&&protection.protectionTicks()>0){
-            gauge(g,center,y,width,height,protection.protectionTicks(),protection.protectionTotal(),Lang.tr("무적 ")+(protection.protectionTicks()+19)/20+Lang.tr("초"),partial);
+            AuxBar.draw(g,center,y,width,height,AuxBar.Kind.COOLDOWN,protection.protectionTicks(),protection.protectionTotal(),AuxBar.seconds(protection.protectionTicks()),Lang.tr("무적"),partial);
             y-=height+4;
         }
         String flagRange="";
-        CombatGadgets.Gauge turretAmmo=null;
+        CombatGadgets.Gauge turretAmmo=null,flagHealth=null;
         for(var gauge:state.gauges())if(gauge.kind().equals("turret_ammo"))turretAmmo=gauge;
         for(var gauge:state.gauges()) {
             if(gauge.kind().equals("command_flag_range")){flagRange=" · "+HudHealth.number(gauge.remaining())+Lang.tr("블럭");continue;}
-            if(gauge.kind().equals("command_flag_health")){
-                gauge(g,center,y,width,height,gauge.remaining(),gauge.maximum(),Lang.tr("깃발 체력 ")+HudHealth.number(gauge.remaining())+"/"+HudHealth.number(gauge.maximum()),partial);y-=height+4;continue;
-            }
+            // Each flag: its survival time first (purple bar), then its health above it.
+            if(gauge.kind().equals("command_flag_health")){flagHealth=gauge;continue;}
             if(gauge.kind().equals("command_flag_age")){
                 float age=gauge.remaining()+Math.max(0,mc.level.getGameTime()-received+partial);
-                gauge(g,center,y,width,height,age,gauge.maximum(),Lang.tr("깃발 생존 ")+(int)(age/20)+Lang.tr("초")+(age>=gauge.maximum()?Lang.tr(" · 모든 아군"):flagRange),partial);y-=height+4;continue;
+                AuxBar.draw(g,center,y,width,height,AuxBar.Kind.OTHER,age,gauge.maximum(),AuxBar.seconds(age),
+                        Lang.tr("깃발 생존")+(age>=gauge.maximum()?Lang.tr(" · 모든 아군"):flagRange),partial);y-=height+4;
+                if(flagHealth!=null){y=flagHealth(g,center,y,width,height,flagHealth,partial);flagHealth=null;}
+                continue;
             }
             if(gauge.kind().equals("m95_observed"))continue;
             if(gauge.kind().equals("m95_scope")){
                 float remaining=Math.max(0,gauge.remaining()-(mc.level.getGameTime()-received+partial));
-                String label=remaining>0?String.format(java.util.Locale.ROOT,Lang.tr("투시까지 %.1f초"),remaining/20):Lang.tr("투시 준비 완료");
-                gauge(g,center,y,width,height,gauge.maximum()-remaining,gauge.maximum(),label,partial);
+                AuxBar.draw(g,center,y,width,height,AuxBar.Kind.COOLDOWN,gauge.maximum()-remaining,gauge.maximum(),
+                        remaining>0?AuxBar.seconds(remaining):"",remaining>0?Lang.tr("투시까지"):Lang.tr("투시 준비 완료"),partial);
                 y-=height+4;continue;
             }
             if(gauge.kind().equals("m95")){
-                gauge(g,center,y,width,height,gauge.remaining(),gauge.maximum(),Lang.tr("관통력 ")+HudHealth.number(gauge.remaining())+"/"+HudHealth.number(gauge.maximum()),partial);
+                AuxBar.draw(g,center,y,width,height,AuxBar.Kind.OTHER,gauge.remaining(),gauge.maximum(),AuxBar.ratio(gauge.remaining(),gauge.maximum()),Lang.tr("관통력"),partial);
                 y-=height+4;continue;
             }
             if(gauge.kind().equals("turret_ammo"))continue;
             if(gauge.kind().equals("turret_health")) {
-                // Turret: its health on the bar, its magazine as a line above.
-                gauge(g,center,y,width,height,gauge.remaining(),gauge.maximum(),Lang.tr("터렛 체력 ")+HudHealth.number(gauge.remaining())+"/"+HudHealth.number(gauge.maximum()),partial);
-                if(turretAmmo!=null)y=turretAmmo(g,center,y,turretAmmo);
-                y-=height+4;continue;
+                // Turret: its health on one bar, its magazine on the bar above.
+                AuxBar.draw(g,center,y,width,height,AuxBar.Kind.HEALTH,gauge.remaining(),gauge.maximum(),AuxBar.ratio(gauge.remaining(),gauge.maximum()),Lang.tr("터렛 체력"),partial);
+                y-=height+4;
+                if(turretAmmo!=null){
+                    int count=Math.max(0,Math.round(turretAmmo.remaining())),capacity=Math.max(1,Math.round(turretAmmo.maximum()));
+                    AuxBar.draw(g,center,y,width,height,AuxBar.Kind.AMMO,count,capacity,count+"/"+capacity,Lang.tr("터렛 탄약"),partial);y-=height+4;
+                }
+                continue;
             }
             float remaining=gauge.remaining();if(gauge.timed())remaining-=Math.max(0,mc.level.getGameTime()-received+partial);
             if(remaining<=0)continue;
             if(gauge.kind().equals("shield")&&!CombatGadgets.holdingShield(mc.player))continue;
             String name=switch(gauge.kind()){case "bomb_plant"->Lang.tr("폭탄 설치");case "bomb_defuse"->Lang.tr("폭탄 해체");case "shield"->Lang.tr("방패");case "infrared_scanner"->Lang.tr("스캐너");case "jetpack"->Lang.tr("제트팩");case "bear_trap_recall"->Lang.tr("베어트랩 회수");case "bear_trap_root"->Lang.tr("베어트랩 속박");default->Lang.tr("아드레날린");};
-            String value=gauge.timed()?String.format(java.util.Locale.ROOT,"%.1fs",remaining/20f):HudHealth.number(remaining)+"/"+HudHealth.number(gauge.maximum());
-            gauge(g,center,y,width,height,remaining,gauge.maximum(),name+" "+value,partial);
+            var kind=gauge.timed()?AuxBar.Kind.COOLDOWN:gauge.kind().equals("shield")?AuxBar.Kind.HEALTH:AuxBar.Kind.OTHER;
+            String value=gauge.timed()?AuxBar.seconds(remaining):AuxBar.ratio(remaining,gauge.maximum());
+            AuxBar.draw(g,center,y,width,height,kind,remaining,gauge.maximum(),value,name,partial);
             y-=height+4;
         }
-        for(var gauge:state.gauges())if(gauge.kind().equals("m95_observed")&&gauge.remaining()-(mc.level.getGameTime()-received+partial)>0){
-            g.drawString(mc.font,Lang.tr("관측됨"),center-mc.font.width(Lang.tr("관측됨"))/2,y,0xFFFF7777,true);break;
-        }
+        if(flagHealth!=null)y=flagHealth(g,center,y,width,height,flagHealth,partial);
+        // Being revealed by an enemy M95 scope is shown by ScanAlert (blue sweep, "스캔됨", scan sound).
     }
-    static void gauge(GuiGraphics g,int center,int y,int width,int height,float remaining,float maximum,String label,float partial) {
-        float fraction=Math.min(1,remaining/Math.max(1,maximum));int x=center-width/2;
-        ShooterHud.card(g,x,y,width,height,ShooterHud.BAR_EDGE,ShooterHud.SURFACE,0);
-        HudHealthBars.fill(g,x+1,y+1,width-2,height-2,fraction,nextColor());
-        HudHealthBars.stripes(g,x+1,y+1,width-2,height-2,fraction,((Minecraft.getInstance().player==null?0:Minecraft.getInstance().player.tickCount)+partial)/20.0);
-        ShooterHud.finish(g,x+1,y+1,width-2,height-2,fraction);
-        HudText.gungangOutlined(g,label,x+3,y+1,width-6,height-2,0xFFFFFFFF);
+    private static int flagHealth(GuiGraphics g,int center,int y,int width,int height,CombatGadgets.Gauge gauge,float partial){
+        AuxBar.draw(g,center,y,width,height,AuxBar.Kind.HEALTH,gauge.remaining(),gauge.maximum(),AuxBar.ratio(gauge.remaining(),gauge.maximum()),Lang.tr("깃발 체력"),partial);
+        return y-height-4;
     }
     /**
      * 74 Hermes' Boots charges: the bar split into one cell per stored dash. Ready cells are full; the one refilling
-     * fills up dimmer, and the label gives the count and the time to the next charge.
+     * fills up dimmer, and the text gives the count and the time to the next charge.
      */
     private static void chargeGauge(GuiGraphics g,int center,int y,int width,int height,net.minecraft.world.item.ItemStack boots,float partial) {
         var mc=Minecraft.getInstance();
         int max=SecondaryRuntime.maxCharges(boots),ready=SecondaryRuntime.charges(mc.player,boots);
         float next=SecondaryRuntime.nextCharge(mc.player,boots,partial);
-        int x=center-width/2,gap=2,inner=width-2,cell=(inner-gap*(max-1))/max,color=nextColor();
-        ShooterHud.card(g,x,y,width,height,ShooterHud.BAR_EDGE,ShooterHud.SURFACE,0);
-        double seconds=(mc.player.tickCount+partial)/20.0;
-        for(int i=0;i<max;i++){
-            int cx=x+1+i*(cell+gap),cw=i==max-1?x+width-1-cx:cell;
-            if(i>0)g.fill(cx-gap,y+1,cx,y+height-1,ShooterHud.BAR_EDGE);
-            float fill=i<ready?1:i==ready?next:0;
-            HudHealthBars.fill(g,cx,y+1,cw,height-2,fill,i<ready?color:(color&0xFFFFFF)|0x80000000);
-            if(i<ready)HudHealthBars.stripes(g,cx,y+1,cw,height-2,1,seconds);
-            ShooterHud.finish(g,cx,y+1,cw,height-2,fill);
-        }
         long wait=SecondaryRuntime.refill(mc.player,boots);
         int interval=Math.max(1,boots.getTag().getInt("GunGangCooldownTicks"));
-        String label=Lang.tr("헤르메스 ")+ready+"/"+max+(ready<max?String.format(java.util.Locale.ROOT," · %.1fs",Math.max(0,((wait-1)%interval+1-partial)/20f)):"");
-        HudText.gungangOutlined(g,label,x+3,y+1,width-6,height-2,0xFFFFFFFF);
-    }
-    /** "탄약: 120/120 (100%)" centred just above the turret bar at {@code barY}, digits in the GUNGANG number font; returns the new top. */
-    private static int turretAmmo(GuiGraphics g,int center,int barY,CombatGadgets.Gauge ammo) {
-        int count=Math.round(ammo.remaining()),capacity=Math.max(1,Math.round(ammo.maximum()));
-        int percent=Math.round(100f*count/capacity);
-        var text=HudText.gungang(Lang.tr("탄약: ")+count+"/"+capacity+" ("+percent+"%)");
-        // The number font's glyphs fill the whole 9-pixel line; the Hangul label keeps the regular font.
-        var font=Minecraft.getInstance().font;int width=font.width(text),y=barY-11;
-        int color=count<=0?0xFFFF5555:count<=capacity*.25?0xFFFFFF55:0xFFFFFFFF;
-        g.drawString(font,text,center-width/2+1,y+1,0x80000000,false);
-        g.drawString(font,text,center-width/2,y,color,false);
-        return y;
+        String caption=Lang.tr("헤르메스")+(ready<max?" · "+AuxBar.seconds(Math.max(0,(wait-1)%interval+1-partial)):"");
+        AuxBar.cells(g,center,y,width,height,AuxBar.Kind.COOLDOWN,ready,max,next,ready+"/"+max,caption,partial);
     }
     static void placements(GuiGraphics g,int x,int y) {
         var font=Minecraft.getInstance().font;

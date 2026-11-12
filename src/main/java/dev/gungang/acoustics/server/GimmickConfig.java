@@ -16,7 +16,9 @@ public final class GimmickConfig {
     public static Map<String,Wall> walls=defaults();
     public static Map<String,Wall> defaults(){
         var map=new LinkedHashMap<String,Wall>();map.put("cracked_oak_planks",new Wall(100));map.put("cracked_glass",new Wall(60));map.put("cracked_glass_pane",new Wall(40));
-        for(var color:net.minecraft.world.item.DyeColor.values())map.put("cracked_"+color.getName()+"_concrete",new Wall(200));return map;
+        for(var color:net.minecraft.world.item.DyeColor.values())map.put("cracked_"+color.getName()+"_concrete",new Wall(200));
+        map.put(BarrierPlankBlock.ID,new Wall(200)); // per block; the 방벽 secondary's whole wall also holds 200
+        return map;
     }
     public static void load()throws IOException{
         load(java.util.Map.of(),true);

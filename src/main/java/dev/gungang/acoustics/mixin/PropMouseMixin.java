@@ -6,6 +6,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class PropMouseMixin {
     @Inject(method="turn",at=@At("HEAD"),cancellable=true)
     private void gungang$lockLook(double yaw,double pitch,CallbackInfo ci){
-        if((Object)this==net.minecraft.client.Minecraft.getInstance().player&&dev.gungang.acoustics.client.PropHuntClient.lockLook())ci.cancel();
+        if((Object)this==net.minecraft.client.Minecraft.getInstance().player&&(dev.gungang.acoustics.client.PropHuntClient.lockLook()||dev.gungang.acoustics.client.ArcShockClient.locked()))ci.cancel();
     }
 }
