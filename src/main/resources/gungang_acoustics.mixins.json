@@ -21,6 +21,7 @@
     "ShieldPoseMixin",
     "ChannelMixin",
     "SoundEngineMixin",
+    "SoundOptionsScreenMixin",
     "MinecraftInputMixin",
     "TaczShootInputMixin",
     "TaczAimInputMixin",
