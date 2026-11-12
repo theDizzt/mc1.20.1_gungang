@@ -1,0 +1,77 @@
+{
+  "id": "12",
+  "name": "멕시코 - 카스티요",
+  "description": "거점 점령 / 팀 데스매치 / 숨바꼭질 · 중앙 거점을 지켜 100점 먼저 달성",
+  "releaseDate": "2026-11-16",
+  "enabled": true,
+  "timeLimitSeconds": 600,
+  "propHuntMinutes": 10,
+  "gameMode": "adventure",
+  "dimension": "minecraft:overworld",
+  "alphaSpawn": {
+    "x": -190,
+    "y": 7,
+    "z": 292.5,
+    "yaw": 90,
+    "pitch": 0
+  },
+  "bravoSpawn": {
+    "x": -253,
+    "y": 7,
+    "z": 292.5,
+    "yaw": -90,
+    "pitch": 0
+  },
+  "spectatorSpawn": {
+    "x": -221.5,
+    "y": 50,
+    "z": 294,
+    "yaw": 0,
+    "pitch": 60
+  },
+  "alphaArea": {
+    "minX": -197,
+    "minY": 6,
+    "minZ": 284,
+    "maxX": -183,
+    "maxY": 14,
+    "maxZ": 301
+  },
+  "bravoArea": {
+    "minX": -260,
+    "minY": 6,
+    "minZ": 284,
+    "maxX": -246,
+    "maxY": 14,
+    "maxZ": 301
+  },
+  "capture": {
+    "name": "중앙 거점",
+    "area": {
+      "minX": -228,
+      "minY": 8,
+      "minZ": 283,
+      "maxX": -215,
+      "maxY": 15,
+      "maxZ": 296
+    },
+    "winningScore": 100,
+    "captureStepTicks": 2,
+    "scoreIntervalTicks": 30
+  },
+  "onPrepare": [],
+  "onStart": [],
+  "onEnd": [],
+  "previewImage": "",
+  "weather": "clear",
+  "timeOfDay": "day",
+  "deathZones": [],
+  "previewArea": {
+    "minX": -266,
+    "minY": 2,
+    "minZ": 251,
+    "maxX": -178,
+    "maxY": 55,
+    "maxZ": 336
+  }
+}

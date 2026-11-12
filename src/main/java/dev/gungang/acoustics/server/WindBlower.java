@@ -32,7 +32,7 @@ public final class WindBlower {
     private static final Map<UUID,Long> LAST=new HashMap<>();
     private record Push(double strength,Vec3 direction) { }
     /** Pushes applied after entity ticking, so damage handlers and AI cannot overwrite them. */
-    private static final Map<LivingEntity,Push> PUSHES=new WeakHashMap<>();
+    private static final Map<net.minecraft.world.entity.Entity,Push> PUSHES=new WeakHashMap<>();
 
     public static boolean is(ItemStack stack){var tag=stack==null?null:stack.getTag();return tag!=null&&GUN_ID.equals(tag.getString("GunId"));}
 
@@ -59,15 +59,13 @@ public final class WindBlower {
         var end=wall.getType()==HitResult.Type.BLOCK?wall.getLocation():eye.add(look.scale(config.cannonRange()));
         double radius=config.cannonRadius();
         float damage=(float)(config.cannonDamage()*AdrenalineDamage.multiplier(owner));
-        var direction=new Vec3(look.x,0,look.z);
-        if(direction.lengthSqr()<1e-6)direction=Vec3.directionFromRotation(0,owner.getYRot());
-        direction=direction.normalize();
+        var direction=look.normalize();
         var area=new net.minecraft.world.phys.AABB(eye,end).inflate(radius+1);
-        for(var victim:level.getEntitiesOfClass(LivingEntity.class,area,e->e!=owner&&e.isAlive()&&!e.isSpectator()&&CombatRules.target(e))){
+        for(var victim:level.getEntities(owner,area,e->e.isAlive()&&!e.isSpectator())){
             var box=victim.getBoundingBox().inflate(radius);
             if(!box.contains(eye)&&box.clip(eye,end).isEmpty())continue;
             if(LobbyManager.respawning(victim.getUUID())||SafeZones.contains(victim))continue;
-            if(damage>0&&!(victim instanceof Player other&&!owner.canHarmPlayer(other))){
+            if(damage>0&&victim instanceof LivingEntity living&&CombatRules.target(living)&&!(victim instanceof Player other&&!owner.canHarmPlayer(other))){
                 boolean down=dead(victim);
                 victim.invulnerableTime=0;
                 // Our own push below replaces the hit's vanilla knockback.
@@ -76,7 +74,7 @@ public final class WindBlower {
             }
             if(dead(victim))continue;
             double strength=CombatRules.HIT_STRENGTH*config.cannonKnockbackMultiplier();
-            if(strength>0){PUSHES.put(victim,new Push(strength,direction));DamageCredit.wind(victim,owner);}
+            if(strength>0){PUSHES.put(victim,new Push(strength,direction));if(victim instanceof LivingEntity living)DamageCredit.wind(living,owner);}
         }
         // A puff of air along the shot.
         var step=end.subtract(eye);int points=Math.max(2,(int)(step.length()*2));
@@ -87,7 +85,8 @@ public final class WindBlower {
         level.sendParticles(ParticleTypes.POOF,end.x,end.y,end.z,8,.3,.3,.3,.05);
         level.playSound(null,owner.getX(),owner.getY(),owner.getZ(),SoundEvents.GENERIC_EXPLODE,SoundSource.PLAYERS,.6f,1.6f);
     }
-    private static boolean dead(LivingEntity target){return target.isDeadOrDying()||target instanceof Player&&LobbyManager.respawning(target.getUUID());}
+    static void push(net.minecraft.world.entity.Entity target,Vec3 direction,double strength){PUSHES.put(target,new Push(strength,direction));}
+    private static boolean dead(net.minecraft.world.entity.Entity target){return !target.isAlive()||target instanceof Player&&LobbyManager.respawning(target.getUUID());}
 
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent event){
         if(event.phase!=TickEvent.Phase.END||PUSHES.isEmpty())return;
@@ -96,11 +95,11 @@ public final class WindBlower {
             var victim=entry.getKey();var push=entry.getValue();
             if(!victim.isAlive()||victim.isRemoved()||victim.isSpectator()||LobbyManager.respawning(victim.getUUID())||SafeZones.contains(victim))continue;
             if(victim instanceof ServerPlayer p&&CombatGadgets.shieldBlocked(p))continue;
-            double strength=push.strength()*(1-victim.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE));
+            double strength=push.strength()*(victim instanceof LivingEntity living?1-living.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE):1);
             if(strength<=0)continue;
-            // Vanilla's knockback shape, along the shot instead of away from the attacker.
+            // Preserve all three components of the wind, including vertical aim.
             var old=victim.getDeltaMovement();var d=push.direction().scale(strength);
-            var motion=new Vec3(old.x/2+d.x,victim.onGround()?Math.min(.4,old.y/2+strength):old.y,old.z/2+d.z);
+            var motion=old.add(d);
             if(victim instanceof ServerPlayer player)PlayerImpulse.apply(player,motion);
             else{victim.setDeltaMovement(motion);victim.hasImpulse=true;victim.hurtMarked=true;}
         }

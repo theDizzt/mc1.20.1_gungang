@@ -57,9 +57,10 @@ public final class ArcThrower {
     }
     @SubscribeEvent(priority=EventPriority.LOWEST) public static void struck(LivingDamageEvent event){
         var victim=event.getEntity();var direct=event.getSource().getDirectEntity();
-        if(event.isCanceled()||victim.level().isClientSide||!pellet(direct)||!(victim.level() instanceof ServerLevel level))return;
+        if(event.isCanceled()||event.getAmount()<=0||victim.level().isClientSide||!pellet(direct)||!(victim.level() instanceof ServerLevel level))return;
         var config=ExtraGadgetConfig.arcThrower;
         glow(victim);
+        ArcShock.apply(victim,direct instanceof Projectile projectile&&projectile.getOwner()!=null?projectile.getOwner().position():direct.position());
         var owner=direct instanceof Projectile p?p.getOwner():null;
         var struck=STRUCK.computeIfAbsent(shot(direct,victim),s->new HashSet<>());
         struck.add(victim.getUUID());
@@ -73,9 +74,8 @@ public final class ArcThrower {
             if(owner instanceof Player p&&near instanceof Player other&&!p.canHarmPlayer(other))continue;
             struck.add(near.getUUID());
             near.invulnerableTime=0;
-            // Kill credit stays with the shooter; the arc itself pushes nobody.
-            CombatRules.quietly(()->near.hurt(new DamageSource(type,victim,owner),damage));
-            if(near.isAlive())glow(near);
+            // Keep kill credit with the shooter; the shock supplies its own small push.
+            CombatRules.quietly(()->{if(near.hurt(new DamageSource(type,victim,owner),damage)&&near.isAlive()){glow(near);ArcShock.apply(near,victim.position());}});
             arc(level,from,near.getBoundingBox().getCenter());
         }
     }

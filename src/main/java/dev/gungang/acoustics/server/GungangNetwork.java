@@ -11,10 +11,10 @@ import net.minecraftforge.network.simple.SimpleChannel;
 
 public final class GungangNetwork {
     private static boolean accepts(String version) {
-        return version.equals("4") || version.equals(NetworkRegistry.ABSENT) || version.equals(NetworkRegistry.ACCEPTVANILLA);
+        return version.equals("5") || version.equals(NetworkRegistry.ABSENT) || version.equals(NetworkRegistry.ACCEPTVANILLA);
     }
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-            new ResourceLocation(GungangAcoustics.ID, "server"), () -> "4", GungangNetwork::accepts, GungangNetwork::accepts);
+            new ResourceLocation(GungangAcoustics.ID, "server"), () -> "5", GungangNetwork::accepts, GungangNetwork::accepts);
     public record Acoustics(String json) { }
     public record Lobby(String json) { }
     public record Equipment(String json) { }
@@ -54,13 +54,14 @@ public final class GungangNetwork {
     /** Every online player's chosen effect colours ({@link EffectColors}), as JSON {uuid: {key: [first, second]}}. */
     public record EffectColorSync(String json) { }
     /** A 74 Hermes' Boots dash: the client replays the fixed-step motion and draws the owner's glow trail. */
-    public record HermesDash(int entity,float yaw,float distance,int ticks,float trailSeconds) { }
+    public record HermesDash(int entity,float yaw,float pitch,float distance,int ticks,float trailSeconds) { }
     /** One LAS-5 shot: shooter entity id (-1: none), bullet start and the server-side hit point. */
     public record Las5Shot(int owner,double fx,double fy,double fz,double tx,double ty,double tz) { }
     public record M95Shot(int owner,double fx,double fy,double fz,double tx,double ty,double tz) { }
     public record M95EchoPacket(java.util.List<M95Echo.Target> targets) { }
     public record M95Observed(java.util.List<java.util.UUID> targets) { }
     /** A TaCZ gun-pack sound for the receiving player only (e.g. tacz:kill for a twin-blades kill). */
+    public record ShockLook(int ticks,float yaw,float pitch) { }
     public record KillSound(String sound) { }
     /** Pending status-ailment damage per entity id in the receiver's dimension (purple share of health bars). */
     public record StatusDamage(int[] ids,float[] amounts,float[] heals) { }
@@ -124,8 +125,12 @@ public final class GungangNetwork {
         CHANNEL.registerMessage(45,EffectColorSync.class,(p,b)->b.writeUtf(p.json,262144),b->new EffectColorSync(b.readUtf(262144)),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->EffectColors.receive(p.json())));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
-        CHANNEL.registerMessage(46,HermesDash.class,(p,b)->{b.writeVarInt(p.entity);b.writeFloat(p.yaw);b.writeFloat(p.distance);b.writeVarInt(p.ticks);b.writeFloat(p.trailSeconds);},
-                b->new HermesDash(b.readVarInt(),b.readFloat(),b.readFloat(),b.readVarInt(),b.readFloat()),(p,context)->{
+        CHANNEL.registerMessage(47,ShockLook.class,(p,b)->{b.writeVarInt(p.ticks);b.writeFloat(p.yaw);b.writeFloat(p.pitch);},
+                b->new ShockLook(b.readVarInt(),b.readFloat(),b.readFloat()),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.ArcShockClient.receive(p.ticks,p.yaw,p.pitch)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(46,HermesDash.class,(p,b)->{b.writeVarInt(p.entity);b.writeFloat(p.yaw);b.writeFloat(p.pitch);b.writeFloat(p.distance);b.writeVarInt(p.ticks);b.writeFloat(p.trailSeconds);},
+                b->new HermesDash(b.readVarInt(),b.readFloat(),b.readFloat(),b.readFloat(),b.readVarInt(),b.readFloat()),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.HermesTrail.receive(p)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(44,M95Observed.class,(p,b)->b.writeCollection(p.targets,(buf,id)->buf.writeUUID(id)),b->{

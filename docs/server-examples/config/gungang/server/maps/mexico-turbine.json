@@ -1,0 +1,77 @@
+{
+  "id": "13",
+  "name": "멕시코 - 터빈",
+  "description": "거점 점령 / 팀 데스매치 / 숨바꼭질 · 중앙 거점을 지켜 100점 먼저 달성",
+  "releaseDate": "2026-11-16",
+  "enabled": true,
+  "timeLimitSeconds": 600,
+  "propHuntMinutes": 10,
+  "gameMode": "adventure",
+  "dimension": "minecraft:overworld",
+  "alphaSpawn": {
+    "x": -317.5,
+    "y": 4,
+    "z": -200.5,
+    "yaw": -23,
+    "pitch": 0
+  },
+  "bravoSpawn": {
+    "x": -272.5,
+    "y": 4,
+    "z": -95.5,
+    "yaw": 157,
+    "pitch": 0
+  },
+  "spectatorSpawn": {
+    "x": -294.5,
+    "y": 25,
+    "z": -147.5,
+    "yaw": 0,
+    "pitch": 60
+  },
+  "alphaArea": {
+    "minX": -329,
+    "minY": 3,
+    "minZ": -209,
+    "maxX": -305,
+    "maxY": 11,
+    "maxZ": -191
+  },
+  "bravoArea": {
+    "minX": -284,
+    "minY": 3,
+    "minZ": -104,
+    "maxX": -260,
+    "maxY": 11,
+    "maxZ": -86
+  },
+  "capture": {
+    "name": "중앙 거점",
+    "area": {
+      "minX": -299,
+      "minY": 5,
+      "minZ": -157,
+      "maxX": -290,
+      "maxY": 12,
+      "maxZ": -138
+    },
+    "winningScore": 100,
+    "captureStepTicks": 2,
+    "scoreIntervalTicks": 30
+  },
+  "onPrepare": [],
+  "onStart": [],
+  "onEnd": [],
+  "previewImage": "",
+  "weather": "clear",
+  "timeOfDay": "day",
+  "deathZones": [],
+  "previewArea": {
+    "minX": -329,
+    "minY": 2,
+    "minZ": -217,
+    "maxX": -261,
+    "maxY": 22,
+    "maxZ": -79
+  }
+}
