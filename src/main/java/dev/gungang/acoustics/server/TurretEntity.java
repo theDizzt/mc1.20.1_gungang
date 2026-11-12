@@ -110,7 +110,7 @@ public final class TurretEntity extends LivingEntity {
         Vec3 from=muzzle(),to=new Vec3(entityData.get(TRACER));
         net.minecraftforge.fml.DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
                 ()->()->dev.gungang.acoustics.client.TurretLaser.shot(from,to,owner()));
-        level().playLocalSound(getX(),getY(),getZ(),TurretSounds.SHOT.get(),net.minecraft.sounds.SoundSource.BLOCKS,.55f,.96f+random.nextFloat()*.08f,false);
+        level().playLocalSound(getX(),getY(),getZ(),TurretSounds.SHOT.get(),net.minecraft.sounds.SoundSource.BLOCKS,1.1f,.96f+random.nextFloat()*.08f,false);
     }
     /** Barrel axis of the model (948 units at 1/800 block), on the yaw pivot. */
     private Vec3 muzzle(){return position().add(0,1.185,0);}

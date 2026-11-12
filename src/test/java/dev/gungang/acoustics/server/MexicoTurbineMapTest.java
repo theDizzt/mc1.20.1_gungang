@@ -6,11 +6,11 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
-/** 12 멕시코 - 터빈: team deathmatch, prop hunt and control on the centre point's glass and wool floor (y 4). */
+/** 13 멕시코 - 터빈: team deathmatch, prop hunt and control on the centre point's glass and wool floor (y 4). */
 class MexicoTurbineMapTest {
     @Test void mapValidatesWithItsThreeModes() throws Exception {
         var map = new Gson().fromJson(Files.readString(Path.of("server_resource/config/gungang/server/maps/mexico-turbine.json")), ArenaMap.class).validate();
-        assertEquals("12", map.id());
+        assertEquals("13", map.id());
         assertEquals("2026-11-16", map.releaseDate());
         assertTrue(map.enabled());
         assertEquals(java.util.List.of("CONTROL", "DEATHMATCH"), LobbyRules.modes(map.normandy() != null, map.capture() != null, map.bomb() != null));

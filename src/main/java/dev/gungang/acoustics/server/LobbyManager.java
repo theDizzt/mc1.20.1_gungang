@@ -323,6 +323,8 @@ public final class LobbyManager {
         if(action.action().equals("bladesReset")){TwinBlades.resetCombo(sender);return;}
         if(action.action().equals("defibTarget")){Defibrillator.choose(sender,action.value());return;}
         if(action.action().equals("rapierAttack")){int aimed;try{aimed=action.value().isEmpty()?-1:Integer.parseInt(action.value());}catch(NumberFormatException e){aimed=-1;}RapierItem.thrust(sender,aimed);return;}
+        // A double-tap dash must not be dropped by the rate limit below; charges and the running dash limit it instead.
+        if(action.action().equals("hermesDash")){try{HermesBoots.request(sender,Integer.parseInt(action.value()));}catch(NumberFormatException ignored){}return;}
         // Plant/defuse key: press and release must both arrive, so it bypasses the action rate limit.
         if(action.action().equals("bomb")){var bomb=MatchManager.bomb();if(bomb!=null)bomb.key(sender,action.value().equals("down"));return;}
         if(action.action().equals("emote")){Emotes.request(sender,action.value());return;}

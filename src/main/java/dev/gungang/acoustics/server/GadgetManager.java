@@ -47,6 +47,13 @@ public final class GadgetManager {
         if(!DeployableLedger.get(entity.level().getServer()).contains(entity.getUUID())) {entity.discard();return;}
         PLACED.put(entity.getUUID(),entity);
     }
+    /** 74 Hermes' Boots dash {@code offset} degrees from the view, behind the same gates as {@link #use}. */
+    static void dash(ServerPlayer p,ItemStack stack,int offset) {
+        if(p.getPersistentData().hasUUID("VoidAnchorTether")||SurvivalGadgets.jetting(p))return;
+        if(!p.isAlive()||p.isSpectator()||LobbyManager.respawning(p.getUUID())||!SecondaryRuntime.ready(p,stack))return;
+        BotLearning.observedAction(p,"secondary");
+        HermesBoots.dash(p,stack,offset);
+    }
     public static void use(ServerPlayer p,ItemStack stack,String kind) {
         if(p.getPersistentData().hasUUID("VoidAnchorTether")&&(kind.equals("air_assault")||kind.equals("jetpack")||kind.equals("hermes_boots")))return;
         if(SurvivalGadgets.jetting(p))return;
@@ -61,7 +68,8 @@ public final class GadgetManager {
             p.level().playSound(null,p.blockPosition(),net.minecraft.sounds.SoundEvents.TRIDENT_THROW,net.minecraft.sounds.SoundSource.PLAYERS,1,.7f);return;
         }
         if(kind.equals("air_assault")) {AirAssault.start(p,stack);return;}
-        if(kind.equals("hermes_boots")) {HermesBoots.dash(p,stack);return;}
+        // Hermes' Boots no longer dash on the use key: a double-tapped W/A/S/D does (HermesBoots.request).
+        if(kind.equals("hermes_boots"))return;
         if(kind.equals("jetpack")) {
             // Prop hunt seekers fly only while hunting, never from the waiting room.
             var hunt=MatchManager.propHunt();

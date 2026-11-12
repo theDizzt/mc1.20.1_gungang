@@ -8,13 +8,18 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraftforge.client.gui.overlay.ForgeGui;
 
 /**
- * Shown to a player an enemy's M95 scope pulse has revealed ("m95_observed" in the utility HUD): a blue scan sweep
- * over the screen with a blue vignette, a blue "스캔됨" caption, and the scan sound. Each new pulse (every 2.5 s
- * while still in view) replays the sweep; the 4-second sound does not overlap itself.
+ * Shown to a player an enemy's M95 scope pulse has revealed ("m95_observed" in the utility HUD): a blue vignette
+ * around the screen's edges (the middle stays clear), a blue "스캔됨" caption, and the scan sound. Each new pulse
+ * (every 2.5 s while still in view) flares the vignette, which stays fainter in between and fades once the
+ * observation ends; the 4-second sound does not overlap itself.
  */
 public final class ScanAlert {
-    /** Length of the sweep and vignette, and how long the caption stays at least. */
-    private static final double SWEEP = 0.7, GLOW = 1.4, CAPTION = 1.6;
+    /** Seconds: the vignette's flare in and out on each pulse, its fade after the observation ends, and the caption's least time. */
+    private static final double FADE_IN = 0.12, GLOW = 1.4, FADE_OUT = 0.5, CAPTION = 1.6;
+    /** Vignette strength kept while still observed between pulses (1 = the flare's peak). */
+    private static final double HOLD = 0.45;
+    /** Radius (centre 0, mid-edge 1, corner 1.41) inside which the screen stays clear, and the corners' alpha at full strength. */
+    static final double CLEAR = 0.62, EDGE_ALPHA = 190;
     /** The scan sound's length: it is not restarted while still playing. */
     private static final long SOUND_NANOS = 4_000_000_000L;
     private static final int BLUE = 0x4FA8FF;
@@ -43,13 +48,16 @@ public final class ScanAlert {
         if (sweepStart == 0 || mc.level == null || mc.player == null || !ShooterHud.visible(mc)) return;
         double age = (System.nanoTime() - sweepStart) / 1_000_000_000.0;
         boolean active = mc.level.getGameTime() < expires;
-        if (age >= Math.max(GLOW, CAPTION) && !active) return;
-        if (age < GLOW) {
+        // Seconds since the observation ran out (0 while it lasts).
+        double ended = active ? 0 : Math.max(0, (mc.level.getGameTime() - expires + partialTick) / 20.0);
+        if (age >= Math.max(GLOW, CAPTION) && ended >= FADE_OUT) return;
+        // Each scan pulse flares the vignette (fast in, eased out over GLOW); while still observed it stays at HOLD.
+        double flare = age < FADE_IN ? age / FADE_IN : age < GLOW ? Math.pow(1 - (age - FADE_IN) / (GLOW - FADE_IN), 2) : 0;
+        double hold = active ? HOLD : HOLD * Math.max(0, 1 - ended / FADE_OUT);
+        float strength = (float) (age < FADE_IN ? flare : Math.max(flare, hold));
+        if (strength > 0) {
             gui.setupOverlayRenderState(true, false);
-            float strength = (float) Math.pow(1 - age / GLOW, 1.5);
             vignette(g, width, height, strength);
-            lines(g, width, height, strength);
-            if (age < SWEEP) sweep(g, width, height, (float) (age / SWEEP));
             g.flush();
         }
         // The caption stays while still observed, then fades.
@@ -70,25 +78,11 @@ public final class ScanAlert {
             vertices.vertex(matrix, x1 * width, y0 * height, 0).color(r, gr, b, edge(x1, y0, strength)).endVertex();
         }
     }
-    private static int edge(float x, float y, float strength) {
+    /** Vignette alpha at a screen point (0..1 each way): clear in the middle, deepening blue towards the edges and corners. */
+    static int edge(float x, float y, float strength) {
         double radius = Math.sqrt(Math.pow(x * 2 - 1, 2) + Math.pow(y * 2 - 1, 2));
-        double t = Math.max(0, Math.min(1, (radius - 0.5) / 0.7));
-        return (int) (150 * strength * t * t * (3 - 2 * t));
-    }
-    /** Faint horizontal scan lines over the whole screen. */
-    private static void lines(GuiGraphics g, int width, int height, float strength) {
-        int alpha = Math.round(28 * strength);
-        if (alpha <= 0) return;
-        for (int y = 0; y < height; y += 4) g.fill(0, y, width, y + 1, alpha << 24 | BLUE);
-    }
-    /** The bright scan line moving from top to bottom ({@code progress} 0..1) with a fading trail above it. */
-    private static void sweep(GuiGraphics g, int width, int height, float progress) {
-        int y = Math.round(progress * height), trail = Math.max(12, height / 6);
-        for (int i = 0; i < trail; i++) {
-            int alpha = Math.round(90f * (1 - (float) i / trail));
-            g.fill(0, y - i - 1, width, y - i, alpha << 24 | BLUE);
-        }
-        g.fill(0, y - 1, width, y + 1, 0xE0000000 | 0xBFE3FF);
+        double t = Math.max(0, Math.min(1, (radius - CLEAR) / (1.42 - CLEAR)));
+        return (int) Math.round(EDGE_ALPHA * strength * t * t * (3 - 2 * t));
     }
     /** "스캔됨" in large blue letters, a little above the crosshair. */
     private static void caption(GuiGraphics g, int width, int height, float fade) {

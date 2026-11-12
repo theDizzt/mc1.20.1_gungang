@@ -82,9 +82,9 @@ public final class AuxBar {
     }
     /** The bar card and, left of it, the icon cell. */
     private static void frame(GuiGraphics g, int x, int y, int width, int height, Kind kind, float fraction) {
-        ShooterHud.card(g, x, y, width, height, ShooterHud.BAR_EDGE, ShooterHud.SURFACE, 0);
+
         int cell = height, ix = x - ICON_GAP - cell;
-        ShooterHud.card(g, ix, y, cell, height, ShooterHud.BAR_EDGE, ShooterHud.SURFACE, 0);
+
         icon(g, kind, ix + 1, y + 1, cell - 2, barColor(kind, fraction));
     }
 
