@@ -23,5 +23,6 @@
   "heal_loop": {"subtitle": "subtitles.gungang.heal", "sounds": ["gungang:heal_loop"]},
   "heal_end": {"subtitle": "subtitles.gungang.heal", "sounds": ["gungang:heal_end"]},
   "stim_start": {"subtitle": "subtitles.gungang.stim", "sounds": ["gungang:stim_start"]},
-  "cooldown_ready": {"sounds": ["gungang:cooldown_ready"]}
+  "cooldown_ready": {"sounds": ["gungang:cooldown_ready"]},
+  "scan": {"subtitle": "subtitles.gungang.scan", "sounds": ["gungang:scan"]}
 }

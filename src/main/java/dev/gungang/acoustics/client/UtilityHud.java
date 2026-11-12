@@ -13,8 +13,11 @@ import net.minecraftforge.fml.common.Mod;
 public final class UtilityHud {
     private static CombatGadgets.Hud state=new CombatGadgets.Hud(java.util.List.of(),0,0,3,1,"");
     private static long received;
-    public static void receive(String json) {state=ServerFiles.GSON.fromJson(json,CombatGadgets.Hud.class);BearTraps.clientArmed=state.bearTrapArmed();var level=Minecraft.getInstance().level;received=level==null?0:level.getGameTime();}
-    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event) {state=new CombatGadgets.Hud(java.util.List.of(),0,0,3,1,"");received=0;BearTraps.clientArmed=false;}
+    public static void receive(String json) {
+        state=ServerFiles.GSON.fromJson(json,CombatGadgets.Hud.class);BearTraps.clientArmed=state.bearTrapArmed();var level=Minecraft.getInstance().level;received=level==null?0:level.getGameTime();
+        for(var gauge:state.gauges())if(gauge.kind().equals("m95_observed")&&gauge.remaining()>0)ScanAlert.observed(received,gauge.remaining());
+    }
+    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event) {state=new CombatGadgets.Hud(java.util.List.of(),0,0,3,1,"");received=0;BearTraps.clientArmed=false;ScanAlert.clear();}
     /** Pinned by an enemy bear trap: movement input is dropped so the client does not fight the server's anchor. */
     static boolean rooted() {
         var mc=Minecraft.getInstance();if(mc.level==null)return false;
@@ -97,9 +100,7 @@ public final class UtilityHud {
             y-=height+4;
         }
         if(flagHealth!=null)y=flagHealth(g,center,y,width,height,flagHealth,partial);
-        for(var gauge:state.gauges())if(gauge.kind().equals("m95_observed")&&gauge.remaining()-(mc.level.getGameTime()-received+partial)>0){
-            g.drawString(mc.font,Lang.tr("관측됨"),center-mc.font.width(Lang.tr("관측됨"))/2,y,0xFFFF7777,true);break;
-        }
+        // Being revealed by an enemy M95 scope is shown by ScanAlert (blue sweep, "스캔됨", scan sound).
     }
     private static int flagHealth(GuiGraphics g,int center,int y,int width,int height,CombatGadgets.Gauge gauge,float partial){
         AuxBar.draw(g,center,y,width,height,AuxBar.Kind.HEALTH,gauge.remaining(),gauge.maximum(),AuxBar.ratio(gauge.remaining(),gauge.maximum()),Lang.tr("깃발 체력"),partial);

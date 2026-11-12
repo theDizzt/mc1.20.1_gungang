@@ -22,6 +22,8 @@ public final class ClientSetup {
     }
     @SubscribeEvent public static void renderers(net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(dev.gungang.acoustics.server.HologramBlocks.ENTITY.get(),HologramRenderer::new);
+        // Only 방벽 판자 among the gimmicks draws through it; the rest keep their block models.
+        event.registerBlockEntityRenderer(dev.gungang.acoustics.server.GimmickBlocks.ENTITY.get(),BarrierPlankRenderer::new);
         event.registerBlockEntityRenderer(dev.gungang.acoustics.server.DeskBlocks.CLOCK_ENTITY.get(),DeskClockRenderer::new);
         event.registerBlockEntityRenderer(dev.gungang.acoustics.server.ToyBlocks.AQUARIUM_ENTITY.get(),AquariumRenderer::new);
         event.registerBlockEntityRenderer(dev.gungang.acoustics.server.ToyBlocks.NUKE_ENTITY.get(),NukeRenderer::new);
@@ -98,6 +100,7 @@ public final class ClientSetup {
     @SubscribeEvent
     public static void overlays(RegisterGuiOverlaysEvent event) {
         event.registerBelow(VanillaGuiOverlay.HOTBAR.id(), "damage_vignette", DamageVignette::render);
+        event.registerBelow(VanillaGuiOverlay.HOTBAR.id(), "scan_alert", ScanAlert::render);
         event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "shooter_hud", ShooterHud::render);
         event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "rapier_energy", TaczAmmoHud::rapier);
         event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "shuriken_ammo", TaczAmmoHud::shuriken);

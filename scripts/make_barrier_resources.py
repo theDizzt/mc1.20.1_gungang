@@ -143,4 +143,18 @@ model = {'parent': 'minecraft:block/block',
          'display': {'gui': {'rotation': [20, 200, 0], 'scale': [.68] * 3},
                      'fixed': {'rotation': [0, 180, 0], 'scale': [.6] * 3}}}
 (assets / 'models/item/barrier.json').write_text(json.dumps(model, indent=2) + '\n', encoding='utf-8')
+
+# barrier_plank block: the same boards without the sign's shadow, made to repeat every 3 blocks left-right (the
+# renderer lays it out from each connected wall's corner, and repeats whole boards top to bottom) ...
+def seamless(img, blend):
+    """Cross-fade the last columns into the first ones so the texture repeats horizontally without a visible seam."""
+    out = img.copy(); src = img.load(); px = out.load(); w = img.width
+    for x in range(w - blend, w):
+        t = (x - (w - blend) + 1) / (blend + 1)
+        for y in range(img.height):
+            px[x, y] = mix(src[x, y][:3], src[x - (w - blend), y][:3], t) + (255,)
+    return out
+seamless(planks(96, 6, 3), 6).save(assets / 'textures/entity/barrier_plank_boards.png')
+# ... and one block of those boards for break particles.
+planks(16, 4, 3, paint=False, nails=False).save(assets / 'textures/block/barrier_plank.png')
 print('ok')

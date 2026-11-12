@@ -15,8 +15,8 @@ import net.minecraft.world.phys.shapes.*;
 public class GimmickBlock extends BaseEntityBlock {
     public static final BooleanProperty ACTIVE=BooleanProperty.create("active"),TOP=BooleanProperty.create("top");
     public final String id;
-    public GimmickBlock(String id){super(Properties.of().strength(-1,3600000).noOcclusion().isViewBlocking((s,l,p)->false).isSuffocating((s,l,p)->false).sound(id.contains("glass")?SoundType.GLASS:id.contains("planks")?SoundType.WOOD:SoundType.METAL));this.id=id;registerDefaultState(stateDefinition.any().setValue(ACTIVE,true).setValue(TOP,false));}
-    public boolean wall(){return id.startsWith("cracked_");}
+    public GimmickBlock(String id){super(Properties.of().strength(-1,3600000).noOcclusion().isViewBlocking((s,l,p)->false).isSuffocating((s,l,p)->false).sound(id.contains("glass")?SoundType.GLASS:id.contains("plank")?SoundType.WOOD:SoundType.METAL));this.id=id;registerDefaultState(stateDefinition.any().setValue(ACTIVE,true).setValue(TOP,false));}
+    public boolean wall(){return id.startsWith("cracked_")||id.equals(BarrierPlankBlock.ID);}
     @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> b){b.add(ACTIVE,TOP);}
     @Override public RenderShape getRenderShape(BlockState s){return s.getValue(ACTIVE)?RenderShape.MODEL:RenderShape.INVISIBLE;}
     @Override public VoxelShape getShape(BlockState s,BlockGetter l,BlockPos p,CollisionContext c){
