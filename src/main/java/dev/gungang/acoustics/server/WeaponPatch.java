@@ -105,7 +105,13 @@ public final class WeaponPatch {
             Map.entry("perimeter_barrage.durationSeconds", "포격 지속 시간 (초)"), Map.entry("perimeter_barrage.volleySize", "1회 일제 사격 미사일 수"),
             Map.entry("perimeter_barrage.volleyIntervalSeconds", "일제 사격 간격 (초)"), Map.entry("perimeter_barrage.damage", "미사일 1발 폭발 피해"),
             Map.entry("perimeter_barrage.blastRadius", "미사일 폭발 반경 (블록)"), Map.entry("perimeter_barrage.flightSeconds", "미사일 낙하 시간 (초)"),
-            Map.entry("perimeter_barrage.range", "포격 지정 최대 거리 (블록)"));
+            Map.entry("perimeter_barrage.range", "포격 지정 최대 거리 (블록)"),
+            Map.entry("acid_sprayer.magazine", "탄창 (최대 장탄)"), Map.entry("acid_sprayer.cloudRadius", "산성가스 반경 (블록)"),
+            Map.entry("acid_sprayer.cloudSeconds", "산성가스 유지 시간 (초)"), Map.entry("acid_sprayer.damage", "가스 접촉 피해 (1회)"),
+            Map.entry("acid_sprayer.damageIntervalSeconds", "가스 피해 간격 (초)"), Map.entry("acid_sprayer.lingerPoisonSeconds", "가스에서 나온 뒤 독 지속 (초)"),
+            Map.entry("acid_sprayer.pushAmmoCost", "우클릭 밀어내기 탄약 소모"), Map.entry("acid_sprayer.pushRange", "밀어내기 최대 거리 (블록)"),
+            Map.entry("acid_sprayer.pushSeconds", "밀어내기 이동 시간 (초)"), Map.entry("acid_sprayer.sprayDistance", "좌클릭 가스 생성 거리 (총구 앞, 블록)"),
+            Map.entry("acid_sprayer.regenDelaySeconds", "탄약 재생 대기 (미사용 시간, 초)"), Map.entry("acid_sprayer.regenIntervalSeconds", "탄약 1발 재생 간격 (초)"));
     private static String itemLabel(String item, String field) {
         return ITEM_LABELS_OF.getOrDefault(item + "." + field, ITEM_LABELS.getOrDefault(field, field));
     }
@@ -359,6 +365,7 @@ public final class WeaponPatch {
             if (Fallout.is(stack)) return "fallout";
             if (ArcThrower.is(stack)) return "arc_thrower";
             if (WindBlower.is(stack)) return "wind_blower";
+            if (AcidSprayer.is(stack)) return "acid_sprayer";
             var key = net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(weapon.stack().getItem());
             return key != null && key.getNamespace().equals("gungang") && ConfigModify.exists("item", key.getPath()) ? key.getPath() : null;
         } catch (Exception invalid) { return null; }

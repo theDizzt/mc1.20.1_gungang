@@ -65,6 +65,7 @@ public final class GungangNetwork {
     /** A TaCZ gun-pack sound for the receiving player only (e.g. tacz:kill for a twin-blades kill). */
     public record ShockLook(int ticks,float yaw,float pitch) { }
     public record KillSound(String sound) { }
+    public record AcidShot(boolean push) { }
     /** Pending status-ailment damage per entity id in the receiver's dimension (purple share of health bars). */
     public record StatusDamage(int[] ids,float[] amounts,float[] heals) { }
     /** A heal pack or recovery potion is healing this entity for the next {@code ticks}: its health bar draws the green ghost. */
@@ -81,6 +82,9 @@ public final class GungangNetwork {
     /** Longest lobby action value: the game options JSON, with room for every mode's section and a long excluded-block list. */
     static final int ACTION_VALUE=8192;
     public static void register() {
+        CHANNEL.registerMessage(48,AcidShot.class,(p,b)->b.writeBoolean(p.push),b->new AcidShot(b.readBoolean()),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.AcidSprayerInput.fired(p.push)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         // 36: opera used 34 for this, which Nickname already holds here.
         CHANNEL.registerMessage(36,AnchorPull.class,(p,b)->{b.writeUUID(p.anchor);b.writeBoolean(p.active);b.writeDouble(p.x);b.writeDouble(p.y);b.writeDouble(p.z);},
                 b->new AnchorPull(b.readUUID(),b.readBoolean(),b.readDouble(),b.readDouble(),b.readDouble()),(p,context)->{

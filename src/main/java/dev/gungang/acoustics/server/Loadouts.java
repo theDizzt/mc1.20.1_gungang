@@ -75,6 +75,9 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
         public Weapon(String id,String itemNbt,String name,String description,Specs specs,String usage,String category,Double maxHealth,Double movementSpeed,Double cooldownSeconds) {
             this(id,itemNbt,name,description,specs,usage,category,maxHealth,movementSpeed,cooldownSeconds,"");
         }
+        /** Category of weapons listed (last) on the loadout screen but only issued at random: never chosen directly. */
+        public static final String HIDDEN="히든";
+        public boolean hidden() {return HIDDEN.equals(category);}
         public boolean commandOnly() {return (itemNbt.isBlank()||itemNbt.strip().equals("{}"))&&!command.isBlank();}
         public Weapon(String id,String itemNbt,String name,String description,Specs specs,String usage,String category) {
             this(id,itemNbt,name,description,specs,usage,category,null,null,null);

@@ -51,6 +51,18 @@ public final class ExtraGadgetConfig {
         public int volleys(){return Math.max(1,(int)Math.round(durationSeconds/volleyIntervalSeconds));}
     }
     public static final Barrage BARRAGE_DEFAULTS=new Barrage(32,3,8,3,1,32,4,.5,64,210);
+    /**
+     * 36 산성가스분사기 ({@code hlm:dis}): held left click spends 1 round every two ticks for a forward acid cloud
+     * (at least {@code sprayDistance} ahead unless blocked by a wall, which can cause self-damage); right click spends {@code pushAmmoCost} to drive a cloud, and the clouds in front,
+     * up to {@code pushRange} blocks along the aim. A cloud lasts {@code cloudSeconds} and hurts everyone touching it
+     * (user and allies too) {@code damage} every {@code damageIntervalSeconds}, leaving poison for
+     * {@code lingerPoisonSeconds} after they get out. No reload: after {@code regenDelaySeconds} without firing, one
+     * round returns every {@code regenIntervalSeconds}, up to {@code magazine}.
+     */
+    public record AcidSprayer(int magazine,double cloudRadius,double cloudSeconds,double damage,double damageIntervalSeconds,double lingerPoisonSeconds,
+                              int pushAmmoCost,double pushRange,double pushSeconds,double sprayDistance,double regenDelaySeconds,double regenIntervalSeconds) { }
+    public static final AcidSprayer ACID_SPRAYER_DEFAULTS=new AcidSprayer(60,3,3,3,.2,1,3,16,.6,2,3,.2);
+    public static AcidSprayer acidSprayer=ACID_SPRAYER_DEFAULTS;
     public static Barrage barrage=BARRAGE_DEFAULTS;
     public record Life(double absorption,double durationSeconds,double drainAmount,double drainIntervalSeconds,double cooldownSeconds) { }
     public record Jet(double speed,double durationSeconds,double collisionDamage,double knockback,int burnSeconds,double trailSeconds,double cooldownSeconds,boolean verticalFlight,double burnDamage) {
@@ -173,6 +185,11 @@ public final class ExtraGadgetConfig {
         GadgetConfig.bounded(ag.projectileSpeed(),.5,4);GadgetConfig.bounded(ag.throwSpeed(),.1,3);
         var m=GadgetConfig.read("molotov",Molotov.class,new Molotov(5,8,3,36),overrides,apply);
         var o=GadgetConfig.read("orbital_strike",Orbital.class,new Orbital(24,256,84,5,64,240),overrides,apply);
+        var as=GadgetConfig.read("acid_sprayer",AcidSprayer.class,ACID_SPRAYER_DEFAULTS,overrides,apply);
+        GadgetConfig.bounded(as.magazine(),1,9999);GadgetConfig.bounded(as.cloudRadius(),.5,16);GadgetConfig.bounded(as.cloudSeconds(),.05,60);
+        GadgetConfig.bounded(as.damage(),0,10000);GadgetConfig.bounded(as.damageIntervalSeconds(),.05,10);GadgetConfig.bounded(as.lingerPoisonSeconds(),0,60);
+        GadgetConfig.bounded(as.pushAmmoCost(),0,9999);GadgetConfig.bounded(as.pushRange(),1,64);GadgetConfig.bounded(as.pushSeconds(),.05,10);
+        GadgetConfig.bounded(as.sprayDistance(),0,16);GadgetConfig.bounded(as.regenDelaySeconds(),0,60);GadgetConfig.bounded(as.regenIntervalSeconds(),.05,60);
         var pb=GadgetConfig.read("perimeter_barrage",Barrage.class,BARRAGE_DEFAULTS,overrides,apply);
         GadgetConfig.bounded(pb.radius(),1,64);GadgetConfig.bounded(pb.delaySeconds(),0,60);GadgetConfig.bounded(pb.durationSeconds(),.05,120);
         GadgetConfig.bounded(pb.volleySize(),1,16);GadgetConfig.bounded(pb.volleyIntervalSeconds(),.1,30);GadgetConfig.bounded(pb.damage(),0,10000);
@@ -267,7 +284,7 @@ public final class ExtraGadgetConfig {
         GadgetConfig.bounded(s.durationSeconds(),.05,300);GadgetConfig.bounded(h.capacity(),1,10000);GadgetConfig.bounded(h.repairSeconds(),0,86400);
         GadgetConfig.bounded(h.movementPenaltyPercent(),0,99);GadgetConfig.bounded(h.regenDelaySeconds(),0,300);GadgetConfig.bounded(h.regenPerSecond(),0,10000);GadgetConfig.bounded(h.meleeReductionPercent(),0,100);
         for(double c:new double[]{m.cooldownSeconds(),o.cooldownSeconds(),l.cooldownSeconds(),j.cooldownSeconds(),s.cooldownSeconds(),x.cooldownSeconds()})GadgetConfig.bounded(c,0,86400);
-        if(apply){barrage=pb;molotov=m;orbital=o;life=l;jet=j;hermes=hb;scanner=s;shield=h;handAxe=x;arrowGrenade=ag;rapier=r;katana=k;regeneration=rg;combat=cb;fallout=fo;twinBlades=tb;arcThrower=ac;windBlower=wb;shuriken=sh;}
+        if(apply){acidSprayer=as;barrage=pb;molotov=m;orbital=o;life=l;jet=j;hermes=hb;scanner=s;shield=h;handAxe=x;arrowGrenade=ag;rapier=r;katana=k;regeneration=rg;combat=cb;fallout=fo;twinBlades=tb;arcThrower=ac;windBlower=wb;shuriken=sh;}
     }
     private ExtraGadgetConfig() { }
 }

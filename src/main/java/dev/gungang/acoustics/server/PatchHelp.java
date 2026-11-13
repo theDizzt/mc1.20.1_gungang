@@ -235,6 +235,18 @@ public final class PatchHelp {
         item("health_regeneration", "delaySeconds", "용도: 마지막으로 피해를 받은 뒤 자연 재생이 시작되기까지의 시간(초).");
         item("health_regeneration", "intervalSeconds", "용도: 자연 재생 1회의 간격(초).\n산출식: 1회 회복 = 최대 체력 × 초당% / 100 × 간격");
         item("orbital_strike", "range", "용도: 폭격 위치를 지정할 수 있는 최대 거리(블록).");
+        item("acid_sprayer", "magazine", "용도: 산성가스분사기 탄창 크기이자 탄약 재생의 상한. R 재장전은 막혀 있고, 쉬는 동안 이 값까지 저절로 찹니다.\n※ TaCZ 총기 데이터의 탄창(ammo_amount)도 같은 값으로 맞춰야 HUD 표시가 일치합니다.");
+        item("acid_sprayer", "cloudRadius", "용도: 산성가스 구름의 반경(블록). 몸이 이 거리 안에 걸치면 피해를 받습니다.");
+        item("acid_sprayer", "cloudSeconds", "용도: 가스가 생긴 뒤 사라지기까지의 시간(초). 밀어내도 늘어나지 않습니다.");
+        item("acid_sprayer", "damage", "용도: 가스에 닿아 있는 동안 간격마다 받는 독 피해. 사용자·아군·적 모두 받습니다.\n산출식: 초당 피해 = 피해 / 피해 간격 (기본 3 / 0.2 = 15)");
+        item("acid_sprayer", "damageIntervalSeconds", "용도: 가스 피해가 들어가는 간격(초). 여러 구름에 동시에 닿아도 간격마다 한 번만 받습니다.");
+        item("acid_sprayer", "lingerPoisonSeconds", "용도: 가스에서 빠져나온 뒤 독 효과가 남는 시간(초). 0이면 독을 남기지 않습니다.");
+        item("acid_sprayer", "pushAmmoCost", "용도: 우클릭 밀어내기 1회에 쓰는 탄약 수. 남은 탄약이 이보다 적으면 쓸 수 없습니다.");
+        item("acid_sprayer", "pushRange", "용도: 우클릭으로 가스를 밀어내는 최대 거리(블록). 총구 앞에 새 가스를 만들고, 조준선 앞에 있는 가스들도 함께 이 거리까지 밀며, 벽에 막히면 그 앞에서 멈춥니다.");
+        item("acid_sprayer", "pushSeconds", "용도: 밀어낸 가스가 목표 지점까지 이동하는 데 걸리는 시간(초).");
+        item("acid_sprayer", "sprayDistance", "용도: 좌클릭을 누르면 0.1초마다 탄약 1을 써서 전방으로 가스를 분사합니다. 이 값은 가스 생성의 최소 눈앞 거리(블록)이며, 공간이 충분하면 가스 반경이 사용자 몸과 겹치지 않도록 거리를 늘립니다. 가까운 벽이 있으면 몸과 겹치더라도 벽 앞에 가스를 생성하며, 사용자도 피해를 받습니다.");
+        item("acid_sprayer", "regenDelaySeconds", "용도: 마지막으로 쏜 뒤 탄약이 다시 차기 시작하기까지의 시간(초).");
+        item("acid_sprayer", "regenIntervalSeconds", "용도: 재생이 시작된 뒤 탄약 1발이 차는 간격(초).\n산출식: 빈 탄창이 다 차는 시간 ≈ 재생 대기 + 탄창 × 간격 (기본 3 + 60 × 0.2 = 15초)");
         item("perimeter_barrage", "radius", "용도: 지정 지점을 중심으로 미사일이 떨어지는 범위의 반경(블록). 빨간 연막 고리로 표시되고, 이 안의 사람들이 조준 대상입니다.");
         item("perimeter_barrage", "delaySeconds", "용도: 빨간 연막탄이 떨어진 뒤 첫 일제 사격까지의 시간(초).");
         item("perimeter_barrage", "durationSeconds", "용도: 포격이 이어지는 시간(초).\n산출식: 총 미사일 수 = (지속 시간 / 일제 사격 간격, 반올림) × 1회 미사일 수");
