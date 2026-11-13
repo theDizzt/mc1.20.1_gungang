@@ -787,6 +787,24 @@ public final class LobbyManager {
         }
         giveSlot9(p);
     }
+    /** Placement checks use both teams, including moving escort/Normandy bases. */
+    public static java.util.List<ArenaMap.Area> placementSpawnAreas(net.minecraft.world.level.Level level){
+        if(activeMap==null||!level.dimension().location().toString().equals(activeMap.dimension()))return java.util.List.of();
+        var result=new java.util.ArrayList<ArenaMap.Area>();
+        for(String team:java.util.List.of("ALPHA","BRAVO")){
+            var area=team.equals("ALPHA")?activeMap.alphaArea():activeMap.bravoArea();
+            ArenaMap.Spawn spawn=null;
+            if(MatchManager.bomb()!=null)area=MatchManager.bomb().area(team);
+            if(phase.equals("RUNNING")&&MatchManager.escort()!=null){area=MatchManager.escort().area(team);if(area==null)spawn=MatchManager.escort().spawn(team);}
+            if(phase.equals("RUNNING")&&team.equals("BRAVO")&&activeMap.normandy()!=null){area=null;spawn=MatchManager.attackSpawn();}
+            if(area!=null)result.add(area);
+            if(spawn!=null)result.add(new ArenaMap.Area(spawn.x()-4,spawn.y()-4,spawn.z()-4,spawn.x()+4,spawn.y()+4,spawn.z()+4));
+        }
+        return java.util.List.copyOf(result);
+    }
+    public static boolean inEitherSpawn(net.minecraft.world.level.Level level,net.minecraft.world.phys.AABB bounds){
+        return placementSpawnAreas(level).stream().anyMatch(a->bounds.intersects(new net.minecraft.world.phys.AABB(a.minX(),a.minY(),a.minZ(),a.maxX(),a.maxY(),a.maxZ())));
+    }
     public static boolean inSpawn(ServerPlayer p) {
         if(MatchManager.freeForAll()!=null)return false;
         Entry e = PLAYERS.get(p.getUUID());

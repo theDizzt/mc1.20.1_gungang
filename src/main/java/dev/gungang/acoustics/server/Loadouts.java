@@ -190,7 +190,7 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
     private static void ensureOrdnance(Path directory)throws java.io.IOException {
         var existing=readCategory(directory);
         for(var weapon:OrdnanceLoadouts.defaults()) {
-            String item=switch(weapon.id()) {case "76"->"void_anchor";case "77"->"air_assault";case "79"->"arrow_grenade";case "90"->"turret";case "81"->"molotov";case "87"->"orbital_strike";case "73"->"perimeter_barrage";case "89"->"bear_trap";case "80"->"hand_axe";case "92"->"life_support";case "74"->"hermes_boots";default->"jetpack";};
+            String item=switch(weapon.id()) {case "75"->"command_flag";case "76"->"void_anchor";case "77"->"air_assault";case "79"->"arrow_grenade";case "90"->"turret";case "81"->"molotov";case "87"->"orbital_strike";case "73"->"perimeter_barrage";case "89"->"bear_trap";case "80"->"hand_axe";case "92"->"life_support";case "74"->"hermes_boots";default->"jetpack";};
             if(existing.stream().noneMatch(w->w.id().equals(weapon.id())||w.itemNbt().contains("gungang:"+item)))
                 ConfigLayout.writeNew(directory.resolve(weapon.id()+"_"+item+".json"),ServerFiles.GSON.toJson(weapon));
         }

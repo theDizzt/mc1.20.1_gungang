@@ -3,7 +3,7 @@ package dev.gungang.acoustics.server;
 /** Server ticks: wait three seconds after spending, then recover one point every two ticks. {@code cost}: item config rapier.energyCost. */
 public record RapierEnergy(int amount,int waitTicks) {
     public RapierEnergy {amount=Math.max(0,Math.min(100,amount));waitTicks=Math.max(0,Math.min(60,waitTicks));}
-    public static final int DEFAULT_COST=33;
+    public static final int DEFAULT_COST=50;
     public boolean canStep(int cost){return amount>=cost;}
     public RapierEnergy spend(int cost){return canStep(cost)?new RapierEnergy(amount-cost,60):this;}
     public RapierEnergy tick(){
