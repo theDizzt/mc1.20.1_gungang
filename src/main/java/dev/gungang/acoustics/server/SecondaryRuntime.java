@@ -128,6 +128,7 @@ public final class SecondaryRuntime {
     @SuppressWarnings("unchecked")
     public static void registerTacz() {
         PropAwn.registerReload();
+        AcidSprayer.registerReload();
         for(String name:List.of("GunFireEvent","GunMeleeEvent"))try {
             Class<net.minecraftforge.eventbus.api.Event> type=(Class<net.minecraftforge.eventbus.api.Event>)Class.forName("com.tacz.guns.api.event.common."+name);
             var shooter=type.getMethod("getShooter");var item=type.getMethod("getGunItemStack");

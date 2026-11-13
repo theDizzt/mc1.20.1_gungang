@@ -26,7 +26,7 @@ final class LoadoutScreen extends ArenaScreen {
         lastClicked=(primary?"primary:":"secondary:")+id;lastClickTime=now;
         followRandom=false;
         select(id);
-        if(twice&&state.allowed()) {LobbyClient.action(primary?"primary":"secondary",id,"");lastClicked="";}
+        if(twice&&state.allowed()&&!selected().hidden()) {LobbyClient.action(primary?"primary":"secondary",id,"");lastClicked="";}
     }
     private float yaw=-25,pitch=12,zoom=1;
     /** Third tab: saved primary/secondary combinations stored in the server player database. */
@@ -60,17 +60,8 @@ final class LoadoutScreen extends ArenaScreen {
      * Weapon number order: the leading digits of the id (01, 28, 74, 96_infrared-scanner ...) ascending; ids without
      * a number follow alphabetically. Equal numbers keep the server's order.
      */
-    static List<Loadouts.Weapon> byNumber(List<Loadouts.Weapon> source){
-        var order=java.util.Comparator.comparingLong((Loadouts.Weapon w)->number(w.id())).thenComparing(w->number(w.id())==Long.MAX_VALUE?w.id():"");
-        var groups=new java.util.LinkedHashMap<String,List<Loadouts.Weapon>>();
-        for(var weapon:source.stream().sorted(order).toList())groups.computeIfAbsent(weapon.category(),k->new ArrayList<>()).add(weapon);
-        // Groups were created in the order of their lowest number, so this keeps the list reading in number order.
-        return groups.values().stream().flatMap(List::stream).toList();
-    }
-    static long number(String id){
-        int end=0;while(end<id.length()&&end<18&&Character.isDigit(id.charAt(end)))end++;
-        return end==0?Long.MAX_VALUE:Long.parseLong(id.substring(0,end));
-    }
+    static List<Loadouts.Weapon> byNumber(List<Loadouts.Weapon> source){return LoadoutScreenOrder.order(source);}
+    static long number(String id){return LoadoutScreenOrder.number(id);}
     private int capacity(){return Math.max(1,(height-140)/27);}
     /**
      * Grid view (remembered for the session): five smaller tiles a row in a weapon area a little wider than the list's,
@@ -113,7 +104,8 @@ final class LoadoutScreen extends ArenaScreen {
             var label=Component.empty();
             if(worn)label.append(Component.literal("● ").withStyle(net.minecraft.ChatFormatting.GOLD));
             String holder=state.takenBy(primary,weapon.id());
-            if(holder!=null)label.append(Component.literal(Lang.tr("선점 ")).withStyle(net.minecraft.ChatFormatting.RED,net.minecraft.ChatFormatting.BOLD));
+            if(weapon.hidden()&&!worn)label.append(Component.literal(Lang.tr("랜덤 전용 ")).withStyle(net.minecraft.ChatFormatting.DARK_GRAY,net.minecraft.ChatFormatting.BOLD));
+            else if(holder!=null)label.append(Component.literal(Lang.tr("선점 ")).withStyle(net.minecraft.ChatFormatting.RED,net.minecraft.ChatFormatting.BOLD));
             label.append(Component.literal(Lang.weapon(weapon)).withStyle(worn?net.minecraft.ChatFormatting.GOLD:holder!=null?net.minecraft.ChatFormatting.GRAY:net.minecraft.ChatFormatting.WHITE));
             if(holder!=null)label.append(Component.literal(" · "+holder).withStyle(net.minecraft.ChatFormatting.RED));
             if(ReleaseDateText.upcoming(weapon.releaseDate()))label.append(Component.literal(" ["+Lang.tr(ReleaseDateText.UPCOMING)+"]").withStyle(net.minecraft.ChatFormatting.AQUA));
@@ -131,7 +123,9 @@ final class LoadoutScreen extends ArenaScreen {
         boolean worn=selected().id().equals(primary?state.primary():state.secondary());
         Runnable equip=()->LobbyClient.action(primary?"primary":"secondary",selected().id(),"");
         String holder=state.takenBy(primary,selected().id());
-        if(holder!=null&&!worn)colorButton(Lang.tr("선점됨 · ")+holder,detailX(),height-48,Math.max(40,w-list-82),22,false,TAKEN,equip);
+        // 히든 weapons can be looked at but only come from 랜덤 무기.
+        if(selected().hidden()&&!worn)colorButton(Lang.tr("랜덤 무기로만 획득 가능"),detailX(),height-48,Math.max(40,w-list-82),22,false,MUTED,equip);
+        else if(holder!=null&&!worn)colorButton(Lang.tr("선점됨 · ")+holder,detailX(),height-48,Math.max(40,w-list-82),22,false,TAKEN,equip);
         else if(worn)button(Lang.tr("장착 중인 무기"),detailX(),height-48,Math.max(40,w-list-82),22,state.allowed(),ACCENT,equip);
         else colorButton(Lang.tr("선택한 무기 장착"),detailX(),height-48,Math.max(40,w-list-82),22,state.allowed(),ACCENT,equip);
         closeButton(x+w-64,height-48,64,22);
@@ -523,7 +517,14 @@ final class LoadoutScreen extends ArenaScreen {
             g.fill(cx+1,y+tile-9,cx+tile-1,y+tile-1,0x99000000);
             smallMarquee(g,Lang.weapon(weapon),cx+3,y+tile-7,nameScale,Math.max(1,(int)((tile-5)/nameScale)),worn?TacticalStyle.GOLD:INK);
             String holder=state.takenBy(primary,weapon.id());
-            if(holder!=null&&!worn){
+            if(weapon.hidden()&&!worn){
+                // 히든: listed but random-only; a dimmed tile with a "랜덤 전용" tag.
+                g.fill(cx+1,y+1,cx+tile-1,y+tile-9,0xA0101418);
+                int mid=y+(tile-9)/2;
+                g.fill(cx+1,mid-6,cx+tile-1,mid+7,0xCC2A2A36);
+                g.drawCenteredString(font,Lang.tr("랜덤 전용"),cx+tile/2,mid-4,0xFFB8B8D0);
+            }
+            else if(holder!=null&&!worn){
                 // A teammate already holds it (duplicates off): dim the tile, red frame and a "선점됨" tag with the holder.
                 g.fill(cx+1,y+1,cx+tile-1,y+tile-9,0xA0101418);
                 if(!picked){g.fill(cx,y,cx+tile,y+1,TAKEN);g.fill(cx,y+tile-1,cx+tile,y+tile,TAKEN);g.fill(cx,y,cx+1,y+tile,TAKEN);g.fill(cx+tile-1,y,cx+tile,y+tile,TAKEN);}

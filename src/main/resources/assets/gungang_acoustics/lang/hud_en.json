@@ -752,5 +752,8 @@
   "투명화": "Cloak",
   "콤보 · ×%.2f · %s": "Combo · ×%.2f · %s",
   "투시까지": "Wallhack in",
-  "스캔됨": "SCANNED"
+  "스캔됨": "SCANNED",
+  "랜덤 무기로만 획득 가능": "Random weapons only",
+  "랜덤 전용": "Random only",
+  "히든": "Hidden"
 }

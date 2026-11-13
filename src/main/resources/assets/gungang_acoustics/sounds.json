@@ -1,0 +1,4 @@
+{
+  "acid_warmup": {"sounds": ["gungang_acoustics:acid/warmup"]},
+  "acid_empty": {"sounds": ["gungang_acoustics:acid/empty"]}
+}
