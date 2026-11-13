@@ -45,6 +45,8 @@ public final class ClientSetup {
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.ARROW_GRENADE_PROJECTILE.get(),ArrowGrenadeRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.ARROW_FRAGMENT.get(),ArrowFragmentRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.ORDNANCE.get(),OrdnanceRenderer::new);
+        // 73 경계 감시 포격: smoke, missiles and blasts are server particles; the entity itself draws nothing.
+        event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.BARRAGE.get(),net.minecraft.client.renderer.entity.NoopRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.HAND_AXE_PROJECTILE.get(),HandAxeRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.SHURIKEN_PROJECTILE.get(),ShurikenRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.VOID_ANCHOR_ENTITY.get(),VoidAnchorRenderer::new);

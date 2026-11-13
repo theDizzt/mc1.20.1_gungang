@@ -249,7 +249,7 @@ public final class BotLearning {
         demonstration.observe(p.onGround()&&!p.isPassenger()&&!p.isInWater()&&p.hurtTime==0,observation.reloadKnown(),observation.rounds()>=0);
     }
     private static boolean secondaryObservable(ItemStack stack){
-        return stack.getItem() instanceof GadgetItem item&&Set.of("molotov","arrow_grenade","landmine","bear_trap","turret","orbital_strike","barrier","void_anchor","air_assault","jetpack","recovery_potion","adrenaline").contains(item.kind);
+        return stack.getItem() instanceof GadgetItem item&&Set.of("molotov","arrow_grenade","landmine","bear_trap","turret","orbital_strike","perimeter_barrage","barrier","void_anchor","air_assault","jetpack","recovery_potion","adrenaline").contains(item.kind);
     }
     private static void resetHuman(){demonstration=null;lastHumanPosition=null;lastHumanTick=-1;lastWeaponObservation=null;lastHeld="";label="";labelUntil=0;}
     private static void openRecording(ServerPlayer p){

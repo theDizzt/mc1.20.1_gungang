@@ -1,0 +1,12 @@
+Model Information:
+* title:	walkie- talkie
+* source:	https://sketchfab.com/3d-models/walkie-talkie-18d6b3f0d38e457eb157f7d5f5ba9878
+* author:	BlinFriend (https://sketchfab.com/BlinFriend)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "walkie- talkie" (https://sketchfab.com/3d-models/walkie-talkie-18d6b3f0d38e457eb157f7d5f5ba9878) by BlinFriend (https://sketchfab.com/BlinFriend) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+Modifications: converted glTF to Forge OBJ, scaled and centred for handheld use; base colour texture downscaled to 512 px; normal and metallic-roughness maps omitted.

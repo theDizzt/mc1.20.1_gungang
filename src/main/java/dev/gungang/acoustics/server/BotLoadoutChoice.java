@@ -80,6 +80,7 @@ final class BotLoadoutChoice {
             case "recovery_potion","shield","life_support"->fragile?4:1;
             case "molotov","use"->distance>=5&&distance<=20?3:0;
             case "orbital_strike"->distance>=28?4:-3;
+            case "perimeter_barrage"->distance>=36?4:-3;
             case "infrared_scanner"->distance>=16?3:1;
             case "jetpack"->distance>=24?2:0;
             case "landmine","bear_trap"->distance<=10?2:0;

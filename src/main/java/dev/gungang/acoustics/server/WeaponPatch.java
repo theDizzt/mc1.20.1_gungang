@@ -97,10 +97,15 @@ public final class WeaponPatch {
     private static final Set<String> SECONDARY_HIDDEN = Set.of("maxHealth", "movementSpeed");
     private static final Map<String, String> SECONDARY_LABELS = Map.of("nameEn", "영어 이름 (비우면 한글 이름)", "cooldownSeconds", "쿨타임 (초)", "plantSeconds", "설치 시간 (초)", "fuseSeconds", "폭발 시간 (초)", "defuseSeconds", "해체 시간 (초)");
     /** Labels for one item's own fields ("setting.field"), ahead of {@link #ITEM_LABELS}, where the shared name would mislead. */
-    private static final Map<String, String> ITEM_LABELS_OF = Map.of(
-            "hermes_boots.dashDistance", "돌진 거리 (블록)", "hermes_boots.dashSeconds", "돌진 시간 (초)",
-            "hermes_boots.maxCharges", "최대 충전 횟수", "hermes_boots.chargeSeconds", "1회 충전 시간 (초)",
-            "hermes_boots.trailSeconds", "글로우 잔상 유지 시간 (초)");
+    private static final Map<String, String> ITEM_LABELS_OF = Map.ofEntries(
+            Map.entry("hermes_boots.dashDistance", "돌진 거리 (블록)"), Map.entry("hermes_boots.dashSeconds", "돌진 시간 (초)"),
+            Map.entry("hermes_boots.maxCharges", "최대 충전 횟수"), Map.entry("hermes_boots.chargeSeconds", "1회 충전 시간 (초)"),
+            Map.entry("hermes_boots.trailSeconds", "글로우 잔상 유지 시간 (초)"),
+            Map.entry("perimeter_barrage.radius", "포격 범위 반경 (블록)"), Map.entry("perimeter_barrage.delaySeconds", "연막 후 포격 시작까지 (초)"),
+            Map.entry("perimeter_barrage.durationSeconds", "포격 지속 시간 (초)"), Map.entry("perimeter_barrage.volleySize", "1회 일제 사격 미사일 수"),
+            Map.entry("perimeter_barrage.volleyIntervalSeconds", "일제 사격 간격 (초)"), Map.entry("perimeter_barrage.damage", "미사일 1발 폭발 피해"),
+            Map.entry("perimeter_barrage.blastRadius", "미사일 폭발 반경 (블록)"), Map.entry("perimeter_barrage.flightSeconds", "미사일 낙하 시간 (초)"),
+            Map.entry("perimeter_barrage.range", "포격 지정 최대 거리 (블록)"));
     private static String itemLabel(String item, String field) {
         return ITEM_LABELS_OF.getOrDefault(item + "." + field, ITEM_LABELS.getOrDefault(field, field));
     }
