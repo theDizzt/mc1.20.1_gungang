@@ -49,22 +49,43 @@ public final class CommandFlagEntity extends LivingEntity {
     private boolean ally(LivingEntity p){
         if(p.getUUID().equals(owner))return true;
         if(!(p instanceof net.minecraft.world.entity.player.Player||p instanceof BotEntity))return false;
+        // FFA has no allies, even if the lobby/scoreboard still shows team colours.
+        if(MatchManager.freeForAll()!=null)return false;
+        String ownerSide=currentOwnerSide();
         String targetSide=sideOf(p);
-        if(BotManager.combatant(side)&&BotManager.combatant(targetSide))return side.equals(targetSide);
-        // In a match, unknown participants must not inherit allegiance from a visual scoreboard team.
-        if(MatchManager.active())return false;
-        return !team.isEmpty()&&p.getTeam()!=null&&team.equals(p.getTeam().getName());
+        if(!ownerSide.isEmpty()&&!targetSide.isEmpty())return ownerSide.equals(targetSide);
+        return false;
+    }
+    /** Resolve by UUID: bot bodies and their gadget fake players represent the same team member. */
+    private String currentOwnerSide(){
+        if(owner==null)return "";
+        if(BotManager.identity(owner))return teamSide(BotManager.team(owner));
+        var server=level().getServer();
+        var player=server==null?null:server.getPlayerList().getPlayer(owner);
+        if(player!=null)return sideOf(player);
+        // Keep a disconnected owner's deployed flag on its last known team.
+        String stored=teamSide(side);
+        return stored.isEmpty()?teamSide(team):stored;
     }
     private static String sideOf(LivingEntity entity){
-        String value=BotManager.side(entity);
-        if(BotManager.combatant(value))return value;
-        if(MatchManager.freeForAll()!=null)return "";
+        if(MatchManager.freeForAll()!=null)return BotManager.side(entity);
         if(BotManager.identity(entity.getUUID())){
-            value=BotManager.team(entity.getUUID());if(BotManager.combatant(value))return value;
+            String value=teamSide(BotManager.team(entity.getUUID()));if(!value.isEmpty())return value;
         }
+        String value=teamSide(LobbyManager.team(entity.getUUID()));
+        if(!value.isEmpty())return value;
         var scoreboard=entity.getTeam();
-        if(scoreboard!=null)return switch(scoreboard.getName()){case "Red"->"ALPHA";case "Blue"->"BRAVO";default->"";};
-        return "";
+        return scoreboard==null?"":teamSide(scoreboard.getName());
+    }
+    /** Match sides and scoreboard team names must compare in the same namespace. */
+    static String teamSide(String value){
+        if(value==null||value.isBlank())return "";
+        return switch(value.toUpperCase(java.util.Locale.ROOT)){
+            case "RED","ALPHA"->"ALPHA";
+            case "BLUE","BRAVO"->"BRAVO";
+            case "SPECTATOR","UNASSIGNED"->"";
+            default->value.startsWith("FFA:")?"":value.startsWith("TEAM:")?value:"TEAM:"+value;
+        };
     }
     @Override public void tick(){
         super.tick();setDeltaMovement(Vec3.ZERO);
