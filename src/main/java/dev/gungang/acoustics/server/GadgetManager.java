@@ -57,7 +57,7 @@ public final class GadgetManager {
     public static void use(ServerPlayer p,ItemStack stack,String kind) {
         if(p.getPersistentData().hasUUID("VoidAnchorTether")&&(kind.equals("air_assault")||kind.equals("jetpack")||kind.equals("hermes_boots")))return;
         if(SurvivalGadgets.jetting(p))return;
-        if((kind.equals("landmine")||kind.equals("molotov")||kind.equals("arrow_grenade")||kind.equals("orbital_strike")||kind.equals("bear_trap")||kind.equals("turret"))&&SafeZones.contains(p))return;
+        if((kind.equals("landmine")||kind.equals("molotov")||kind.equals("arrow_grenade")||kind.equals("orbital_strike")||kind.equals("perimeter_barrage")||kind.equals("bear_trap")||kind.equals("turret"))&&SafeZones.contains(p))return;
         if(!p.isAlive()||p.isSpectator()||LobbyManager.respawning(p.getUUID())||!SecondaryRuntime.ready(p,stack))return;
         BotLearning.observedAction(p,"secondary");
         if(kind.equals("void_anchor")) {
@@ -168,6 +168,17 @@ public final class GadgetManager {
             strike.setPos(pos.getX()+.5,PlacementSurface.height(p.level(),pos),pos.getZ()+.5);strike.setup(p,true);
             if(p.serverLevel().addFreshEntity(strike)) {
                 p.serverLevel().playSound(null,pos,net.minecraft.sounds.SoundEvents.BEACON_ACTIVATE,net.minecraft.sounds.SoundSource.PLAYERS,3,1.2f);
+                SecondaryRuntime.commit(p,stack);cancel(p);
+            }
+            return;
+        }
+        if(kind.equals("perimeter_barrage")) {
+            var pos=target(p,ExtraGadgetConfig.barrage.range());
+            if(!valid(p,pos,false,false)) {p.displayClientMessage(Component.literal("이 위치에는 포격을 지정할 수 없습니다."),true);return;}
+            var barrage=GadgetItems.BARRAGE.get().create(p.serverLevel());if(barrage==null)return;
+            barrage.setPos(pos.getX()+.5,PlacementSurface.height(p.level(),pos),pos.getZ()+.5);barrage.setup(p);
+            if(p.serverLevel().addFreshEntity(barrage)) {
+                p.serverLevel().playSound(null,p.blockPosition(),net.minecraft.sounds.SoundEvents.NOTE_BLOCK_BIT.value(),net.minecraft.sounds.SoundSource.PLAYERS,1.5f,.7f);
                 SecondaryRuntime.commit(p,stack);cancel(p);
             }
             return;

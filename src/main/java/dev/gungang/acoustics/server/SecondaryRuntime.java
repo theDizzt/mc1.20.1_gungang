@@ -42,12 +42,15 @@ public final class SecondaryRuntime {
             tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(ExtraGadgetConfig.hermes.chargeSeconds()));
             tag.putInt(CHARGES,ExtraGadgetConfig.hermes.maxCharges());
         }else tag.remove(CHARGES);
-        if(CombatGadgets.is(stack,"orbital_strike")) {
-            tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(ExtraGadgetConfig.orbital.cooldownSeconds()));
+        // 73 경계 감시 포격 shares the orbital strike's rules: its item setting's cooldown, and a full wait on first equip.
+        boolean barrage=CombatGadgets.is(stack,"perimeter_barrage");
+        if(CombatGadgets.is(stack,"orbital_strike")||barrage) {
+            double cooldown=barrage?ExtraGadgetConfig.barrage.cooldownSeconds():ExtraGadgetConfig.orbital.cooldownSeconds();
+            tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(cooldown));
             // The first equip waits a full cooldown, except in 랜덤 무기, where weapons change every few minutes and
             // that wait would use up most of the turn. A cooldown from actually firing it still carries over.
             if(!player.level().isClientSide&&!LobbyManager.randomWeaponMatch())DEADLINES.computeIfAbsent(player.getUUID(),id->new HashMap<>())
-                    .computeIfAbsent(weapon.id(),id->player.level().getGameTime()+ExtraGadgetConfig.ticks(ExtraGadgetConfig.orbital.cooldownSeconds()));
+                    .computeIfAbsent(weapon.id(),id->player.level().getGameTime()+ExtraGadgetConfig.ticks(cooldown));
         }
         tag.putLong("GunGangCooldownEnd",DEADLINES.getOrDefault(player.getUUID(),Map.of()).getOrDefault(weapon.id(),0L));
         if(CombatGadgets.is(stack,"command_flag"))tag.putInt("GunGangCooldownTicks",ExtraGadgetConfig.ticks(ExtraGadgetConfig.commandFlag.cooldownSeconds()));

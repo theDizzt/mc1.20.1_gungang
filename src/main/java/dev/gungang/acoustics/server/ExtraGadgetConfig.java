@@ -39,6 +39,19 @@ public final class ExtraGadgetConfig {
         public Molotov(double radius,double duration,int burn,double cooldown){this(radius,duration,burn,cooldown,1);}
     }
     public record Orbital(double radius,double centerDamage,double edgeDamage,double delaySeconds,double range,double cooldownSeconds) { }
+    /**
+     * 73 경계 감시 포격: red smoke over a radius-{@code radius} area, then after {@code delaySeconds} a
+     * {@code durationSeconds} barrage of {@code volleySize} missiles every {@code volleyIntervalSeconds}, each aimed at
+     * the most crowded spots in the area. A missile falls for {@code flightSeconds} through any roof and deals
+     * {@code damage} within {@code blastRadius} to everyone (owner and allies too) not behind cover.
+     */
+    public record Barrage(double radius,double delaySeconds,double durationSeconds,int volleySize,double volleyIntervalSeconds,
+                          double damage,double blastRadius,double flightSeconds,double range,double cooldownSeconds) {
+        /** Volleys in one barrage (8 s / 1 s = 8, so 8 × 3 = 24 missiles by default). */
+        public int volleys(){return Math.max(1,(int)Math.round(durationSeconds/volleyIntervalSeconds));}
+    }
+    public static final Barrage BARRAGE_DEFAULTS=new Barrage(32,3,8,3,1,32,4,.5,64,210);
+    public static Barrage barrage=BARRAGE_DEFAULTS;
     public record Life(double absorption,double durationSeconds,double drainAmount,double drainIntervalSeconds,double cooldownSeconds) { }
     public record Jet(double speed,double durationSeconds,double collisionDamage,double knockback,int burnSeconds,double trailSeconds,double cooldownSeconds,boolean verticalFlight,double burnDamage) {
         public Jet(double speed,double duration,double damage,double knockback,int burn,double trail,double cooldown,boolean vertical){this(speed,duration,damage,knockback,burn,trail,cooldown,vertical,1);}
@@ -159,6 +172,11 @@ public final class ExtraGadgetConfig {
         GadgetConfig.bounded(ag.projectileSpeed(),.5,4);GadgetConfig.bounded(ag.throwSpeed(),.1,3);
         var m=GadgetConfig.read("molotov",Molotov.class,new Molotov(5,8,3,36),overrides,apply);
         var o=GadgetConfig.read("orbital_strike",Orbital.class,new Orbital(24,256,84,5,64,240),overrides,apply);
+        var pb=GadgetConfig.read("perimeter_barrage",Barrage.class,BARRAGE_DEFAULTS,overrides,apply);
+        GadgetConfig.bounded(pb.radius(),1,64);GadgetConfig.bounded(pb.delaySeconds(),0,60);GadgetConfig.bounded(pb.durationSeconds(),.05,120);
+        GadgetConfig.bounded(pb.volleySize(),1,16);GadgetConfig.bounded(pb.volleyIntervalSeconds(),.1,30);GadgetConfig.bounded(pb.damage(),0,10000);
+        GadgetConfig.bounded(pb.blastRadius(),.5,16);GadgetConfig.bounded(pb.flightSeconds(),.05,5);GadgetConfig.bounded(pb.range(),1,128);GadgetConfig.bounded(pb.cooldownSeconds(),0,86400);
+        if(pb.volleys()*pb.volleySize()>400)throw new IllegalArgumentException("경계 감시 포격 미사일 수가 너무 많습니다 (최대 400).");
         var l=GadgetConfig.read("life_support",Life.class,new Life(30,2.9,1,.1,120),overrides,apply);
         var j=GadgetConfig.read("jetpack",Jet.class,new Jet(.85,3,25,1.5,3,1,24,false),overrides,apply);
         var hb=GadgetConfig.read("hermes_boots",Hermes.class,HERMES_DEFAULTS,overrides,apply);
@@ -242,7 +260,7 @@ public final class ExtraGadgetConfig {
         GadgetConfig.bounded(s.durationSeconds(),.05,300);GadgetConfig.bounded(h.capacity(),1,10000);GadgetConfig.bounded(h.repairSeconds(),0,86400);
         GadgetConfig.bounded(h.movementPenaltyPercent(),0,99);GadgetConfig.bounded(h.regenDelaySeconds(),0,300);GadgetConfig.bounded(h.regenPerSecond(),0,10000);GadgetConfig.bounded(h.meleeReductionPercent(),0,100);
         for(double c:new double[]{m.cooldownSeconds(),o.cooldownSeconds(),l.cooldownSeconds(),j.cooldownSeconds(),s.cooldownSeconds(),x.cooldownSeconds()})GadgetConfig.bounded(c,0,86400);
-        if(apply){molotov=m;orbital=o;life=l;jet=j;hermes=hb;scanner=s;shield=h;handAxe=x;arrowGrenade=ag;rapier=r;katana=k;regeneration=rg;combat=cb;fallout=fo;twinBlades=tb;arcThrower=ac;windBlower=wb;shuriken=sh;}
+        if(apply){barrage=pb;molotov=m;orbital=o;life=l;jet=j;hermes=hb;scanner=s;shield=h;handAxe=x;arrowGrenade=ag;rapier=r;katana=k;regeneration=rg;combat=cb;fallout=fo;twinBlades=tb;arcThrower=ac;windBlower=wb;shuriken=sh;}
     }
     private ExtraGadgetConfig() { }
 }

@@ -232,6 +232,16 @@ public final class PatchHelp {
         item("health_regeneration", "delaySeconds", "용도: 마지막으로 피해를 받은 뒤 자연 재생이 시작되기까지의 시간(초).");
         item("health_regeneration", "intervalSeconds", "용도: 자연 재생 1회의 간격(초).\n산출식: 1회 회복 = 최대 체력 × 초당% / 100 × 간격");
         item("orbital_strike", "range", "용도: 폭격 위치를 지정할 수 있는 최대 거리(블록).");
+        item("perimeter_barrage", "radius", "용도: 지정 지점을 중심으로 미사일이 떨어지는 범위의 반경(블록). 빨간 연막 고리로 표시되고, 이 안의 사람들이 조준 대상입니다.");
+        item("perimeter_barrage", "delaySeconds", "용도: 빨간 연막탄이 떨어진 뒤 첫 일제 사격까지의 시간(초).");
+        item("perimeter_barrage", "durationSeconds", "용도: 포격이 이어지는 시간(초).\n산출식: 총 미사일 수 = (지속 시간 / 일제 사격 간격, 반올림) × 1회 미사일 수");
+        item("perimeter_barrage", "volleySize", "용도: 일제 사격마다 떨어지는 미사일 수. 범위 안에서 사람이 가장 많이 몰린 곳부터, 폭발 범위가 겹치지 않는 지점들을 노립니다(모자라면 가장 몰린 곳을 다시 노림).");
+        item("perimeter_barrage", "volleyIntervalSeconds", "용도: 일제 사격 사이 간격(초).");
+        item("perimeter_barrage", "damage", "용도: 미사일 1발이 폭발 범위 안에 주는 피해. 사용자·아군·적 모두 받으며, 폭발 지점과 몸 사이가 블록으로 막혀 있으면(엄폐) 받지 않습니다. 전역 폭발 배수가 플레이어·봇에게 추가로 곱해집니다.");
+        item("perimeter_barrage", "blastRadius", "용도: 미사일 1발의 폭발 반경(블록).");
+        item("perimeter_barrage", "flightSeconds", "용도: 조준 후 미사일이 떨어져 폭발하기까지의 시간(초). 이 사이에 움직이면 피할 수 있습니다. 미사일은 천장을 뚫고 떨어집니다.");
+        item("perimeter_barrage", "range", "용도: 포격 위치를 지정할 수 있는 최대 거리(블록).");
+        item("perimeter_barrage", "cooldownSeconds", "용도: 사용 후 다시 쓸 수 있을 때까지의 시간(초). 궤도폭격처럼 처음 장착할 때도 이 시간만큼 기다립니다(랜덤 무기 모드 제외).");
         item("orbital_strike", "delaySeconds", "용도: 위치를 확정한 뒤 폭격이 떨어지기까지의 시간(초).");
         item("hermes_boots", "dashDistance", "용도: 돌진 1회에 앞으로 이동하는 거리(블록). 벽에 닿으면 그 자리에서 멈춥니다.");
         item("hermes_boots", "dashSeconds", "용도: 돌진에 걸리는 시간(초). 0.05초(1틱) 단위로 반올림됩니다.\n산출식: 돌진 속도(블록/초) = 돌진 거리 / 돌진 시간");

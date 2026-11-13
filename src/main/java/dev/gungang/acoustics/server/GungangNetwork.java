@@ -27,7 +27,7 @@ public final class GungangNetwork {
     public record MapPreview(String id,byte[] png,String error) { }
     public record WeaponPreview(String id,net.minecraft.world.item.ItemStack stack) { }
     public record Gadget(String preview,double range) {
-        public Gadget(String preview) {this(preview,preview.equals("command_flag")?ExtraGadgetConfig.commandFlag.placementRange():preview.equals("turret")?Turrets.config.placementRange():preview.equals("orbital_strike")?ExtraGadgetConfig.orbital.range():preview.equals("barrier")?GadgetConfig.barrier.range():GadgetConfig.mine.range());}
+        public Gadget(String preview) {this(preview,preview.equals("command_flag")?ExtraGadgetConfig.commandFlag.placementRange():preview.equals("turret")?Turrets.config.placementRange():preview.equals("orbital_strike")?ExtraGadgetConfig.orbital.range():preview.equals("perimeter_barrage")?ExtraGadgetConfig.barrage.range():preview.equals("barrier")?GadgetConfig.barrier.range():GadgetConfig.mine.range());}
     }
     public record Action(String action, String value, String target) { }
     /** 178: a hider's lectern book text (up to PropHuntMatch.LECTERN_LIMIT characters). */

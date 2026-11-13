@@ -3,6 +3,14 @@ package dev.gungang.acoustics.server;
 import java.util.List;
 
 final class OrdnanceLoadouts {
+    /** 73 경계 감시 포격, written from the item defaults (ExtraGadgetConfig.BARRAGE_DEFAULTS). */
+    static final String BARRAGE_DESCRIPTION="지정한 위치에 빨간 연막탄이 떨어져 반경 32블록의 포격 범위를 표시합니다.\n"
+            +"3초 뒤부터 8초 동안 1초마다 미사일 3발, 총 24발이 범위 안에서 사람이 가장 많이 몰린 세 지점으로 떨어집니다.\n"
+            +"미사일은 천장을 뚫고 떨어지며 1발당 반경 4블록에 피해 32를 줍니다. 궤도폭격과 달리 엄폐물 뒤에 숨으면 폭발 피해를 받지 않습니다.\n"
+            +"사용자 본인과 아군·적군 모두 피해를 받습니다. 최초 장착 시에도 210초 대기합니다 (랜덤 무기 모드 제외).";
+    static final String BARRAGE_USAGE="사용 키로 지점 선택 시작. 우클릭 확정 / 좌클릭 취소. 확정한 포격은 취소할 수 없습니다.";
+    static final List<Loadouts.Stat> BARRAGE_STATS=List.of(new Loadouts.Stat("미사일 피해","32 (1발)"),new Loadouts.Stat("미사일 폭발 반경","4블록"),
+            new Loadouts.Stat("포격 범위","반경 32블록"),new Loadouts.Stat("포격","3초 후 8초간 · 초당 3발 · 총 24발"),new Loadouts.Stat("지정 사거리","64블록"));
     private static final String ARROW_USAGE="왼손 아이템 우클릭 후 복귀 매크로 키(기본 H)로 투척합니다. 주손에 든 경우 우클릭으로 던질 수 있습니다.";
     static List<Loadouts.Weapon> defaults() {
         return List.of(
@@ -15,6 +23,8 @@ final class OrdnanceLoadouts {
                 new Loadouts.Weapon("81","{id:'gungang:molotov',Count:1b}","몰로토프 칵테일",
                         "착탄 즉시 반지름 5블록의 불장판이 8초간 유지됩니다. 범위 안의 대상에게 화상 3초. 자신과 아군도 피해를 받습니다.",null,
                         "보조무기 사용 키로 투척합니다. 블록에 닿으면 즉시 터집니다.","투척형",100d,100d,36d),
+                new Loadouts.Weapon("73","{id:'gungang:perimeter_barrage',Count:1b}","경계 감시 포격",
+                        BARRAGE_DESCRIPTION,null,BARRAGE_USAGE,"설치형",100d,100d,210d,"",false,"2026-12-19",BARRAGE_STATS),
                 new Loadouts.Weapon("87","{id:'gungang:orbital_strike',Count:1b}","궤도폭격",
                         "지점에 자홍색 레이저와 범위 표시 후 5초 뒤 폭격. 반지름 24블록, 중심 256부터 가장자리 84까지 거리 비례 피해. 자신과 아군도 피해를 받습니다. 최초 장착 시에도 240초 대기합니다 (랜덤 무기 모드 제외).",null,
                         "사용 키로 지점 선택 시작, 우클릭으로 확정 / 좌클릭으로 취소. 확정한 폭격은 취소할 수 없습니다.","설치형",100d,100d,240d),
