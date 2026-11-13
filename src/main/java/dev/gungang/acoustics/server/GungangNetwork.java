@@ -26,9 +26,9 @@ public final class GungangNetwork {
     public record Ability(SurvivalGadgets.View state) { }
     public record MapPreview(String id,byte[] png,String error) { }
     public record WeaponPreview(String id,net.minecraft.world.item.ItemStack stack) { }
-    public record Gadget(String preview,double range,java.util.List<ArenaMap.Area> spawnAreas) {
-        public Gadget(String preview,double range){this(preview,range,java.util.List.of());}
-        public Gadget(String preview,ServerPlayer player){this(preview,new Gadget(preview).range(),preview.equals("command_flag")?LobbyManager.placementSpawnAreas(player.level()):java.util.List.of());}
+    public record Gadget(String preview,double range,java.util.List<ArenaMap.Area> spawnAreas,boolean flagExists) {
+        public Gadget(String preview,double range){this(preview,range,java.util.List.of(),false);}
+        public Gadget(String preview,ServerPlayer player){this(preview,new Gadget(preview).range(),preview.equals("command_flag")?LobbyManager.placementSpawnAreas(player.level()):java.util.List.of(),preview.equals("command_flag")&&CommandFlags.hasFlag(player));}
         public Gadget(String preview) {this(preview,preview.equals("command_flag")?ExtraGadgetConfig.commandFlag.placementRange():preview.equals("turret")?Turrets.config.placementRange():preview.equals("orbital_strike")?ExtraGadgetConfig.orbital.range():preview.equals("barrier")?GadgetConfig.barrier.range():GadgetConfig.mine.range());}
     }
     public record Action(String action, String value, String target) { }
@@ -230,8 +230,8 @@ public final class GungangNetwork {
         CHANNEL.registerMessage(6,Progression.class,(p,b)->b.writeUtf(p.json,4096),b->new Progression(b.readUtf(4096)),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.ProgressionHud.receive(p.json)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
-        CHANNEL.registerMessage(5,Gadget.class,(p,b)->{b.writeUtf(p.preview,32);b.writeDouble(p.range);b.writeUtf(ServerFiles.GSON.toJson(p.spawnAreas),4096);},b->new Gadget(b.readUtf(32),b.readDouble(),java.util.Arrays.asList(ServerFiles.GSON.fromJson(b.readUtf(4096),ArenaMap.Area[].class))),(p,context)->{
-            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.GadgetClient.receive(p.preview,p.range,p.spawnAreas)));ctx.setPacketHandled(true);
+        CHANNEL.registerMessage(5,Gadget.class,(p,b)->{b.writeUtf(p.preview,32);b.writeDouble(p.range);b.writeUtf(ServerFiles.GSON.toJson(p.spawnAreas),4096);b.writeBoolean(p.flagExists);},b->new Gadget(b.readUtf(32),b.readDouble(),java.util.Arrays.asList(ServerFiles.GSON.fromJson(b.readUtf(4096),ArenaMap.Area[].class)),b.readBoolean()),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.GadgetClient.receive(p.preview,p.range,p.spawnAreas,p.flagExists)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(0, Acoustics.class, (p, b) -> b.writeUtf(p.json, 65536), b -> new Acoustics(b.readUtf(65536)),
                 (p, context) -> {

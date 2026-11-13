@@ -24,7 +24,7 @@ public final class CommandFlagEntity extends LivingEntity {
     @Override protected void defineSynchedData(){super.defineSynchedData();entityData.define(COLOR,0xFFFFFF);entityData.define(TEAM,"");}
     public void setup(ServerPlayer p){
         owner=p.getUUID();team=p.getTeam()==null?"":p.getTeam().getName();
-        side=BotManager.side(p);if(side.isEmpty()&&BotManager.identity(owner))side=BotManager.team(owner);
+        side=sideOf(p);
         entityData.set(TEAM,team);
         Integer fallback=p.getTeam()==null?null:p.getTeam().getColor().getColor();
         entityData.set(COLOR,team.equals("Red")?LobbyManager.options().color("ALPHA"):team.equals("Blue")?LobbyManager.options().color("BRAVO"):fallback==null?0xFFFFFF:fallback);
@@ -48,8 +48,23 @@ public final class CommandFlagEntity extends LivingEntity {
     }
     private boolean ally(LivingEntity p){
         if(p.getUUID().equals(owner))return true;
-        if(p instanceof BotEntity)return !side.isEmpty()&&BotManager.combatant(side)&&side.equals(BotManager.side(p));
+        if(!(p instanceof net.minecraft.world.entity.player.Player||p instanceof BotEntity))return false;
+        String targetSide=sideOf(p);
+        if(BotManager.combatant(side)&&BotManager.combatant(targetSide))return side.equals(targetSide);
+        // In a match, unknown participants must not inherit allegiance from a visual scoreboard team.
+        if(MatchManager.active())return false;
         return !team.isEmpty()&&p.getTeam()!=null&&team.equals(p.getTeam().getName());
+    }
+    private static String sideOf(LivingEntity entity){
+        String value=BotManager.side(entity);
+        if(BotManager.combatant(value))return value;
+        if(MatchManager.freeForAll()!=null)return "";
+        if(BotManager.identity(entity.getUUID())){
+            value=BotManager.team(entity.getUUID());if(BotManager.combatant(value))return value;
+        }
+        var scoreboard=entity.getTeam();
+        if(scoreboard!=null)return switch(scoreboard.getName()){case "Red"->"ALPHA";case "Blue"->"BRAVO";default->"";};
+        return "";
     }
     @Override public void tick(){
         super.tick();setDeltaMovement(Vec3.ZERO);
@@ -65,7 +80,7 @@ public final class CommandFlagEntity extends LivingEntity {
     @Override public boolean hurt(DamageSource source,float amount){
         if(level().isClientSide||!isAlive())return false;
         var attacker=source.getEntity();
-        if(attacker!=null&&(attacker.getUUID().equals(owner)||!team.isEmpty()&&attacker.getTeam()!=null&&team.equals(attacker.getTeam().getName())))return false;
+        if(attacker instanceof LivingEntity living&&ally(living))return false;
         invulnerableTime=0;return super.hurt(source,amount);
     }
     @Override public void die(DamageSource source){super.die(source);discard();}
