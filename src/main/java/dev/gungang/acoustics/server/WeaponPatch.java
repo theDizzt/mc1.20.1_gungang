@@ -142,7 +142,7 @@ public final class WeaponPatch {
             Map.entry("detectionRange", "감지 반경 (블록)"), Map.entry("fireIntervalTicks", "사격 간격 (틱)"), Map.entry("reloadPerSecond", "초당 재장전"),
             Map.entry("absorption", "추가 체력"), Map.entry("triggerRadius", "작동 반경 (블록)"), Map.entry("delaySeconds", "지연 (초)"),
             Map.entry("centerDamage", "중심 피해"), Map.entry("edgeDamage", "가장자리 피해"), Map.entry("collisionDamage", "충돌 피해"),
-            Map.entry("maxPlaced", "최대 설치 수"), Map.entry("dashDistance", "대시 이동 거리 (블록)"), Map.entry("energyCost", "대시 에너지 소모"),
+            Map.entry("maxPlaced", "최대 설치 수"), Map.entry("dashDistance", "대시 이동 거리 (블록)"), Map.entry("energyCost", "대시 에너지 소모"), Map.entry("energyRegenPerSecond", "초당 에너지 재생량"), Map.entry("energyRegenDelaySeconds", "대시 후 재생 대기시간 (초, 0은 항상 재생)"), Map.entry("killEnergyGain", "처치 시 에너지 회복량"),
             Map.entry("rightClickDamage", "우클릭 피해"), Map.entry("percentPerSecond", "초당 회복 (최대 체력 %)"), Map.entry("bleedDamagePerSecond", "출혈 초당 피해"), Map.entry("bleedSeconds", "출혈 시간 (초)"), Map.entry("rootSeconds", "속박 시간 (초)"), Map.entry("slowSeconds", "둔화 시간 (초)"),
             Map.entry("explosionPlayerMultiplier", "폭발 피해 배수 (TaCZ: 모든 대상)"), Map.entry("startDamage", "첫 피해"), Map.entry("damageStep", "콤보마다 증가"),
             Map.entry("maxDamage", "최대 피해"), Map.entry("intervalSeconds", "간격 (초)"), Map.entry("motion1Damage", "공격 모션 1 피해"),

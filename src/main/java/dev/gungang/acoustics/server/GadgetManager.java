@@ -78,7 +78,7 @@ public final class GadgetManager {
         }
         if(CombatGadgets.use(p,stack,kind))return;
         if(GadgetItem.placement(kind)) {
-            PREVIEW.put(p.getUUID(),new Preview(kind,p.getInventory().selected));GungangNetwork.send(p,new GungangNetwork.Gadget(kind));return;
+            PREVIEW.put(p.getUUID(),new Preview(kind,p.getInventory().selected));GungangNetwork.send(p,new GungangNetwork.Gadget(kind,p));return;
         }
         if(kind.equals("molotov")||kind.equals("arrow_grenade")) {
             net.minecraft.world.entity.projectile.ThrowableItemProjectile projectile=kind.equals("arrow_grenade")?GadgetItems.ARROW_GRENADE_PROJECTILE.get().create(p.serverLevel()):GadgetItems.MOLOTOV_PROJECTILE.get().create(p.serverLevel());if(projectile==null)return;
@@ -155,6 +155,7 @@ public final class GadgetManager {
         }
         if(kind.equals("command_flag")) {
             var pos=target(p,ExtraGadgetConfig.commandFlag.placementRange());
+            if(CommandFlags.spawnBlocked(p,pos)){p.displayClientMessage(Component.literal("스폰 지점에는 설치할 수 없습니다."),true);return;}
             if(!CommandFlags.valid(p,pos))return;
             var flag=GadgetItems.COMMAND_FLAG_ENTITY.get().create(p.serverLevel());if(flag==null)return;
             flag.setPos(pos.getX()+.5,PlacementSurface.height(p.level(),pos),pos.getZ()+.5);flag.setup(p);
@@ -241,6 +242,7 @@ public final class GadgetManager {
         if(event.phase!=TickEvent.Phase.END||!(event.player instanceof ServerPlayer p))return;
         var preview=PREVIEW.get(p.getUUID());if(preview!=null&&!validPreview(p,preview))cancel(p);
         if(!p.isAlive()||p.isSpectator()) {if(HEALING.remove(p.getUUID())!=null)HealCue.interrupted(p);if(PREVIEW.containsKey(p.getUUID()))cancel(p);}
+        if(preview!=null&&preview.kind().equals("command_flag")&&validPreview(p,preview)&&p.tickCount%20==0)GungangNetwork.send(p,new GungangNetwork.Gadget("command_flag",p));
         var heals=HEALING.get(p.getUUID());
         if(heals!=null) {var next=new ArrayList<Healing>();for(var h:heals) {HealCue.potion(p,h.elapsed(),h.remaining());p.heal(h.perTick());if(h.remaining()>1)next.add(new Healing(h.remaining()-1,h.perTick(),h.elapsed()+1));}if(next.isEmpty())HEALING.remove(p.getUUID());else HEALING.put(p.getUUID(),next);}
         var boost=BOOST.get(p.getUUID());

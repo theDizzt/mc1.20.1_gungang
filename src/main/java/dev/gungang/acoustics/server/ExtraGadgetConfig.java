@@ -61,12 +61,13 @@ public final class ExtraGadgetConfig {
     public record HandAxe(double throwDamage,double minThrowDistance,double maxThrowDistance,double chargeSeconds,double cooldownSeconds,double arcDegrees) { }
     /** Dash distance in blocks over the fixed six-tick dash, and the energy (out of 100) one dash spends. */
     /** tierNDamage: thrust damage at combo tier N (the first hit is tier 1). */
-    public record Rapier(double dashDistance,int energyCost,double attackIntervalSeconds,double tier1Damage,double tier2Damage,double tier3Damage,double tier4Damage,double tier5Damage) {
+    public record Rapier(double dashDistance,int energyCost,double attackIntervalSeconds,double tier1Damage,double tier2Damage,double tier3Damage,double tier4Damage,double tier5Damage,double energyRegenPerSecond,double energyRegenDelaySeconds,int killEnergyGain) {
+        public Rapier(double distance,int cost,double interval,double d1,double d2,double d3,double d4,double d5){this(distance,cost,interval,d1,d2,d3,d4,d5,10,0,20);}
         public Rapier(double dashDistance,int energyCost){this(dashDistance,energyCost,.6);}
         public Rapier(double dashDistance,int energyCost,double attackIntervalSeconds){this(dashDistance,energyCost,attackIntervalSeconds,27,33,40,48,57);}
         public double damage(int tier){return switch(tier){case 2->tier2Damage;case 3->tier3Damage;case 4->tier4Damage;case 5->tier5Damage;default->tier1Damage;};}
     }
-    public static Rapier rapier=new Rapier(10,33,.6);
+    public static Rapier rapier=new Rapier(10,50,.6);
     /** 29 katana right-click spin damage and the bleed its hits leave (damage per second over bleedSeconds). */
     public record Katana(double rightClickDamage,double bleedDamagePerSecond,double bleedSeconds) { }
     public static Katana katana=new Katana(40,7,5);
@@ -169,7 +170,13 @@ public final class ExtraGadgetConfig {
         var x=GadgetConfig.read("hand_axe",HandAxe.class,new HandAxe(66,5,24,1,16,0),overrides,apply);
         GadgetConfig.bounded(x.throwDamage(),0,10000);
         GadgetConfig.bounded(x.minThrowDistance(),1,64);GadgetConfig.bounded(x.maxThrowDistance(),x.minThrowDistance(),64);GadgetConfig.bounded(x.chargeSeconds(),.05,30);GadgetConfig.bounded(x.arcDegrees(),0,80);
-        var r=GadgetConfig.read("rapier",Rapier.class,new Rapier(10,33,.6),overrides,apply);
+        var r=GadgetConfig.read("rapier",Rapier.class,new Rapier(10,50,.6),overrides,apply);
+        var rapierMigration=ServerFiles.root().resolve("item/.rapier-energy-v2");
+        if(!overrides.containsKey("rapier")&&!java.nio.file.Files.exists(rapierMigration)){
+            r=new Rapier(r.dashDistance(),50,r.attackIntervalSeconds(),r.tier1Damage(),r.tier2Damage(),r.tier3Damage(),r.tier4Damage(),r.tier5Damage(),10,0,20);
+            if(apply){java.nio.file.Files.writeString(ServerFiles.root().resolve("item/rapier.json"),ServerFiles.GSON.toJson(r));java.nio.file.Files.writeString(rapierMigration,"Rapier energy defaults updated.");}
+        }
+        GadgetConfig.bounded(r.energyRegenPerSecond(),0,100);GadgetConfig.bounded(r.energyRegenDelaySeconds(),0,60);GadgetConfig.bounded(r.killEnergyGain(),0,100);
         GadgetConfig.bounded(r.dashDistance(),1,24);GadgetConfig.bounded(r.energyCost(),1,100);GadgetConfig.bounded(r.attackIntervalSeconds(),.05,10);
         for(int i=1;i<=5;i++)GadgetConfig.bounded(r.damage(i),0,10000);
         var k=GadgetConfig.read("katana",Katana.class,new Katana(40,7,5),overrides,apply);

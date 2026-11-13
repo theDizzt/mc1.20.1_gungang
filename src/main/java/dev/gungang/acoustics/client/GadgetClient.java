@@ -44,11 +44,12 @@ public final class GadgetClient {
             input.up=false;input.down=false;input.left=false;input.right=false;
         }
     }
-    public static void receive(String kind,double distance) {
+    public static void receive(String kind,double distance,java.util.List<ArenaMap.Area> areas) {
+        CommandFlags.receiveSpawnAreas(areas);
         if(!kind.isEmpty()&&(!kind.equals(expected)||!valid(kind))){cancel();return;}
-        preview=kind;range=distance;armed=false;if(kind.isEmpty())expected="";
+        if(!preview.equals(kind))armed=false;preview=kind;range=distance;if(kind.isEmpty())expected="";
     }
-    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut e) {preview="";expected="";previewSlot=-1;SurvivalGadgets.clearClient();}
+    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut e) {preview="";expected="";previewSlot=-1;CommandFlags.receiveSpawnAreas(java.util.List.of());SurvivalGadgets.clearClient();}
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent e) {
         var mc=Minecraft.getInstance();
         if(e.phase==TickEvent.Phase.END) {
@@ -78,8 +79,9 @@ public final class GadgetClient {
     }
     @SubscribeEvent public static void hint(RenderGuiEvent.Post e) {
         if(preview.isEmpty())return;var mc=Minecraft.getInstance();if(mc.screen!=null||mc.options.hideGui||!HudVisibility.enabled())return;
-        String text=Lang.tr("G 길게 눌러 설치 · 우클릭 설치 · 좌클릭/H 취소");var g=e.getGuiGraphics();
-        g.drawString(mc.font,text,(g.guiWidth()-mc.font.width(text))/2,g.guiHeight()/2+25,0xFFFFFFFF,true);
+        boolean blocked=mc.player!=null&&preview.equals("command_flag")&&CommandFlags.spawnBlocked(mc.player,GadgetManager.target(mc.player,range));
+        String text=Lang.tr(blocked?"스폰 지점에는 설치할 수 없습니다.":"G 길게 눌러 설치 · 우클릭 설치 · 좌클릭/H 취소");var g=e.getGuiGraphics();
+        g.drawString(mc.font,text,(g.guiWidth()-mc.font.width(text))/2,g.guiHeight()/2+25,blocked?0xFFFF5555:0xFFFFFFFF,true);
     }
     @SubscribeEvent public static void world(RenderLevelStageEvent e) {
         if(preview.isEmpty()||e.getStage()!=RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS)return;
