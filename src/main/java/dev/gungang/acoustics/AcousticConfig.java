@@ -22,6 +22,8 @@ public final class AcousticConfig {
     /** Volume of every sound GunGang adds (gungang: sound events), on the vanilla Music & Sounds screen. */
     public static final ForgeConfigSpec.DoubleValue GUNGANG_SOUND_VOLUME;
     public static final ForgeConfigSpec.IntValue HUD_TEXT_SIZE;
+    /** 74 Hermes' Boots dash input: false double-taps a movement key (W/A/S/D), true uses the offhand use macro key (H). */
+    public static final ForgeConfigSpec.BooleanValue HERMES_MACRO_KEY;
     public static final ForgeConfigSpec.BooleanValue TEAM_HUD, LEGACY_TEAM_HUD, TEAM_WEAPON_NUMBERS, COMBO_HUD, KILL_LOG, TEAM_SILHOUETTES, COMPASS, AUTO_SPRINT;
     public static final ForgeConfigSpec.BooleanValue ENABLED, DIFFRACTION, LOW_PASS, SHOOTER_HUD;
     public static final ForgeConfigSpec.DoubleValue REFERENCE_DISTANCE, ROLLOFF, WALL_STRENGTH, SMOOTHING;
@@ -65,6 +67,8 @@ public final class AcousticConfig {
         WHEEL_FIRE_SELECT_DELAY = b.comment("Minimum seconds between mouse wheel fire mode changes.").defineInRange("wheelFireSelectDelay", .5, 0, 10);
         WHEEL_FIRE_SELECT = b.comment("Switch weapon fire mode with the mouse wheel. Variable scope zoom takes priority.").define("wheelFireSelect", true);
         AUTO_SPRINT = b.comment("Sprint automatically while moving forward; fire and aim input stop the sprint so guns stay usable.").define("autoSprint", true);
+        HERMES_MACRO_KEY = b.comment("Hermes' Boots dash input: false = double-tap a movement key (W/A/S/D), true = the offhand use macro key (default H). Set in the loadout screen's effect colour editor.")
+                .define("hermesMacroKey", false);
         TEAM_HUD = b.define("teamHud", true);
         LEGACY_TEAM_HUD = b.comment("Draw teammates in the older wide layout (name, long health bar, item slot) instead of the compact one.").define("legacyTeamLayout", false);
         TEAM_WEAPON_NUMBERS = b.comment("Show each teammate's chosen primary (white) and secondary (yellow) weapon numbers beside their held item. Prop hunt block numbers always show.").define("teamWeaponNumbers", true);

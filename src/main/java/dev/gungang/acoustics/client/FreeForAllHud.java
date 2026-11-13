@@ -91,7 +91,7 @@ public final class FreeForAllHud {
             g.fill(face-1,ry+2,face+13,ry+16,mine?color:TacticalStyle.EDGE);
             PlayerFaceRenderer.draw(g,MatchHud.skin(r.id()),face,ry+3,12);
             PlayerLevels.draw(g,r.id(),face+15,ry+3,12);
-            Marquee.draw(g,font,r.name(),nameX,ry+5,Math.max(1,score-30-nameX),mine?0xFFFFFFFF:color,false);
+            Marquee.draw(g,font,ClientNames.tagged(r.id(),r.name()),nameX,ry+5,Math.max(1,score-30-nameX),mine?0xFFFFFFFF:color,false);
             MatchHud.column(g,String.valueOf(r.score()),score,ry+5,0xFFFFFFFF);
             MatchHud.column(g,String.valueOf(r.kills()),kill,ry+5,TacticalStyle.INK);
             MatchHud.column(g,String.valueOf(r.deaths()),death,ry+5,0xFFE08A8A);

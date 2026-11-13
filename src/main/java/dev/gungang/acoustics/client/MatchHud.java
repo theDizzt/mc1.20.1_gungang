@@ -182,7 +182,7 @@ public final class MatchHud {
             g.fill(face-1,ry+2,face+13,ry+16,mine?color|0xFF000000:TacticalStyle.EDGE);
             PlayerFaceRenderer.draw(g,row.skin()!=null&&!row.skin().isEmpty()?BotRenderer.texture(row.skin()):skin(row.id()),face,ry+3,12);
             PlayerLevels.draw(g,row.id(),face+15,ry+3,12);
-            Marquee.draw(g,font,row.name(),nameX,ry+5,Math.max(1,kill-22-nameX),mine?0xFFFFFFFF:TacticalStyle.INK,false);
+            Marquee.draw(g,font,ClientNames.tagged(row.id(),row.name()),nameX,ry+5,Math.max(1,kill-22-nameX),mine?0xFFFFFFFF:TacticalStyle.INK,false);
             column(g,String.valueOf(row.kills()),kill,ry+5,0xFFFFFFFF);
             column(g,String.valueOf(row.deaths()),death,ry+5,0xFFE08A8A);
             column(g,String.valueOf(row.assists()),assist,ry+5,TacticalStyle.MUTED);
