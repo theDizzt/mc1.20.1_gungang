@@ -181,6 +181,9 @@ public final class PatchHelp {
         item("collisionDamage", "용도: 몸으로 부딪힌 대상에게 주는 피해. 아군에게도 들어갑니다.");
         item("maxPlaced", "용도: 한 사람이 동시에 설치해 둘 수 있는 최대 개수. 넘으면 가장 오래된 것이 사라집니다(추정).");
         item("dashDistance", "용도: 대시 한 번에 이동하는 거리(블록).");
+        item("energyRegenPerSecond", "매초 재생하는 레이피어 에너지입니다. 기본 10.");
+        item("energyRegenDelaySeconds", "대시 후 재생 대기시간입니다. 0이면 우클릭 사용 중에도 계속 재생합니다.");
+        item("killEnergyGain", "레이피어 찌르기 또는 대시로 처치할 때 회복하는 에너지입니다. 기본 20, 최대 에너지 100.");
         item("energyCost", "용도: 대시 한 번에 쓰는 에너지(최대 100, 추정).\n산출식(추정): 연속 대시 수 = 100 / 소모");
         item("rightClickDamage", "용도: 우클릭(강공격) 피해.");
         item("bleedDamagePerSecond", "용도: 출혈 상태의 초당 피해.\n산출식: 출혈 총 피해 = 초당 피해 × 출혈 시간");

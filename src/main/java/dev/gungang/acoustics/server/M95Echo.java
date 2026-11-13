@@ -3,7 +3,6 @@ import dev.gungang.acoustics.GungangAcoustics;
 import java.util.*;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.TickEvent;
@@ -36,7 +35,7 @@ public final class M95Echo {
         if(viewer==null)return;
         var pending=PENDING.remove(viewer);
         if(pending==null||pending.expires()<viewer.level().getGameTime()||!viewer.isAlive()||!M95.is(viewer.getMainHandItem())||!aiming(viewer))return;
-        for(UUID id:new HashSet<>(ids))if(pending.targets().contains(id)&&viewer.serverLevel().getEntity(id) instanceof ServerPlayer target&&target.isAlive()){
+        for(UUID id:new HashSet<>(ids))if(pending.targets().contains(id)&&viewer.serverLevel().getEntity(id) instanceof ServerPlayer target&&revealEnemy(viewer,target)){
             OBSERVED.put(target,target.level().getGameTime()+20);
             GungangNetwork.send(target,new GungangNetwork.Utility(ServerFiles.GSON.toJson(CombatGadgets.hud(target))));
         }
@@ -48,6 +47,17 @@ public final class M95Echo {
             PENDING.remove(player);
             GungangNetwork.send(player,new GungangNetwork.M95EchoPacket(List.of()));
         }
+    }
+    /** Only opposing combatants: NPCs, monsters and allied bots are never scan targets. */
+    static boolean revealEnemy(ServerPlayer viewer,LivingEntity target){
+        if(target==viewer||!BotEntity.participant(target)||target instanceof Player p&&p.isCreative()
+                ||SafeZones.contains(target)||LobbyManager.respawning(target.getUUID())||FreeForAllMatch.blocked(target))return false;
+        String own=BotManager.side(viewer),other=BotManager.side(target);
+        var ffa=MatchManager.freeForAll();
+        if(ffa!=null)return ffa.participant(viewer.getUUID())&&ffa.participant(target.getUUID());
+        if(MatchManager.active())return (own.equals("ALPHA")||own.equals("BRAVO"))
+                &&(other.equals("ALPHA")||other.equals("BRAVO"))&&!own.equals(other);
+        return viewer.getTeam()!=null&&target.getTeam()!=null&&!viewer.getTeam().isAlliedTo(target.getTeam());
     }
     private static java.lang.reflect.Method aiming;
     public static boolean aiming(LivingEntity entity){
@@ -78,13 +88,11 @@ public final class M95Echo {
                 double range=ExtraGadgetConfig.m95.hitscanRange(),rangeSquared=range*range;
                 // Use Minecraft's spatial index rather than iterating every loaded entity in the dimension.
                 var entities=level.getEntitiesOfClass(LivingEntity.class,player.getBoundingBox().inflate(range),
-                        e->e!=player&&e.isAlive()&&!e.isSpectator()&&(CombatRules.target(e)||e instanceof Enemy));
+                        e->revealEnemy(player,e));
                 for(var enemy:entities){
                     Vec3 current=enemy.getBoundingBox().getCenter();
                     double dx=current.x-eye.x,dy=current.y-eye.y,dz=current.z-eye.z;
                     if(dx*dx+dy*dy+dz*dz>rangeSquared||dx*look.x+dy*look.y+dz*look.z<=0)continue;
-                    if(enemy==player||enemy.isAlliedTo(player)||enemy instanceof Player p&&p.isCreative()||SafeZones.contains(enemy)
-                            ||LobbyManager.respawning(enemy.getUUID())||FreeForAllMatch.blocked(enemy))continue;
                     // Deliberately no line-of-sight ray: blocks do not hide this scan.
                     targets.add(new Target(current.x,current.y,current.z,enemy.getUUID()));
                     if(targets.size()>=512)break;
