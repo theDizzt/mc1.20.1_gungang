@@ -77,6 +77,7 @@ public final class LobbyManager {
         BombDrops.clear(server);
         if (!phase.equals("LOBBY")) throw new IllegalStateException("경기 중에는 설정을 다시 읽을 수 없습니다.");
         var candidate = ServerFiles.load();
+        WeaponToggles.load();
         var weapons = Loadouts.load();
         GadgetConfig.load();
         SafeZones.load(server);
@@ -1223,7 +1224,7 @@ public final class LobbyManager {
     static void botChanged(){if(phase.equals("LOBBY"))PLAYERS.values().forEach(e->e.ready=false);broadcast(false);}
     /** The weapons on offer in the selected mode: the whole catalog, or under 근접전 only the melee primaries. */
     private static Loadouts catalog(){return catalog(loadouts);}
-    static Loadouts catalog(Loadouts all){return all!=null&&options().game().meleeWeapons(selectedMode)?all.melee():all;}
+    static Loadouts catalog(Loadouts all){all=WeaponToggles.filter(all);return all!=null&&options().game().meleeWeapons(selectedMode)?all.melee():all;}
     public static TeamOptions options() { return files == null ? TeamOptions.defaults() : files.options(); }
     public static boolean respawning(UUID id) { return RESPAWNING.containsKey(id); }
     static boolean beginRespawn(ServerPlayer victim, net.minecraft.world.entity.LivingEntity killer) {

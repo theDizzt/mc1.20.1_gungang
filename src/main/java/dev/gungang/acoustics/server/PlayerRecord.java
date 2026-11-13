@@ -3,7 +3,7 @@ package dev.gungang.acoustics.server;
 import java.util.*;
 
 public record PlayerRecord(String id,String name,long experience,long matches,long kills,long deaths,double damage,long playSeconds,long wins,
-                           List<Preset> presets,int defaultPreset,String nickname,List<EffectColor> effectColors,List<Integer> savedColors) {
+                           List<Preset> presets,int defaultPreset,String nickname,List<EffectColor> effectColors,List<Integer> savedColors,String tag) {
     public static final int PRESETS=5;
     /** Most colours a player can keep in their own palette. */
     public static final int SAVED_COLORS=16;
@@ -29,6 +29,10 @@ public record PlayerRecord(String id,String name,long experience,long matches,lo
     }
     public PlayerRecord {
         nickname=nickname==null?"":nickname;
+        // 4-digit tag shown after the nickname (PlayerTag); records written before tags existed have none until the
+        // database assigns one on its next save.
+        tag=tag==null?"":tag;
+        if(!tag.isEmpty()&&!tag.matches("[0-9]{4}"))throw new IllegalArgumentException("Invalid player tag");
         // Records written before effect colours existed have no such field.
         effectColors=effectColors==null?List.of():List.copyOf(effectColors);
         // Colours the player saved in the effect colour picker (RGB, newest last).
@@ -58,22 +62,27 @@ public record PlayerRecord(String id,String name,long experience,long matches,lo
     public PlayerRecord(String id,String name,long experience,long matches,long kills,long deaths,double damage,long playSeconds,long wins,List<Preset> presets,int defaultPreset,String nickname,List<EffectColor> effectColors) {
         this(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,presets,defaultPreset,nickname,effectColors,List.of());
     }
+    public PlayerRecord(String id,String name,long experience,long matches,long kills,long deaths,double damage,long playSeconds,long wins,List<Preset> presets,int defaultPreset,String nickname,List<EffectColor> effectColors,List<Integer> savedColors) {
+        this(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,presets,defaultPreset,nickname,effectColors,savedColors,"");
+    }
+    /** The record with its 4-digit tag ("0427", no '#'). */
+    public PlayerRecord withTag(String value) {return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,presets,defaultPreset,nickname,effectColors,savedColors,value);}
     /** Adds a colour to the saved palette (moved to the end when already there; the oldest drops past the limit). */
     public PlayerRecord withSavedColor(int rgb) {
         if(rgb<0||rgb>0xFFFFFF)throw new IllegalArgumentException("Invalid colour");
         var next=new ArrayList<>(savedColors);next.remove(Integer.valueOf(rgb));next.add(rgb);
         while(next.size()>SAVED_COLORS)next.remove(0);
-        return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,presets,defaultPreset,nickname,effectColors,next);
+        return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,presets,defaultPreset,nickname,effectColors,next,tag);
     }
     public PlayerRecord withoutSavedColor(int rgb) {
         var next=new ArrayList<>(savedColors);next.remove(Integer.valueOf(rgb));
-        return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,presets,defaultPreset,nickname,effectColors,next);
+        return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,presets,defaultPreset,nickname,effectColors,next,tag);
     }
     public EffectColor effectColor(String key) {return effectColors.stream().filter(c->c.key().equals(key)).findFirst().orElse(null);}
     /** Sets one effect's colours, or with {@code color} null returns it to the default. */
     public PlayerRecord withEffectColor(String key,EffectColor color) {
         var next=new ArrayList<>(effectColors);next.removeIf(c->c.key().equals(key));if(color!=null)next.add(color);
-        return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,presets,defaultPreset,nickname,next,savedColors);
+        return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,presets,defaultPreset,nickname,next,savedColors,tag);
     }
     public static String validateNickname(String value) {
         String n=java.text.Normalizer.normalize(value.strip(),java.text.Normalizer.Form.NFC);
@@ -81,29 +90,29 @@ public record PlayerRecord(String id,String name,long experience,long matches,lo
             throw new IllegalArgumentException("닉네임은 한글·영문 등 1~8글자로 입력해 주세요.");
         return n;
     }
-    public PlayerRecord withNickname(String value) {return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,presets,defaultPreset,validateNickname(value),effectColors,savedColors);}
+    public PlayerRecord withNickname(String value) {return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,presets,defaultPreset,validateNickname(value),effectColors,savedColors,tag);}
     public String displayName() {return nickname.isEmpty()?name:nickname;}
     public static PlayerRecord empty(String id,String name) { return new PlayerRecord(id,name,0,0,0,0,0,0,0); }
-    public PlayerRecord named(String name) {return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,presets,defaultPreset,nickname,effectColors,savedColors);}
+    public PlayerRecord named(String name) {return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,presets,defaultPreset,nickname,effectColors,savedColors,tag);}
     public PlayerRecord match(MatchSnapshot.Row row,int xp,boolean won) {
         return new PlayerRecord(id,name,Math.addExact(experience,xp),Math.addExact(matches,1),Math.addExact(kills,row.kills()),
-                Math.addExact(deaths,row.deaths()),damage+row.damage(),Math.addExact(playSeconds,row.playSeconds()),Math.addExact(wins,won?1:0),presets,defaultPreset,nickname,effectColors,savedColors);
+                Math.addExact(deaths,row.deaths()),damage+row.damage(),Math.addExact(playSeconds,row.playSeconds()),Math.addExact(wins,won?1:0),presets,defaultPreset,nickname,effectColors,savedColors,tag);
     }
     public PlayerRecord set(String field,String value) {
         return new PlayerRecord(id,name,field.equals("xp")?Long.parseLong(value):experience,field.equals("matches")?Long.parseLong(value):matches,
                 field.equals("kills")?Long.parseLong(value):kills,field.equals("deaths")?Long.parseLong(value):deaths,
                 field.equals("damage")?Double.parseDouble(value):damage,field.equals("playSeconds")?Long.parseLong(value):playSeconds,
-                field.equals("wins")?Long.parseLong(value):wins,presets,defaultPreset,nickname,effectColors,savedColors);
+                field.equals("wins")?Long.parseLong(value):wins,presets,defaultPreset,nickname,effectColors,savedColors,tag);
     }
     public Preset preset(int slot) {return presets.stream().filter(p->p.slot()==slot).findFirst().orElse(null);}
     public Preset defaultLoadout() {return defaultPreset==0?null:preset(defaultPreset);}
     public PlayerRecord withPreset(Preset preset) {
         var next=new ArrayList<>(presets);next.removeIf(p->p.slot()==preset.slot());next.add(preset);
-        return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,next,defaultPreset,nickname,effectColors,savedColors);
+        return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,next,defaultPreset,nickname,effectColors,savedColors,tag);
     }
     public PlayerRecord withoutPreset(int slot) {
         var next=new ArrayList<>(presets);next.removeIf(p->p.slot()==slot);
-        return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,next,defaultPreset==slot?0:defaultPreset,nickname,effectColors,savedColors);
+        return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,next,defaultPreset==slot?0:defaultPreset,nickname,effectColors,savedColors,tag);
     }
-    public PlayerRecord withDefault(int slot) {return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,presets,slot,nickname,effectColors,savedColors);}
+    public PlayerRecord withDefault(int slot) {return new PlayerRecord(id,name,experience,matches,kills,deaths,damage,playSeconds,wins,presets,slot,nickname,effectColors,savedColors,tag);}
 }

@@ -20,11 +20,17 @@ public final class WeaponPatch {
         Row withHelp(String text) { return new Row(key, label, group, numeric, value, text); }
     }
     /** {@code weight} is the TaCZ gun weight in kg (null: not a TaCZ gun or its data file was not found); {@code kind}: "weapon" or "secondary". */
-    public record Entry(String id, String name, String category, Double weight, double movementSpeed, String kind) { }
+    public record Entry(String id, String name, String category, Double weight, double movementSpeed, String kind, boolean disabled) {
+        public Entry(String id, String name, String category, Double weight, double movementSpeed, String kind) { this(id, name, category, weight, movementSpeed, kind, false); }
+    }
     /** {@code falloff}: the TaCZ gun's current damage_adjust bands {distance (-1: open-ended), damage}; null when not a TaCZ gun. */
-    public record View(List<Entry> weapons, String id, String name, String gunId, String file, List<Row> rows, String message, String error, String phase, double weightMultiplier, String kind, List<double[]> falloff) {
+    /** {@code enabled}: whether the selected primary / secondary is offered in the lobby ({@link WeaponToggles}); null on other tabs. */
+    public record View(List<Entry> weapons, String id, String name, String gunId, String file, List<Row> rows, String message, String error, String phase, double weightMultiplier, String kind, List<double[]> falloff, Boolean enabled) {
         public View(List<Entry> weapons, String id, String name, String gunId, String file, List<Row> rows, String message, String error, String phase, double weightMultiplier, String kind) {
-            this(weapons, id, name, gunId, file, rows, message, error, phase, weightMultiplier, kind, null);
+            this(weapons, id, name, gunId, file, rows, message, error, phase, weightMultiplier, kind, null, null);
+        }
+        public View(List<Entry> weapons, String id, String name, String gunId, String file, List<Row> rows, String message, String error, String phase, double weightMultiplier, String kind, List<double[]> falloff) {
+            this(weapons, id, name, gunId, file, rows, message, error, phase, weightMultiplier, kind, falloff, null);
         }
     }
     /** {@code kind} null means a primary weapon (older clients). */
@@ -218,6 +224,7 @@ public final class WeaponPatch {
             kind = kindOf(request.kind());
             switch (action) {
                 case "open" -> send(player, kind, id, "", "");
+                case "toggle" -> send(player, kind, id, toggle(player, kind, id, request.changes()), "");
                 case "apply" -> {
                     long now = System.currentTimeMillis(), last = LAST_APPLY.getOrDefault(player.getUUID(), 0L);
                     if (now - last < COOLDOWN_MS) throw new IllegalStateException("잠시 후 다시 적용하세요.");
@@ -233,6 +240,20 @@ public final class WeaponPatch {
             try { send(player, kind, id, "", message); }
             catch (Exception again) { player.sendSystemMessage(Component.literal("무기 패치 실패: " + message)); }
         }
+    }
+    /** Switches the selected primary / secondary on or off for the lobby (lobby only; selections are re-checked). */
+    private static String toggle(ServerPlayer player, String kind, String id, Map<String, String> changes) throws Exception {
+        if (!kind.equals(PRIMARY) && !kind.equals(SECONDARY)) throw new IllegalArgumentException("주무기와 보조무기만 사용 여부를 바꿀 수 있습니다.");
+        String value = changes == null ? null : changes.get("enabled");
+        if (!"true".equals(value) && !"false".equals(value)) throw new IllegalArgumentException("잘못된 요청입니다.");
+        if (!LobbyManager.phase().equals("LOBBY")) throw new IllegalStateException("경기 준비/진행 중에는 무기 사용 여부를 바꿀 수 없습니다.");
+        boolean primary = kind.equals(PRIMARY), enabled = Boolean.parseBoolean(value);
+        var loadouts = Loadouts.load();
+        var weapon = weapon(primary ? loadouts.primary() : loadouts.secondary(), id).orElseThrow(() -> new IllegalArgumentException("해당 무기가 없습니다: " + id));
+        WeaponToggles.set(primary, id, enabled, primary ? loadouts.primary() : loadouts.secondary());
+        LobbyManager.refreshModifiedSettings();
+        LogUtils.getLogger().info("GunGang weapon {} by {}: {} {}", enabled ? "enabled" : "disabled", player.getGameProfile().getName(), kind, id);
+        return (primary ? "주무기 " : "보조무기 ") + weapon.name() + (enabled ? " 사용 설정 · 무기 선택 목록에 표시됩니다." : " 사용 안 함 · 무기 선택·랜덤·프리셋에서 제외됩니다.");
     }
     private static void requireAdmin(ServerPlayer player) {
         if (!player.hasPermissions(2)) throw new IllegalStateException("무기 패치는 OP 2 이상만 사용할 수 있습니다.");
@@ -258,8 +279,8 @@ public final class WeaponPatch {
     private static void send(ServerPlayer player, String kind, String requested, String message, String error) throws Exception {
         var loadouts = Loadouts.load();
         var entries = new ArrayList<Entry>();
-        for (var w : loadouts.primary()) entries.add(new Entry(w.id(), w.name(), w.category(), weight(w), w.movementSpeed(), PRIMARY));
-        for (var w : loadouts.secondary()) entries.add(new Entry(w.id(), w.name(), w.category(), weight(w), w.movementSpeed(), SECONDARY));
+        for (var w : loadouts.primary()) entries.add(new Entry(w.id(), w.name(), w.category(), weight(w), w.movementSpeed(), PRIMARY, WeaponToggles.disabled(true, w.id())));
+        for (var w : loadouts.secondary()) entries.add(new Entry(w.id(), w.name(), w.category(), weight(w), w.movementSpeed(), SECONDARY, WeaponToggles.disabled(false, w.id())));
         for (var setting : new TreeMap<>(GENERAL_SETTINGS).entrySet()) entries.add(new Entry(setting.getKey(), setting.getValue(), GENERAL_CATEGORY, null, 100, GENERAL));
         for (var setting : BLOCK_SETTINGS.entrySet()) entries.add(new Entry(setting.getKey(), setting.getValue(), GENERAL_CATEGORY, null, 100, GENERAL));
         var maps = ConfigModify.maps();
@@ -335,7 +356,8 @@ public final class WeaponPatch {
         speedFirst(rows);
         String setting = itemSetting(weapon);
         rows.replaceAll(row -> row.withHelp(PatchHelp.of(row.key(), setting)));
-        var view = new View(entries, id, weapon.name(), gun, file, rows, message, error, LobbyManager.phase(), weightMultiplier(), kind, falloff);
+        var view = new View(entries, id, weapon.name(), gun, file, rows, message, error, LobbyManager.phase(), weightMultiplier(), kind, falloff,
+                !WeaponToggles.disabled(kind.equals(PRIMARY), id));
         GungangNetwork.send(player, new GungangNetwork.WeaponPatchView(ServerFiles.GSON.toJson(view)));
     }
     /** Rows that set how fast the weapon attacks: TaCZ fire rate, melee pack cooldowns, GunGang item attack intervals. */

@@ -228,8 +228,18 @@ final class LoadoutScreen extends ArenaScreen {
         button(Lang.tr("선택에 추가"),dx+74,hy-1,bw,20,true,ACCENT,()->toggleColor(rgbDraft));
         button(Lang.tr("내 색상 저장"),dx+78+bw,hy-1,bw,20,true,TacticalStyle.GOLD,()->LobbyClient.action("effectColorSave",hex(rgbDraft),""));
         int by=height-48;
-        button(Lang.tr("기본값으로"),dx,by,Math.max(60,Math.min(120,right-dx-72)),22,EffectColors.customized(me(),colorEffect().key()),TacticalStyle.GOLD,
+        int resetW=Math.max(60,Math.min(120,right-dx-72));
+        button(Lang.tr("기본값으로"),dx,by,resetW,22,EffectColors.customized(me(),colorEffect().key()),TacticalStyle.GOLD,
                 ()->LobbyClient.action("effectColor",colorEffect().key(),""));
+        // 74 Hermes' Boots: the dash input is chosen here, next to its glow colours (client setting).
+        int modeX=dx+resetW+4,modeW=x+w-64-4-modeX;
+        if(colorEffect().key().equals("hermes_boots")&&modeW>=60){
+            boolean macro=dev.gungang.acoustics.AcousticConfig.HERMES_MACRO_KEY.get();
+            String label=macro?Lang.tr("사용키: 매크로 키 (")+OffhandMacro.USE.getTranslatedKeyMessage().getString()+")":Lang.tr("사용키: 이동키 더블 탭 (WASD)");
+            button(label,modeX,by,modeW,22,true,ACCENT,()->{
+                dev.gungang.acoustics.AcousticConfig.HERMES_MACRO_KEY.set(!macro);dev.gungang.acoustics.AcousticConfig.SPEC.save();rebuildWidgets();
+            });
+        }
         closeButton(x+w-64,by,64,22);
     }
     /** RGB slider for one channel ({@code shift} 16 red, 8 green, 0 blue) of the draft colour. */
