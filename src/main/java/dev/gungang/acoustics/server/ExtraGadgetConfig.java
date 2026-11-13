@@ -78,7 +78,7 @@ public final class ExtraGadgetConfig {
         public Regeneration(double percentPerSecond,double delaySeconds){this(percentPerSecond,delaySeconds,.5);}
     }
     public static Regeneration regeneration=new Regeneration(2,5,.5);
-    /** Global combat rules: explosion damage to players and bots is multiplied by explosionPlayerMultiplier. */
+    /** Global explosion multiplier: all TaCZ targets; players/bots for other explosions. The legacy JSON key is retained. */
     public record Combat(double explosionPlayerMultiplier) { }
     public static Combat combat=new Combat(2);
     /**

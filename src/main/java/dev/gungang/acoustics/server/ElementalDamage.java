@@ -21,8 +21,8 @@ import net.minecraftforge.fml.common.Mod;
  * <li>{@code burnDamage}, {@code witherDamage}, {@code poisonDamage}: damage of each burning / wither / poison tick on a
  * victim this weapon hit, while that status lasts;</li>
  * <li>{@code bleedDamage} / {@code bleedSeconds}: a hit makes the victim bleed ({@link Bleeding});</li>
- * <li>{@code explosionMultiplier}: scales this weapon's explosion damage to players and bots, on top of the global
- * {@link ExtraGadgetConfig.Combat#explosionPlayerMultiplier()} every explosion gets.</li>
+ * <li>{@code explosionMultiplier}: scales this weapon's explosion damage (all TaCZ targets; otherwise players and bots), on top of the global
+ * {@link ExtraGadgetConfig.Combat#explosionPlayerMultiplier()} applied to those targets.</li>
  * </ul>
  * The weapon is recognised from what dealt the damage: a TaCZ bullet's gun id, an lrtactical throwable's id or the
  * GunGang item behind a landmine / ordnance. Item effect settings of their own (molotov, jetpack burnDamage) win.
@@ -79,15 +79,23 @@ public final class ElementalDamage {
     }
     private static boolean hurtsLikePlayer(LivingEntity victim){return victim instanceof Player||victim instanceof BotEntity;}
 
+    /** Shared TaCZ explosion multiplier, also used by the legacy explosion event path. */
+    public static double explosionMultiplier(Entity direct){
+        double multiplier=ExtraGadgetConfig.combat.explosionPlayerMultiplier();
+        var e=elements(direct);
+        if(e!=null&&e.explosionMultiplier()!=null)multiplier*=e.explosionMultiplier();
+        return multiplier;
+    }
+
     @SubscribeEvent(priority=EventPriority.HIGH) public static void hurt(LivingHurtEvent event){
         var victim=event.getEntity();if(victim.level().isClientSide)return;
         var source=event.getSource();
         if(source.is(DamageTypeTags.IS_EXPLOSION)){
+            // TaCZ already applies both multipliers before Entity.hurt, including non-living targets.
+            if(((TaczExplosionDamage)source).gungang$isTaczExplosion())return;
             if(!hurtsLikePlayer(victim))return;
             // Every explosion hurts people by the global multiplier (전역 · 전투); a weapon's own multiplier stacks on it.
-            double multiplier=ExtraGadgetConfig.combat.explosionPlayerMultiplier();
-            var e=elements(source.getDirectEntity());
-            if(e!=null&&e.explosionMultiplier()!=null)multiplier*=e.explosionMultiplier();
+            double multiplier=explosionMultiplier(source.getDirectEntity());
             if(multiplier!=1)event.setAmount((float)(event.getAmount()*multiplier));
             return;
         }

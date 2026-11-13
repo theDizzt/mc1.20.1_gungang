@@ -144,7 +144,7 @@ public final class WeaponPatch {
             Map.entry("centerDamage", "중심 피해"), Map.entry("edgeDamage", "가장자리 피해"), Map.entry("collisionDamage", "충돌 피해"),
             Map.entry("maxPlaced", "최대 설치 수"), Map.entry("dashDistance", "대시 이동 거리 (블록)"), Map.entry("energyCost", "대시 에너지 소모"),
             Map.entry("rightClickDamage", "우클릭 피해"), Map.entry("percentPerSecond", "초당 회복 (최대 체력 %)"), Map.entry("bleedDamagePerSecond", "출혈 초당 피해"), Map.entry("bleedSeconds", "출혈 시간 (초)"), Map.entry("rootSeconds", "속박 시간 (초)"), Map.entry("slowSeconds", "둔화 시간 (초)"),
-            Map.entry("explosionPlayerMultiplier", "폭발 피해 배수 (플레이어·봇 대상)"), Map.entry("startDamage", "첫 피해"), Map.entry("damageStep", "콤보마다 증가"),
+            Map.entry("explosionPlayerMultiplier", "폭발 피해 배수 (TaCZ: 모든 대상)"), Map.entry("startDamage", "첫 피해"), Map.entry("damageStep", "콤보마다 증가"),
             Map.entry("maxDamage", "최대 피해"), Map.entry("intervalSeconds", "간격 (초)"), Map.entry("motion1Damage", "공격 모션 1 피해"),
             Map.entry("motion2Damage", "공격 모션 2 피해"), Map.entry("motion3Damage", "공격 모션 3 피해"), Map.entry("motion4Damage", "공격 모션 4 피해"),
             Map.entry("motion5Damage", "공격 모션 5 피해"), Map.entry("motion6Damage", "공격 모션 6 피해"), Map.entry("slashAngle", "베기 각도 (°)"),
