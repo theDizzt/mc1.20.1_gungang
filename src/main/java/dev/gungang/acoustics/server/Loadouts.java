@@ -14,7 +14,7 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
     /**
      * Elemental damage of a weapon ({@link ElementalDamage}); a null field leaves that element as it is.
      * burnDamage / witherDamage / poisonDamage: damage of each status tick on a victim the weapon hit;
-     * explosionMultiplier: scales the weapon's explosion damage to players and bots.
+     * explosionMultiplier: scales TaCZ explosions for every target; other explosions for players and bots.
      */
     /** {@code bleedDamage}: bleeding damage per second on a victim this weapon hits, for {@code bleedSeconds} (blank: 5). */
     public record Elements(Double burnDamage, Double witherDamage, Double poisonDamage, Double explosionMultiplier, Double bleedDamage, Double bleedSeconds) {
