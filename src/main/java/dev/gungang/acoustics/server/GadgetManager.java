@@ -155,6 +155,7 @@ public final class GadgetManager {
         }
         if(kind.equals("command_flag")) {
             var pos=target(p,ExtraGadgetConfig.commandFlag.placementRange());
+            if(CommandFlags.hasFlag(p)){p.displayClientMessage(Component.literal("지휘 깃발이 1개만 존재할 수 있습니다."),true);return;}
             if(CommandFlags.spawnBlocked(p,pos)){p.displayClientMessage(Component.literal("스폰 지점에는 설치할 수 없습니다."),true);return;}
             if(!CommandFlags.valid(p,pos))return;
             var flag=GadgetItems.COMMAND_FLAG_ENTITY.get().create(p.serverLevel());if(flag==null)return;

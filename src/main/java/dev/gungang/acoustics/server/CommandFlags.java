@@ -23,6 +23,9 @@ public final class CommandFlags {
     public static List<CommandFlagEntity> owned(UUID owner){return FLAGS.stream().filter(f->f.isAlive()&&!f.isRemoved()&&owner.equals(f.owner())).sorted(Comparator.comparingInt(CommandFlagEntity::age).reversed()).toList();}
     public static void clear(UUID owner){for(var flag:owned(owner))flag.discard();}
     public static AABB bounds(net.minecraft.world.level.Level level,BlockPos pos){double y=PlacementSurface.height(level,pos);return new AABB(pos.getX()+.15,y,pos.getZ()+.15,pos.getX()+.85,y+2.5,pos.getZ()+.85);}
+    private static boolean clientHasFlag;
+    public static void receiveOwned(boolean exists){clientHasFlag=exists;}
+    public static boolean hasFlag(Player p){return p.level().isClientSide?clientHasFlag:FLAGS.stream().anyMatch(f->f.isAlive()&&!f.isRemoved()&&p.getUUID().equals(f.owner()));}
     private static java.util.List<ArenaMap.Area> clientSpawnAreas=java.util.List.of();
     public static void receiveSpawnAreas(java.util.List<ArenaMap.Area> areas){clientSpawnAreas=java.util.List.copyOf(areas);}
     public static boolean spawnBlocked(Player p,BlockPos pos){
@@ -31,17 +34,20 @@ public final class CommandFlags {
         if(!p.level().isClientSide)return LobbyManager.inEitherSpawn(p.level(),box);
         return clientSpawnAreas.stream().anyMatch(a->box.intersects(new AABB(a.minX(),a.minY(),a.minZ(),a.maxX(),a.maxY(),a.maxZ())));
     }
-    public static boolean valid(Player p,BlockPos pos){return pos!=null&&!spawnBlocked(p,pos)&&GadgetManager.valid(p,pos,false,false)&&bounds(p.level(),pos).maxY<=p.level().getMaxBuildHeight()&&p.level().noCollision(bounds(p.level(),pos))&&p.level().getEntities(p,bounds(p.level(),pos),e->!e.isSpectator()).isEmpty();}
-    @SubscribeEvent public static void tick(TickEvent.PlayerTickEvent event){
-        if(event.phase!=TickEvent.Phase.END||!(event.player instanceof net.minecraft.server.level.ServerPlayer p)||p.tickCount%20!=0)return;
-        float heal=0;for(var flag:FLAGS)if(flag.affects(p))heal=Math.max(heal,flag.healing());
-        if(heal>0)p.heal(heal);
+    public static boolean valid(Player p,BlockPos pos){return pos!=null&&!hasFlag(p)&&!spawnBlocked(p,pos)&&GadgetManager.valid(p,pos,false,false)&&bounds(p.level(),pos).maxY<=p.level().getMaxBuildHeight()&&p.level().noCollision(bounds(p.level(),pos))&&p.level().getEntities(p,bounds(p.level(),pos),e->!e.isSpectator()).isEmpty();}
+    /** Heal all recipients from one server clock, independent of player/bot tick ordering. */
+    @SubscribeEvent public static void tick(TickEvent.ServerTickEvent event){
+        if(event.phase!=TickEvent.Phase.END||FLAGS.isEmpty())return;
+        var server=net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+        if(server==null||server.getTickCount()%20!=0)return;
+        for(var player:server.getPlayerList().getPlayers())heal(player);
+        for(var bot:BotManager.entities())heal(bot);
     }
-    /** Allied bots stand on no scoreboard team: they get the same healing on their own tick. */
-    @SubscribeEvent public static void bot(net.minecraftforge.event.entity.living.LivingEvent.LivingTickEvent event){
-        if(!(event.getEntity() instanceof BotEntity bot)||bot.level().isClientSide||bot.tickCount%20!=0||!BotManager.live(bot))return;
-        float heal=0;for(var flag:FLAGS)if(flag.affects(bot))heal=Math.max(heal,flag.healing());
-        if(heal>0)bot.heal(heal);
+    private static void heal(net.minecraft.world.entity.LivingEntity target){
+        if(!target.isAlive()||target.getHealth()>=target.getMaxHealth())return;
+        float amount=0;
+        for(var flag:FLAGS)if(flag.affects(target))amount=Math.max(amount,flag.healing());
+        if(amount>0)target.heal(amount);
     }
     @SubscribeEvent(priority=EventPriority.LOWEST) public static void damage(net.minecraftforge.event.entity.living.LivingHurtEvent event){
         var p=event.getEntity();
