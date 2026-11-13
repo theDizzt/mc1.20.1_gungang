@@ -35,7 +35,7 @@ public final class TaczGunFile {
             new Field("bullet.life", "탄 수명 (초)", false, 0, 3600),
             new Field("bullet.extra_damage.head_shot_multiplier", "헤드샷 배수", false, 0, 100),
             new Field("bullet.extra_damage.armor_ignore", "방어 관통률 (0~1)", false, 0, 1),
-            new Field("bullet.explosion.damage", "폭발 피해 (플레이어는 전역 배수 적용)", false, 0, 10000),
+            new Field("bullet.explosion.damage", "폭발 피해 (모든 대상에 전역 배수 적용)", false, 0, 10000),
             new Field("bullet.explosion.radius", "폭발 반경 (블록)", false, 0, 64),
             new Field("weight", "무게 (kg, 1kg당 이동속도 -1.5%)", false, -100, 1000),
             new Field("movement_speed.base", "이동속도 보정 · 기본", false, -1, 5),
