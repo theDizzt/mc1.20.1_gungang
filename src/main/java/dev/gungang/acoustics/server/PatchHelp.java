@@ -61,7 +61,7 @@ public final class PatchHelp {
                 + "산출식(추정): 피해 × 방어관통률 은 방어구 무시, 피해 × (1 − 방어관통률) 은 방어구 감소 적용.\n"
                 + "GunGang 경기에서 방어구를 입지 않으면 결과 차이가 없습니다.");
         tacz("bullet.explosion.damage", "용도: 탄이 터질 때의 폭발 피해 (로켓·유탄 등).\n"
-                + "작동: 폭발 중심에서 멀수록 줄어듭니다. 플레이어·봇에게는 전역 '폭발 피해 배수'와 이 무기의 폭발 배수가 곱해집니다.\n"
+                + "작동: 폭발 중심에서 멀수록 줄어듭니다. 모든 대상에게 전역 '폭발 피해 배수'와 이 무기의 폭발 배수가 동일하게 곱해집니다. 난이도와 TaCZ Tweaks의 플레이어 전용 보정은 제외됩니다.\n"
                 + "산출식(추정): 피해 ≈ 폭발 피해 × (1 − 거리/반경) × 전역 배수 × 무기 배수");
         tacz("bullet.explosion.radius", "용도: 폭발 피해가 닿는 반경(블록).\n"
                 + "작동: 반경 밖은 피해 없음, 안쪽은 중심에 가까울수록 피해가 큽니다(추정: 거리에 비례해 감소). 벽 뒤는 덜 맞습니다.");
@@ -117,7 +117,7 @@ public final class PatchHelp {
         gear("elements.poisonDamage", "용도: 이 무기가 건 독 효과의 1회당 피해(독 I은 약 1.25초마다).\n산출식(추정): 총 피해 ≈ 이 값 × 지속 초 / 1.25");
         gear("elements.bleedDamage", "용도: 이 무기에 맞은 대상이 출혈 상태가 되어 1초마다 받는 피해.\n산출식: 출혈 총 피해 = 이 값 × 출혈 시간. 이미 출혈 중이면 더 센 피해·더 긴 시간이 남습니다. 회복 키트로 치료됩니다.");
         gear("elements.bleedSeconds", "용도: 이 무기가 건 출혈의 지속 시간(초). 비우면 5초.");
-        gear("elements.explosionMultiplier", "용도: 이 무기 폭발이 플레이어·봇에게 주는 피해 배수.\n산출식: 폭발 피해 × 전역 '폭발 피해 배수' × 이 값");
+        gear("elements.explosionMultiplier", "용도: 이 무기의 폭발 피해 배수. TaCZ 폭발은 모든 대상, 그 외 폭발은 플레이어·봇에 적용됩니다.\n산출식: 폭발 피해 × 전역 '폭발 피해 배수' × 이 값");
 
         // ---- GunGang item effect settings (generic by field name) -----------------------------------------------
         item("damage", "용도: 이 아이템이 한 번 맞힐 때의 피해.\n산출식(추정): 피해 × 전투자극제 배수(사용자가 효과 중일 때). 범위형이면 범위 안 대상마다 들어갑니다.");
@@ -181,6 +181,9 @@ public final class PatchHelp {
         item("collisionDamage", "용도: 몸으로 부딪힌 대상에게 주는 피해. 아군에게도 들어갑니다.");
         item("maxPlaced", "용도: 한 사람이 동시에 설치해 둘 수 있는 최대 개수. 넘으면 가장 오래된 것이 사라집니다(추정).");
         item("dashDistance", "용도: 대시 한 번에 이동하는 거리(블록).");
+        item("energyRegenPerSecond", "매초 재생하는 레이피어 에너지입니다. 기본 10.");
+        item("energyRegenDelaySeconds", "대시 후 재생 대기시간입니다. 0이면 우클릭 사용 중에도 계속 재생합니다.");
+        item("killEnergyGain", "레이피어 찌르기 또는 대시로 처치할 때 회복하는 에너지입니다. 기본 20, 최대 에너지 100.");
         item("energyCost", "용도: 대시 한 번에 쓰는 에너지(최대 100, 추정).\n산출식(추정): 연속 대시 수 = 100 / 소모");
         item("rightClickDamage", "용도: 우클릭(강공격) 피해.");
         item("bleedDamagePerSecond", "용도: 출혈 상태의 초당 피해.\n산출식: 출혈 총 피해 = 초당 피해 × 출혈 시간");
@@ -202,7 +205,7 @@ public final class PatchHelp {
         for (int i = 1; i <= 5; i++) item("tier" + i + "Damage", "용도: 콤보 " + i + "단의 피해. 연속으로 맞힐수록 다음 단계 피해가 들어갑니다" + (i == 5 ? " (5단에서 유지)." : "."));
         item("guardReductionPercent", "용도: 방어 중 정면 피해 경감률(%).\n산출식: 받는 피해 = 피해 × (1 − 경감% / 100)");
         item("guardAngle", "용도: 방어가 통하는 정면 각도(°). 이 밖(옆·뒤)에서 온 공격은 막지 못합니다.");
-        item("explosionPlayerMultiplier", "용도: 모든 폭발이 플레이어·봇에게 주는 피해 배수(전역).\n산출식: 최종 폭발 피해 = 폭발 피해 × 이 값 × 무기별 폭발 배수");
+        item("explosionPlayerMultiplier", "용도: 전역 폭발 피해 배수. TaCZ 폭발은 모든 대상, 그 외 폭발은 플레이어·봇에 적용됩니다.\n산출식: 최종 폭발 피해 = 폭발 피해 × 이 값 × 무기별 폭발 배수");
         item("percentPerSecond", "용도: 체력 재생 속도(초당 최대 체력의 %).\n산출식: 1회 회복 = 최대 체력 × % / 100 × 간격, 가득 차는 시간 ≈ 100 / % 초");
         item("healthCostPercent", "용도: 사용할 때 소모하는 체력(최대 체력의 %). 남은 체력이 이 이하면 쓸 수 없습니다.");
         item("movementBonusPercent", "용도: 효과 중 이동속도 증가(%).");
@@ -232,6 +235,28 @@ public final class PatchHelp {
         item("health_regeneration", "delaySeconds", "용도: 마지막으로 피해를 받은 뒤 자연 재생이 시작되기까지의 시간(초).");
         item("health_regeneration", "intervalSeconds", "용도: 자연 재생 1회의 간격(초).\n산출식: 1회 회복 = 최대 체력 × 초당% / 100 × 간격");
         item("orbital_strike", "range", "용도: 폭격 위치를 지정할 수 있는 최대 거리(블록).");
+        item("acid_sprayer", "magazine", "용도: 산성가스분사기 탄창 크기이자 탄약 재생의 상한. R 재장전은 막혀 있고, 쉬는 동안 이 값까지 저절로 찹니다.\n※ TaCZ 총기 데이터의 탄창(ammo_amount)도 같은 값으로 맞춰야 HUD 표시가 일치합니다.");
+        item("acid_sprayer", "cloudRadius", "용도: 산성가스 구름의 반경(블록). 몸이 이 거리 안에 걸치면 피해를 받습니다.");
+        item("acid_sprayer", "cloudSeconds", "용도: 가스가 생긴 뒤 사라지기까지의 시간(초). 밀어내도 늘어나지 않습니다.");
+        item("acid_sprayer", "damage", "용도: 가스에 닿아 있는 동안 간격마다 받는 독 피해. 사용자·아군·적 모두 받습니다.\n산출식: 초당 피해 = 피해 / 피해 간격 (기본 3 / 0.2 = 15)");
+        item("acid_sprayer", "damageIntervalSeconds", "용도: 가스 피해가 들어가는 간격(초). 여러 구름에 동시에 닿아도 간격마다 한 번만 받습니다.");
+        item("acid_sprayer", "lingerPoisonSeconds", "용도: 가스에서 빠져나온 뒤 독 효과가 남는 시간(초). 0이면 독을 남기지 않습니다.");
+        item("acid_sprayer", "pushAmmoCost", "용도: 우클릭 밀어내기 1회에 쓰는 탄약 수. 남은 탄약이 이보다 적으면 쓸 수 없습니다.");
+        item("acid_sprayer", "pushRange", "용도: 우클릭으로 가스를 밀어내는 최대 거리(블록). 총구 앞에 새 가스를 만들고, 조준선 앞에 있는 가스들도 함께 이 거리까지 밀며, 벽에 막히면 그 앞에서 멈춥니다.");
+        item("acid_sprayer", "pushSeconds", "용도: 밀어낸 가스가 목표 지점까지 이동하는 데 걸리는 시간(초).");
+        item("acid_sprayer", "sprayDistance", "용도: 좌클릭을 누르면 0.1초마다 탄약 1을 써서 전방으로 가스를 분사합니다. 이 값은 가스 생성의 최소 눈앞 거리(블록)이며, 공간이 충분하면 가스 반경이 사용자 몸과 겹치지 않도록 거리를 늘립니다. 가까운 벽이 있으면 몸과 겹치더라도 벽 앞에 가스를 생성하며, 사용자도 피해를 받습니다.");
+        item("acid_sprayer", "regenDelaySeconds", "용도: 마지막으로 쏜 뒤 탄약이 다시 차기 시작하기까지의 시간(초).");
+        item("acid_sprayer", "regenIntervalSeconds", "용도: 재생이 시작된 뒤 탄약 1발이 차는 간격(초).\n산출식: 빈 탄창이 다 차는 시간 ≈ 재생 대기 + 탄창 × 간격 (기본 3 + 60 × 0.2 = 15초)");
+        item("perimeter_barrage", "radius", "용도: 지정 지점을 중심으로 미사일이 떨어지는 범위의 반경(블록). 빨간 연막 고리로 표시되고, 이 안의 사람들이 조준 대상입니다.");
+        item("perimeter_barrage", "delaySeconds", "용도: 빨간 연막탄이 떨어진 뒤 첫 일제 사격까지의 시간(초).");
+        item("perimeter_barrage", "durationSeconds", "용도: 포격이 이어지는 시간(초).\n산출식: 총 미사일 수 = (지속 시간 / 일제 사격 간격, 반올림) × 1회 미사일 수");
+        item("perimeter_barrage", "volleySize", "용도: 일제 사격마다 떨어지는 미사일 수. 범위 안에서 사람이 가장 많이 몰린 곳부터, 폭발 범위가 겹치지 않는 지점들을 노립니다(모자라면 가장 몰린 곳을 다시 노림).");
+        item("perimeter_barrage", "volleyIntervalSeconds", "용도: 일제 사격 사이 간격(초).");
+        item("perimeter_barrage", "damage", "용도: 미사일 1발이 폭발 범위 안에 주는 피해. 사용자·아군·적 모두 받으며, 폭발 지점과 몸 사이가 블록으로 막혀 있으면(엄폐) 받지 않습니다. 전역 폭발 배수가 플레이어·봇에게 추가로 곱해집니다.");
+        item("perimeter_barrage", "blastRadius", "용도: 미사일 1발의 폭발 반경(블록).");
+        item("perimeter_barrage", "flightSeconds", "용도: 조준 후 미사일이 떨어져 폭발하기까지의 시간(초). 이 사이에 움직이면 피할 수 있습니다. 미사일은 천장을 뚫고 떨어집니다.");
+        item("perimeter_barrage", "range", "용도: 포격 위치를 지정할 수 있는 최대 거리(블록).");
+        item("perimeter_barrage", "cooldownSeconds", "용도: 사용 후 다시 쓸 수 있을 때까지의 시간(초). 궤도폭격처럼 처음 장착할 때도 이 시간만큼 기다립니다(랜덤 무기 모드 제외).");
         item("orbital_strike", "delaySeconds", "용도: 위치를 확정한 뒤 폭격이 떨어지기까지의 시간(초).");
         item("hermes_boots", "dashDistance", "용도: 돌진 1회에 앞으로 이동하는 거리(블록). 벽에 닿으면 그 자리에서 멈춥니다.");
         item("hermes_boots", "dashSeconds", "용도: 돌진에 걸리는 시간(초). 0.05초(1틱) 단위로 반올림됩니다.\n산출식: 돌진 속도(블록/초) = 돌진 거리 / 돌진 시간");

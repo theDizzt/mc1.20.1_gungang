@@ -53,6 +53,7 @@ final class BotGadgets {
             case "molotov"->ExtraGadgetConfig.ticks(ExtraGadgetConfig.molotov.cooldownSeconds());
             case "arrow_grenade"->ExtraGadgetConfig.ticks(ExtraGadgetConfig.arrowGrenade.cooldownSeconds());
             case "orbital_strike"->ExtraGadgetConfig.ticks(ExtraGadgetConfig.orbital.cooldownSeconds());
+            case "perimeter_barrage"->ExtraGadgetConfig.ticks(ExtraGadgetConfig.barrage.cooldownSeconds());
             case "life_support"->ExtraGadgetConfig.ticks(ExtraGadgetConfig.life.cooldownSeconds());
             case "jetpack"->ExtraGadgetConfig.ticks(ExtraGadgetConfig.jet.cooldownSeconds());
             case "infrared_scanner"->ExtraGadgetConfig.ticks(ExtraGadgetConfig.scanner.cooldownSeconds());
@@ -60,7 +61,7 @@ final class BotGadgets {
         };
         long now=bot.level().getGameTime();
         // Like players, an orbital strike waits a full cooldown after it is first equipped (not in 랜덤 무기).
-        if(kind.equals("orbital_strike")&&!LobbyManager.randomWeaponMatch())deadlines.putIfAbsent(id,now+cooldown);
+        if((kind.equals("orbital_strike")||kind.equals("perimeter_barrage"))&&!LobbyManager.randomWeaponMatch())deadlines.putIfAbsent(id,now+cooldown);
         shieldHealth=(float)ExtraGadgetConfig.shield.capacity();
         // Carried in the off hand so other players can see what the bot brought.
         bot.setItemSlot(net.minecraft.world.entity.EquipmentSlot.OFFHAND,item.copy());
@@ -121,7 +122,7 @@ final class BotGadgets {
         lastScore=BotGadgetScore.score(kind,situation);
         // A little noise so the same situation does not always fire on the same tick.
         if(lastScore+bot.getRandom().nextFloat()*.15f<BotGadgetScore.THRESHOLD)return;
-        if(Set.of("molotov","arrow_grenade","landmine","bear_trap","turret","orbital_strike").contains(kind)&&!BotLearning.allowSecondary(bot,bot.getServer().getTickCount()))return;
+        if(Set.of("molotov","arrow_grenade","landmine","bear_trap","turret","orbital_strike","perimeter_barrage").contains(kind)&&!BotLearning.allowSecondary(bot,bot.getServer().getTickCount()))return;
         try {
             boolean used=switch(kind) {
                 case "turret"->placeTurret(bot,level,target);
@@ -129,6 +130,7 @@ final class BotGadgets {
                 case "landmine","bear_trap"->bot.onGround()&&placeTrap(bot,level,kind.equals("bear_trap"));
                 case "barrier"->placeBarrier(bot,level,target);
                 case "orbital_strike"->strike(bot,level,team,target);
+                case "perimeter_barrage"->barrage(bot,level,target);
                 case "recovery_potion"->{
                     if(now<healEnd)yield false;
                     int ticks=Math.max(1,(int)Math.round(GadgetConfig.recovery.durationSeconds()*20));
@@ -255,6 +257,17 @@ final class BotGadgets {
         entity.setPos(pos.getX()+.5,PlacementSurface.height(level,pos),pos.getZ()+.5);entity.setup(bot,wall,east);
         if(!level.addFreshEntity(entity)) {entity.discard();return false;}
         GadgetManager.track(entity);return true;
+    }
+    /** 경계 감시 포격 onto a seen enemy, only when neither the bot nor a teammate stands inside the barrage area. */
+    private static boolean barrage(BotEntity bot,ServerLevel level,net.minecraft.world.entity.LivingEntity target) {
+        double radius=ExtraGadgetConfig.barrage.radius();
+        if(bot.distanceTo(target)<=radius+4||bot.distanceTo(target)>ExtraGadgetConfig.barrage.range())return false;
+        String side=bot.getTeam()==null?"":bot.getTeam().getName();
+        for(var p:level.getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class,target.getBoundingBox().inflate(radius),BotEntity::participant))
+            if(p!=bot&&p.getTeam()!=null&&p.getTeam().getName().equals(side)&&p.distanceTo(target)<=radius)return false;
+        var call=GadgetItems.BARRAGE.get().create(level);if(call==null)return false;
+        call.setPos(target.getX(),target.getY(),target.getZ());call.setup(bot);
+        return level.addFreshEntity(call);
     }
     private static boolean strike(BotEntity bot,ServerLevel level,String team,net.minecraft.world.entity.LivingEntity target) {
         var config=ExtraGadgetConfig.orbital;double radius=config.radius();

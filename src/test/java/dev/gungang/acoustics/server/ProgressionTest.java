@@ -73,9 +73,24 @@ class ProgressionTest {
         Path file=directory.resolve("legacy.json");String id=UUID.randomUUID().toString();
         Files.writeString(file,"{\"version\":1,\"players\":[{\"id\":\""+id+"\",\"name\":\"old\",\"experience\":300,\"matches\":4,\"kills\":9,\"deaths\":3,\"damage\":120.5,\"playSeconds\":900,\"wins\":2}]}");
         var db=new PlayerDatabase(file);var row=db.get(id,"old");
-        assertEquals(new PlayerRecord(id,"old",300,4,9,3,120.5,900,2),row);assertTrue(row.presets().isEmpty());
+        assertTrue(row.tag().matches("[0-9]{4}"));
+        assertEquals(new PlayerRecord(id,"old",300,4,9,3,120.5,900,2).withTag(row.tag()),row);assertTrue(row.presets().isEmpty());
         String text=Files.readString(file);assertTrue(text.contains("\"presets\"")&&text.contains("\"defaultPreset\""));
         assertTrue(Files.readString(directory.resolve("legacy.json.bak")).contains("\"experience\":300"));
+    }
+    @Test void tagsAreStoredUniqueAndKept() throws Exception {
+        Path file=directory.resolve("tags.json");var db=new PlayerDatabase(file);
+        String a=UUID.randomUUID().toString(),b=UUID.randomUUID().toString();
+        db.update(PlayerRecord.empty(a,"a"));String tag=db.get(a,"a").tag();
+        assertTrue(tag.matches("[0-9]{4}"));
+        // Another account whose preferred tag is taken gets the next free one.
+        db.update(PlayerRecord.empty(b,"b").withTag(""));
+        assertNotEquals(tag,db.get(b,"b").tag());
+        db.update(db.get(a,"a").withNickname("새이름"));
+        assertEquals(tag,new PlayerDatabase(file).get(a,"a").tag());
+        assertTrue(Files.readString(file).contains("\"tag\": \""+tag+"\""));
+        var used=new java.util.HashSet<String>();var id=UUID.randomUUID();
+        used.add(PlayerTag.allocate(id,used));assertNotEquals(used.iterator().next(),PlayerTag.allocate(id,used));
     }
     @Test void presetsPersistRenameDeleteAndDefault() throws Exception {
         Path file=directory.resolve("presets.json");var db=new PlayerDatabase(file);String id=UUID.randomUUID().toString();
@@ -98,7 +113,7 @@ class ProgressionTest {
     @Test void administratorEditsPersistAndCannotGoNegative() throws Exception {
         Path file=directory.resolve("db.json");var db=new PlayerDatabase(file);String id=UUID.randomUUID().toString();
         var r=PlayerRecord.empty(id,"test").set("xp","250").set("kills","12").set("damage","12.5").set("playSeconds","100");
-        db.update(r);assertEquals(r,new PlayerDatabase(file).get(id,"test"));
+        db.update(r);var loaded=new PlayerDatabase(file).get(id,"test");assertEquals(r.withTag(loaded.tag()),loaded);
         assertThrows(IllegalArgumentException.class,()->r.set("xp","-1"));
         assertThrows(IllegalArgumentException.class,()->r.set("damage","NaN"));
     }

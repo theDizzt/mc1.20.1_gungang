@@ -68,8 +68,9 @@ final class BotAgent {
     void activate(Loadouts loadouts)throws Exception{
         movement.routeMemory.clear();rotationLocked=false;
         weapon=BotManager.selectWeapon(loadouts);secondary=BotManager.selectSecondary(loadouts);
-        primaryChoices=loadouts.primary().stream().filter(BotManager::supportedPrimary).toList();
-        secondaryChoices=loadouts.secondary().stream().filter(BotManager::supportedSecondary).toList();
+        // 히든 weapons reach bots only through 랜덤 무기 rotations (rotate), like players.
+        primaryChoices=loadouts.primary().stream().filter(BotManager::supportedPrimary).filter(w->!w.hidden()).toList();
+        secondaryChoices=loadouts.secondary().stream().filter(BotManager::supportedSecondary).filter(w->!w.hidden()).toList();
         chooseOnSpawn=true;respawnAt=BotManager.server().getTickCount();
         MatchManager.botParticipant(id,name(),team);
         spawn();

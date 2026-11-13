@@ -14,7 +14,7 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
     /**
      * Elemental damage of a weapon ({@link ElementalDamage}); a null field leaves that element as it is.
      * burnDamage / witherDamage / poisonDamage: damage of each status tick on a victim the weapon hit;
-     * explosionMultiplier: scales the weapon's explosion damage to players and bots.
+     * explosionMultiplier: scales TaCZ explosions for every target; other explosions for players and bots.
      */
     /** {@code bleedDamage}: bleeding damage per second on a victim this weapon hits, for {@code bleedSeconds} (blank: 5). */
     public record Elements(Double burnDamage, Double witherDamage, Double poisonDamage, Double explosionMultiplier, Double bleedDamage, Double bleedSeconds) {
@@ -75,6 +75,9 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
         public Weapon(String id,String itemNbt,String name,String description,Specs specs,String usage,String category,Double maxHealth,Double movementSpeed,Double cooldownSeconds) {
             this(id,itemNbt,name,description,specs,usage,category,maxHealth,movementSpeed,cooldownSeconds,"");
         }
+        /** Category of weapons listed (last) on the loadout screen but only issued at random: never chosen directly. */
+        public static final String HIDDEN="히든";
+        public boolean hidden() {return HIDDEN.equals(category);}
         public boolean commandOnly() {return (itemNbt.isBlank()||itemNbt.strip().equals("{}"))&&!command.isBlank();}
         public Weapon(String id,String itemNbt,String name,String description,Specs specs,String usage,String category) {
             this(id,itemNbt,name,description,specs,usage,category,null,null,null);
@@ -190,7 +193,7 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
     private static void ensureOrdnance(Path directory)throws java.io.IOException {
         var existing=readCategory(directory);
         for(var weapon:OrdnanceLoadouts.defaults()) {
-            String item=switch(weapon.id()) {case "76"->"void_anchor";case "77"->"air_assault";case "79"->"arrow_grenade";case "90"->"turret";case "81"->"molotov";case "87"->"orbital_strike";case "89"->"bear_trap";case "80"->"hand_axe";case "92"->"life_support";case "74"->"hermes_boots";default->"jetpack";};
+            String item=switch(weapon.id()) {case "75"->"command_flag";case "76"->"void_anchor";case "77"->"air_assault";case "79"->"arrow_grenade";case "90"->"turret";case "81"->"molotov";case "87"->"orbital_strike";case "73"->"perimeter_barrage";case "89"->"bear_trap";case "80"->"hand_axe";case "92"->"life_support";case "74"->"hermes_boots";default->"jetpack";};
             if(existing.stream().noneMatch(w->w.id().equals(weapon.id())||w.itemNbt().contains("gungang:"+item)))
                 ConfigLayout.writeNew(directory.resolve(weapon.id()+"_"+item+".json"),ServerFiles.GSON.toJson(weapon));
         }

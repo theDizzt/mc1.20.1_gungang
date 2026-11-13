@@ -752,5 +752,17 @@
   "투명화": "Cloak",
   "콤보 · ×%.2f · %s": "Combo · ×%.2f · %s",
   "투시까지": "Wallhack in",
-  "스캔됨": "SCANNED"
+  "스캔됨": "SCANNED",
+  "랜덤 무기로만 획득 가능": "Random weapons only",
+  "랜덤 전용": "Random only",
+  "히든": "Hidden",
+  "사용 중": "Enabled",
+  "사용 안 함": "Disabled",
+  "주무기 사용": "Primary enabled",
+  "보조무기 사용": "Secondary enabled",
+  "무기 선택 목록에 표시": "shown in weapon selection",
+  "선택·랜덤·프리셋에서 제외": "left out of selection, random and presets",
+  "· 로비에서만 변경": "· change in the lobby only",
+  "사용키: 매크로 키 (": "Use key: macro key (",
+  "사용키: 이동키 더블 탭 (WASD)": "Use key: double-tap movement (WASD)"
 }

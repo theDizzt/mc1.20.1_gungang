@@ -26,8 +26,10 @@ public final class GungangNetwork {
     public record Ability(SurvivalGadgets.View state) { }
     public record MapPreview(String id,byte[] png,String error) { }
     public record WeaponPreview(String id,net.minecraft.world.item.ItemStack stack) { }
-    public record Gadget(String preview,double range) {
-        public Gadget(String preview) {this(preview,preview.equals("command_flag")?ExtraGadgetConfig.commandFlag.placementRange():preview.equals("turret")?Turrets.config.placementRange():preview.equals("orbital_strike")?ExtraGadgetConfig.orbital.range():preview.equals("barrier")?GadgetConfig.barrier.range():GadgetConfig.mine.range());}
+    public record Gadget(String preview,double range,java.util.List<ArenaMap.Area> spawnAreas,boolean flagExists) {
+        public Gadget(String preview,double range){this(preview,range,java.util.List.of(),false);}
+        public Gadget(String preview,ServerPlayer player){this(preview,new Gadget(preview).range(),preview.equals("command_flag")?LobbyManager.placementSpawnAreas(player.level()):java.util.List.of(),preview.equals("command_flag")&&CommandFlags.hasFlag(player));}
+        public Gadget(String preview) {this(preview,preview.equals("command_flag")?ExtraGadgetConfig.commandFlag.placementRange():preview.equals("turret")?Turrets.config.placementRange():preview.equals("orbital_strike")?ExtraGadgetConfig.orbital.range():preview.equals("perimeter_barrage")?ExtraGadgetConfig.barrage.range():preview.equals("barrier")?GadgetConfig.barrier.range():GadgetConfig.mine.range());}
     }
     public record Action(String action, String value, String target) { }
     /** 178: a hider's lectern book text (up to PropHuntMatch.LECTERN_LIMIT characters). */
@@ -63,6 +65,7 @@ public final class GungangNetwork {
     /** A TaCZ gun-pack sound for the receiving player only (e.g. tacz:kill for a twin-blades kill). */
     public record ShockLook(int ticks,float yaw,float pitch) { }
     public record KillSound(String sound) { }
+    public record AcidShot(boolean push) { }
     /** Pending status-ailment damage per entity id in the receiver's dimension (purple share of health bars). */
     public record StatusDamage(int[] ids,float[] amounts,float[] heals) { }
     /** A heal pack or recovery potion is healing this entity for the next {@code ticks}: its health bar draws the green ghost. */
@@ -79,6 +82,9 @@ public final class GungangNetwork {
     /** Longest lobby action value: the game options JSON, with room for every mode's section and a long excluded-block list. */
     static final int ACTION_VALUE=8192;
     public static void register() {
+        CHANNEL.registerMessage(48,AcidShot.class,(p,b)->b.writeBoolean(p.push),b->new AcidShot(b.readBoolean()),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.AcidSprayerInput.fired(p.push)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         // 36: opera used 34 for this, which Nickname already holds here.
         CHANNEL.registerMessage(36,AnchorPull.class,(p,b)->{b.writeUUID(p.anchor);b.writeBoolean(p.active);b.writeDouble(p.x);b.writeDouble(p.y);b.writeDouble(p.z);},
                 b->new AnchorPull(b.readUUID(),b.readBoolean(),b.readDouble(),b.readDouble(),b.readDouble()),(p,context)->{
@@ -228,8 +234,8 @@ public final class GungangNetwork {
         CHANNEL.registerMessage(6,Progression.class,(p,b)->b.writeUtf(p.json,4096),b->new Progression(b.readUtf(4096)),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.ProgressionHud.receive(p.json)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
-        CHANNEL.registerMessage(5,Gadget.class,(p,b)->{b.writeUtf(p.preview,32);b.writeDouble(p.range);},b->new Gadget(b.readUtf(32),b.readDouble()),(p,context)->{
-            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.GadgetClient.receive(p.preview,p.range)));ctx.setPacketHandled(true);
+        CHANNEL.registerMessage(5,Gadget.class,(p,b)->{b.writeUtf(p.preview,32);b.writeDouble(p.range);b.writeUtf(ServerFiles.GSON.toJson(p.spawnAreas),4096);b.writeBoolean(p.flagExists);},b->new Gadget(b.readUtf(32),b.readDouble(),java.util.Arrays.asList(ServerFiles.GSON.fromJson(b.readUtf(4096),ArenaMap.Area[].class)),b.readBoolean()),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.GadgetClient.receive(p.preview,p.range,p.spawnAreas,p.flagExists)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(0, Acoustics.class, (p, b) -> b.writeUtf(p.json, 65536), b -> new Acoustics(b.readUtf(65536)),
                 (p, context) -> {

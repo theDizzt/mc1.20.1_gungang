@@ -19,6 +19,8 @@ public final class WindBlowerInput {
     private static boolean aimKeyMissing,previous;
 
     public static boolean holding(){var player=Minecraft.getInstance().player;return player!=null&&WindBlower.is(player.getMainHandItem());}
+    /** 36 산성가스분사기: its right click pushes acid gas ({@code AcidSprayer.push}) instead of aiming. */
+    public static boolean holdingAcid(){var player=Minecraft.getInstance().player;return player!=null&&dev.gungang.acoustics.server.AcidSprayer.is(player.getMainHandItem());}
     private static KeyMapping aimKey(){
         if(aimKey==null&&!aimKeyMissing){
             try{aimKey=(KeyMapping)Class.forName("com.tacz.guns.client.input.AimKey").getField("AIM_KEY").get(null);}
@@ -31,8 +33,9 @@ public final class WindBlowerInput {
         var mc=Minecraft.getInstance();var key=aimKey();
         boolean down=key!=null&&key.isDown();
         boolean edge=down&&!previous;previous=down;
-        if(!edge||mc.player==null||mc.screen!=null||mc.getConnection()==null||!holding()||mc.player.isSpectator())return;
-        GungangNetwork.CHANNEL.sendToServer(new GungangNetwork.Action("airCannon","",""));
+        if(!edge||mc.player==null||mc.screen!=null||mc.getConnection()==null||mc.player.isSpectator())return;
+        if(holding())GungangNetwork.CHANNEL.sendToServer(new GungangNetwork.Action("airCannon","",""));
+        else if(holdingAcid())GungangNetwork.CHANNEL.sendToServer(new GungangNetwork.Action("acidPush","",""));
     }
     private WindBlowerInput(){}
 }

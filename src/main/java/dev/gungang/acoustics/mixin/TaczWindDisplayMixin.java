@@ -17,6 +17,9 @@ public abstract class TaczWindDisplayMixin {
     @Shadow @Final private ResourceLocation displayId;
     @Inject(method="getMuzzleFlash",at=@At("RETURN"),cancellable=true,require=0)
     private void gungang$windFlash(CallbackInfoReturnable<Object> cir) {
+        if(displayId!=null&&displayId.getNamespace().equals("hlm")&&displayId.getPath().equals("dis_display")){
+            cir.setReturnValue(null);return;
+        }
         if(WindBlowerVisuals.blower(displayId)){var wind=WindBlowerVisuals.muzzleFlash();if(wind!=null)cir.setReturnValue(wind);}
     }
     @Inject(method="getParticle",at=@At("RETURN"),cancellable=true,require=0)

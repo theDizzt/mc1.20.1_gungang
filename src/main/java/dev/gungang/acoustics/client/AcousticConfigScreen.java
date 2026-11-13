@@ -62,6 +62,8 @@ public final class AcousticConfigScreen extends Screen {
         options.add(new Option(2, "teamWeaponNumbers", AcousticConfig.TEAM_WEAPON_NUMBERS, Boolean::parseBoolean, true).right());
         options.add(new Option(2, "killLog", AcousticConfig.KILL_LOG, Boolean::parseBoolean, true).right());
         options.add(new Option(2, "teamSilhouettes", AcousticConfig.TEAM_SILHOUETTES, Boolean::parseBoolean, true).right());
+        options.add(new Option(2, "wheelFireSelect", AcousticConfig.WHEEL_FIRE_SELECT, Boolean::parseBoolean, true).right());
+        decimal(2, "wheelFireSelectDelay", AcousticConfig.WHEEL_FIRE_SELECT_DELAY, 0, 10).right();
         options.add(new Option(2, "autoSprint", AcousticConfig.AUTO_SPRINT, Boolean::parseBoolean, true).right());
         options.add(new Option(2, "cooldownReadySound", AcousticConfig.COOLDOWN_SOUND, Boolean::parseBoolean, true).right());
         // Presets/files on the left, raster settings on the right.

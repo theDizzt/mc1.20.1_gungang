@@ -51,6 +51,12 @@ public final class RapierItem extends Item {
         }
         return false;
     }
+    private static final ThreadLocal<net.minecraft.world.entity.LivingEntity> STRUCK=new ThreadLocal<>();
+    private static final ThreadLocal<Boolean> KILLED=new ThreadLocal<>();
+    @net.minecraftforge.eventbus.api.SubscribeEvent
+    public static void killed(net.minecraftforge.event.entity.living.LivingDeathEvent event){
+        if(event.getEntity()==STRUCK.get())KILLED.set(true);
+    }
     private static final String ENERGY="RapierEnergy",WAIT="RapierRecovery",ATTACK="RapierAttackTick";
     private final Multimap<Attribute,AttributeModifier> attributes=ImmutableMultimap.<Attribute,AttributeModifier>builder()
             .put(Attributes.ATTACK_DAMAGE,new AttributeModifier(BASE_ATTACK_DAMAGE_UUID,"Rapier damage",20,AttributeModifier.Operation.ADDITION))
@@ -71,7 +77,8 @@ public final class RapierItem extends Item {
             DASHES.put(player.getUUID(),dash);
             if(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)
                 GungangNetwork.CHANNEL.send(net.minecraftforge.network.PacketDistributor.TRACKING_ENTITY_AND_SELF.with(()->serverPlayer),new GungangNetwork.RapierStep(player.getId(),player.getYRot(),(float)dash.distance));
-            save(player,energy(player).spend(cost()));
+            save(player,new RapierEnergy(energy(player).amount()-cost(),0));
+            player.getPersistentData().putLong("RapierRegenAfter",level.getGameTime()+Math.round(ExtraGadgetConfig.rapier.energyRegenDelaySeconds()*20));
             player.getPersistentData().putLong(DASH,level.getGameTime()+DASH_TICKS);
             // Vanilla inventory/equipment synchronization also carries this to third-person observers.
             stack.getOrCreateTag().putLong(SWEEP_ANIMATION,level.getGameTime());
@@ -121,7 +128,12 @@ public final class RapierItem extends Item {
         // Using a secondary (the G/H macro swaps it into the main hand and the rapier into the off hand) keeps the
         // combo: it is neither reset nor advanced, and its 3 s timer keeps running. Any other weapon change resets it.
         if(!(p.getMainHandItem().getItem() instanceof RapierItem)&&!(p.getOffhandItem().getItem() instanceof RapierItem)||!p.isAlive())resetCombo(p);
-        if(p.getPersistentData().contains(ENERGY)&&p.getPersistentData().getInt(ENERGY)<100)save(p,energy(p).tick());
+        if(p.isAlive()&&p.getPersistentData().contains(ENERGY)&&p.getPersistentData().getInt(ENERGY)<100
+                &&p.level().getGameTime()>=p.getPersistentData().getLong("RapierRegenAfter")){
+            double accumulated=p.getPersistentData().getDouble("RapierRegenFraction")+ExtraGadgetConfig.rapier.energyRegenPerSecond()/20;
+            int gain=(int)accumulated;var next=new RapierEnergy(energy(p).amount()+gain,0);save(p,next);
+            p.getPersistentData().putDouble("RapierRegenFraction",next.amount()==100?0:accumulated-gain);
+        }
         dashContacts(p);
     }
     @net.minecraftforge.eventbus.api.SubscribeEvent(priority=net.minecraftforge.eventbus.api.EventPriority.LOWEST)
@@ -175,7 +187,13 @@ public final class RapierItem extends Item {
         if(!(p.getMainHandItem().getItem() instanceof RapierItem))return false;
         var next=combo(p).hit(p.level().getGameTime());
         int immunity=target.invulnerableTime;float before=target.getHealth()+target.getAbsorptionAmount();target.invulnerableTime=0;
-        if(!target.hurt(p.damageSources().playerAttack(p),RapierCombo.damage(next.stacks()))||target.getHealth()+target.getAbsorptionAmount()>=before){target.invulnerableTime=immunity;return false;}
+        boolean damaged,killed;
+        STRUCK.set(target);KILLED.set(false);
+        try{damaged=target.hurt(p.damageSources().playerAttack(p),RapierCombo.damage(next.stacks()));killed=Boolean.TRUE.equals(KILLED.get());}
+        finally{STRUCK.remove();KILLED.remove();}
+        // Match respawns can restore health inside hurt(), so capture the rapier's own death event.
+        if(killed){save(p,new RapierEnergy(energy(p).amount()+ExtraGadgetConfig.rapier.killEnergyGain(),0));sync(p);}
+        if(!killed&&(!damaged||target.getHealth()+target.getAbsorptionAmount()>=before)){target.invulnerableTime=immunity;return false;}
         else {
             p.getPersistentData().putInt(COMBO,next.stacks());p.getPersistentData().putLong(COMBO_END,next.expires());
             syncCombo(p,p.getMainHandItem());p.inventoryMenu.broadcastChanges();

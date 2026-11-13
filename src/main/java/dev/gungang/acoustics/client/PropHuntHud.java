@@ -148,7 +148,7 @@ final class PropHuntHud {
             PlayerFaceRenderer.draw(g,row.skin()!=null&&!row.skin().isEmpty()?BotRenderer.texture(row.skin()):MatchHud.skin(row.id()),face,ry+3,12);
             if(found)g.fill(face,ry+3,face+12,ry+15,0x90141511);
             PlayerLevels.draw(g,row.id(),face+15,ry+3,12);
-            Marquee.draw(g,font,row.name(),nameX,ry+5,Math.max(1,nameEnd-nameX),mine?0xFFFFFFFF:found?0xFF8A96A6:TacticalStyle.INK,false);
+            Marquee.draw(g,font,ClientNames.tagged(row.id(),row.name()),nameX,ry+5,Math.max(1,nameEnd-nameX),mine?0xFFFFFFFF:found?0xFF8A96A6:TacticalStyle.INK,false);
             if(hider) {
                 if(row.found()!=null)MatchHud.column(g,found?Lang.tr("발견됨"):Lang.tr("생존"),status,ry+5,found?FOUND:HIDER);
                 MatchHud.column(g,MatchReport.time(row.seconds()),value,ry+5,0xFFFFFFFF);
