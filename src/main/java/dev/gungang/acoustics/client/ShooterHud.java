@@ -129,6 +129,9 @@ public final class ShooterHud {
             HudText.healthNumber(graphics, value, barX + 3, barY + 1, healthTextWidth, HEALTH_HEIGHT - 2, 0xFF111820, 1f);
             graphics.disableScissor();
         }
+        // Status effects (buffs, debuffs, other vanilla effects) right-aligned inside the bar, clear of the number and air %.
+        StatusIcons.render(graphics, player, barX + 3 + Math.round(HudText.healthDrawnWidth(value, HEALTH_HEIGHT - 2)) + 4,
+                barX + barWidth - 2 - airSpace, barY + 1, HEALTH_HEIGHT - 2, partialTick);
         if (airSpace > 4) {
             float airScale = Math.min(1f, (airSpace - 4f) / Math.max(1, mc.font.width(airLabel)));
             graphics.pose().pushPose();
@@ -183,6 +186,27 @@ public final class ShooterHud {
         return camera instanceof net.minecraft.world.entity.LivingEntity living && camera != mc.player && living.isAlive()
                 && (camera instanceof net.minecraft.world.entity.player.Player || camera instanceof dev.gungang.acoustics.server.BotEntity) ? living : mc.player;
     }
+    /**
+     * The part of a {@code width}×{@code height} box still waiting: a sector from 12 o'clock covering {@code fraction}
+     * of the turn, ending back at 12 o'clock, so the cleared part grows clockwise. Drawn as a fan of triangles whose
+     * outer points lie on the box edges (corners included), so it fills the box exactly.
+     */
+    static void clockShade(GuiGraphics graphics, float x, float y, float width, float height, float fraction, int color) {
+        if (fraction <= 0) return;
+        var angles = ClockWipe.angles(Math.min(1, fraction), width, height);
+        float cx = x + width / 2, cy = y + height / 2;
+        int a = color >>> 24, r = color >> 16 & 255, g = color >> 8 & 255, b = color & 255;
+        var matrix = graphics.pose().last().pose();
+        var vertices = graphics.bufferSource().getBuffer(net.minecraft.client.renderer.RenderType.gui());
+        for (int i = 0; i + 1 < angles.length; i++) {
+            float[] p = ClockWipe.edge(angles[i], width, height), q = ClockWipe.edge(angles[i + 1], width, height);
+            // A quad with its last corner repeated is the triangle centre → p → q (gui() draws quads).
+            vertices.vertex(matrix, cx, cy, 0).color(r, g, b, a).endVertex();
+            vertices.vertex(matrix, cx + q[0], cy + q[1], 0).color(r, g, b, a).endVertex();
+            vertices.vertex(matrix, cx + p[0], cy + p[1], 0).color(r, g, b, a).endVertex();
+            vertices.vertex(matrix, cx + p[0], cy + p[1], 0).color(r, g, b, a).endVertex();
+        }
+    }
     private static void slot(GuiGraphics graphics, ItemStack stack, int x, int y, boolean selected, int team, float partial) {
         Minecraft mc = Minecraft.getInstance();
         if (selected) {
@@ -209,11 +233,8 @@ public final class ShooterHud {
                     // The shade shrinks every frame, not per tick, and fades in over the first few ticks of the cooldown.
                     float fadeIn=Math.min(1,(total-left)/FADE_IN);
                     int alpha=Math.round(0xAA*(fadeIn*fadeIn*(3-2*fadeIn)));
-                    graphics.pose().pushPose();
-                    // Anchored at the bottom: the top edge sits at 30*fraction above it (a positive scale keeps the quad's winding).
-                    graphics.pose().translate(x+1,y+31-30*fraction,0);graphics.pose().scale(1,fraction,1);
-                    graphics.fill(0,0,32,30,alpha<<24|0x101820);
-                    graphics.pose().popPose();
+                    // Clock wipe: the shade clears clockwise from 12 o'clock as the cooldown runs out.
+                    clockShade(graphics,x+1,y+1,32,30,fraction,alpha<<24|0x101820);
                     // Seconds in the GunGang font with a black shadow.
                     var seconds=HudText.gungang(String.format(java.util.Locale.ROOT,"%.1f",left/20.0));
                     float textScale=Math.min(1f,30f/Math.max(1,mc.font.width(seconds)));

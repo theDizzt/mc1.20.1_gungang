@@ -159,6 +159,8 @@ public final class HudText {
         int slash = value.indexOf('/');
         return slash < 0 ? numberWidth(value) : numberWidth(value.substring(0, slash)) + numberWidth(value.substring(slash)) * MAX_SCALE;
     }
+    /** Width {@link #healthNumber} draws {@code value} at in a box {@code height} tall (size multiplier 1). */
+    public static float healthDrawnWidth(String value, int height) { return healthWidth(value) * healthSize(height, 1f); }
     private static float healthSize(int height, float sizeMultiplier) {
         return Math.min(height / 8f, AcousticConfig.HUD_TEXT_SIZE.get() / 100f * 1.2f) * sizeMultiplier;
     }

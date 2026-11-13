@@ -14,7 +14,7 @@ import net.minecraft.network.chat.Component;
  * <li>{@link Kind#OTHER} pastel purple, star: everything else.</li>
  * </ul>
  * The icon sits in its own cell left of the bar. Inside, from the left: the value in the number font (a "100/125"
- * value draws "/125" smaller), the percentage in brackets for health and ammo, then a small Korean caption.
+ * value draws "/125" smaller), then a small Korean caption.
  */
 public final class AuxBar {
     public enum Kind {
@@ -80,13 +80,17 @@ public final class AuxBar {
         var player = Minecraft.getInstance().player;
         return ((player == null ? 0 : player.tickCount) + partial) / 20.0;
     }
-    /** The bar card and, left of it, the icon cell. */
+    /** Opacity of the bar and icon-cell backgrounds (0xB3 = 70 %): the world shows through a little. */
+    static final int BACKGROUND_ALPHA = 0xB3;
+    /** The bar card and, left of it, the icon cell, both 70 % opaque. */
     private static void frame(GuiGraphics g, int x, int y, int width, int height, Kind kind, float fraction) {
-
+        int edge = translucent(ShooterHud.BAR_EDGE), surface = translucent(ShooterHud.SURFACE);
+        ShooterHud.card(g, x, y, width, height, edge, surface, 0);
         int cell = height, ix = x - ICON_GAP - cell;
-
+        ShooterHud.card(g, ix, y, cell, height, edge, surface, 0);
         icon(g, kind, ix + 1, y + 1, cell - 2, barColor(kind, fraction));
     }
+    static int translucent(int color) { return BACKGROUND_ALPHA << 24 | color & 0xFFFFFF; }
 
     // ---- Icons ---------------------------------------------------------------------------------------------------
 
@@ -147,7 +151,7 @@ public final class AuxBar {
 
     // ---- Text ----------------------------------------------------------------------------------------------------
 
-    /** Size of "/max" and "(40%)" relative to the value, and of the caption. */
+    /** Size of "/max" relative to the value, and of the caption. */
     private static final float SMALL = .6f, CAPTION = .75f;
     private static void text(GuiGraphics g, int x, int y, int width, int height, Kind kind, float fraction, String value, String caption) {
         var font = Minecraft.getInstance().font;
@@ -160,8 +164,6 @@ public final class AuxBar {
             String current = slash < 0 ? value : value.substring(0, slash), maximum = slash < 0 ? "" : value.substring(slash);
             left = piece(g, HudText.number(current), left, bottom, size, 7, color);
             if (!maximum.isEmpty()) left = piece(g, HudText.number(maximum), left, bottom, size * SMALL, 7, color);
-            if (slash >= 0 && (kind == Kind.HEALTH || kind == Kind.AMMO))
-                left = piece(g, HudText.number("(" + Math.round(fraction * 100) + "%)"), left + 2 * size * SMALL, bottom, size * SMALL, 7, color);
             left += 3;
         }
         if (caption == null || caption.isEmpty()) return;

@@ -25,6 +25,8 @@ public final class CommandFlags {
     public static AABB bounds(net.minecraft.world.level.Level level,BlockPos pos){double y=PlacementSurface.height(level,pos);return new AABB(pos.getX()+.15,y,pos.getZ()+.15,pos.getX()+.85,y+2.5,pos.getZ()+.85);}
     private static boolean clientHasFlag;
     public static void receiveOwned(boolean exists){clientHasFlag=exists;}
+    /** An allied command flag currently heals or protects this body. */
+    static boolean buffing(net.minecraft.world.entity.LivingEntity target){return FLAGS.stream().anyMatch(flag->flag.affects(target));}
     public static boolean hasFlag(Player p){return p.level().isClientSide?clientHasFlag:FLAGS.stream().anyMatch(f->f.isAlive()&&!f.isRemoved()&&p.getUUID().equals(f.owner()));}
     private static java.util.List<ArenaMap.Area> clientSpawnAreas=java.util.List.of();
     public static void receiveSpawnAreas(java.util.List<ArenaMap.Area> areas){clientSpawnAreas=java.util.List.copyOf(areas);}
