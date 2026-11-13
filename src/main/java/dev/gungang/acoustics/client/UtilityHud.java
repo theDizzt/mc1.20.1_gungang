@@ -18,6 +18,11 @@ public final class UtilityHud {
         for(var gauge:state.gauges())if(gauge.kind().equals("m95_observed")&&gauge.remaining()>0)ScanAlert.observed(received,gauge.remaining());
     }
     @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event) {state=new CombatGadgets.Hud(java.util.List.of(),0,0,3,1,"");received=0;BearTraps.clientArmed=false;ScanAlert.clear();}
+    /** A server-side status for the health bar icons ({@code status_flag}, {@code status_exposure}, {@code status_heal}, {@code status_shock}). */
+    static boolean status(String kind) {
+        for(var gauge:state.gauges())if(gauge.kind().equals("status_"+kind))return true;
+        return false;
+    }
     /** Pinned by an enemy bear trap: movement input is dropped so the client does not fight the server's anchor. */
     static boolean rooted() {
         var mc=Minecraft.getInstance();if(mc.level==null)return false;
@@ -68,7 +73,7 @@ public final class UtilityHud {
                 if(flagHealth!=null){y=flagHealth(g,center,y,width,height,flagHealth,partial);flagHealth=null;}
                 continue;
             }
-            if(gauge.kind().equals("m95_observed"))continue;
+            if(gauge.kind().equals("m95_observed")||gauge.kind().startsWith("status_"))continue;
             if(gauge.kind().equals("m95_scope")){
                 float remaining=Math.max(0,gauge.remaining()-(mc.level.getGameTime()-received+partial));
                 AuxBar.draw(g,center,y,width,height,AuxBar.Kind.COOLDOWN,gauge.maximum()-remaining,gauge.maximum(),

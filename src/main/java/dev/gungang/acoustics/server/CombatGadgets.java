@@ -176,6 +176,11 @@ public final class CombatGadgets {
             int recall=ExtraGadgetConfig.ticks(GadgetConfig.bearTrap.recallSeconds());
             gauges.add(new Gauge("bear_trap_recall",Math.max(0,recall-p.getTicksUsingItem()),recall,true));
         }
+        // Status icons in the health bar (StatusIcons) that only the server knows; on/off, so they rarely resend the HUD.
+        if(CommandFlags.buffing(p))gauges.add(new Gauge("status_flag",1,1,false));
+        if(Fallout.exposed(p))gauges.add(new Gauge("status_exposure",1,1,false));
+        if(ArcShock.stunned(p))gauges.add(new Gauge("status_shock",1,1,false));
+        if(GadgetManager.pendingHeal(p.getUUID())>0)gauges.add(new Gauge("status_heal",1,1,false));
         long boost=GadgetManager.boostRemaining(p);if(boost>0)gauges.add(new Gauge("adrenaline",boost,(float)(GadgetConfig.adrenaline.durationSeconds()*20),true));
         var ledger=DeployableLedger.get(p.server);String equipped="";
         for(int i=0;i<p.getInventory().getContainerSize();i++) {
