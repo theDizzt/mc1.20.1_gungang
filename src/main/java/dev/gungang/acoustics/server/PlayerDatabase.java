@@ -23,10 +23,13 @@ public final class PlayerDatabase {
             boolean upgrade=false;
             for(var row:com.google.gson.JsonParser.parseString(text).getAsJsonObject().getAsJsonArray("players"))
                 upgrade|=!row.getAsJsonObject().has("presets")||!row.getAsJsonObject().has("defaultPreset");
+            // Records from before 4-digit tags get one now (commit assigns them).
+            upgrade|=rows.values().stream().anyMatch(r->r.tag().isEmpty());
             if(upgrade) {commit(rows);com.mojang.logging.LogUtils.getLogger().info("[GunGang] Added preset fields to {}",file);}
         } else commit(rows);
     }
     public Collection<PlayerRecord> all() {return List.copyOf(rows.values());}
+    /** The stored record, or an empty one (without a tag until it is first saved). */
     public PlayerRecord get(String id,String name) {return rows.getOrDefault(id,PlayerRecord.empty(id,name));}
     public void update(PlayerRecord row) throws IOException {var next=new LinkedHashMap<>(rows);next.put(row.id(),row);commit(next);}
     public Map<String,Integer> match(List<MatchSnapshot.Row> result,String winner,ExperienceRules rules) throws IOException {
@@ -41,7 +44,20 @@ public final class PlayerDatabase {
         }
         commit(next);return rewards;
     }
+    /** Gives every record without a tag a free one (PlayerTag.allocate); records that have one keep it. */
+    static Map<String,PlayerRecord> tagged(Map<String,PlayerRecord> next) {
+        if(next.values().stream().allMatch(r->!r.tag().isEmpty()))return next;
+        var used=new HashSet<String>();for(var r:next.values())if(!r.tag().isEmpty())used.add(r.tag());
+        var result=new LinkedHashMap<String,PlayerRecord>();
+        for(var entry:next.entrySet()){
+            var r=entry.getValue();
+            if(r.tag().isEmpty()){String tag=PlayerTag.allocate(UUID.fromString(r.id()),used);used.add(tag);r=r.withTag(tag);}
+            result.put(entry.getKey(),r);
+        }
+        return result;
+    }
     private void commit(Map<String,PlayerRecord> next) throws IOException {
+        next=tagged(next);
         Files.createDirectories(file.toAbsolutePath().getParent());
         Path temp=file.resolveSibling(file.getFileName()+".tmp"),backup=file.resolveSibling(file.getFileName()+".bak");
         Files.writeString(temp,JSON.toJson(new Data(1,List.copyOf(next.values()))));

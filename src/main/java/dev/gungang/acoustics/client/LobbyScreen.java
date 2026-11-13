@@ -77,7 +77,7 @@ final class LobbyScreen extends ArenaScreen {
         for(String zone:List.of("ALPHA","BRAVO","SPECTATOR"))memberScroll.put(zone,offset(zone));
         for(var row:rows()){
             var m=row.member();int color=m.team().equals("ALPHA")?LobbyClient.options.color("ALPHA"):m.team().equals("BRAVO")?LobbyClient.options.color("BRAVO"):MUTED;
-            var label=Component.literal(m.name());
+            var label=ClientNames.tagged(m.id(),m.name()).copy();
             if(m.id().equals(state.you()))label.append(Component.literal(Lang.tr(" 나")).withStyle(s->s.withColor(ACCENT&0xFFFFFF)));
             listButton(label,row.x,row.y,row.w,17,admin()||m.id().equals(state.you()),m.id().equals(target)?color:MUTED,NAME,font.width(status(m))+14,()->{target=m.id();rebuildWidgets();});
         }

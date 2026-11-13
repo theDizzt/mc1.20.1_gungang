@@ -1,6 +1,7 @@
 {
   "item.gungang.command_flag": "Command Flag",
   "entity.gungang_acoustics.command_flag": "Command Flag",
+  "entity.gungang_acoustics.perimeter_barrage": "Perimeter Barrage",
   "effect.gungang.acid_poison": "Acid Poison",
   "effect.gungang.bleeding": "Bleeding",
   "block.gungang.war_table": "War Table",
@@ -13,6 +14,7 @@
   "item.gungang.shield": "Shield",
   "item.gungang.molotov": "Molotov Cocktail",
   "item.gungang.orbital_strike": "Orbital Strike",
+  "item.gungang.perimeter_barrage": "Perimeter Barrage",
   "item.gungang.life_support": "Life Support",
   "item.gungang.jetpack": "Jetpack",
   "item.gungang.hermes_boots": "Hermes' Boots",

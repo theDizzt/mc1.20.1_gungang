@@ -71,14 +71,15 @@ public final class OffhandMacro {
         boolean placeDown=placementDown(),cancelDown=placementKeyDown(GLFW.GLFW_KEY_H);
         boolean placeEdge=placeDown&&!previousPlaceDown,cancelEdge=cancelDown&&!previousCancelDown;
         previousPlaceDown=placeDown;previousCancelDown=cancelDown;
-        if(mc.player!=null&&!HermesBootsLayer.worn(mc.player).isEmpty()&&owner==null&&attackEdge){
-            if(canStart(mc))LobbyClient.action("hermesDash","360","");
-            return;
-        }
         if(TurretClient.servicing())return;
         if (GadgetClient.placing()) {
             if (cancelEdge) GadgetClient.cancel();
             return; // G is held to confirm placement, not to cancel the preview.
+        }
+        // Hermes' Boots in macro-key mode dash on the offhand use key (H); G stays the offhand attack macro.
+        if(hermesKey(mc)&&owner==null&&useEdge){
+            if(hermesReady(mc))LobbyClient.action("hermesDash","360","");
+            return;
         }
         boolean placementItem=mc.player!=null&&mc.player.getOffhandItem().getItem() instanceof dev.gungang.acoustics.server.GadgetItem gadget
                 &&dev.gungang.acoustics.server.GadgetItem.placement(gadget.kind);
@@ -94,12 +95,22 @@ public final class OffhandMacro {
         }
     }
 
+    /** Hermes' Boots are worn and the player chose the macro-key dash (loadout screen, effect colour editor). */
+    static boolean hermesKey(Minecraft mc){
+        return mc.player!=null&&dev.gungang.acoustics.AcousticConfig.HERMES_MACRO_KEY.get()&&!HermesBootsLayer.worn(mc.player).isEmpty();
+    }
     private static boolean drain(KeyMapping mapping) {
         boolean clicked = false;
         while (mapping.consumeClick()) clicked = true;
         return clicked;
     }
 
+    /** canStart without the offhand item checks: the boots are worn, so the offhand may hold anything or nothing. */
+    private static boolean hermesReady(Minecraft mc){
+        if(FreeForAllHud.blocked())return false;
+        return mc.player!=null&&mc.level!=null&&mc.getConnection()!=null&&!MatchHud.roundIntermission()
+                &&mc.isWindowActive()&&mc.screen==null&&!mc.isPaused()&&mc.player.isAlive()&&!mc.player.isSpectator()&&!mc.player.isPassenger();
+    }
     private static boolean canStart(Minecraft mc) {
         if(FreeForAllHud.blocked())return false;
         return mc.player != null && mc.level != null && mc.gameMode != null && mc.getConnection() != null

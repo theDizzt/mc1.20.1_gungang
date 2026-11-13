@@ -33,6 +33,8 @@ public final class WeaponPatchScreen extends ArenaScreen {
     private final List<Object> lines = new ArrayList<>(); // String header, WeaponPatch.Row or WEIGHT
     /** Marker line: the selected weapon's weight and resulting movement speed. */
     private static final Object WEIGHT = new Object();
+    /** First line on the 주무기 / 보조 tabs: whether the weapon is offered in the lobby, with its on/off button. */
+    private static final Object ENABLED = new Object();
     private int scroll, listScroll;
     private boolean waiting;
     /** The row whose ? mark is under the cursor this frame (its help is drawn last, above the widgets). */
@@ -325,7 +327,7 @@ public final class WeaponPatchScreen extends ArenaScreen {
         GungangNetwork.CHANNEL.sendToServer(new GungangNetwork.WeaponPatchRequest(action, ServerFiles.GSON.toJson(new WeaponPatch.Request(id, changes, kind))));
     }
     private void status(String error) {
-        view = new WeaponPatch.View(view.weapons(), view.id(), view.name(), view.gunId(), view.file(), view.rows(), "", error, view.phase(), view.weightMultiplier(), view.kind(), view.falloff());
+        view = new WeaponPatch.View(view.weapons(), view.id(), view.name(), view.gunId(), view.file(), view.rows(), "", error, view.phase(), view.weightMultiplier(), view.kind(), view.falloff(), view.enabled());
     }
 
     // ---- Layout ----------------------------------------------------------------------------------------------
@@ -343,6 +345,7 @@ public final class WeaponPatchScreen extends ArenaScreen {
     private void buildLines() {
         lines.clear();
         String group = null;
+        if (selected() != null && view.enabled() != null) lines.add(ENABLED);
         // The weight line is about the primary's movement speed; secondaries do not set it.
         if (selected() != null && !secondary()) lines.add(WEIGHT);
         for (var row : view.rows()) {
@@ -374,7 +377,9 @@ public final class WeaponPatchScreen extends ArenaScreen {
             if (y < listTop() || y + 18 > viewBottom()) continue;
             var weapon = weapons.get(i);
             boolean selected = weapon.id().equals(view.id());
-            listButton(Component.literal((kind(weapon).equals(WeaponPatch.GENERAL) ? weapon.name() : weapon.id() + " · " + weapon.name())), listX(), y, LIST, 18, !waiting, selected ? ACCENT : MUTED, 9, 40, () -> {
+            var label = Component.literal((kind(weapon).equals(WeaponPatch.GENERAL) ? weapon.name() : weapon.id() + " · " + weapon.name()));
+            if (weapon.disabled()) label = Component.literal(Lang.tr("OFF ")).withStyle(ChatFormatting.RED).append(label.withStyle(ChatFormatting.DARK_GRAY));
+            listButton(label, listX(), y, LIST, 18, !waiting, selected ? ACCENT : MUTED, 9, 40, () -> {
                 if (weapon.id().equals(view.id())) return;
                 if (!changes().isEmpty()) { status(Lang.tr("적용하지 않은 변경이 있습니다. 적용하거나 변경 취소 후 다른 항목을 선택하세요.")); rebuildWidgets(); return; }
                 request("open", weapon.id(), Map.of());
@@ -385,6 +390,14 @@ public final class WeaponPatchScreen extends ArenaScreen {
             int y = TOP + i * ROW - scroll;
             if (y < TOP || y + 18 > viewBottom()) continue;
             if (line == CURVE_TYPE || line == CURVE_RANGE || line == CURVE_SHAPE) { curveWidgets(line, formX(), y, formW()); continue; }
+            if (line == ENABLED) {
+                boolean on = Boolean.TRUE.equals(view.enabled());
+                button(on ? Lang.tr("사용 중") : Lang.tr("사용 안 함"), boxX(), y, BOX, 18, !waiting && view.phase().equals("LOBBY"), on ? ACCENT : MUTED, () -> {
+                    if (!changes().isEmpty()) { status(Lang.tr("적용하지 않은 변경이 있습니다. 적용하거나 변경 취소 후 전환하세요.")); rebuildWidgets(); return; }
+                    request("toggle", view.id(), Map.of("enabled", Boolean.toString(!on))); rebuildWidgets();
+                });
+                continue;
+            }
             if (!(line instanceof WeaponPatch.Row row)) continue;
             var box = new TacticalEditBox(font, boxX(), y, BOX, 18, Component.literal(row.label()));
             box.setMaxLength(row.numeric() ? 16 : row.key().endsWith("description") || row.key().endsWith("usage") ? 1000 : 200);
@@ -550,6 +563,13 @@ public final class WeaponPatchScreen extends ArenaScreen {
             if (lines.get(i) == GRAPH) { drawGraph(g, x, y, w); continue; }
             if (lines.get(i) == GRAPH_FILL) continue;
             if (lines.get(i) == CURVE_TYPE || lines.get(i) == CURVE_RANGE || lines.get(i) == CURVE_SHAPE) { curveLabels(g, lines.get(i), x, y, w); continue; }
+            if (lines.get(i) == ENABLED) {
+                boolean on = Boolean.TRUE.equals(view.enabled());
+                String text = Lang.tr(secondary() ? "보조무기 사용" : "주무기 사용") + " · " + (on ? Lang.tr("무기 선택 목록에 표시") : Lang.tr("선택·랜덤·프리셋에서 제외"))
+                        + (view.phase().equals("LOBBY") ? "" : Lang.tr(" · 로비에서만 변경"));
+                Marquee.draw(g,font,text,x + 7,y + 5,boxX() - x - 12,on ? INK : 0xFFFF6666,false);
+                continue;
+            }
             if (lines.get(i) == WEIGHT) {
                 var entry = selected();
                 boolean heavy = entry.weight() != null && typed("tacz:weight", entry.weight()) != 0;

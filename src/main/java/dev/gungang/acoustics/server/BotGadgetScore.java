@@ -25,6 +25,8 @@ final class BotGadgetScore {
             case "barrier"->s.seen()&&s.distance()<20?(1-s.health())*1.1f+(s.sinceHurt()<40?.2f:0):0;
             // Far targets are the ones guns struggle with; the strike itself refuses unsafe spots.
             case "orbital_strike"->s.seen()?.45f+.35f*clamp((float)(s.distance()/48)):0;
+            // 경계 감시 포격 likewise: called onto far enemies, never into its own area (the barrage call checks that).
+            case "perimeter_barrage"->s.seen()?.4f+.35f*clamp((float)(s.distance()/56)):0;
             case "recovery_potion"->(1-s.health())*1.3f;
             case "adrenaline"->s.seen()&&s.spareHealth()&&s.distance()<28?.35f+(s.distance()<16?.25f:0)+(s.health()>.8f?.15f:0):0;
             // Scan after a few seconds of searching without contact.

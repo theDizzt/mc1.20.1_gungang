@@ -50,7 +50,7 @@ public final class WeaponRotation {
     static void begin(MinecraftServer s,String mode,GameOptions options,int timeLimitSeconds){
         end();
         if(!options.randomWeapons(mode))return;
-        try{loadouts=Loadouts.load();}
+        try{loadouts=WeaponToggles.filter(Loadouts.load());}
         catch(Exception error){LogUtils.getLogger().error("[GunGang] 랜덤 무기 disabled: weapons could not be read",error);return;}
         server=s;active=true;ffa=mode.equals("FREE_FOR_ALL");
         var times=options.weaponRotation(mode);rotationTicks=times[0]*20;choiceTicks=times[1]*20;limitTicks=timeLimitSeconds*20;

@@ -25,6 +25,18 @@ public final class ArcShock {
         ACTIVE.put(body,new Shock(now,now+TICKS,body.getYRot(),body.getXRot(),push));
         if(body instanceof ServerPlayer player)GungangNetwork.send(player,new GungangNetwork.ShockLook(TICKS,body.getYRot(),body.getXRot()));
     }
+    /** 83 전자충격기: its gun id, and how long a hit counts as 감전 (its pack applies slowness and glowing for 3 s). */
+    static final String STUN_GUN="zeta:cqc30";
+    static final int STUN_TICKS=60;
+    private static final Map<LivingEntity,Long> STUNNED=new WeakHashMap<>();
+    /** Hit by the stun baton within the last {@link #STUN_TICKS} (health bar 감전 icon). */
+    static boolean stunned(LivingEntity body){Long end=STUNNED.get(body);return end!=null&&body.level().getGameTime()<end;}
+    @SubscribeEvent(priority=net.minecraftforge.eventbus.api.EventPriority.LOWEST)
+    public static void stunHit(net.minecraftforge.event.entity.living.LivingHurtEvent event){
+        var body=event.getEntity();if(body.level().isClientSide||event.isCanceled())return;
+        if(event.getSource().getDirectEntity() instanceof Las5Damage.BulletAccess bullet&&STUN_GUN.equals(String.valueOf(bullet.getGunId())))
+            STUNNED.put(body,body.level().getGameTime()+STUN_TICKS);
+    }
     static boolean justHit(LivingEntity body){var shock=ACTIVE.get(body);return shock!=null&&shock.start()==body.level().getGameTime();}
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent event){
         if(event.phase!=TickEvent.Phase.END)return;
@@ -41,6 +53,6 @@ public final class ArcShock {
             }
         }
     }
-    @SubscribeEvent public static void stopped(net.minecraftforge.event.server.ServerStoppedEvent event){ACTIVE.clear();}
+    @SubscribeEvent public static void stopped(net.minecraftforge.event.server.ServerStoppedEvent event){ACTIVE.clear();STUNNED.clear();}
     private ArcShock(){}
 }

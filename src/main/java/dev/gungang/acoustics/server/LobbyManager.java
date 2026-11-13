@@ -77,6 +77,7 @@ public final class LobbyManager {
         BombDrops.clear(server);
         if (!phase.equals("LOBBY")) throw new IllegalStateException("경기 중에는 설정을 다시 읽을 수 없습니다.");
         var candidate = ServerFiles.load();
+        WeaponToggles.load();
         var weapons = Loadouts.load();
         GadgetConfig.load();
         SafeZones.load(server);
@@ -315,8 +316,10 @@ public final class LobbyManager {
         if(action.action().equals("turretReload")){Turrets.key(sender,action.value());return;}
         if(action.action().equals("gimmickAttack")){GimmickEvents.request(sender);return;}
         if(action.action().equals("airCannon")){WindBlower.fire(sender);return;}
+        if(action.action().equals("acidPush")){AcidSprayer.push(sender);return;}
+        if(action.action().equals("acidSpray")){AcidSprayer.spray(sender);return;}
         if(action.action().equals("shurikenThrow")){ShurikenItem.attack(sender);return;}
-        if(action.action().equals("shurikenMode")){ShurikenItem.cycleMode(sender);return;}
+        if(action.action().equals("shurikenMode")){ShurikenItem.cycleMode(sender,action.value().equals("-1"));return;}
         if(action.action().equals("shurikenReload")){ShurikenItem.reload(sender);return;}
         if(action.action().equals("shurikenJump")){ShurikenItem.doubleJump(sender);return;}
         if(action.action().equals("shurikenClimb")){ShurikenItem.climb(sender);return;}
@@ -363,7 +366,12 @@ public final class LobbyManager {
             }
             if (action.action().equals("equipment")) { equipment(sender, true); return; }
             if (action.action().equals("weaponPick")) { try { WeaponRotation.pick(sender, Integer.parseInt(action.value())-1); } catch (NumberFormatException ignored) { } return; }
-            if (action.action().equals("primary") || action.action().equals("secondary")) { chooseWeapon(sender, action.action(), action.value()); return; }
+            if (action.action().equals("primary") || action.action().equals("secondary")) {
+                // 히든 weapons come only from random picks (랜덤 무기 button, 랜덤 무기 mode/rotation), never a direct choice.
+                if(loadouts!=null&&(action.action().equals("primary")?catalog().primary():catalog().secondary()).stream().anyMatch(w->w.id().equals(action.value())&&w.hidden()))
+                    throw new IllegalStateException("히든 무기는 랜덤 무기로만 받을 수 있습니다.");
+                chooseWeapon(sender, action.action(), action.value()); return;
+            }
             if (action.action().equals("randomLoadout")) { randomLoadout(sender); return; }
             if (action.action().startsWith("preset")) { preset(sender, action); return; }
             if (action.action().equals("effectColor")) { EffectColors.choose(sender, action.value(), action.target()); return; }
@@ -787,6 +795,24 @@ public final class LobbyManager {
         }
         giveSlot9(p);
     }
+    /** Placement checks use both teams, including moving escort/Normandy bases. */
+    public static java.util.List<ArenaMap.Area> placementSpawnAreas(net.minecraft.world.level.Level level){
+        if(activeMap==null||!level.dimension().location().toString().equals(activeMap.dimension()))return java.util.List.of();
+        var result=new java.util.ArrayList<ArenaMap.Area>();
+        for(String team:java.util.List.of("ALPHA","BRAVO")){
+            var area=team.equals("ALPHA")?activeMap.alphaArea():activeMap.bravoArea();
+            ArenaMap.Spawn spawn=null;
+            if(MatchManager.bomb()!=null)area=MatchManager.bomb().area(team);
+            if(phase.equals("RUNNING")&&MatchManager.escort()!=null){area=MatchManager.escort().area(team);if(area==null)spawn=MatchManager.escort().spawn(team);}
+            if(phase.equals("RUNNING")&&team.equals("BRAVO")&&activeMap.normandy()!=null){area=null;spawn=MatchManager.attackSpawn();}
+            if(area!=null)result.add(area);
+            if(spawn!=null)result.add(new ArenaMap.Area(spawn.x()-4,spawn.y()-4,spawn.z()-4,spawn.x()+4,spawn.y()+4,spawn.z()+4));
+        }
+        return java.util.List.copyOf(result);
+    }
+    public static boolean inEitherSpawn(net.minecraft.world.level.Level level,net.minecraft.world.phys.AABB bounds){
+        return placementSpawnAreas(level).stream().anyMatch(a->bounds.intersects(new net.minecraft.world.phys.AABB(a.minX(),a.minY(),a.minZ(),a.maxX(),a.maxY(),a.maxZ())));
+    }
     public static boolean inSpawn(ServerPlayer p) {
         if(MatchManager.freeForAll()!=null)return false;
         Entry e = PLAYERS.get(p.getUUID());
@@ -1002,12 +1028,14 @@ public final class LobbyManager {
     }
     private static Loadouts.Weapon availableWeapon(ServerPlayer p,String team,boolean primary,String wanted){
         var weapons=primary?catalog().primary():catalog().secondary();
-        String selected=LobbyRules.preferredOrRandom(weapons.stream().map(Loadouts.Weapon::id).filter(id->!teamWeaponTaken(p.getUUID(),team,primary,id)).toList(),wanted,java.util.concurrent.ThreadLocalRandom.current());
+        // A 히든 weapon stays only when it is the player's own (random) pick; it is never the stand-in for a taken one.
+        String selected=LobbyRules.preferredOrRandom(weapons.stream().filter(w->!w.hidden()||w.id().equals(wanted)).map(Loadouts.Weapon::id).filter(id->!teamWeaponTaken(p.getUUID(),team,primary,id)).toList(),wanted,java.util.concurrent.ThreadLocalRandom.current());
         return weapons.stream().filter(w->w.id().equals(selected)).findFirst().orElseThrow();
     }
     private static void choosePresetWeapon(ServerPlayer p,boolean primary,String wanted)throws java.io.IOException{
         loadouts=Loadouts.load();var weapons=primary?catalog().primary():catalog().secondary();
-        String selected=LobbyRules.preferredOrRandom(weapons.stream().map(Loadouts.Weapon::id).filter(id->!weaponTaken(p.getUUID(),primary,id)).toList(),wanted,java.util.concurrent.ThreadLocalRandom.current());
+        // Presets never hold 히든 weapons: a saved one is replaced like a taken one.
+        String selected=LobbyRules.preferredOrRandom(weapons.stream().filter(w->!w.hidden()).map(Loadouts.Weapon::id).filter(id->!weaponTaken(p.getUUID(),primary,id)).toList(),wanted,java.util.concurrent.ThreadLocalRandom.current());
         chooseWeapon(p,primary?"primary":"secondary",selected);
         notifyReplacement(p,primary,wanted,selected);
     }
@@ -1196,7 +1224,7 @@ public final class LobbyManager {
     static void botChanged(){if(phase.equals("LOBBY"))PLAYERS.values().forEach(e->e.ready=false);broadcast(false);}
     /** The weapons on offer in the selected mode: the whole catalog, or under 근접전 only the melee primaries. */
     private static Loadouts catalog(){return catalog(loadouts);}
-    static Loadouts catalog(Loadouts all){return all!=null&&options().game().meleeWeapons(selectedMode)?all.melee():all;}
+    static Loadouts catalog(Loadouts all){all=WeaponToggles.filter(all);return all!=null&&options().game().meleeWeapons(selectedMode)?all.melee():all;}
     public static TeamOptions options() { return files == null ? TeamOptions.defaults() : files.options(); }
     public static boolean respawning(UUID id) { return RESPAWNING.containsKey(id); }
     static boolean beginRespawn(ServerPlayer victim, net.minecraft.world.entity.LivingEntity killer) {

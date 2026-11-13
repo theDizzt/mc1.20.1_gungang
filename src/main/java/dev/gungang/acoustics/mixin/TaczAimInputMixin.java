@@ -15,11 +15,11 @@ public abstract class TaczAimInputMixin {
     @Inject(method = "onAimHoldingPreInput", at = @At("HEAD"), cancellable = true, require = 0)
     private static void gungang$macroInput(TickEvent.ClientTickEvent event, CallbackInfo ci) {
         if (OffhandMacro.ownsGunInput()||dev.gungang.acoustics.client.GadgetClient.placing()||dev.gungang.acoustics.server.CombatGadgets.holdingShield(net.minecraft.client.Minecraft.getInstance().player)
-                ||WindBlowerInput.holding()) ci.cancel();
+                ||WindBlowerInput.holding()||WindBlowerInput.holdingAcid()) ci.cancel();
     }
     /** The blower's right click fires its air cannon ({@link WindBlowerInput}), never aims. */
     @Inject(method = "onAimPress", at = @At("HEAD"), cancellable = true, require = 0)
     private static void gungang$blowerPress(net.minecraftforge.client.event.InputEvent.MouseButton.Post event, CallbackInfo ci) {
-        if (WindBlowerInput.holding()) ci.cancel();
+        if (WindBlowerInput.holding()||WindBlowerInput.holdingAcid()) ci.cancel();
     }
 }

@@ -5,13 +5,13 @@ import net.minecraftforge.common.ForgeConfigSpec;
 
 public final class AcousticConfig {
     public static final ForgeConfigSpec SPEC;
-    public static final ForgeConfigSpec.BooleanValue CUSTOM_FONT;
+    public static final ForgeConfigSpec.BooleanValue CUSTOM_FONT, WHEEL_FIRE_SELECT;
     public static final ForgeConfigSpec.ConfigValue<String> FONT_FILE;
     public static final ForgeConfigSpec.EnumValue<FontPreset> FONT_PRESET;
     public static final ForgeConfigSpec.IntValue FONT_OVERSAMPLE;
     public static final ForgeConfigSpec.IntValue FOOTSTEP_VOLUME, WEAPON_VOLUME;
     public static final ForgeConfigSpec.BooleanValue FOOTSTEP_OCCLUSION, WATER_EFFECTS;
-    public static final ForgeConfigSpec.DoubleValue FONT_OFFSET_X, FONT_OFFSET_Y;
+    public static final ForgeConfigSpec.DoubleValue FONT_OFFSET_X, FONT_OFFSET_Y, WHEEL_FIRE_SELECT_DELAY;
     public static final ForgeConfigSpec.BooleanValue FONT_SMOOTHING;
     public static final ForgeConfigSpec.BooleanValue HUD_BOLD_TEXT, LCD_TIMER;
     /** Display language of GunGang's HUD and screens: "KO" (Korean, the source text) or "EN" (client/Lang). */
@@ -22,6 +22,8 @@ public final class AcousticConfig {
     /** Volume of every sound GunGang adds (gungang: sound events), on the vanilla Music & Sounds screen. */
     public static final ForgeConfigSpec.DoubleValue GUNGANG_SOUND_VOLUME;
     public static final ForgeConfigSpec.IntValue HUD_TEXT_SIZE;
+    /** 74 Hermes' Boots dash input: false double-taps a movement key (W/A/S/D), true uses the offhand use macro key (H). */
+    public static final ForgeConfigSpec.BooleanValue HERMES_MACRO_KEY;
     public static final ForgeConfigSpec.BooleanValue TEAM_HUD, LEGACY_TEAM_HUD, TEAM_WEAPON_NUMBERS, COMBO_HUD, KILL_LOG, TEAM_SILHOUETTES, COMPASS, AUTO_SPRINT;
     public static final ForgeConfigSpec.BooleanValue ENABLED, DIFFRACTION, LOW_PASS, SHOOTER_HUD;
     public static final ForgeConfigSpec.DoubleValue REFERENCE_DISTANCE, ROLLOFF, WALL_STRENGTH, SMOOTHING;
@@ -62,7 +64,11 @@ public final class AcousticConfig {
         HUD_LANGUAGE = b.comment("Language of the GunGang HUD and screens: KO or EN. Also switchable in the loadout, lobby, prop hunt block list and mode settings screens.")
                 .define("hudLanguage", "KO", value -> "KO".equals(value) || "EN".equals(value));
         COMPASS = b.comment("Show heading compass and enemy gunshot bearings above the player health bar.").define("compass", true);
+        WHEEL_FIRE_SELECT_DELAY = b.comment("Minimum seconds between mouse wheel fire mode changes.").defineInRange("wheelFireSelectDelay", .5, 0, 10);
+        WHEEL_FIRE_SELECT = b.comment("Switch weapon fire mode with the mouse wheel. Variable scope zoom takes priority.").define("wheelFireSelect", true);
         AUTO_SPRINT = b.comment("Sprint automatically while moving forward; fire and aim input stop the sprint so guns stay usable.").define("autoSprint", true);
+        HERMES_MACRO_KEY = b.comment("Hermes' Boots dash input: false = double-tap a movement key (W/A/S/D), true = the offhand use macro key (default H). Set in the loadout screen's effect colour editor.")
+                .define("hermesMacroKey", false);
         TEAM_HUD = b.define("teamHud", true);
         LEGACY_TEAM_HUD = b.comment("Draw teammates in the older wide layout (name, long health bar, item slot) instead of the compact one.").define("legacyTeamLayout", false);
         TEAM_WEAPON_NUMBERS = b.comment("Show each teammate's chosen primary (white) and secondary (yellow) weapon numbers beside their held item. Prop hunt block numbers always show.").define("teamWeaponNumbers", true);

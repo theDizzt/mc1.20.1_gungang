@@ -25,6 +25,7 @@ public final class ShurikenItem extends Item {
     public enum Mode {SEMI("Semi"),BURST("Burst"),RICOCHET("Ricochet");
         public final String label;Mode(String label){this.label=label;}
         public Mode next(){return values()[(ordinal()+1)%values().length];}
+        public Mode previous(){return values()[(ordinal()+values().length-1)%values().length];}
     }
     public static final String AMMO="ShurikenAmmo",CAPACITY="ShurikenCapacity",MODE="ShurikenMode",RELOAD_END="ShurikenReloadEnd",RELOAD_TICKS="ShurikenReloadTicks",
             JUMP="ShurikenJump",CLIMB="ShurikenClimb",INTERVAL="ShurikenInterval",PER_THROW="ShurikenPerThrow";
@@ -109,10 +110,12 @@ public final class ShurikenItem extends Item {
         p.inventoryMenu.broadcastChanges();
     }
     /** TaCZ fire select key: Semi → Burst → Ricochet → Semi. */
-    public static void cycleMode(Player p){
+    public static void cycleMode(Player p){cycleMode(p,false);}
+    /** {@code back}: the previous mode (mouse wheel up), else the next; both wrap around. */
+    public static void cycleMode(Player p,boolean back){
         var stack=p.getMainHandItem();
         if(p.level().isClientSide||!is(stack)||p.isSpectator())return;
-        stack.getOrCreateTag().putInt(MODE,mode(stack).next().ordinal());
+        stack.getOrCreateTag().putInt(MODE,(back?mode(stack).previous():mode(stack).next()).ordinal());
         p.level().playSound(null,p.blockPosition(),SoundEvents.UI_BUTTON_CLICK.value(),SoundSource.PLAYERS,.4f,1.6f);
         p.inventoryMenu.broadcastChanges();
     }

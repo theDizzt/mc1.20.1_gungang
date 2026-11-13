@@ -77,10 +77,11 @@ public final class ProgressionService {
         }
     }
     @SubscribeEvent public static void displayName(PlayerEvent.NameFormat event) {
-        if(event.getEntity() instanceof ServerPlayer p&&database!=null)event.setDisplayname(Component.literal(name(p)));
+        // Chat, name tags and death messages: the nickname with its small 4-digit tag (PlayerTag).
+        if(event.getEntity() instanceof ServerPlayer p&&database!=null)event.setDisplayname(PlayerTag.named(name(p),record(p).tag()));
     }
     @SubscribeEvent public static void tabName(PlayerEvent.TabListNameFormat event) {
-        if(event.getEntity() instanceof ServerPlayer p&&database!=null)event.setDisplayName(Component.literal(name(p)));
+        if(event.getEntity() instanceof ServerPlayer p&&database!=null)event.setDisplayName(PlayerTag.named(name(p),record(p).tag()));
     }
     @SubscribeEvent public static void login(PlayerEvent.PlayerLoggedInEvent event) {
         if(!(event.getEntity() instanceof ServerPlayer p)||database==null)return;
@@ -116,7 +117,7 @@ public final class ProgressionService {
         String stats=full?String.format(Locale.ROOT,"\n통산 %d경기 · %d승 · %d킬 / %d데스 · 딜량 %.1f · 경기 플레이 %d시간 %d분 %d초",
                 row.matches(),row.wins(),row.kills(),row.deaths(),row.damage(),row.playSeconds()/3600,row.playSeconds()/60%60,row.playSeconds()%60):"";
         // Explicit queries must remain visible even when sendCommandFeedback is disabled.
-        var message=Component.literal(row.displayName()+" · "+xp+stats);
+        var message=Component.literal(row.displayName()).append(PlayerTag.component(row.tag())).append(Component.literal(" · "+xp+stats));
         if(source.getEntity() instanceof ServerPlayer player)player.sendSystemMessage(message);
         else source.sendSystemMessage(message);
     }

@@ -24,7 +24,7 @@ public final class CommandFlagEntity extends LivingEntity {
     @Override protected void defineSynchedData(){super.defineSynchedData();entityData.define(COLOR,0xFFFFFF);entityData.define(TEAM,"");}
     public void setup(ServerPlayer p){
         owner=p.getUUID();team=p.getTeam()==null?"":p.getTeam().getName();
-        side=BotManager.side(p);if(side.isEmpty()&&BotManager.identity(owner))side=BotManager.team(owner);
+        side=sideOf(p);
         entityData.set(TEAM,team);
         Integer fallback=p.getTeam()==null?null:p.getTeam().getColor().getColor();
         entityData.set(COLOR,team.equals("Red")?LobbyManager.options().color("ALPHA"):team.equals("Blue")?LobbyManager.options().color("BRAVO"):fallback==null?0xFFFFFF:fallback);
@@ -48,8 +48,44 @@ public final class CommandFlagEntity extends LivingEntity {
     }
     private boolean ally(LivingEntity p){
         if(p.getUUID().equals(owner))return true;
-        if(p instanceof BotEntity)return !side.isEmpty()&&BotManager.combatant(side)&&side.equals(BotManager.side(p));
-        return !team.isEmpty()&&p.getTeam()!=null&&team.equals(p.getTeam().getName());
+        if(!(p instanceof net.minecraft.world.entity.player.Player||p instanceof BotEntity))return false;
+        // FFA has no allies, even if the lobby/scoreboard still shows team colours.
+        if(MatchManager.freeForAll()!=null)return false;
+        String ownerSide=currentOwnerSide();
+        String targetSide=sideOf(p);
+        if(!ownerSide.isEmpty()&&!targetSide.isEmpty())return ownerSide.equals(targetSide);
+        return false;
+    }
+    /** Resolve by UUID: bot bodies and their gadget fake players represent the same team member. */
+    private String currentOwnerSide(){
+        if(owner==null)return "";
+        if(BotManager.identity(owner))return teamSide(BotManager.team(owner));
+        var server=level().getServer();
+        var player=server==null?null:server.getPlayerList().getPlayer(owner);
+        if(player!=null)return sideOf(player);
+        // Keep a disconnected owner's deployed flag on its last known team.
+        String stored=teamSide(side);
+        return stored.isEmpty()?teamSide(team):stored;
+    }
+    private static String sideOf(LivingEntity entity){
+        if(MatchManager.freeForAll()!=null)return BotManager.side(entity);
+        if(BotManager.identity(entity.getUUID())){
+            String value=teamSide(BotManager.team(entity.getUUID()));if(!value.isEmpty())return value;
+        }
+        String value=teamSide(LobbyManager.team(entity.getUUID()));
+        if(!value.isEmpty())return value;
+        var scoreboard=entity.getTeam();
+        return scoreboard==null?"":teamSide(scoreboard.getName());
+    }
+    /** Match sides and scoreboard team names must compare in the same namespace. */
+    static String teamSide(String value){
+        if(value==null||value.isBlank())return "";
+        return switch(value.toUpperCase(java.util.Locale.ROOT)){
+            case "RED","ALPHA"->"ALPHA";
+            case "BLUE","BRAVO"->"BRAVO";
+            case "SPECTATOR","UNASSIGNED"->"";
+            default->value.startsWith("FFA:")?"":value.startsWith("TEAM:")?value:"TEAM:"+value;
+        };
     }
     @Override public void tick(){
         super.tick();setDeltaMovement(Vec3.ZERO);
@@ -65,7 +101,7 @@ public final class CommandFlagEntity extends LivingEntity {
     @Override public boolean hurt(DamageSource source,float amount){
         if(level().isClientSide||!isAlive())return false;
         var attacker=source.getEntity();
-        if(attacker!=null&&(attacker.getUUID().equals(owner)||!team.isEmpty()&&attacker.getTeam()!=null&&team.equals(attacker.getTeam().getName())))return false;
+        if(attacker instanceof LivingEntity living&&ally(living))return false;
         invulnerableTime=0;return super.hurt(source,amount);
     }
     @Override public void die(DamageSource source){super.die(source);discard();}

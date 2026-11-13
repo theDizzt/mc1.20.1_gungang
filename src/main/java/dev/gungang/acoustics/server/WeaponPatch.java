@@ -20,11 +20,17 @@ public final class WeaponPatch {
         Row withHelp(String text) { return new Row(key, label, group, numeric, value, text); }
     }
     /** {@code weight} is the TaCZ gun weight in kg (null: not a TaCZ gun or its data file was not found); {@code kind}: "weapon" or "secondary". */
-    public record Entry(String id, String name, String category, Double weight, double movementSpeed, String kind) { }
+    public record Entry(String id, String name, String category, Double weight, double movementSpeed, String kind, boolean disabled) {
+        public Entry(String id, String name, String category, Double weight, double movementSpeed, String kind) { this(id, name, category, weight, movementSpeed, kind, false); }
+    }
     /** {@code falloff}: the TaCZ gun's current damage_adjust bands {distance (-1: open-ended), damage}; null when not a TaCZ gun. */
-    public record View(List<Entry> weapons, String id, String name, String gunId, String file, List<Row> rows, String message, String error, String phase, double weightMultiplier, String kind, List<double[]> falloff) {
+    /** {@code enabled}: whether the selected primary / secondary is offered in the lobby ({@link WeaponToggles}); null on other tabs. */
+    public record View(List<Entry> weapons, String id, String name, String gunId, String file, List<Row> rows, String message, String error, String phase, double weightMultiplier, String kind, List<double[]> falloff, Boolean enabled) {
         public View(List<Entry> weapons, String id, String name, String gunId, String file, List<Row> rows, String message, String error, String phase, double weightMultiplier, String kind) {
-            this(weapons, id, name, gunId, file, rows, message, error, phase, weightMultiplier, kind, null);
+            this(weapons, id, name, gunId, file, rows, message, error, phase, weightMultiplier, kind, null, null);
+        }
+        public View(List<Entry> weapons, String id, String name, String gunId, String file, List<Row> rows, String message, String error, String phase, double weightMultiplier, String kind, List<double[]> falloff) {
+            this(weapons, id, name, gunId, file, rows, message, error, phase, weightMultiplier, kind, falloff, null);
         }
     }
     /** {@code kind} null means a primary weapon (older clients). */
@@ -97,10 +103,21 @@ public final class WeaponPatch {
     private static final Set<String> SECONDARY_HIDDEN = Set.of("maxHealth", "movementSpeed");
     private static final Map<String, String> SECONDARY_LABELS = Map.of("nameEn", "영어 이름 (비우면 한글 이름)", "cooldownSeconds", "쿨타임 (초)", "plantSeconds", "설치 시간 (초)", "fuseSeconds", "폭발 시간 (초)", "defuseSeconds", "해체 시간 (초)");
     /** Labels for one item's own fields ("setting.field"), ahead of {@link #ITEM_LABELS}, where the shared name would mislead. */
-    private static final Map<String, String> ITEM_LABELS_OF = Map.of(
-            "hermes_boots.dashDistance", "돌진 거리 (블록)", "hermes_boots.dashSeconds", "돌진 시간 (초)",
-            "hermes_boots.maxCharges", "최대 충전 횟수", "hermes_boots.chargeSeconds", "1회 충전 시간 (초)",
-            "hermes_boots.trailSeconds", "글로우 잔상 유지 시간 (초)");
+    private static final Map<String, String> ITEM_LABELS_OF = Map.ofEntries(
+            Map.entry("hermes_boots.dashDistance", "돌진 거리 (블록)"), Map.entry("hermes_boots.dashSeconds", "돌진 시간 (초)"),
+            Map.entry("hermes_boots.maxCharges", "최대 충전 횟수"), Map.entry("hermes_boots.chargeSeconds", "1회 충전 시간 (초)"),
+            Map.entry("hermes_boots.trailSeconds", "글로우 잔상 유지 시간 (초)"),
+            Map.entry("perimeter_barrage.radius", "포격 범위 반경 (블록)"), Map.entry("perimeter_barrage.delaySeconds", "연막 후 포격 시작까지 (초)"),
+            Map.entry("perimeter_barrage.durationSeconds", "포격 지속 시간 (초)"), Map.entry("perimeter_barrage.volleySize", "1회 일제 사격 미사일 수"),
+            Map.entry("perimeter_barrage.volleyIntervalSeconds", "일제 사격 간격 (초)"), Map.entry("perimeter_barrage.damage", "미사일 1발 폭발 피해"),
+            Map.entry("perimeter_barrage.blastRadius", "미사일 폭발 반경 (블록)"), Map.entry("perimeter_barrage.flightSeconds", "미사일 낙하 시간 (초)"),
+            Map.entry("perimeter_barrage.range", "포격 지정 최대 거리 (블록)"),
+            Map.entry("acid_sprayer.magazine", "탄창 (최대 장탄)"), Map.entry("acid_sprayer.cloudRadius", "산성가스 반경 (블록)"),
+            Map.entry("acid_sprayer.cloudSeconds", "산성가스 유지 시간 (초)"), Map.entry("acid_sprayer.damage", "가스 접촉 피해 (1회)"),
+            Map.entry("acid_sprayer.damageIntervalSeconds", "가스 피해 간격 (초)"), Map.entry("acid_sprayer.lingerPoisonSeconds", "가스에서 나온 뒤 독 지속 (초)"),
+            Map.entry("acid_sprayer.pushAmmoCost", "우클릭 밀어내기 탄약 소모"), Map.entry("acid_sprayer.pushRange", "밀어내기 최대 거리 (블록)"),
+            Map.entry("acid_sprayer.pushSeconds", "밀어내기 이동 시간 (초)"), Map.entry("acid_sprayer.sprayDistance", "좌클릭 가스 생성 거리 (총구 앞, 블록)"),
+            Map.entry("acid_sprayer.regenDelaySeconds", "탄약 재생 대기 (미사용 시간, 초)"), Map.entry("acid_sprayer.regenIntervalSeconds", "탄약 1발 재생 간격 (초)"));
     private static String itemLabel(String item, String field) {
         return ITEM_LABELS_OF.getOrDefault(item + "." + field, ITEM_LABELS.getOrDefault(field, field));
     }
@@ -142,9 +159,9 @@ public final class WeaponPatch {
             Map.entry("detectionRange", "감지 반경 (블록)"), Map.entry("fireIntervalTicks", "사격 간격 (틱)"), Map.entry("reloadPerSecond", "초당 재장전"),
             Map.entry("absorption", "추가 체력"), Map.entry("triggerRadius", "작동 반경 (블록)"), Map.entry("delaySeconds", "지연 (초)"),
             Map.entry("centerDamage", "중심 피해"), Map.entry("edgeDamage", "가장자리 피해"), Map.entry("collisionDamage", "충돌 피해"),
-            Map.entry("maxPlaced", "최대 설치 수"), Map.entry("dashDistance", "대시 이동 거리 (블록)"), Map.entry("energyCost", "대시 에너지 소모"),
+            Map.entry("maxPlaced", "최대 설치 수"), Map.entry("dashDistance", "대시 이동 거리 (블록)"), Map.entry("energyCost", "대시 에너지 소모"), Map.entry("energyRegenPerSecond", "초당 에너지 재생량"), Map.entry("energyRegenDelaySeconds", "대시 후 재생 대기시간 (초, 0은 항상 재생)"), Map.entry("killEnergyGain", "처치 시 에너지 회복량"),
             Map.entry("rightClickDamage", "우클릭 피해"), Map.entry("percentPerSecond", "초당 회복 (최대 체력 %)"), Map.entry("bleedDamagePerSecond", "출혈 초당 피해"), Map.entry("bleedSeconds", "출혈 시간 (초)"), Map.entry("rootSeconds", "속박 시간 (초)"), Map.entry("slowSeconds", "둔화 시간 (초)"),
-            Map.entry("explosionPlayerMultiplier", "폭발 피해 배수 (플레이어·봇 대상)"), Map.entry("startDamage", "첫 피해"), Map.entry("damageStep", "콤보마다 증가"),
+            Map.entry("explosionPlayerMultiplier", "폭발 피해 배수 (TaCZ: 모든 대상)"), Map.entry("startDamage", "첫 피해"), Map.entry("damageStep", "콤보마다 증가"),
             Map.entry("maxDamage", "최대 피해"), Map.entry("intervalSeconds", "간격 (초)"), Map.entry("motion1Damage", "공격 모션 1 피해"),
             Map.entry("motion2Damage", "공격 모션 2 피해"), Map.entry("motion3Damage", "공격 모션 3 피해"), Map.entry("motion4Damage", "공격 모션 4 피해"),
             Map.entry("motion5Damage", "공격 모션 5 피해"), Map.entry("motion6Damage", "공격 모션 6 피해"), Map.entry("slashAngle", "베기 각도 (°)"),
@@ -207,6 +224,7 @@ public final class WeaponPatch {
             kind = kindOf(request.kind());
             switch (action) {
                 case "open" -> send(player, kind, id, "", "");
+                case "toggle" -> send(player, kind, id, toggle(player, kind, id, request.changes()), "");
                 case "apply" -> {
                     long now = System.currentTimeMillis(), last = LAST_APPLY.getOrDefault(player.getUUID(), 0L);
                     if (now - last < COOLDOWN_MS) throw new IllegalStateException("잠시 후 다시 적용하세요.");
@@ -222,6 +240,20 @@ public final class WeaponPatch {
             try { send(player, kind, id, "", message); }
             catch (Exception again) { player.sendSystemMessage(Component.literal("무기 패치 실패: " + message)); }
         }
+    }
+    /** Switches the selected primary / secondary on or off for the lobby (lobby only; selections are re-checked). */
+    private static String toggle(ServerPlayer player, String kind, String id, Map<String, String> changes) throws Exception {
+        if (!kind.equals(PRIMARY) && !kind.equals(SECONDARY)) throw new IllegalArgumentException("주무기와 보조무기만 사용 여부를 바꿀 수 있습니다.");
+        String value = changes == null ? null : changes.get("enabled");
+        if (!"true".equals(value) && !"false".equals(value)) throw new IllegalArgumentException("잘못된 요청입니다.");
+        if (!LobbyManager.phase().equals("LOBBY")) throw new IllegalStateException("경기 준비/진행 중에는 무기 사용 여부를 바꿀 수 없습니다.");
+        boolean primary = kind.equals(PRIMARY), enabled = Boolean.parseBoolean(value);
+        var loadouts = Loadouts.load();
+        var weapon = weapon(primary ? loadouts.primary() : loadouts.secondary(), id).orElseThrow(() -> new IllegalArgumentException("해당 무기가 없습니다: " + id));
+        WeaponToggles.set(primary, id, enabled, primary ? loadouts.primary() : loadouts.secondary());
+        LobbyManager.refreshModifiedSettings();
+        LogUtils.getLogger().info("GunGang weapon {} by {}: {} {}", enabled ? "enabled" : "disabled", player.getGameProfile().getName(), kind, id);
+        return (primary ? "주무기 " : "보조무기 ") + weapon.name() + (enabled ? " 사용 설정 · 무기 선택 목록에 표시됩니다." : " 사용 안 함 · 무기 선택·랜덤·프리셋에서 제외됩니다.");
     }
     private static void requireAdmin(ServerPlayer player) {
         if (!player.hasPermissions(2)) throw new IllegalStateException("무기 패치는 OP 2 이상만 사용할 수 있습니다.");
@@ -247,8 +279,8 @@ public final class WeaponPatch {
     private static void send(ServerPlayer player, String kind, String requested, String message, String error) throws Exception {
         var loadouts = Loadouts.load();
         var entries = new ArrayList<Entry>();
-        for (var w : loadouts.primary()) entries.add(new Entry(w.id(), w.name(), w.category(), weight(w), w.movementSpeed(), PRIMARY));
-        for (var w : loadouts.secondary()) entries.add(new Entry(w.id(), w.name(), w.category(), weight(w), w.movementSpeed(), SECONDARY));
+        for (var w : loadouts.primary()) entries.add(new Entry(w.id(), w.name(), w.category(), weight(w), w.movementSpeed(), PRIMARY, WeaponToggles.disabled(true, w.id())));
+        for (var w : loadouts.secondary()) entries.add(new Entry(w.id(), w.name(), w.category(), weight(w), w.movementSpeed(), SECONDARY, WeaponToggles.disabled(false, w.id())));
         for (var setting : new TreeMap<>(GENERAL_SETTINGS).entrySet()) entries.add(new Entry(setting.getKey(), setting.getValue(), GENERAL_CATEGORY, null, 100, GENERAL));
         for (var setting : BLOCK_SETTINGS.entrySet()) entries.add(new Entry(setting.getKey(), setting.getValue(), GENERAL_CATEGORY, null, 100, GENERAL));
         var maps = ConfigModify.maps();
@@ -324,7 +356,8 @@ public final class WeaponPatch {
         speedFirst(rows);
         String setting = itemSetting(weapon);
         rows.replaceAll(row -> row.withHelp(PatchHelp.of(row.key(), setting)));
-        var view = new View(entries, id, weapon.name(), gun, file, rows, message, error, LobbyManager.phase(), weightMultiplier(), kind, falloff);
+        var view = new View(entries, id, weapon.name(), gun, file, rows, message, error, LobbyManager.phase(), weightMultiplier(), kind, falloff,
+                !WeaponToggles.disabled(kind.equals(PRIMARY), id));
         GungangNetwork.send(player, new GungangNetwork.WeaponPatchView(ServerFiles.GSON.toJson(view)));
     }
     /** Rows that set how fast the weapon attacks: TaCZ fire rate, melee pack cooldowns, GunGang item attack intervals. */
@@ -354,6 +387,7 @@ public final class WeaponPatch {
             if (Fallout.is(stack)) return "fallout";
             if (ArcThrower.is(stack)) return "arc_thrower";
             if (WindBlower.is(stack)) return "wind_blower";
+            if (AcidSprayer.is(stack)) return "acid_sprayer";
             var key = net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(weapon.stack().getItem());
             return key != null && key.getNamespace().equals("gungang") && ConfigModify.exists("item", key.getPath()) ? key.getPath() : null;
         } catch (Exception invalid) { return null; }

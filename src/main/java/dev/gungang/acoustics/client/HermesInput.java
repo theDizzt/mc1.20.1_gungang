@@ -9,7 +9,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 /**
- * 74 Hermes' Boots: double-tapping a movement key (W/A/S/D as bound) dashes that way. A movement key held on the other
+ * 74 Hermes' Boots (movement-key mode, the default): double-tapping a movement key (W/A/S/D as bound) dashes that way. A movement key held on the other
  * axis at that moment turns it into a diagonal, so the dash takes one of eight directions around the view. The server
  * checks charges and the usual secondary gates ({@code HermesBoots.request}).
  */
@@ -26,7 +26,8 @@ public final class HermesInput {
         var player = mc.player;
         KeyMapping[] keys = {mc.options.keyUp, mc.options.keyDown, mc.options.keyLeft, mc.options.keyRight};
         boolean usable = player != null && mc.level != null && mc.screen == null && player.isAlive() && !player.isSpectator()
-                && !player.isPassenger() && !HermesBootsLayer.worn(player).isEmpty();
+                && !player.isPassenger() && !HermesBootsLayer.worn(player).isEmpty()
+                && !dev.gungang.acoustics.AcousticConfig.HERMES_MACRO_KEY.get(); // macro-key mode dashes on H instead (OffhandMacro)
         long now = mc.level == null ? 0 : mc.level.getGameTime();
         boolean[] held = new boolean[4], edge = new boolean[4];
         for (int i = 0; i < 4; i++) { held[i] = keys[i].isDown(); edge[i] = held[i] && !down[i]; down[i] = held[i]; }

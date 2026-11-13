@@ -37,6 +37,8 @@ public final class Fallout {
     private static final List<Zone> ZONES=new ArrayList<>();
     private static final Map<LivingEntity,Exposure> EXPOSED=new WeakHashMap<>();
 
+    /** Standing in a fallout cloud (or just left it, until its next combo tick was due). */
+    static boolean exposed(LivingEntity body){return EXPOSED.containsKey(body);}
     public static boolean is(ItemStack stack){var tag=stack.getTag();return tag!=null&&GUN_ID.equals(tag.getString("GunId"));}
     static boolean shell(Entity entity){return entity instanceof Las5Damage.BulletAccess bullet&&GUN_ID.equals(String.valueOf(bullet.getGunId()));}
     /** The explosion of an Ultimatum shell. */
