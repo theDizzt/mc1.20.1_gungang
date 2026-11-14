@@ -5,17 +5,20 @@ import java.nio.file.*;
 import java.util.*;
 
 /**
- * Identity and career of up to {@link #MAX} bots, independent of human XP and contribution rewards. Each bot slot has
- * a fixed UUID, so renaming keeps its record. Slot 1 keeps the original single-bot UUID; a pre-multi-bot file holding
- * one profile is read as slot 1, and the others start from defaults.
+ * Identity and career of the {@link #PROFILES} bot profiles, independent of human XP and contribution rewards. Up to
+ * {@code BotManager.MAX} of them are in a lobby at once. Each profile has a fixed UUID, so renaming keeps its record,
+ * and a 4-digit tag like a player's ({@link PlayerTag}), handed out once. Profile 1 keeps the original single-bot UUID;
+ * a pre-multi-bot file holding one profile is read as profile 1, and missing profiles start from defaults.
  */
 public final class BotDatabase {
     public static final String DEFAULT_SKIN="minecraft:textures/entity/player/wide/steve.png";
-    public static final int MAX=8;
+    public static final int PROFILES=12;
     private static final UUID[] IDS={UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c016"),UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c017"),
             UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c018"),UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c019"),
             UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c01a"),UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c01b"),
-            UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c01c"),UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c01d")};
+            UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c01c"),UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c01d"),
+            UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c01e"),UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c01f"),
+            UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c020"),UUID.fromString("87feab0f-4160-4ec8-a993-bcf41039c021")};
     public static UUID id(int slot){return IDS[slot];}
     /** Slot index (0-based) of a bot UUID, or -1 for anyone else. */
     public static int slot(UUID id){for(int i=0;i<IDS.length;i++)if(IDS[i].equals(id))return i;return -1;}
@@ -33,6 +36,8 @@ public final class BotDatabase {
         public String displayName(){return name;}
         public Profile named(String value){return new Profile(value,skin,statistics);}
         public Profile skinned(String value){return new Profile(name,value,statistics);}
+        /** The 4-digit tag ("0427", no '#'). */
+        public String tag(){return statistics.tag();}
         int slot(){return BotDatabase.slot(statistics.id());}
     }
     public static Profile defaults(){return defaults(0);}
@@ -42,16 +47,23 @@ public final class BotDatabase {
     }
     private record Data(List<Profile> bots) { }
     private final Path file;
-    private final Profile[] profiles=new Profile[MAX];
+    private final Profile[] profiles=new Profile[PROFILES];
     public BotDatabase(Path file)throws IOException{
         this.file=file;
-        for(int i=0;i<MAX;i++)profiles[i]=defaults(i);
-        if(!Files.exists(file)){write(profiles);return;}
+        for(int i=0;i<PROFILES;i++)profiles[i]=defaults(i);
+        if(!Files.exists(file)){tag();write(profiles);return;}
         if(Files.size(file)>65536)throw new IOException("bot-db.json is too large");
         var root=com.google.gson.JsonParser.parseString(Files.readString(file));
         if(!root.isJsonObject())throw new IOException("Invalid bot-db.json");
         var object=root.getAsJsonObject();
         List<Profile> stored;
+        boolean redundant=false;
+        if(object.has("bots")&&object.get("bots").isJsonArray())for(var bot:object.getAsJsonArray("bots")){
+            if(!(bot instanceof com.google.gson.JsonObject profile)||!(profile.get("statistics") instanceof com.google.gson.JsonObject statistics))continue;
+            redundant|=UNSTORED.stream().anyMatch(statistics::has);
+            // The record's name is not stored (it repeats the profile's); the record needs one to load.
+            if(profile.get("name") instanceof com.google.gson.JsonPrimitive name)statistics.add("name",name);
+        }
         if(object.has("bots"))stored=ServerFiles.GSON.fromJson(object,Data.class).bots();
         else if(object.has("name"))stored=List.of(ServerFiles.GSON.fromJson(object,Profile.class)); // single-bot format
         else throw new IOException("bot-db.json has no bot profiles");
@@ -61,6 +73,24 @@ public final class BotDatabase {
             if(profile==null||!seen.add(profile.slot()))throw new IOException("Duplicate or empty bot profile in bot-db.json");
             profiles[profile.slot()]=profile;
         }
+        // Older files hold fewer profiles, untagged ones or the fields no longer stored: store the filled-in set once.
+        if(tag()||stored.size()<PROFILES||redundant)write(profiles);
+    }
+    /**
+     * Player-record fields a bot profile does not store: the name repeats the profile's own (and is restored from it on
+     * load), and bots have no nickname.
+     */
+    private static final List<String> UNSTORED=List.of("name","nickname");
+    /** Gives every profile without a tag a free one; returns whether any changed. */
+    private boolean tag(){
+        var used=new HashSet<String>();for(var p:profiles)if(!p.tag().isEmpty())used.add(p.tag());
+        boolean changed=false;
+        for(int i=0;i<PROFILES;i++){
+            if(!profiles[i].tag().isEmpty())continue;
+            String value=PlayerTag.allocate(IDS[i],used);used.add(value);
+            var p=profiles[i];profiles[i]=new Profile(p.name(),p.skin(),p.statistics().withTag(value));changed=true;
+        }
+        return changed;
     }
     public Profile profile(){return profiles[0];}
     public Profile profile(int slot){return profiles[slot];}
@@ -73,7 +103,9 @@ public final class BotDatabase {
     private void write(Profile[] values)throws IOException{
         Files.createDirectories(file.toAbsolutePath().getParent());
         Path temp=file.resolveSibling(file.getFileName()+".tmp");
-        Files.writeString(temp,ServerFiles.GSON.toJson(new Data(List.of(values))));
+        var json=ServerFiles.GSON.toJsonTree(new Data(List.of(values))).getAsJsonObject();
+        for(var bot:json.getAsJsonArray("bots"))UNSTORED.forEach(bot.getAsJsonObject().getAsJsonObject("statistics")::remove);
+        Files.writeString(temp,ServerFiles.GSON.toJson(json));
         if(Files.exists(file))Files.copy(file,file.resolveSibling(file.getFileName()+".bak"),StandardCopyOption.REPLACE_EXISTING);
         try{Files.move(temp,file,StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING);}
         catch(AtomicMoveNotSupportedException e){Files.move(temp,file,StandardCopyOption.REPLACE_EXISTING);}

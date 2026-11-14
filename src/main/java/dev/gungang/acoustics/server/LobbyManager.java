@@ -346,6 +346,7 @@ public final class LobbyManager {
                 return;
             }
             if(action.action().equals("lobby")){reopenLobby(sender);return;}
+            if(action.action().equals("matchHistory")){MatchHistory.request(sender,action.value(),action.target());return;}
             if(action.action().equals("propMorph")){propMorph(sender,action.value());return;}
             if(action.action().equals("mapPreview")) {
                 if(files==null)return;
@@ -397,6 +398,11 @@ public final class LobbyManager {
                     admin(sender);
                     if(!LobbyRules.bots(selectedMode))throw new IllegalArgumentException("이 모드에서는 AI 봇을 추가할 수 없습니다.");
                     BotManager.lobbyAdd(catalog());botChanged();return;
+                }
+                case "botProfile" -> {
+                    admin(sender);int profile;
+                    try{profile=Integer.parseInt(action.value());}catch(NumberFormatException e){throw new IllegalArgumentException("봇 데이터 번호가 올바르지 않습니다.");}
+                    BotManager.lobbyProfile(UUID.fromString(action.target()),profile);botChanged();return;
                 }
                 case "botRemove" -> {admin(sender);BotManager.lobbyRemove(action.target().isEmpty()?null:UUID.fromString(action.target()));botChanged();return;}
                 case "map" -> { admin(sender); select(action.value()); }
@@ -940,6 +946,7 @@ public final class LobbyManager {
         if(slot==40) SecondaryRuntime.configure(p,stack,weapon);
         if(slot==0) LoadoutAttributes.apply(p,weapon);
         p.getInventory().setItem(slot, stack);
+        if (slot == p.getInventory().selected) CombatRules.refreshGunCache(p);
         if (!remember) LoadoutSlots.preserve(p,displaced);
         CompoundBow.syncAmmo(p);
         p.inventoryMenu.broadcastChanges();
@@ -1221,7 +1228,7 @@ public final class LobbyManager {
     }
     private static void broadcast(boolean show) { if (server != null) for (var p : server.getPlayerList().getPlayers()) send(p, show); }
     /** Refresh every open lobby immediately; editing bot participation never triggers a match start. */
-    static void botChanged(){if(phase.equals("LOBBY"))PLAYERS.values().forEach(e->e.ready=false);broadcast(false);}
+    static void botChanged(){if(phase.equals("LOBBY"))PLAYERS.values().forEach(e->e.ready=false);broadcast(false);BotManager.broadcastProfiles();}
     /** The weapons on offer in the selected mode: the whole catalog, or under 근접전 only the melee primaries. */
     private static Loadouts catalog(){return catalog(loadouts);}
     static Loadouts catalog(Loadouts all){all=WeaponToggles.filter(all);return all!=null&&options().game().meleeWeapons(selectedMode)?all.melee():all;}

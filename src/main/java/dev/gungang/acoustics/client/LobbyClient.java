@@ -39,10 +39,11 @@ public final class LobbyClient {
         Minecraft mc = Minecraft.getInstance();
         if(mc.level!=null&&(previousOptions.color("ALPHA")!=options.color("ALPHA")||previousOptions.color("BRAVO")!=options.color("BRAVO")))mc.levelRenderer.allChanged();
         if (!state.enabled() || !state.phase().equals("LOBBY")) {
-            if (mc.screen instanceof LobbyScreen||mc.screen instanceof GameOptionsScreen) mc.setScreen(null);
+            if (mc.screen instanceof LobbyScreen||mc.screen instanceof GameOptionsScreen||mc.screen instanceof BotProfileScreen) mc.setScreen(null);
             return;
         }
         if (mc.screen instanceof GameOptionsScreen screen) screen.update(state);
+        else if (mc.screen instanceof BotProfileScreen screen) screen.update(state);
         else if (mc.screen instanceof LobbyScreen screen) screen.update(state);
         else if (state.show()) mc.setScreen(new LobbyScreen(state));
     }

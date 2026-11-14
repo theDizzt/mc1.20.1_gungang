@@ -21,7 +21,7 @@ public final class BotSkinCache {
     public static void receive(GungangNetwork.BotSkin packet){
         if(!packet.skin().startsWith(BotSkinFiles.PREFIX))return;
         release(packet.skin());
-        if(packet.png().length==0||TEXTURES.size()>=BotManager.MAX*2)return;
+        if(packet.png().length==0||TEXTURES.size()>=BotManager.PROFILES*2)return;
         try{
             int[] size=MapPreviewFiles.dimensions(packet.png());
             if(size[0]!=64||size[1]!=64)throw new java.io.IOException("Bot skin must be 64x64");

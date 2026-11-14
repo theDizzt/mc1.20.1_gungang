@@ -101,8 +101,49 @@ public final class TwinBlades {
         }
         // Gimmicks in reach (gas barrels, UXOs, cracked walls) take the blow too.
         if(wall.getType()==HitResult.Type.BLOCK)GimmickEntity.hit(level,wall.getBlockPos(),damage);
+        trail(owner,motion);
         level.playSound(null,owner.blockPosition(),struck?net.minecraft.sounds.SoundEvents.PLAYER_ATTACK_STRONG:net.minecraft.sounds.SoundEvents.PLAYER_ATTACK_SWEEP,
                 net.minecraft.sounds.SoundSource.PLAYERS,.8f,motion==6?.9f:1.15f);
+    }
+    /** Slash light: pale blue, as the pack's first-person blade light. */
+    private static final net.minecraft.core.particles.DustParticleOptions LIGHT=new net.minecraft.core.particles.DustParticleOptions(new org.joml.Vector3f(.75f,.9f,1f),1.1f);
+    /** How far from the wielder others see the slash. */
+    private static final double TRAIL_RANGE=48;
+    /**
+     * The pack draws its blade light only in the wielder's first-person animation, so others saw a bare swing. The
+     * same slash is drawn here for everyone else: an arc in front of the wielder per motion (1-4 alternate their
+     * direction and tilt, 5 crosses two, 6 thrusts straight ahead).
+     */
+    private static void trail(LivingEntity owner,int motion){
+        if(!(owner.level() instanceof net.minecraft.server.level.ServerLevel level))return;
+        var viewers=new ArrayList<ServerPlayer>();
+        for(var p:level.players())if(p!=owner&&p.distanceToSqr(owner)<TRAIL_RANGE*TRAIL_RANGE)viewers.add(p);
+        if(viewers.isEmpty())return;
+        var look=owner.getLookAngle();
+        var right=look.cross(new Vec3(0,1,0));
+        if(right.lengthSqr()<1e-4)right=Vec3.directionFromRotation(0,owner.getYRot()+90);
+        right=right.normalize();var up=right.cross(look).normalize();
+        var origin=owner.getEyePosition().subtract(up.scale(.25));
+        var points=new ArrayList<Vec3>();
+        if(motion==6){for(int i=0;i<12;i++)points.add(origin.add(look.scale(.9+i*.22)));}
+        else{
+            double tilt=switch(motion){case 1->20;case 2->-160;case 3->50;case 4->-130;default->35;};
+            arc(points,origin,look,right,up,tilt);
+            if(motion==5)arc(points,origin,look,right,up,-145);
+        }
+        var center=origin.add(look.scale(1.8));
+        for(var p:viewers){
+            for(var at:points)level.sendParticles(p,LIGHT,false,at.x,at.y,at.z,1,0,0,0,0);
+            level.sendParticles(p,net.minecraft.core.particles.ParticleTypes.SWEEP_ATTACK,false,center.x,center.y,center.z,1,0,0,0,0);
+        }
+    }
+    /** 14 points on a 100° arc 2 blocks out, in the plane tilted {@code tilt}° about the view (its sign sets the sweep). */
+    private static void arc(List<Vec3> points,Vec3 origin,Vec3 look,Vec3 right,Vec3 up,double tilt){
+        double t=Math.toRadians(tilt);var side=right.scale(Math.cos(t)).add(up.scale(Math.sin(t)));
+        for(int i=0;i<14;i++){
+            double a=Math.toRadians(-50+i*100/13.0);
+            points.add(origin.add(look.scale(Math.cos(a)*2).add(side.scale(Math.sin(a)*2))));
+        }
     }
     private static double angle(Vec3 look,Vec3 to){return Math.acos(Math.max(-1,Math.min(1,look.dot(to.normalize()))));}
     /** Dead, or taken out by the match (players respawn instead of dying). */

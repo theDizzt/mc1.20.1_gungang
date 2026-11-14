@@ -13,6 +13,22 @@ u138 (2026-10-28): [컨베이어 벨트·렌치·점프 발판](MOVEMENT-BLOCKS.
 
 <a id="build"></a>
 
+### Export 후 서버·클라이언트 자동 설치
+
+`export-jar.bat`는 빌드 성공 후 `export-paths.json`의 `serverMods`, `instanceMods`에 지정된 mods 폴더를 업데이트합니다. 로컬 설정 파일은 Git에서 제외되며, 새 환경에서는 `export-paths.example.json`을 복사해 절대 경로를 지정합니다. 한쪽을 비우면 해당 대상은 건너뛰고, 설정 파일이 없으면 기존처럼 `dist`로 내보내기만 합니다. 서버와 Minecraft를 종료한 뒤 실행하세요.
+
+이번 빌드의 정확한 파일명은 `dist/latest-export.txt`에 기록됩니다. 설치기는 파일명과 내부 mod ID가 GunGang인 기존 JAR만 교체합니다. 이전 파일은 각 mods 폴더의 `.gungang-backups/<고유번호>/`에 보관하며, 복사 오류가 나면 해당 폴더의 제거된 기존 파일을 복원합니다. 대상 폴더들은 순서대로 처리되므로 뒤쪽 대상이 실패해도 앞서 완료된 대상의 업데이트는 유지됩니다.
+
+빌드 없이 마지막 내보내기 설치를 재시도하거나 변경 예정만 확인할 수 있습니다.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-exported-jar.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-exported-jar.ps1 -WhatIf
+# 이전에 내보낸 특정 파일을 명시하려면 -JarPath "dist/파일명.jar" 추가
+```
+
+Gradle의 `exportJar`를 직접 호출하면 JAR 내보내기까지만 수행합니다. 자동 설치는 배치 파일 또는 위 PowerShell 스크립트를 사용하세요.
+
 ## 빌드·호환성 검증
 
 ### 빌드
