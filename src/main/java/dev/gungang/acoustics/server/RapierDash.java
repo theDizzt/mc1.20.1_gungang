@@ -37,10 +37,15 @@ public final class RapierDash {
         if(left<=0)return false;
         if(!active(p)){tag.remove(LEFT);p.setDeltaMovement(Vec3.ZERO);return false;}
         p.setDeltaMovement(Vec3.ZERO);
-        p.move(net.minecraft.world.entity.MoverType.SELF,new Vec3(tag.getDouble(X),tag.getDouble(Y),tag.getDouble(Z)));
+        p.move(net.minecraft.world.entity.MoverType.SELF,groundHug(new Vec3(tag.getDouble(X),tag.getDouble(Y),tag.getDouble(Z))));
         tag.putInt(LEFT,(p.horizontalCollision||Math.abs(tag.getDouble(Y))>1e-6&&p.verticalCollision)?0:left-1);
         p.setDeltaMovement(Vec3.ZERO);
         return true;
     }
+    /**
+     * A level step presses down a hair: vanilla only steps up (slabs, stairs, up to 0.6 blocks) while on the ground,
+     * and a move with no downward part leaves the body off the ground after the first step.
+     */
+    public static Vec3 groundHug(Vec3 step){return Math.abs(step.y)<1e-6?new Vec3(step.x,-1e-3,step.z):step;}
     private RapierDash(){}
 }
