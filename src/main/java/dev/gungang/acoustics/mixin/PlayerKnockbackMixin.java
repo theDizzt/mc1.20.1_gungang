@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.injection.*;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** LivingEntity.knockback alone marks hasImpulse, which does not notify its own player client. */
+/** LivingEntity.knockback alone marks hasImpulse, which does not notify its own player client (sent once per tick). */
 @Mixin(LivingEntity.class)
 public abstract class PlayerKnockbackMixin {
     @Unique private Vec3 gungang$beforeKnockback;
@@ -18,7 +18,7 @@ public abstract class PlayerKnockbackMixin {
     }
     @Inject(method="knockback",at=@At("RETURN"))
     private void gungang$send(double strength,double x,double z,CallbackInfo ci){
-        if((Object)this instanceof ServerPlayer p&&gungang$beforeKnockback!=null&&!p.getDeltaMovement().equals(gungang$beforeKnockback))PlayerImpulse.sync(p);
+        if((Object)this instanceof ServerPlayer p&&gungang$beforeKnockback!=null&&!p.getDeltaMovement().equals(gungang$beforeKnockback))PlayerImpulse.knocked(p);
         gungang$beforeKnockback=null;
     }
 }
