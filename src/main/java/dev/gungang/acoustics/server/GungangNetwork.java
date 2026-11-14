@@ -66,6 +66,7 @@ public final class GungangNetwork {
     public record ShockLook(int ticks,float yaw,float pitch) { }
     public record KillSound(String sound) { }
     public record AcidShot(boolean push) { }
+    public record PlayerStats(String json) { }
     /** Pending status-ailment damage per entity id in the receiver's dimension (purple share of health bars). */
     public record StatusDamage(int[] ids,float[] amounts,float[] heals) { }
     /** A heal pack or recovery potion is healing this entity for the next {@code ticks}: its health bar draws the green ghost. */
@@ -82,6 +83,9 @@ public final class GungangNetwork {
     /** Longest lobby action value: the game options JSON, with room for every mode's section and a long excluded-block list. */
     static final int ACTION_VALUE=8192;
     public static void register() {
+        CHANNEL.registerMessage(49,PlayerStats.class,(p,b)->b.writeUtf(p.json,8192),b->new PlayerStats(b.readUtf(8192)),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.PlayerStatsScreen.open(p.json)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(48,AcidShot.class,(p,b)->b.writeBoolean(p.push),b->new AcidShot(b.readBoolean()),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.AcidSprayerInput.fired(p.push)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));

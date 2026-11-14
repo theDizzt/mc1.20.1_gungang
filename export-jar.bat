@@ -19,11 +19,14 @@ echo.
 call "%~dp0gradlew.bat" exportJar --console=plain
 if errorlevel 1 goto :buildFailed
 
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\install-exported-jar.ps1" -ConfigPath "%~dp0export-paths.json"
+if errorlevel 1 goto :installFailed
+
 set "RESULT=0"
 echo.
 echo SUCCESS: The installable JAR has been exported to:
 echo "%~dp0dist"
-echo Put the JAR in your Minecraft client's mods folder.
+echo Configured mods folders have been updated. Restart the server and client to load the new version.
 goto :finish
 
 :noJava
@@ -35,6 +38,12 @@ goto :finish
 echo.
 echo ERROR: Build or export failed. See the error messages above.
 echo Existing files in dist may be from an earlier successful build.
+goto :finish
+
+:installFailed
+echo.
+echo ERROR: The JAR was built, but installation did not complete. See the error above.
+echo Close Minecraft and the server before retrying scripts\install-exported-jar.ps1.
 goto :finish
 
 :finish
