@@ -44,11 +44,19 @@ public final class AcidSprayer {
     private static final DustParticleOptions GAS_DARK=new DustParticleOptions(new org.joml.Vector3f(.3f,.62f,.05f),2.4f);
     /** One acid cloud: where it is, where a push carries it (from {@code from} between the two ticks), and its end. */
     private static final class Cloud {
-        final ServerLevel level;final UUID owner;final long expires;
+        final ServerLevel level;final UUID owner;final long expires;final UUID id=UUID.randomUUID();
         Vec3 position,from,to;long pushStart,pushEnd;
         Cloud(ServerLevel level,UUID owner,Vec3 position,long expires){this.level=level;this.owner=owner;this.position=position;this.expires=expires;}
     }
     private static final List<Cloud> CLOUDS=new ArrayList<>();
+    /** A live gas cloud, for bots to stay out of. */
+    record Gas(UUID id,Vec3 position,double radius) {}
+    static List<Gas> gas(net.minecraft.world.level.Level level,Vec3 near,double range){
+        var result=new ArrayList<Gas>();double radius=ExtraGadgetConfig.acidSprayer.cloudRadius();
+        for(var cloud:CLOUDS)if(cloud.level==level&&cloud.expires>level.getGameTime()&&cloud.position.distanceToSqr(near)<=range*range)
+            result.add(new Gas(cloud.id,cloud.position,radius));
+        return result;
+    }
     /** Game tick each shooter last fired (left or right click), for the ammo regeneration delay. */
     private static final Map<UUID,Long> LAST_USE=new HashMap<>();
     /** Game tick a shooter last got a muzzle cloud: one per tick however many pellets the pack fires. */
@@ -162,6 +170,7 @@ public final class AcidSprayer {
         CLOUDS.removeIf(c->c.level.getGameTime()>=c.expires||event.getServer().getLevel(c.level.dimension())!=c.level);
         int interval=Math.max(1,ExtraGadgetConfig.ticks(config.damageIntervalSeconds()));
         var hurt=new HashSet<LivingEntity>();
+        int clouds=CLOUDS.size();
         for(var cloud:CLOUDS){
             var level=cloud.level;long now=level.getGameTime();
             if(cloud.to!=null){
@@ -170,7 +179,7 @@ public final class AcidSprayer {
                 cloud.position=cloud.from.add(cloud.to.subtract(cloud.from).scale(eased));
                 if(t>=1)cloud.to=null;
             }
-            particles(level,cloud,config.cloudRadius());
+            particles(level,cloud,config.cloudRadius(),clouds);
             if(now%interval!=0)continue;
             double r=config.cloudRadius();var c=cloud.position;
             for(var body:level.getEntitiesOfClass(LivingEntity.class,new AABB(c,c).inflate(r+1),BotEntity::participant)){
@@ -197,15 +206,25 @@ public final class AcidSprayer {
         int linger=ExtraGadgetConfig.ticks(config.lingerPoisonSeconds());
         if(linger>0&&body.isAlive())body.addEffect(new MobEffectInstance(MobEffects.POISON,linger+interval,0,false,true,true));
     }
-    private static void particles(ServerLevel level,Cloud cloud,double radius){
+    /** Gas particles all clouds together may show per emission (every 2 ticks); overlapping clouds share it. */
+    static final int PARTICLE_BUDGET=72;
+    /** Particles one cloud shows per emission when few clouds exist. */
+    static int particlesPerCloud(double radius,int clouds){
+        int own=(int)Math.max(2,Math.min(12,Math.round(radius*radius*1.3)));
+        return Math.max(2,Math.min(own,PARTICLE_BUDGET/Math.max(1,clouds)));
+    }
+    /**
+     * Two batched packets per cloud (light and dark gas) instead of one per particle: auto fire adds a cloud every
+     * tick, and 60 overlapping clouds once sent about 800 particle packets per tick to everyone nearby.
+     */
+    private static void particles(ServerLevel level,Cloud cloud,double radius,int clouds){
         if(level.getGameTime()%2!=0)return;
         var c=cloud.position;var random=level.random;
-        int count=(int)Math.min(40,radius*radius*3);
-        for(int i=0;i<count;i++){
-            double u=random.nextDouble()*2-1,a=random.nextDouble()*Math.PI*2,r=radius*Math.cbrt(random.nextDouble()),s=Math.sqrt(1-u*u);
-            level.sendParticles(i%3==0?GAS_DARK:GAS,c.x+r*s*Math.cos(a),c.y+r*u*.6,c.z+r*s*Math.sin(a),1,0,.02,0,0);
-        }
-        if(random.nextInt(3)==0)level.sendParticles(ParticleTypes.ITEM_SLIME,c.x,c.y,c.z,2,radius*.4,.3,radius*.4,.02);
+        int count=particlesPerCloud(radius,clouds),dark=Math.max(1,count/3);
+        double spread=radius*.45,vertical=radius*.27;
+        level.sendParticles(GAS,c.x,c.y,c.z,count-dark,spread,vertical,spread,0);
+        level.sendParticles(GAS_DARK,c.x,c.y,c.z,dark,spread,vertical,spread,0);
+        if(clouds<=8&&random.nextInt(3)==0)level.sendParticles(ParticleTypes.ITEM_SLIME,c.x,c.y,c.z,2,radius*.4,.3,radius*.4,.02);
     }
 
     /** No reload: after regenDelaySeconds without firing, one round per regenIntervalSeconds up to the magazine. */

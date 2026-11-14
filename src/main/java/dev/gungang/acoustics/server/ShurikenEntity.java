@@ -65,7 +65,7 @@ public final class ShurikenEntity extends ThrowableItemProjectile implements net
             target.invulnerableTime=0;
             CombatRules.quietly(()->{
                 if(target.hurt(damageSources().thrown(this,getOwner()),(float)damage)&&getOwner() instanceof net.minecraft.server.level.ServerPlayer shooter)
-                    shooter.playNotifySound(net.minecraft.sounds.SoundEvents.ARROW_HIT_PLAYER,net.minecraft.sounds.SoundSource.PLAYERS,1,1);
+                    shooter.playNotifySound(TurretSounds.SHURIKEN_HIT.get(),net.minecraft.sounds.SoundSource.PLAYERS,1,1);
             });
         }
         level().playSound(null,target.blockPosition(),net.minecraft.sounds.SoundEvents.TRIDENT_HIT,net.minecraft.sounds.SoundSource.PLAYERS,.6f,1.6f);

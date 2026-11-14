@@ -11,6 +11,7 @@ abstract class ArenaScreen extends Screen {
     static final int DIM = TacticalStyle.DIM, PANEL = TacticalStyle.PANEL, BORDER = TacticalStyle.EDGE, READY = TacticalStyle.GREEN;
     ArenaScreen(String title) { super(Component.literal(title)); }
     ArenaScreen(Component title) { super(title); }
+    Component screenText(Component text) { return text; }
     int left() { return Math.max(8, (width - 620) / 2); }
     int body() { return width - left() * 2; }
     void button(String text, int x, int y, int w, int h, boolean enabled, int accent, Runnable action) {
@@ -44,7 +45,7 @@ abstract class ArenaScreen extends Screen {
     }
     private enum Look { PLAIN, ROW, FILLED, TAB }
     private void addButton(Component text,int x,int y,int w,int h,boolean enabled,int accent,Look look,int padLeft,int padRight,Runnable action) {
-        var button = new FlatButton(x, y, w, h, text, b -> action.run(), accent,look,padLeft,padRight);
+        var button = new FlatButton(x, y, w, h, screenText(text), b -> action.run(), accent,look,padLeft,padRight);
         button.setTooltip(net.minecraft.client.gui.components.Tooltip.create(text));
         button.active = enabled; addRenderableWidget(button);
     }
@@ -66,9 +67,9 @@ abstract class ArenaScreen extends Screen {
         g.fill(l, 14, r, 15, ACCENT);g.fill(l, 15, l + 96, 16, ACCENT);
         g.fill(l + 12, 25, l + 14, 35, ACCENT);
         // Titles are kept in Korean and translated here, so they follow a language switch on an open screen.
-        g.drawString(font, Lang.tr(title.getString()), l + 19, 26, INK, false);
+        g.drawString(font, screenText(Component.literal(Lang.tr(title.getString()))), l + 19, 26, INK, false);
         g.enableScissor(l+12,36,r-12,55);
-        g.drawString(font, subtitle, l + 19, 40, MUTED, false);
+        g.drawString(font, screenText(subtitle), l + 19, 40, MUTED, false);
         g.flush();g.disableScissor();
         g.fill(l + 12, 52, r - 12, 53, TacticalStyle.HAIRLINE);
     }
@@ -80,7 +81,7 @@ abstract class ArenaScreen extends Screen {
     void cardHeader(GuiGraphics g, int x1, int y1, int x2, String label, int color, String note) {
         g.fill(x1, y1, x2, y1 + 2, color);
         g.fillGradient(x1, y1 + 2, x2, y1 + 16, blend(PANEL, color, .18f), PANEL);
-        g.drawString(font, label, x1 + 6, y1 + 5, color, false);
+        g.drawString(font, screenText(Component.literal(label)), x1 + 6, y1 + 5, color, false);
         if (note != null && !note.isEmpty()) {
             int room = Math.max(1, x2 - x1 - font.width(label) - 18), shown = Math.min(room, font.width(note));
             Marquee.draw(g, font, note, x2 - 6 - shown, y1 + 5, room, MUTED, false);

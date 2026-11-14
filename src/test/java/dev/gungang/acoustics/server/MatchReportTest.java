@@ -19,7 +19,8 @@ class MatchReportTest {
         var text=Files.readString(a);
         assertTrue(text.contains("2026-10-10T14:30+09:00[Asia/Seoul]"));
         assertTrue(text.contains("Map: Example Arena (example)"));assertTrue(text.contains("Play time: 19:24"));
-        assertTrue(text.contains("플레이어 | test-id | ALPHA | 3 / 2 / 1 | 129.5 | 19:24"));
+        assertTrue(text.contains("\ntest-id | ALPHA | 3 / 2 / 1 | 129.5 | 19:24"));
+        assertFalse(text.contains("플레이어"),"players are recorded by UUID only");
         assertEquals("00:00",MatchReport.time(0));
     }
 }

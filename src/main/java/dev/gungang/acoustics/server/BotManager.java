@@ -29,17 +29,19 @@ import net.minecraftforge.fml.common.Mod;
 public final class BotManager {
     /** The first bot's id; every bot id is {@link BotDatabase#id(int)}. */
     public static final UUID ID=BotDatabase.id(0);
-    public static final int MAX=BotDatabase.MAX;
+    /** Bots in a lobby at once; each takes one of the {@link #PROFILES} profiles (profile index = slot = UUID). */
+    public static final int MAX=8;
+    public static final int PROFILES=BotDatabase.PROFILES;
     public static final String NAME="Rookie";
     private static BotDatabase database;
     private static BotSettings settings=BotSettings.defaults();
     private static MinecraftServer server;
     private static ArenaMap arena;
     private static String fault="";
-    /** Lobby reservations: slot → team chosen by an admin, or "" to auto-balance. */
-    private static final TreeMap<Integer,String> lobby=new TreeMap<>();
+    /** Lobby reservations in the order added: profile slot → team chosen by an admin, or "" to auto-balance. */
+    private static final LinkedHashMap<Integer,String> lobby=new LinkedHashMap<>();
     private static final List<BotAgent> agents=new ArrayList<>();
-    private static final byte[][] skinPng=new byte[MAX][];
+    private static final byte[][] skinPng=new byte[PROFILES][];
     private static long workNanos,workSamples,maxWorkNanos;
     private static int slowLogAt;
     private BotManager(){}
@@ -62,6 +64,7 @@ public final class BotManager {
     public static String skin(){return skin(0);}
     static String skin(int slot){return database==null?BotDatabase.DEFAULT_SKIN:database.profile(slot).skin();}
     public static String skin(UUID id){int slot=BotDatabase.slot(id);return slot<0?"":skin(slot);}
+    static String tag(int slot){return database==null?"":database.profile(slot).tag();}
     /** Team of the first bot in the match (or its lobby team). */
     static String team(){return agents.isEmpty()?lobbyTeam():agents.get(0).team;}
     static String team(UUID id){var a=agent(id);if(a!=null)return a.team;int slot=BotDatabase.slot(id);return slot>=0&&lobby.containsKey(slot)?lobbyTeam(slot):"";}
@@ -100,7 +103,7 @@ public final class BotManager {
     static boolean added(){return settings.enabled()&&!lobby.isEmpty();}
     static int lobbyCount(){return settings.enabled()?lobby.size():0;}
     static List<UUID> lobbyIds(){return settings.enabled()?lobby.keySet().stream().map(BotDatabase::id).toList():List.of();}
-    static String lobbyTeam(){return lobby.isEmpty()?chooseTeam(0):lobbyTeam(lobby.firstKey());}
+    static String lobbyTeam(){return lobby.isEmpty()?chooseTeam(-1):lobbyTeam(lobby.keySet().iterator().next());}
     /** An admin's choice, or the smaller team counting players and the bots before this one. */
     static String lobbyTeam(int slot){
         String chosen=lobby.getOrDefault(slot,"");if(!chosen.isEmpty())return chosen;
@@ -110,24 +113,36 @@ public final class BotManager {
         long a=0,b=0;
         if(server!=null)for(var p:server.getPlayerList().getPlayers()){String t=LobbyManager.team(p.getUUID());if(t.equals("ALPHA"))a++;else if(t.equals("BRAVO"))b++;}
         for(int other:lobby.keySet()){
-            if(other>=slot)break;
+            if(other==slot)break;
             String t=lobbyTeam(other);if(t.equals("ALPHA"))a++;else if(t.equals("BRAVO"))b++;
         }
         return settings.chooseTeam(a,b);
     }
-    /** Reserves the next free bot slot for the coming match. */
+    /** Reserves a random profile not already in the lobby for the coming match. */
     static void lobbyAdd(Loadouts loadouts){
         requireLobby();
         if(!settings.enabled())throw new IllegalStateException("봇 기능이 꺼져 있습니다. 관리자가 /gungang bot on으로 먼저 켜야 합니다.");
+        if(lobby.size()>=MAX)throw new IllegalStateException("AI 봇은 최대 "+MAX+"명까지 추가할 수 있습니다.");
         selectWeapon(loadouts);selectSecondary(loadouts);
-        for(int slot=0;slot<MAX;slot++)if(!lobby.containsKey(slot)){lobby.put(slot,"");return;}
-        throw new IllegalStateException("AI 봇은 최대 "+MAX+"명까지 추가할 수 있습니다.");
+        var free=new ArrayList<Integer>();for(int slot=0;slot<PROFILES;slot++)if(!lobby.containsKey(slot))free.add(slot);
+        lobby.put(free.get(new Random().nextInt(free.size())),"");
+    }
+    /** Gives a lobby bot another profile (name, skin, tag and career), keeping its place in the list and its team. */
+    static void lobbyProfile(UUID id,int profile){
+        requireLobby();int slot=BotDatabase.slot(id);
+        if(!lobby.containsKey(slot))throw new IllegalStateException("로비에 추가된 봇이 아닙니다.");
+        if(profile<0||profile>=PROFILES)throw new IllegalArgumentException("봇 데이터는 1~"+PROFILES+"번입니다.");
+        if(profile==slot)return;
+        if(lobby.containsKey(profile))throw new IllegalStateException("이미 로비에 있는 봇 데이터입니다.");
+        var next=new LinkedHashMap<Integer,String>();
+        for(var e:lobby.entrySet())next.put(e.getKey()==slot?profile:e.getKey(),e.getValue());
+        lobby.clear();lobby.putAll(next);
     }
     /** Removes one bot from the lobby: the given one, or the last added. */
     static void lobbyRemove(UUID id){
         requireLobby();
         if(lobby.isEmpty())throw new IllegalStateException("로비에 추가된 봇이 없습니다.");
-        int slot=id==null?lobby.lastKey():BotDatabase.slot(id);
+        int slot=id==null?new ArrayList<>(lobby.keySet()).get(lobby.size()-1):BotDatabase.slot(id);
         if(slot<0||lobby.remove(slot)==null)throw new IllegalArgumentException("로비에 없는 봇입니다.");
     }
     static void lobbyRemove(){lobbyRemove(null);}
@@ -148,15 +163,32 @@ public final class BotManager {
         if(server!=null)for(var p:server.getPlayerList().getPlayers())sendSkin(p,slot);
         return warning;
     }
-    private static String loadSkins(){var warnings=new StringBuilder();for(int i=0;i<MAX;i++){String w=loadSkin(i);if(!w.isEmpty())warnings.append(" ").append(i+1).append("번: ").append(w);}return warnings.toString().strip();}
+    private static String loadSkins(){var warnings=new StringBuilder();for(int i=0;i<PROFILES;i++){String w=loadSkin(i);if(!w.isEmpty())warnings.append(" ").append(i+1).append("번: ").append(w);}return warnings.toString().strip();}
     private static void sendSkin(ServerPlayer p,int slot){if(skinPng[slot]!=null)GungangNetwork.send(p,new GungangNetwork.BotSkin(skin(slot),skinPng[slot]));}
     @SubscribeEvent public static void login(net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent event){
-        if(event.getEntity() instanceof ServerPlayer p)for(int i=0;i<MAX;i++)sendSkin(p,i);
+        if(event.getEntity() instanceof ServerPlayer p){for(int i=0;i<PROFILES;i++)sendSkin(p,i);GungangNetwork.send(p,profilesPacket());}
     }
     static void finish(MatchSnapshot match){
         if(database!=null)try{database.finish(match,LobbyManager.options().experience());}
         catch(Exception e){LogUtils.getLogger().error("[GunGang] Could not save bot-db.json",e);}
         if(server!=null)ProgressionService.broadcastLevels(server);
+        broadcastProfiles();
+    }
+    /** One profile as the lobby's profile picker and clients' name tags see it. */
+    public record ProfileView(int index,String id,String name,String tag,String skin,int level,long matches,long wins,long kills,long deaths,double damage) {}
+    private static GungangNetwork.BotProfiles profilesPacket(){
+        var list=new ArrayList<ProfileView>();
+        if(database!=null)for(int i=0;i<PROFILES;i++){
+            var p=database.profile(i);var r=p.statistics();
+            list.add(new ProfileView(i,BotDatabase.id(i).toString(),p.displayName(),p.tag(),p.skin(),ProgressionService.progress(r.experience()).level(),
+                    r.matches(),r.wins(),r.kills(),r.deaths(),r.damage()));
+        }
+        return new GungangNetwork.BotProfiles(ServerFiles.GSON.toJson(list));
+    }
+    /** Sent on login and whenever a profile or the lobby changes. */
+    static void broadcastProfiles(){
+        if(server==null||database==null)return;
+        var packet=profilesPacket();for(var p:server.getPlayerList().getPlayers())GungangNetwork.send(p,packet);
     }
     /** Career XP of a bot, for its level emblem; 0 when the profile store is unavailable. */
     static long experience(UUID id){int slot=BotDatabase.slot(id);return database==null||slot<0?0:database.profile(slot).statistics().experience();}
@@ -374,7 +406,7 @@ public final class BotManager {
         source.sendSuccess(()->Component.literal(text.toString()),false);
     }
     private static com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack,Integer> slotArgument(){
-        return Commands.argument("bot",IntegerArgumentType.integer(1,MAX));
+        return Commands.argument("bot",IntegerArgumentType.integer(1,PROFILES));
     }
     static void register(LiteralArgumentBuilder<CommandSourceStack> root){
         var commands=Commands.literal("bot").requires(s->s.hasPermission(2)).executes(c->{status(c.getSource());return 1;});
@@ -448,7 +480,7 @@ public final class BotManager {
     }
     private static void stats(CommandSourceStack source,int only){
         requireDatabase();
-        for(int slot=0;slot<MAX;slot++){
+        for(int slot=0;slot<PROFILES;slot++){
             if(only>=0&&slot!=only)continue;
             var r=database.profile(slot).statistics();var progress=ProgressionService.progress(r.experience());
             source.sendSystemMessage(Component.literal(String.format(Locale.ROOT,"%d번 %s · Lv. %d (경험치 %d) · 통산 %d경기 · %d승 · %d킬 / %d데스 · 딜량 %.1f · 플레이 %d초",

@@ -6,6 +6,7 @@ run/
 run-server/
 .idea/
 *.iml
+export-paths.json
 .vscode/
 logs/
 server_resource/

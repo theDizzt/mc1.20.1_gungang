@@ -38,14 +38,15 @@ public final class ClientNames {
         return tab==null?"":dev.gungang.acoustics.server.PlayerTag.suffix(tab.getString().trim());
     }
     /**
-     * {@code name} with the 4-digit tag when {@code id} is a player listed on this client (bots and unknown ids get
-     * the bare name): lobby list and scoreboards, which only carry the id as text.
+     * {@code name} with the 4-digit tag when {@code id} is a player listed on this client or a bot profile (unknown ids
+     * get the bare name): lobby list and scoreboards, which only carry the id as text.
      */
     public static Component tagged(String id,String name){
         try{var uuid=UUID.fromString(id);var connection=Minecraft.getInstance().getConnection();
             if(connection!=null&&connection.getPlayerInfo(uuid)!=null)return tagged(uuid,name);}
         catch(IllegalArgumentException notPlayer){}
-        return Component.literal(name);
+        String bot=BotProfilesClient.tag(id);
+        return bot.isEmpty()?Component.literal(name):dev.gungang.acoustics.server.PlayerTag.named(name,bot);
     }
     /** Like {@link #of}, falling back to the entity's own name (bots, players not listed). */
     public static String of(Player player){var name=of(player.getUUID());return name!=null?name:player.getName().getString();}

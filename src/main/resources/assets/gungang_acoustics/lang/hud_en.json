@@ -764,5 +764,10 @@
   "선택·랜덤·프리셋에서 제외": "left out of selection, random and presets",
   "· 로비에서만 변경": "· change in the lobby only",
   "사용키: 매크로 키 (": "Use key: macro key (",
-  "사용키: 이동키 더블 탭 (WASD)": "Use key: double-tap movement (WASD)"
+  "사용키: 이동키 더블 탭 (WASD)": "Use key: double-tap movement (WASD)",
+  "← 대기실": "← Lobby",
+  "플레이할 봇 데이터를 선택하세요": "Choose the bot profile to play as",
+  "봇 데이터를 불러오는 중...": "Loading bot profiles...",
+  "%d전 %d승 · K/D %.2f": "%d played %d won · K/D %.2f",
+  "GUNGANG / BOT DATA": "GUNGANG / BOT DATA"
 }

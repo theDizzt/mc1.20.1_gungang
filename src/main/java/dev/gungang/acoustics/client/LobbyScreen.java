@@ -46,6 +46,9 @@ final class LobbyScreen extends ArenaScreen {
     private LobbySnapshot.Member member(String id){return state.members().stream().filter(m->m.id().equals(id)).findFirst().orElse(null);}
     private LobbySnapshot.MapView map(String id){return state.maps().stream().filter(m->m.id().equals(id)).findFirst().orElse(null);}
     private boolean admin(){return state.administrator()&&"LOBBY".equals(state.phase());}
+    LobbySnapshot state(){return state;}
+    /** Selects a member that is about to appear (a bot given another profile gets that profile's id). */
+    void pick(String id){target=id;}
     private int maxMemberScroll(String zone){return zone.equals("SPECTATOR")?Math.max(0,(neutral().size()+1)/2-neutralRows()):Math.max(0,team(zone).size()-capacity());}
     private int offset(String zone){return Math.max(0,Math.min(maxMemberScroll(zone),memberScroll.getOrDefault(zone,0)));}
     private Box zoneBox(String zone){return zone.equals("ALPHA")?alpha():zone.equals("BRAVO")?bravo():spectators();}
@@ -235,7 +238,11 @@ final class LobbyScreen extends ArenaScreen {
         if(button==0&&draggingScroll!=null){draggingScroll=null;return true;}
         if(button==0&&dragId!=null){
             var moved=member(dragId);
-            if(!draggingMember)target=dragId;
+            if(!draggingMember){
+                target=dragId;
+                // Clicking a bot lets an administrator give it another of the stored bot profiles.
+                if(moved!=null&&moved.bot()&&admin()){dragId=null;setDragging(false);minecraft.setScreen(new BotProfileScreen(this,moved.id()));return true;}
+            }
             else if(moved!=null){var drop=drop(moved,x,y);if(drop!=null)drop.run();}
             dragId=null;draggingMember=false;setDragging(false);rebuildWidgets();return true;
         }

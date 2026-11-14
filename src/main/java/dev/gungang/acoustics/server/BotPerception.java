@@ -47,6 +47,10 @@ final class BotPerception {
     private float damageWindow;
     private int damageAt;
     private int nextWideHazardScan;
+    /** The enemy turret that last shot the bot, until when it counts as known, and whether to get out of its reach. */
+    private UUID turretShooter;private int turretUntil;private boolean fleeTurret;
+    /** Gas cloud ids: hazards with no entity behind them, refreshed every update. */
+    private final Set<UUID> gasIds=new HashSet<>();
     /** Enemies seen last update or the bot was hit recently: gas barrel blast zones count as danger. */
     private boolean alert;
     private UUID selectedTarget;
@@ -63,6 +67,7 @@ final class BotPerception {
         // A running scan by our team (anyone's scanner, ours included) shows every enemy, as on a player's screen.
         boolean scan=CombatGadgets.teamScanning(bot);
         hazards(bot,team,now);
+        turrets(bot,settings,now);
         var everyone=new ArrayList<LivingEntity>(level.players());everyone.addAll(BotManager.entities());
         for(var player:everyone) {
             if(player==bot||!player.isAlive()||player.isSpectator()||player.level()!=level||player instanceof ServerPlayer p&&(LobbyManager.respawning(p.getUUID())||p.isCreative()&&!BotManager.side(p).equals(team)))continue;
@@ -88,6 +93,8 @@ final class BotPerception {
             if(moving&&!player.isCrouching()&&distanceSqr<=FOOTSTEPS*FOOTSTEPS)note(bot,player,Cue.HEARD,now,Math.sqrt(distanceSqr)/7);
         }
         contacts.values().removeIf(c->!c.visible&&now-c.updated>(c.cue==Cue.SEEN||c.cue==Cue.HIT?memory:memory*3/2));
+        // A turret out of sight is not worth hunting down: it never comes to the bot.
+        contacts.values().removeIf(c->!c.visible&&c.player instanceof TurretEntity);
         lastSample.keySet().removeIf(id->((net.minecraft.server.level.ServerLevel)level).getEntity(id)==null);
         if(now-damageAt>60)damageWindow=0;
     }
@@ -102,6 +109,25 @@ final class BotPerception {
     void gunfire(BotEntity bot,LivingEntity shooter,int now) {
         double distance=shooter.distanceTo(bot);
         if(distance<=GUNFIRE)note(bot,shooter,Cue.HEARD,now,distance/12);
+    }
+    /**
+     * An enemy turret shot the bot. It is fought like an enemy (turning to it even outside the view cone) unless
+     * {@code flee}: then its reach counts as danger for a while (melee weapon, out of range, low health).
+     */
+    void turretHit(TurretEntity turret,int now,boolean flee) {turretShooter=turret.getUUID();turretUntil=now+60;fleeTurret=flee;}
+    /** Enemy turrets the bot sees (or that are shooting it) are targets like enemy players. */
+    private void turrets(BotEntity bot,BotSettings settings,int now) {
+        // A melee weapon cannot outfight a turret: those bots only keep out of its reach (turretHit).
+        if(BotManager.melee(bot.getMainHandItem()))return;
+        var level=bot.level();String own=bot.getTeam()==null?"":bot.getTeam().getName();double range=settings.visionRange();
+        for(var turret:level.getEntitiesOfClass(TurretEntity.class,bot.getBoundingBox().inflate(range),t->t.isAlive()&&!t.isRemoved())) {
+            if(!own.isEmpty()&&own.equals(turret.teamName())||bot.getUUID().equals(turret.owner()))continue;
+            boolean shooting=turret.getUUID().equals(turretShooter)&&now<turretUntil;
+            boolean inView=shooting||turret.distanceToSqr(bot)<=PERIPHERAL*PERIPHERAL||inCone(bot,turret.position().add(0,1,0),settings.fov());
+            if(!inView||!bot.hasLineOfSight(turret)||SmokeScreen.blocks(bot,turret))continue;
+            var contact=contacts.computeIfAbsent(turret.getUUID(),Contact::new);
+            contact.player=turret;contact.position=turret.position();contact.velocity=Vec3.ZERO;contact.updated=now;contact.seenAt=now;contact.cue=Cue.SEEN;contact.visible=true;
+        }
     }
     void hit(BotEntity bot,LivingEntity attacker,int now,float amount) {
         lastHurt=now;lastAttacker=attacker.getUUID();
@@ -121,8 +147,10 @@ final class BotPerception {
         // The bot's scoreboard team: Red/Blue, or its own team in free-for-all, where every other device is hostile.
         var level=bot.level();String own=bot.getTeam()==null?"":bot.getTeam().getName();
         // Forget devices that are gone; a sprung trap is no longer a threat.
+        hazards.keySet().removeAll(gasIds);gasIds.clear();
         hazards.values().removeIf(h->{
             if(h.block()!=null)return !armed(level,h.block());
+            if(h.id().equals(turretShooter))return !(fleeTurret&&now<turretUntil);
             var entity=((net.minecraft.server.level.ServerLevel)level).getEntity(h.id());
             return entity==null||entity.isRemoved()||entity instanceof BearTrapEntity trap&&trap.sprung()
                     ||entity instanceof OrdnanceEntity strike&&strike.orbital()&&strike.detonated();
@@ -145,6 +173,14 @@ final class BotPerception {
             else if(entity instanceof OrdnanceEntity strike&&strike.orbital()&&!strike.detonated()&&distance<=96)
                 hazards.put(strike.getUUID(),new Hazard(strike.getUUID(),strike.position(),ExtraGadgetConfig.orbital.radius()+3,true));
         }
+        // Acid gas hurts everyone in it, the sprayer's own team included: leave it and route around it.
+        for(var gas:AcidSprayer.gas(level,bot.position(),24)){
+            hazards.put(gas.id(),new Hazard(gas.id(),gas.position(),gas.radius()+.8,true));gasIds.add(gas.id());
+        }
+        // A turret the bot cannot fight: get out of its reach.
+        if(fleeTurret&&now<turretUntil&&turretShooter!=null&&!hazards.containsKey(turretShooter)
+                &&((net.minecraft.server.level.ServerLevel)level).getEntity(turretShooter) instanceof TurretEntity turret&&turret.isAlive())
+            hazards.put(turret.getUUID(),new Hazard(turret.getUUID(),turret.position(),Turrets.config.detectionRange()+1,true));
     }
     private static final double GIMMICK_RANGE=24;
     /** An active UXO or gas barrel (bottom half) at this position. */
@@ -197,6 +233,8 @@ final class BotPerception {
         for(var c:contacts.values()) {
             if(!c.visible||c.player==null||!c.player.isAlive())continue;
             double score=c.player.distanceToSqr(bot);
+            // A turret only when no enemy player is nearer to worry about, unless it is the one shooting the bot.
+            if(c.player instanceof TurretEntity)score*=c.id.equals(turretShooter)&&now<turretUntil?.5:2.5;
             if(c.player==current)score*=.6;
             if(c.id.equals(lastAttacker)&&now-lastHurt<40)score*=.5;
             if(score<bestScore) {best=c;bestScore=score;}

@@ -8,10 +8,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.*;
 
-/** Real arrow collision and visuals, fixed per-hit damage, no gravity, pickup or travel beyond its range. */
+/** Real arrow collision and visuals, fixed per-hit damage, no gravity, pickup or travel beyond its range. No longer spawned: arrow grenade bursts fly as virtual shards (ArrowGrenadeEntity); kept for its damage type, its renderer (clients draw the shards with it) and fragments in old saves. */
 public final class ArrowFragmentEntity extends AbstractArrow {
     private static final float HIT_MARGIN=.45f;
-    private static final net.minecraft.resources.ResourceKey<DamageType> DAMAGE=net.minecraft.resources.ResourceKey.create(
+    static final net.minecraft.resources.ResourceKey<DamageType> DAMAGE=net.minecraft.resources.ResourceKey.create(
             net.minecraft.core.registries.Registries.DAMAGE_TYPE,new net.minecraft.resources.ResourceLocation("gungang","arrow_fragment"));
     private double distanceLimit=6,travelled,damage=16;
     public ArrowFragmentEntity(EntityType<? extends ArrowFragmentEntity> type,Level level){super(type,level);setNoGravity(true);pickup=Pickup.DISALLOWED;}
