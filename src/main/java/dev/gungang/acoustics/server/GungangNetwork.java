@@ -67,6 +67,10 @@ public final class GungangNetwork {
     public record KillSound(String sound) { }
     public record AcidShot(boolean push) { }
     public record PlayerStats(String json) { }
+    /** The bot profiles (BotManager.ProfileView list): lobby profile picker and bot name tags. */
+    public record BotProfiles(String json) { }
+    /** Saved match results for the stats screen: the numbered list or one match ({@link MatchHistory.View}). */
+    public record MatchHistoryView(String json) { }
     /** Pending status-ailment damage per entity id in the receiver's dimension (purple share of health bars). */
     public record StatusDamage(int[] ids,float[] amounts,float[] heals) { }
     /** A heal pack or recovery potion is healing this entity for the next {@code ticks}: its health bar draws the green ghost. */
@@ -83,6 +87,12 @@ public final class GungangNetwork {
     /** Longest lobby action value: the game options JSON, with room for every mode's section and a long excluded-block list. */
     static final int ACTION_VALUE=8192;
     public static void register() {
+        CHANNEL.registerMessage(51,BotProfiles.class,(p,b)->b.writeUtf(p.json,65536),b->new BotProfiles(b.readUtf(65536)),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.BotProfilesClient.receive(p.json)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(50,MatchHistoryView.class,(p,b)->b.writeUtf(p.json,1048576),b->new MatchHistoryView(b.readUtf(1048576)),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.MatchHistoryScreen.receive(p.json)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(49,PlayerStats.class,(p,b)->b.writeUtf(p.json,8192),b->new PlayerStats(b.readUtf(8192)),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.PlayerStatsScreen.open(p.json)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
