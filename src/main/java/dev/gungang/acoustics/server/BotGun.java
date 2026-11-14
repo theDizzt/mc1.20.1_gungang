@@ -140,8 +140,29 @@ final class BotGun {
             Object id=gunInterface.getMethod("getGunId",ItemStack.class).invoke(api.gun.invoke(null,stack),stack);
             var index=(java.util.Optional<?>)Class.forName("com.tacz.guns.api.TimelessAPI")
                     .getMethod("getCommonGunIndex",net.minecraft.resources.ResourceLocation.class).invoke(null,id);
-            if(index.isPresent())type=(String)index.get().getClass().getMethod("getType").invoke(index.get());
+            if(index.isPresent()){
+                type=(String)index.get().getClass().getMethod("getType").invoke(index.get());
+                recoil=recoil(index.get());
+            }
         }catch(ReflectiveOperationException unsupported){/* Older API: use the configured category. */}
+    }
+    private BotAim.Recoil recoil=BotAim.Recoil.NONE;
+    /** The gun's per-shot camera kick, which TaCZ only plays on a player's own client. */
+    BotAim.Recoil recoil(){return recoil;}
+    /** The largest pitch and yaw keyframe values of the gun data's {@code recoil} curves. */
+    private static BotAim.Recoil recoil(Object common){
+        try{
+            Object data=common.getClass().getMethod("getGunData").invoke(common);
+            Object curves=data.getClass().getMethod("getRecoil").invoke(data);
+            if(curves==null)return BotAim.Recoil.NONE;
+            return new BotAim.Recoil(peak((Object[])curves.getClass().getMethod("getPitch").invoke(curves)),
+                    peak((Object[])curves.getClass().getMethod("getYaw").invoke(curves)));
+        }catch(ReflectiveOperationException|RuntimeException unsupported){return BotAim.Recoil.NONE;}
+    }
+    private static double peak(Object[] frames)throws ReflectiveOperationException{
+        double peak=0;
+        if(frames!=null)for(var frame:frames)for(float v:(float[])frame.getClass().getMethod("getValue").invoke(frame))peak=Math.max(peak,Math.abs(v));
+        return Math.min(15,peak);
     }
     String fire(float pitch,float yaw)throws ReflectiveOperationException{
         if(reloading())return "RELOADING";
