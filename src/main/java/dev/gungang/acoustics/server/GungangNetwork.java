@@ -55,6 +55,8 @@ public final class GungangNetwork {
     public record RapierStep(int entity,float yaw,float distance) { }
     /** Every online player's chosen effect colours ({@link EffectColors}), as JSON {uuid: {key: [first, second]}}. */
     public record EffectColorSync(String json) { }
+    /** An arrow grenade burst: origin, shard speed (blocks a tick) and where blocks stop each shard (ArrowGrenadeEntity.DIRECTIONS order). */
+    public record ArrowBurst(double x,double y,double z,float speed,float[] stops) { }
     /** A 74 Hermes' Boots dash: the client replays the fixed-step motion and draws the owner's glow trail. */
     public record HermesDash(int entity,float yaw,float pitch,float distance,int ticks,float trailSeconds) { }
     /** One LAS-5 shot: shooter entity id (-1: none), bullet start and the server-side hit point. */
@@ -148,6 +150,11 @@ public final class GungangNetwork {
         CHANNEL.registerMessage(47,ShockLook.class,(p,b)->{b.writeVarInt(p.ticks);b.writeFloat(p.yaw);b.writeFloat(p.pitch);},
                 b->new ShockLook(b.readVarInt(),b.readFloat(),b.readFloat()),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.ArcShockClient.receive(p.ticks,p.yaw,p.pitch)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(52,ArrowBurst.class,(p,b)->{b.writeDouble(p.x);b.writeDouble(p.y);b.writeDouble(p.z);b.writeFloat(p.speed);b.writeVarInt(p.stops.length);for(float f:p.stops)b.writeFloat(f);},
+                b->{double x=b.readDouble(),y=b.readDouble(),z=b.readDouble();float speed=b.readFloat();int n=b.readVarInt();if(n<0||n>64)throw new IllegalArgumentException("Bad arrow burst");
+                    var stops=new float[n];for(int i=0;i<n;i++)stops[i]=b.readFloat();return new ArrowBurst(x,y,z,speed,stops);},(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.ArrowBursts.receive(p)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(46,HermesDash.class,(p,b)->{b.writeVarInt(p.entity);b.writeFloat(p.yaw);b.writeFloat(p.pitch);b.writeFloat(p.distance);b.writeVarInt(p.ticks);b.writeFloat(p.trailSeconds);},
                 b->new HermesDash(b.readVarInt(),b.readFloat(),b.readFloat(),b.readFloat(),b.readVarInt(),b.readFloat()),(p,context)->{
