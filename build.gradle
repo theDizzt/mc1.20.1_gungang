@@ -182,5 +182,8 @@ tasks.register('exportJar', Copy) {
     dependsOn 'build', 'reobfJar'
     from tasks.named('jar', Jar).flatMap { it.archiveFile }
     into layout.projectDirectory.dir('dist')
-    doLast { commitRelease() }
+    doLast {
+        commitRelease()
+        file('dist/latest-export.txt').setText(tasks.named('jar', Jar).get().archiveFileName.get() + '\n', 'UTF-8')
+    }
 }

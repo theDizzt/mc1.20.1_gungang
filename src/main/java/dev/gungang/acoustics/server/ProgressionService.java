@@ -113,6 +113,12 @@ public final class ProgressionService {
     }
     private static void show(CommandSourceStack source,String target,boolean full) throws Exception {
         var row=resolve(source,target);var progress=table.progress(row.experience());
+        if(full&&source.getEntity() instanceof ServerPlayer viewer&&GungangNetwork.installed(viewer)){
+            var view=new StatsView(row.displayName(),row.tag(),progress.level(),progress.current(),progress.required(),
+                    row.matches(),row.wins(),row.kills(),row.deaths(),row.damage(),row.playSeconds());
+            GungangNetwork.send(viewer,new GungangNetwork.PlayerStats(ServerFiles.GSON.toJson(view)));
+            return;
+        }
         String xp="Lv. "+progress.level()+" · 경험치 "+(progress.level()==91?"MAX":progress.current()+"/"+progress.required());
         String stats=full?String.format(Locale.ROOT,"\n통산 %d경기 · %d승 · %d킬 / %d데스 · 딜량 %.1f · 경기 플레이 %d시간 %d분 %d초",
                 row.matches(),row.wins(),row.kills(),row.deaths(),row.damage(),row.playSeconds()/3600,row.playSeconds()/60%60,row.playSeconds()%60):"";
@@ -121,6 +127,8 @@ public final class ProgressionService {
         if(source.getEntity() instanceof ServerPlayer player)player.sendSystemMessage(message);
         else source.sendSystemMessage(message);
     }
+    public record StatsView(String name,String tag,int level,long current,long required,long matches,long wins,
+                            long kills,long deaths,double damage,long playSeconds) {}
     private static void modify(CommandSourceStack source,String target,String field,String value,boolean add) throws Exception {
         if(!FIELDS.contains(field))throw new IllegalArgumentException("필드: xp, matches, wins, kills, deaths, damage, playSeconds");
         var old=resolve(source,target);
