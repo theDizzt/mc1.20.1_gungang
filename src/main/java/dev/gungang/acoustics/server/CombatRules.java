@@ -62,15 +62,57 @@ public final class CombatRules {
     }
 
     private static boolean guarded(LivingEntity victim){return victim instanceof Player||victim instanceof BotEntity;}
-    /** The push this hit should give: a TaCZ bullet's own knockback, otherwise vanilla's. */
+    /**
+     * The push this hit should give: a TaCZ bullet's own knockback, otherwise vanilla's. TaCZ copies the bullet's
+     * knockback from the shooter's attachment cache, which it only recomputes on draw, refit and fire-mode change; a
+     * stale cache (another gun's, or one from before a pack reload) gives 0, and TaCZ then sets every hit's push to 0.
+     * A 0 there falls back to the gun data's own knockback, so a knockback gun always pushes.
+     */
     private static double strength(Entity direct){
         if(ArcThrower.pellet(direct))return 0;
-        if(!(direct instanceof Las5Damage.BulletAccess))return HIT_STRENGTH;
+        if(!(direct instanceof Las5Damage.BulletAccess access))return HIT_STRENGTH;
         if(bulletKnockbackMissing)return HIT_STRENGTH;
+        float cached;
         try{
             if(bulletKnockback==null){bulletKnockback=Class.forName("com.tacz.guns.entity.EntityKineticBullet").getDeclaredField("knockback");bulletKnockback.setAccessible(true);}
-            return Math.max(0,bulletKnockback.getFloat(direct));
+            cached=bulletKnockback.getFloat(direct);
         }catch(ReflectiveOperationException|RuntimeException|LinkageError unavailable){bulletKnockbackMissing=true;return HIT_STRENGTH;}
+        if(cached>0)return cached;
+        double configured=dataKnockback(access.getGunId());
+        if(configured>0){
+            report("stale","A "+access.getGunId()+" bullet carried knockback "+cached+" from a stale TaCZ attachment cache; GunGang used the gun data's "+configured+".");
+            if(direct instanceof net.minecraft.world.entity.projectile.Projectile bullet&&bullet.getOwner() instanceof LivingEntity shooter)refreshGunCache(shooter);
+        }
+        return configured;
+    }
+    private static java.lang.reflect.Method postChange;
+    private static boolean postChangeMissing;
+    /**
+     * Has TaCZ recompute the shooter's attachment cache (knockback, armor pierce, headshot ...) for the gun in their
+     * main hand, as a draw does. Needed after GunGang swaps the held gun, which the client may not answer with a draw.
+     */
+    public static void refreshGunCache(LivingEntity shooter){
+        if(shooter.level().isClientSide||postChangeMissing)return;
+        try{
+            if(postChange==null)postChange=Class.forName("com.tacz.guns.resource.modifier.AttachmentPropertyManager").getMethod("postChangeEvent",LivingEntity.class,net.minecraft.world.item.ItemStack.class);
+            postChange.invoke(null,shooter,shooter.getMainHandItem());
+        }catch(ReflectiveOperationException|RuntimeException|LinkageError unavailable){postChangeMissing=true;}
+    }
+    private static java.lang.reflect.Method gunIndex,bulletData,dataKnockback;
+    private static boolean gunDataMissing;
+    /** The {@code bullet.knockback} in the gun's TaCZ data, 0 when unknown. */
+    private static double dataKnockback(net.minecraft.resources.ResourceLocation gun){
+        if(gun==null||gunDataMissing)return 0;
+        try{
+            if(gunIndex==null){
+                gunIndex=Class.forName("com.tacz.guns.api.TimelessAPI").getMethod("getCommonGunIndex",net.minecraft.resources.ResourceLocation.class);
+                bulletData=Class.forName("com.tacz.guns.resource.index.CommonGunIndex").getMethod("getBulletData");
+                dataKnockback=Class.forName("com.tacz.guns.resource.pojo.data.gun.BulletData").getMethod("getKnockback");
+            }
+            var index=(Optional<?>)gunIndex.invoke(null,gun);
+            if(index.isEmpty())return 0;
+            return Math.max(0,((Number)dataKnockback.invoke(bulletData.invoke(index.get()))).doubleValue());
+        }catch(ReflectiveOperationException|RuntimeException|LinkageError unavailable){gunDataMissing=true;return 0;}
     }
     /** Guns whose bullets also knock teammates back (friendly fire blocks the damage, and with it vanilla's push). */
     private static final Set<String> ALLY_KNOCKBACK_GUNS=Set.of("zeta:sg225sp");
@@ -85,6 +127,8 @@ public final class CombatRules {
     private record Wind(Vec3 acceleration,LivingEntity owner) {}
     private static final Map<LivingEntity,Wind> WIND=new WeakHashMap<>();
     private static boolean pushing;
+    /** The strength of the push {@link #gunKnockback} is applying. */
+    private static double pushStrength;
     private static boolean pushedNow(LivingEntity victim){return PUSHED.getOrDefault(victim,Long.MIN_VALUE)==victim.level().getGameTime();}
     /**
      * A knockback gun's bullet hitting someone, before TaCZ hurts them: pushes them by the bullet's knockback, away from
@@ -133,7 +177,7 @@ public final class CombatRules {
         double strength=strength(bullet);
         if(strength<=0)return;
         if(everyone)PUSHED.put(victim,victim.level().getGameTime());
-        pushing=true;
+        pushing=true;pushStrength=strength;
         try{victim.knockback(strength,owner.getX()-victim.getX(),owner.getZ()-victim.getZ());}
         finally{pushing=false;}
         if(!(victim instanceof ServerPlayer))victim.hurtMarked=true;
@@ -153,7 +197,8 @@ public final class CombatRules {
         if(quiet()||ArcShock.justHit(victim)){event.setCanceled(true);PENDING.remove(victim);return;}
         // A push gun already pushed this victim this tick: drop the extra push of its own damage hit.
         if(!pushing&&pushedNow(victim)){event.setCanceled(true);PENDING.remove(victim);return;}
-        if(pushing)return;
+        // TaCZ forces the strength left on the victim by its last bullet hit; our own push keeps its strength.
+        if(pushing){if(event.getStrength()<pushStrength*.5)event.setStrength((float)pushStrength);return;}
         var expected=PENDING.remove(victim);
         if(expected==null)return;
         boolean ours=victim instanceof ServerPlayer p&&CombatGadgets.shieldBlocked(p)||Turrets.bulletVictim(victim);
