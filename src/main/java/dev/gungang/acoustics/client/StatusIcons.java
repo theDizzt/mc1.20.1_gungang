@@ -13,14 +13,14 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
 
 /**
- * Status effect icons inside the health bar, right-aligned: GunGang's own icons for 재생, 지휘 깃발, 신속, 투명화 (buffs)
+ * Status effect icons inside the health bar, right-aligned: GunGang's own icons for 재생, 지휘 깃발, 경감, 신속, 투명화 (buffs)
  * and 화상, 중독, 감전, 출혈, 피폭, 멀미 (debuffs), then every other visible effect with its vanilla icon. Timed effects
  * blink in their last three seconds. While the 83 stun baton's 감전 lasts, its slowness and glowing show only as 감전. Statuses only the server knows (flag aura, fallout, recovery potion) arrive with
  * the utility HUD ({@code status_*} gauges) and exist for the local player only.
  */
 public final class StatusIcons {
     public enum Icon {
-        HEAL, FLAG, SWIFT, INVISIBLE, BURN, POISON, SHOCK, BLEED, EXPOSURE, NAUSEA;
+        HEAL, FLAG, REDUCTION, SWIFT, INVISIBLE, BURN, POISON, SHOCK, BLEED, EXPOSURE, NAUSEA;
         final ResourceLocation texture = new ResourceLocation("gungang", "textures/gui/effect/" + name().toLowerCase(java.util.Locale.ROOT) + ".png");
     }
     /** One icon: GunGang's ({@code icon}) or a vanilla effect's ({@code effect}); {@code ticks} left, -1 for no end. */
@@ -73,6 +73,7 @@ public final class StatusIcons {
         int regen = ticks(entity, MobEffects.REGENERATION);
         if (regen != Integer.MIN_VALUE || self && UtilityHud.status("heal")) list.add(new Entry(Icon.HEAL, null, regen == Integer.MIN_VALUE ? -1 : regen));
         if (self && UtilityHud.status("flag")) list.add(new Entry(Icon.FLAG, null, -1));
+        if (reducing(entity)) list.add(new Entry(Icon.REDUCTION, null, -1));
         add(list, entity, Icon.SWIFT, MobEffects.MOVEMENT_SPEED);
         add(list, entity, Icon.INVISIBLE, MobEffects.INVISIBILITY);
         if (entity.isOnFire()) list.add(new Entry(Icon.BURN, null, -1));
@@ -91,6 +92,11 @@ public final class StatusIcons {
             list.add(new Entry(null, instance.getEffect(), instance.isInfiniteDuration() ? -1 : instance.getDuration()));
         }
         return list;
+    }
+    /** 경감: damage is being cut right now (a raised shield, or the twin blades' right-click guard). */
+    public static boolean reducing(LivingEntity entity) {
+        return entity instanceof net.minecraft.world.entity.player.Player p && dev.gungang.acoustics.server.CombatGadgets.holdingShield(p)
+                || dev.gungang.acoustics.server.TwinBlades.guarding(entity);
     }
     private static void add(List<Entry> list, LivingEntity entity, Icon icon, MobEffect effect) {
         int t = ticks(entity, effect);

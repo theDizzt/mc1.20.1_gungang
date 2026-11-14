@@ -140,7 +140,7 @@ final class BotGadgets {
     private void dashStep(BotEntity bot) {
         if(dashSteps<=0)return;
         bot.setDeltaMovement(Vec3.ZERO);
-        bot.move(net.minecraft.world.entity.MoverType.SELF,dashStep);
+        bot.move(net.minecraft.world.entity.MoverType.SELF,RapierDash.groundHug(dashStep));
         bot.fallDistance=0;
         dashSteps=bot.horizontalCollision?0:dashSteps-1;
         bot.setDeltaMovement(Vec3.ZERO);
