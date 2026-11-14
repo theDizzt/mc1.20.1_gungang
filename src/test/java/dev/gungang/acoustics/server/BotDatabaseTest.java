@@ -52,7 +52,24 @@ class BotDatabaseTest {
         assertEquals("Legacy",db.profile(0).name());assertEquals(0,db.profile(0).statistics().kills());
         assertEquals(4,db.profile(1).statistics().kills());assertEquals(1,db.profile(1).statistics().wins());
         assertEquals("Third",db.profile(2).name());assertEquals("file:third.png",db.profile(2).skin());
-        assertEquals(BotManager.MAX,BotDatabase.MAX);assertEquals(-1,BotDatabase.slot(java.util.UUID.randomUUID()));
+        assertEquals(12,BotDatabase.PROFILES);assertEquals(8,BotManager.MAX);assertEquals(-1,BotDatabase.slot(java.util.UUID.randomUUID()));
+        // The four profiles missing from the old file start from defaults.
+        assertEquals("Rookie 12",db.profile(11).name());assertEquals(11,BotDatabase.slot(BotDatabase.id(11)));
+    }
+    @Test void everyProfileGetsADistinctTagThatPersists()throws Exception{
+        Path file=directory.resolve("bot-db.json");
+        var db=new BotDatabase(file);
+        var tags=new java.util.HashSet<String>();
+        for(int i=0;i<BotDatabase.PROFILES;i++){String tag=db.profile(i).tag();assertTrue(tag.matches("[0-9]{4}"),tag);tags.add(tag);}
+        assertEquals(BotDatabase.PROFILES,tags.size());
+        String first=db.profile(0).tag();
+        db.update(db.profile(0).named("Renamed"));
+        assertEquals(first,new BotDatabase(file).profile(0).tag());
+        // The record's name (a copy of the profile's) and nickname are not stored, and the name comes back on load.
+        var stats=com.google.gson.JsonParser.parseString(Files.readString(file)).getAsJsonObject().getAsJsonArray("bots").get(0).getAsJsonObject().getAsJsonObject("statistics");
+        assertFalse(stats.has("name"));assertFalse(stats.has("nickname"));assertTrue(stats.has("tag"));
+        var reloaded=new BotDatabase(file).profile(0);
+        assertEquals("Renamed",reloaded.statistics().name());assertEquals("",reloaded.statistics().nickname());
     }
     @Test void documentedExamplesLoad()throws Exception{
         Path examples=Path.of("docs/server-examples/config/gungang");

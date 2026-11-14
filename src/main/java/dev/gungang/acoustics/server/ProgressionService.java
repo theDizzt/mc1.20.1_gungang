@@ -45,9 +45,15 @@ public final class ProgressionService {
         if(database==null||server==null)return;
         Map<String,Integer> levels=new HashMap<>();
         for(var p:server.getPlayerList().getPlayers())levels.put(p.getUUID().toString(),table.progress(record(p).experience()).level());
-        for(int slot=0;slot<BotManager.MAX;slot++){var id=BotDatabase.id(slot);levels.put(id.toString(),table.progress(BotManager.experience(id)).level());}
+        for(int slot=0;slot<BotManager.PROFILES;slot++){var id=BotDatabase.id(slot);levels.put(id.toString(),table.progress(BotManager.experience(id)).level());}
         String json=ServerFiles.GSON.toJson(levels);
         for(var p:server.getPlayerList().getPlayers())GungangNetwork.send(p,new GungangNetwork.Levels(json));
+    }
+    /** Every stored player record by lower-case UUID (empty when the DB is unavailable): names for saved match results. */
+    static Map<String,PlayerRecord> records() {
+        if(database==null)return Map.of();
+        var map=new HashMap<String,PlayerRecord>();for(var r:database.all())map.put(r.id().toLowerCase(Locale.ROOT),r);
+        return map;
     }
     static PlayerRecord record(ServerPlayer player) {
         if(database==null)throw new IllegalStateException("플레이어 DB가 로드되지 않았습니다.");
@@ -114,7 +120,7 @@ public final class ProgressionService {
     private static void show(CommandSourceStack source,String target,boolean full) throws Exception {
         var row=resolve(source,target);var progress=table.progress(row.experience());
         if(full&&source.getEntity() instanceof ServerPlayer viewer&&GungangNetwork.installed(viewer)){
-            var view=new StatsView(row.displayName(),row.tag(),progress.level(),progress.current(),progress.required(),
+            var view=new StatsView(row.id(),row.displayName(),row.tag(),progress.level(),progress.current(),progress.required(),
                     row.matches(),row.wins(),row.kills(),row.deaths(),row.damage(),row.playSeconds());
             GungangNetwork.send(viewer,new GungangNetwork.PlayerStats(ServerFiles.GSON.toJson(view)));
             return;
@@ -127,7 +133,7 @@ public final class ProgressionService {
         if(source.getEntity() instanceof ServerPlayer player)player.sendSystemMessage(message);
         else source.sendSystemMessage(message);
     }
-    public record StatsView(String name,String tag,int level,long current,long required,long matches,long wins,
+    public record StatsView(String id,String name,String tag,int level,long current,long required,long matches,long wins,
                             long kills,long deaths,double damage,long playSeconds) {}
     private static void modify(CommandSourceStack source,String target,String field,String value,boolean add) throws Exception {
         if(!FIELDS.contains(field))throw new IllegalArgumentException("필드: xp, matches, wins, kills, deaths, damage, playSeconds");

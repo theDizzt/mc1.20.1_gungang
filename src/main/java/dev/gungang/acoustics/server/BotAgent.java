@@ -100,7 +100,7 @@ final class BotAgent {
         level.getChunk(net.minecraft.core.BlockPos.containing(spawn.x(),spawn.y(),spawn.z()));
         bot.moveTo(spawn.x(),spawn.y(),spawn.z(),spawn.yaw(),spawn.pitch());
         // Free-for-all hides every name tag; the bot's must not give it away either.
-        bot.setCustomName(Component.literal(name()).withStyle(LobbyManager.options().formatting(team)));bot.setCustomNameVisible(ffa==null);
+        bot.setCustomName(Component.literal(name()).withStyle(LobbyManager.options().formatting(team)).append(PlayerTag.component(BotManager.tag(slot))));bot.setCustomNameVisible(ffa==null);
         bot.skin(BotManager.skin(slot));
         bot.getAttribute(Attributes.MAX_HEALTH).setBaseValue(LoadoutAttributes.maxHealth(weapon.maxHealth(),LobbyManager.healthScale(team)));
         usingSecondary=false;secondarySupplied=false;nextSwitch=switchedAt=0;health.reset();movement.reset();
@@ -127,7 +127,7 @@ final class BotAgent {
         bornAt=server.getTickCount();lifeDamage=0;encounterDistance=0;
         // Each bot thinks and paths on its own offset, so several bots never pile their work onto the same tick.
         int now=server.getTickCount();target=null;nextShot=now;
-        nextThink=now+slot*settings.thinkTicks()/BotManager.MAX;nextPath=now+slot*settings.pathTicks()/BotManager.MAX;
+        nextThink=now+slot*settings.thinkTicks()/BotManager.PROFILES;nextPath=now+slot*settings.pathTicks()/BotManager.PROFILES;
     }
     /**
      * 숨바꼭질: hiders start at the ALPHA spawn as a block with nothing in hand, seekers in their waiting room with the
@@ -143,7 +143,7 @@ final class BotAgent {
         var spawn=hider?arena.alphaSpawn():arena.bravoSpawn();
         level.getChunk(net.minecraft.core.BlockPos.containing(spawn.x(),spawn.y(),spawn.z()));
         bot.moveTo(spawn.x(),spawn.y(),spawn.z(),spawn.yaw(),spawn.pitch());
-        bot.setCustomName(Component.literal(name()).withStyle(LobbyManager.options().formatting(team)));bot.setCustomNameVisible(!hider);
+        bot.setCustomName(Component.literal(name()).withStyle(LobbyManager.options().formatting(team)).append(PlayerTag.component(BotManager.tag(slot))));bot.setCustomNameVisible(!hider);
         bot.skin(BotManager.skin(slot));
         secondary=null;secondaryStack=ItemStack.EMPTY;usingSecondary=false;secondarySupplied=false;nextSwitch=switchedAt=0;
         primaryStack=hider?ItemStack.EMPTY:hunt.seekerShotgun();
@@ -157,7 +157,7 @@ final class BotAgent {
         hunt.botSpawned(bot);updateSpeed();
         gun=hider||!BotGun.supports(primaryStack)?null:new BotGun(bot);
         bornAt=server.getTickCount();lifeDamage=0;encounterDistance=0;target=null;nextShot=server.getTickCount();
-        nextThink=server.getTickCount()+slot*settings.thinkTicks()/BotManager.MAX;
+        nextThink=server.getTickCount()+slot*settings.thinkTicks()/BotManager.PROFILES;
         propHunt.reset(this,hunt);
     }
     /** 숨바꼭질 tick: the match handles the disguise and waiting room; the bot only decides where to go and what to do. */
