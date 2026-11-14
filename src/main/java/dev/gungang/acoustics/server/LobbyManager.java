@@ -946,6 +946,7 @@ public final class LobbyManager {
         if(slot==40) SecondaryRuntime.configure(p,stack,weapon);
         if(slot==0) LoadoutAttributes.apply(p,weapon);
         p.getInventory().setItem(slot, stack);
+        if (slot == p.getInventory().selected) CombatRules.refreshGunCache(p);
         if (!remember) LoadoutSlots.preserve(p,displaced);
         CompoundBow.syncAmmo(p);
         p.inventoryMenu.broadcastChanges();
