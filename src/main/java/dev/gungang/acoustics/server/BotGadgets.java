@@ -34,6 +34,10 @@ final class BotGadgets {
     private long lastHurt;
     private boolean lifeActive,disabled;
     private Vec3 jetDirection,jetPrevious;
+    /** A fixed-step dash in progress (Hermes' Boots, rapier): steps left and the move per step. */
+    private int dashSteps;private Vec3 dashStep=Vec3.ZERO;
+    /** Hermes' Boots charges and when the next one comes back; the rapier's next dash. */
+    private int hermesCharges;private long hermesRecharge,rapierReady;
     private DamageSource lifeSource;
 
     /** Gadget kind for an item, "use" for any other usable item, or "" for items the bot holds as weapons. */
@@ -47,6 +51,7 @@ final class BotGadgets {
         reset(bot);
         kind=weapon==null?"":kind(item,held);id=weapon==null?"":weapon.id();stack=item;disabled=false;
         if(id.equals(Defibrillator.ID))kind="mercy";
+        if(kind.equals("hermes_boots")){hermesCharges=ExtraGadgetConfig.hermes.maxCharges();hermesRecharge=0;}
         if(kind.isEmpty())return;
         cooldown=switch(kind) {
             case "turret"->ExtraGadgetConfig.ticks(Turrets.config.cooldownSeconds());
@@ -75,7 +80,7 @@ final class BotGadgets {
             if(lifeActive)bot.setAbsorptionAmount(0);
             if(healEnd>bot.level().getGameTime())HealCue.interrupted(bot);
         }
-        healEnd=boostEnd=jetEnd=lifeEnd=raisedUntil=shieldRepair=0;lifeActive=false;jetDirection=null;lifeSource=null;
+        healEnd=boostEnd=jetEnd=lifeEnd=raisedUntil=shieldRepair=0;lifeActive=false;jetDirection=null;lifeSource=null;dashSteps=0;
     }
     /** Recovery potion health still to come. */
     float pendingHeal(long now) {return now<healEnd?(healEnd-now)*healPerTick:0;}
@@ -89,6 +94,57 @@ final class BotGadgets {
     }
 
     boolean jetting() {return jetDirection!=null;}
+    boolean dashing() {return dashSteps>0;}
+    /** The dash this bot can make now: "hermes" (secondary boots), "rapier" (held rapier), or "". */
+    String mobility(BotEntity bot) {
+        long now=bot.level().getGameTime();
+        if(kind.equals("hermes_boots")&&hermesCharges>0&&!disabled)return "hermes";
+        if(bot.getMainHandItem().getItem() instanceof RapierItem&&now>=rapierReady)return "rapier";
+        return "";
+    }
+    int hermesCharges() {return hermesCharges;}
+    /**
+     * Starts a dash toward {@code yaw}, as a player's: Hermes' Boots spend a charge, the rapier its dash energy
+     * (cost over regeneration as a cooldown). Shortened to the last safe ground on the way (no drops, death zones or
+     * known hazards); refused when less than 2 blocks remain.
+     */
+    boolean dash(BotEntity bot,ArenaMap arena,String type,float yaw,double wanted) {
+        if(dashing()||jetting()||!bot.onGround()||bot.isPassenger())return false;
+        boolean rapier=type.equals("rapier");
+        double distance=Math.min(wanted,rapier?ExtraGadgetConfig.rapier.dashDistance():ExtraGadgetConfig.hermes.dashDistance());
+        int ticks=rapier?RapierItem.DASH_TICKS:ExtraGadgetConfig.hermes.dashTicks();
+        var direction=Vec3.directionFromRotation(0,yaw);var from=bot.position();double safe=0;
+        for(double d=1;d<=distance+1e-6;d+=1){
+            if(!BotMovement.safeSegment(bot,arena,from.add(direction.scale(d-1)),from.add(direction.scale(d))))break;
+            safe=d;
+        }
+        if(safe<2)return false;
+        var level=(ServerLevel)bot.level();long now=level.getGameTime();
+        ticks=Math.max(1,(int)Math.round(ticks*safe/distance));
+        dashSteps=ticks;dashStep=direction.scale(safe/ticks);
+        bot.getNavigation().stop();bot.setDeltaMovement(Vec3.ZERO);bot.fallDistance=0;
+        if(rapier){
+            var config=ExtraGadgetConfig.rapier;
+            rapierReady=now+Math.max(20,Math.round(config.energyCost()/Math.max(.1,config.energyRegenPerSecond())*20));
+            level.playSound(null,bot.blockPosition(),SoundEvents.PLAYER_ATTACK_SWEEP,SoundSource.PLAYERS,.8f,1.4f);
+        }else{
+            if(hermesCharges==ExtraGadgetConfig.hermes.maxCharges())hermesRecharge=now+ExtraGadgetConfig.ticks(ExtraGadgetConfig.hermes.chargeSeconds());
+            hermesCharges--;
+            level.playSound(null,bot.blockPosition(),SoundEvents.PHANTOM_FLAP,SoundSource.PLAYERS,.8f,1.6f);
+            level.playSound(null,bot.blockPosition(),SoundEvents.AMETHYST_BLOCK_CHIME,SoundSource.PLAYERS,.6f,1.8f);
+        }
+        BotLearning.event(bot,"dash:"+type);
+        return true;
+    }
+    /** One dash step a tick; a wall ends it where the bot stands. */
+    private void dashStep(BotEntity bot) {
+        if(dashSteps<=0)return;
+        bot.setDeltaMovement(Vec3.ZERO);
+        bot.move(net.minecraft.world.entity.MoverType.SELF,dashStep);
+        bot.fallDistance=0;
+        dashSteps=bot.horizontalCollision?0:dashSteps-1;
+        bot.setDeltaMovement(Vec3.ZERO);
+    }
     boolean shielding(long now) {return kind.equals("shield")&&now<raisedUntil&&shieldHealth>0;}
     /** Players cannot fire while flying a jetpack or holding a raised shield; neither can the bot. */
     boolean blocksAttack(long now) {return jetting()||shielding(now);}
@@ -164,6 +220,10 @@ final class BotGadgets {
     }
 
     private void effects(BotEntity bot,ServerLevel level,long now) {
+        dashStep(bot);
+        if(kind.equals("hermes_boots")&&hermesCharges<ExtraGadgetConfig.hermes.maxCharges()&&now>=hermesRecharge){
+            hermesCharges++;hermesRecharge=now+ExtraGadgetConfig.ticks(ExtraGadgetConfig.hermes.chargeSeconds());
+        }
         if(now<healEnd) {HealCue.potion(bot,(int)(now-healStart),(int)(healEnd-now));bot.heal(healPerTick);}
         if(now<boostEnd)GadgetAura.stim(bot,now);
         if(boostEnd!=0&&now>=boostEnd) {var speed=bot.getAttribute(Attributes.MOVEMENT_SPEED);if(speed!=null)speed.removeModifier(SPEED);boostEnd=0;}

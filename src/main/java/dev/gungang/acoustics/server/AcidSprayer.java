@@ -44,11 +44,19 @@ public final class AcidSprayer {
     private static final DustParticleOptions GAS_DARK=new DustParticleOptions(new org.joml.Vector3f(.3f,.62f,.05f),2.4f);
     /** One acid cloud: where it is, where a push carries it (from {@code from} between the two ticks), and its end. */
     private static final class Cloud {
-        final ServerLevel level;final UUID owner;final long expires;
+        final ServerLevel level;final UUID owner;final long expires;final UUID id=UUID.randomUUID();
         Vec3 position,from,to;long pushStart,pushEnd;
         Cloud(ServerLevel level,UUID owner,Vec3 position,long expires){this.level=level;this.owner=owner;this.position=position;this.expires=expires;}
     }
     private static final List<Cloud> CLOUDS=new ArrayList<>();
+    /** A live gas cloud, for bots to stay out of. */
+    record Gas(UUID id,Vec3 position,double radius) {}
+    static List<Gas> gas(net.minecraft.world.level.Level level,Vec3 near,double range){
+        var result=new ArrayList<Gas>();double radius=ExtraGadgetConfig.acidSprayer.cloudRadius();
+        for(var cloud:CLOUDS)if(cloud.level==level&&cloud.expires>level.getGameTime()&&cloud.position.distanceToSqr(near)<=range*range)
+            result.add(new Gas(cloud.id,cloud.position,radius));
+        return result;
+    }
     /** Game tick each shooter last fired (left or right click), for the ammo regeneration delay. */
     private static final Map<UUID,Long> LAST_USE=new HashMap<>();
     /** Game tick a shooter last got a muzzle cloud: one per tick however many pellets the pack fires. */

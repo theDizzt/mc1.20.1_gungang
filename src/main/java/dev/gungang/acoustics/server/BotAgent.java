@@ -323,7 +323,9 @@ final class BotAgent {
         gadgets.tick(bot,arena,team,target,seen,movement,thought,traveling);
         if(bot==null||bot.isRemoved())return;
         long time=bot.level().getGameTime();
+        if(thought&&!gadgets.jetting())dash(now,seen,arena,traveling);
         if(gadgets.jetting()){aim.idle(bot);return;} // The jetpack steers the body.
+        if(gadgets.dashing()){aim.idle(bot);return;} // A dash steers the body for its few ticks.
         // A known spawn exit outranks wandering toward sounds or regrouping, but never an immediate threat.
         boolean bombObjective=bombMatch!=null&&bombMatch.objective(team,slot)!=null;
         if(bombObjective)movement.followObjectiveFromSpawn();
@@ -416,6 +418,9 @@ final class BotAgent {
     private boolean enemy(LivingEntity e){
         if(e==null||e==bot||!e.isAlive()||e.isSpectator()||e.level()!=bot.level())return false;
         if(e instanceof ServerPlayer p&&(p.isCreative()||LobbyManager.respawning(p.getUUID())))return false;
+        // An enemy turret can be shot down like any enemy (allied and own turrets cannot).
+        if(e instanceof TurretEntity turret){String own=bot.getTeam()==null?"":bot.getTeam().getName();
+            return !bot.getUUID().equals(turret.owner())&&(own.isEmpty()||!own.equals(turret.teamName()));}
         if(!(e instanceof ServerPlayer)&&!(e instanceof BotEntity))return false;
         String side=BotManager.side(e);
         var ffa=MatchManager.freeForAll();
@@ -433,6 +438,41 @@ final class BotAgent {
             if(target!=previous)nextPath=0;
         }else if(gun!=null)gun.stop();
     }
+    /**
+     * Movement abilities, as a player uses them: out of acid, fire or a turret's reach first; a melee weapon closes the
+     * gap to a visible enemy; Hermes' Boots side-step while under fire in a gunfight, and cover ground when traveling
+     * with both charges full.
+     */
+    private void dash(int now,boolean seen,ArenaMap arena,boolean traveling){
+        String type=gadgets.mobility(bot);if(type.isEmpty()||SafeZones.contains(bot))return;
+        var random=bot.getRandom();
+        var hazard=perception.danger(bot.position());
+        if(hazard!=null){
+            var away=bot.position().subtract(hazard.center());
+            float yaw=away.horizontalDistanceSqr()<1e-4?random.nextFloat()*360:yaw(away);
+            gadgets.dash(bot,arena,type,yaw,hazard.radius()+2-Math.sqrt(away.horizontalDistanceSqr()));
+            return;
+        }
+        if(seen&&target!=null){
+            double distance=bot.distanceTo(target);var toward=target.position().subtract(bot.position());
+            if(BotManager.melee(bot.getMainHandItem())){
+                if(distance>3.5&&distance<12&&Math.abs(target.getY()-bot.getY())<1.5)gadgets.dash(bot,arena,type,yaw(toward),distance-1.5);
+                return;
+            }
+            if(type.equals("hermes")&&perception.underFire(now)&&distance>5&&random.nextFloat()<.35f)
+                gadgets.dash(bot,arena,type,yaw(toward)+(random.nextBoolean()?90:-90),4+random.nextDouble()*2);
+            return;
+        }
+        var goal=movement.goal();
+        if(type.equals("hermes")&&traveling&&goal!=null&&gadgets.hermesCharges()==ExtraGadgetConfig.hermes.maxCharges()&&!perception.underFire(now)){
+            var toward=goal.subtract(bot.position());
+            // Only a straight run: the next path node ahead lies the same way as the goal.
+            var next=bot.getNavigation().getPath()==null||bot.getNavigation().getPath().isDone()?null:bot.getNavigation().getPath().getNextEntityPos(bot);
+            if(toward.horizontalDistance()>16&&next!=null&&Math.abs(net.minecraft.util.Mth.wrapDegrees(yaw(next.subtract(bot.position()))-yaw(toward)))<20
+                    &&random.nextFloat()<.3f)gadgets.dash(bot,arena,type,yaw(toward),toward.horizontalDistance()-4);
+        }
+    }
+    private static float yaw(Vec3 direction){return (float)(Math.atan2(direction.z,direction.x)*180/Math.PI)-90;}
     /** Fires along the bot's current aim (spread, tremor and lead included), not straight at the target. */
     private void shoot(LivingEntity enemy)throws ReflectiveOperationException{
         var server=BotManager.server();
@@ -440,6 +480,7 @@ final class BotAgent {
         bot.setYRot(yaw);bot.setYHeadRot(yaw);bot.setXRot(pitch);
         if(gun!=null){
             String result=gun.fire(pitch,yaw);
+            if(result.equals("SUCCESS"))aim.kick(bot,gun.recoil());
             BotManager.heard(bot);
             if(result.equals("NO_AMMO")&&!usingSecondary&&heldSecondary()
                     &&(!BotManager.melee(secondaryStack)||bot.distanceToSqr(enemy)<9))equip(true,server.getTickCount());
@@ -464,6 +505,13 @@ final class BotAgent {
         if(MatchManager.realPropHunt()!=null){if(bot!=null)propHunt.hurt(this,event.getSource());return;}
         gadgets.hurt(bot,event);
         // Shot by someone: remember roughly where from and re-think now; unseen attackers get investigated (turned toward).
+        if(event.getAmount()>0&&bot!=null)aim.flinch(bot,event.getAmount(),BotManager.settings());
+        // A turret's shots name its owner as the attacker: fight the turret itself, or get out of its reach when the
+        // bot cannot (melee weapon, low health, no line of fire).
+        if(event.getAmount()>0&&bot!=null&&event.getSource().getDirectEntity() instanceof TurretEntity turret&&enemy(turret)){
+            boolean flee=BotManager.melee(bot.getMainHandItem())||bot.getHealth()-event.getAmount()<bot.getMaxHealth()*.4f||!bot.hasLineOfSight(turret);
+            perception.turretHit(turret,now,flee);perception.hit(bot,turret,now,event.getAmount());movement.hit(bot,event.getAmount(),now);nextThink=now;nextPath=now;return;
+        }
         if(event.getAmount()>0&&event.getSource().getEntity() instanceof LivingEntity attacker&&enemy(attacker)){
             movement.hit(bot,event.getAmount(),now);nextPath=now;
             perception.hit(bot,attacker,now,event.getAmount());nextThink=now;
