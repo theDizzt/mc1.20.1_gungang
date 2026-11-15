@@ -25,6 +25,7 @@ public final class TargetHealthBar {
         // Prop hunt: overhead bars would give hidden players away.
         if (!ShooterHud.visible(mc) || mc.getCameraEntity() == null || PropHuntClient.active()) return;
         Vec3 eye = event.getCamera().getPosition();
+        boolean showNumbers = !MatchHud.active();
         for (var entity : mc.level.entitiesForRendering()) {
             if (!(entity instanceof LivingEntity target) || !target.isAlive() || target == mc.player
                     || target.isSpectator() || target.isInvisibleTo(mc.player)
@@ -56,9 +57,28 @@ public final class TargetHealthBar {
                 if (end > start) rectangle(vertices, matrix, -29 + 58 * start, -3, -29 + 58 * end, 3,
                         layers.colorAt((start + end) / 2, color));
             }
+            if (showNumbers) healthNumbers(mc, pose, target, color);
             pose.popPose();
         }
         BUFFER.endBatch();
+    }
+
+    /** Outside a match, right-align the whole health label just to the left of the bar. */
+    private static void healthNumbers(Minecraft mc, com.mojang.blaze3d.vertex.PoseStack pose, LivingEntity target, int color) {
+        var current = HudText.gungang(HudHealth.number(target.getHealth()));
+        var maximum = HudText.gungang("/" + HudHealth.number(target.getMaxHealth()));
+        float small = .65f;
+        float currentWidth = mc.font.width(current), maxWidth = mc.font.width(maximum) * small;
+        float left = -34 - currentWidth - maxWidth;
+        mc.font.drawInBatch(current, left, -4, color, true, pose.last().pose(), BUFFER,
+                net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, 15728880);
+        pose.pushPose();
+        // Align the smaller suffix to the current-health text's baseline.
+        pose.translate(left + currentWidth, -4 + 7 * (1 - small), 0);
+        pose.scale(small, small, 1);
+        mc.font.drawInBatch(maximum, 0, 0, color, true, pose.last().pose(), BUFFER,
+                net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, 15728880);
+        pose.popPose();
     }
 
     private static void rectangle(VertexConsumer out, Matrix4f matrix, float x0, float y0, float x1, float y1, int color) {

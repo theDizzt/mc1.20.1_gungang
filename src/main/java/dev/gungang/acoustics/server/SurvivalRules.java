@@ -5,6 +5,10 @@ public final class SurvivalRules {
     public static final float LIFE_HEALTH=.001f,LIFE_ABSORPTION=30,JET_DAMAGE=25;
     public static final double JET_SPEED=.85;
     public static boolean recovered(float health) {return health>LIFE_HEALTH;}
-    public static float drain(float absorption) {return Math.max(0,absorption-(float)ExtraGadgetConfig.life.drainAmount());}
+    /** Passive decay cannot consume the last point or restore reserve already lost to an attack. */
+    public static float drain(float absorption) {
+        float reserve=Math.max(0,absorption);
+        return Math.max(Math.min(1,reserve),reserve-(float)ExtraGadgetConfig.life.drainAmount());
+    }
     private SurvivalRules() { }
 }

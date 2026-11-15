@@ -839,6 +839,57 @@ public final class LobbyManager {
         var bounds = p.getBoundingBox();
         return area.contains(bounds.minX, bounds.minY, bounds.minZ) && area.contains(bounds.maxX, bounds.maxY, bounds.maxZ);
     }
+    private record SpawnRegion(ArenaMap.Area area,ArenaMap.Spawn spawn){
+        boolean contains(net.minecraft.world.entity.LivingEntity body){
+            if(area==null)return body.distanceToSqr(spawn.x(),spawn.y(),spawn.z())<=16;
+            var box=body.getBoundingBox();
+            return box.intersects(new net.minecraft.world.phys.AABB(area.minX(),area.minY(),area.minZ(),area.maxX(),area.maxY(),area.maxZ()));
+        }
+    }
+    private static Map<String,SpawnRegion> currentSpawnRegions(){
+        if(activeMap==null||!(phase.equals("PREPARING")||phase.equals("RUNNING"))
+                ||MatchManager.freeForAll()!=null||MatchManager.realPropHunt()!=null)return Map.of();
+        var result=new HashMap<String,SpawnRegion>();
+        for(String team:List.of("ALPHA","BRAVO")){
+            var spawn=BotMovement.homeSpawn(activeMap,team);
+            var area=BotMovement.homeRoom(activeMap,team);
+            if(phase.equals("RUNNING")&&team.equals("BRAVO")&&activeMap.normandy()!=null){spawn=MatchManager.attackSpawn();area=null;}
+            if(spawn!=null)result.put(team,new SpawnRegion(area,spawn));
+        }
+        return result;
+    }
+    private static final Map<UUID,Integer> SPAWN_CHANGED_NOTICE=new HashMap<>();
+    /** A newly claimed enemy base must never trap bodies already standing in it. */
+    private static void relocateChangedSpawns(Map<String,SpawnRegion> before){
+        var after=currentSpawnRegions();if(before.isEmpty()||after.isEmpty()||before.equals(after))return;
+        var world=level(activeMap);
+        var bodies=new ArrayList<net.minecraft.world.entity.LivingEntity>(world.players());bodies.addAll(BotManager.entities());
+        for(var body:bodies){
+            if(body.level()!=world||!body.isAlive()||body.isSpectator()||respawning(body.getUUID()))continue;
+            String team=BotManager.side(body);if(!team.equals("ALPHA")&&!team.equals("BRAVO"))continue;
+            String enemy=team.equals("ALPHA")?"BRAVO":"ALPHA";
+            var old=before.get(enemy);var next=after.get(enemy);var home=after.get(team);
+            if(old==null||next==null||home==null||old.equals(next)||!next.contains(body)||old.contains(body))continue;
+            body.stopRiding();body.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);body.fallDistance=0;
+            var spawn=home.spawn();
+            if(body instanceof ServerPlayer player){
+                player.teleportTo(world,spawn.x(),spawn.y(),spawn.z(),spawn.yaw(),spawn.pitch());
+                SPAWN_CHANGED_NOTICE.put(player.getUUID(),server.getTickCount()+60);
+            }else if(body instanceof BotEntity bot){
+                bot.getNavigation().stop();bot.teleportTo(spawn.x(),spawn.y(),spawn.z());
+                bot.setYRot(spawn.yaw());bot.setYHeadRot(spawn.yaw());bot.setXRot(spawn.pitch());
+                bot.hasImpulse=true;bot.hurtMarked=true;
+            }
+        }
+    }
+    private static void spawnChangedNotices(int now){
+        if(!phase.equals("RUNNING")&&!phase.equals("PREPARING")){SPAWN_CHANGED_NOTICE.clear();return;}
+        SPAWN_CHANGED_NOTICE.entrySet().removeIf(e->e.getValue()<=now||server.getPlayerList().getPlayer(e.getKey())==null);
+        for(var id:SPAWN_CHANGED_NOTICE.keySet()){
+            var p=server.getPlayerList().getPlayer(id);
+            p.displayClientMessage(Component.literal("이 지역이 상대팀 스폰 위치로 변경되어 아군의 현재 스폰 위치로 이동했습니다."),true);
+        }
+    }
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END || server == null) return;
         int now = server.getTickCount();
@@ -872,7 +923,12 @@ public final class LobbyManager {
                 broadcast(false);
             }
         }
-        if (phase.equals("PREPARING") || phase.equals("RUNNING")) MatchManager.tick(Math.max(0,(deadline-now+19)/20));
+        if (phase.equals("PREPARING") || phase.equals("RUNNING")) {
+            var previousSpawns=currentSpawnRegions();
+            MatchManager.tick(Math.max(0,(deadline-now+19)/20));
+            relocateChangedSpawns(previousSpawns);
+        }
+        spawnChangedNotices(now);
         if (now % 4 == 0) {
             for (var p : server.getPlayerList().getPlayers()) {
                 equipment(p, false);
