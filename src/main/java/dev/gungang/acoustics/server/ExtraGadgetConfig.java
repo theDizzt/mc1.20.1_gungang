@@ -128,12 +128,14 @@ public final class ExtraGadgetConfig {
     public record ArcThrower(double damage,double arcDamage,double arcRadius,double glowSeconds) { }
     public static ArcThrower arcThrower=new ArcThrower(36,24,3,1);
     /**
-     * 35 classic blower: windRange limits the left-click wind's push; right click fires an air cannon
+     * 35 classic blower: the left-click wind is a cone windRange blocks long and windConeAngle degrees off the aim that
+     * accelerates what it touches up to windMaxSpeed blocks/tick along the aim; right click fires an air cannon
      * ({@link dev.gungang.acoustics.server.WindBlower}).
      */
     public record WindBlower(double windRange,int cannonAmmoCost,double cannonDamage,double cannonKnockbackMultiplier,double cannonSelfKnockback,
-                             double cannonRange,double cannonRadius,double cannonCooldownSeconds) { }
-    public static WindBlower windBlower=new WindBlower(7,30,10,3,1,8,1.5,1);
+                             double cannonRange,double cannonRadius,double cannonCooldownSeconds,double windConeAngle,double windMaxSpeed) { }
+    static final WindBlower WIND_BLOWER_DEFAULTS=new WindBlower(7,30,10,3,1,8,1.5,1,15,1);
+    public static WindBlower windBlower=WIND_BLOWER_DEFAULTS;
     /**
      * 33 shuriken ({@link ShurikenItem}): every throw spends ammoPerThrow of the capacity-round magazine. Semi throws
      * three in a row along the aim (semiIntervalTicks apart), burst three at once fanned burstAngle degrees apart, and
@@ -147,6 +149,25 @@ public final class ExtraGadgetConfig {
     }
     public static final Shuriken SHURIKEN_DEFAULTS=new Shuriken(18,3,1.5,.5,3,1.5,5,13,2,13,8,33,22,11,16,.5,.42);
     public static Shuriken shuriken=SHURIKEN_DEFAULTS;
+    /**
+     * 39 magic book ({@link MagicBook}): mana (manaCapacity, +1 every manaRegenSeconds, +smallPackMana / largePackMana
+     * from a health pack) pays for the five elements' left and right click abilities. Costs per use, or per second
+     * for the held ones (quake, holy water, flight); the ruin beam costs health per second instead.
+     */
+    public record MagicBook(int manaCapacity,double manaRegenSeconds,int smallPackMana,int largePackMana,
+                            double slamDamage,int slamMana,double slamCooldownSeconds,double slamRange,double slamLift,
+                            double quakeDamagePerSecond,double quakeManaPerSecond,double quakeCooldownSeconds,double quakeRadius,
+                            double holyManaPerSecond,double holyRange,double holyHealPerSecond,
+                            int dropMana,double dropCooldownSeconds,double dropRange,double dropSpeedSeconds,
+                            double fireballDamage,int fireballMana,double fireballIntervalSeconds,double fireballRange,
+                            double flameDamagePerSecond,int flameMana,double flameCooldownSeconds,double flameSeconds,double flameRange,
+                            double lightDamage,int lightMana,double lightIntervalSeconds,double lightRange,
+                            double lightningDamage,int lightningMana,double lightningCooldownSeconds,double lightningSeconds,int lightningCount,double lightningRadius,
+                            double ruinDamagePerSecond,double ruinHealthPerSecond,double ruinRange,
+                            double flightManaPerSecond,double flightCooldownSeconds,double flightSpeed) { }
+    public static final MagicBook MAGIC_BOOK_DEFAULTS=new MagicBook(100,.5,30,50,
+            24,10,3,8,.9, 6,10,3,16, 2,32,1, 30,15,32,7, 8,6,.3,24, 13,60,3,8,16, 8,8,.3,256, 8,100,60,8,24,2.5, 16,3,128, 7,10,1.1);
+    public static MagicBook magicBook=MAGIC_BOOK_DEFAULTS;
     public static TwinBlades twinBlades=new TwinBlades(24,24,24,24,48,72,4,100,30,100);
     public static Molotov molotov=new Molotov(5,8,3,36);
     public static Orbital orbital=new Orbital(24,256,84,5,64,240);
@@ -261,11 +282,16 @@ public final class ExtraGadgetConfig {
         for(double padding:new double[]{sniper.smallHitPadding(),sniper.largeHitPadding(),sniper.thirdHitPadding(),sniper.unlimitedHitPadding()})GadgetConfig.bounded(padding,0,4);
         if(apply)m95=sniper;
         GadgetConfig.bounded(ac.damage(),0,10000);GadgetConfig.bounded(ac.arcDamage(),0,10000);GadgetConfig.bounded(ac.arcRadius(),0,32);GadgetConfig.bounded(ac.glowSeconds(),0,300);
-        var wb=GadgetConfig.read("wind_blower",WindBlower.class,new WindBlower(7,30,10,3,1,8,1.5,1),overrides,apply);
+        var wb=GadgetConfig.read("wind_blower",WindBlower.class,WIND_BLOWER_DEFAULTS,overrides,apply);
         GadgetConfig.bounded(wb.windRange(),0,256);GadgetConfig.bounded(wb.cannonAmmoCost(),0,10000);GadgetConfig.bounded(wb.cannonDamage(),0,10000);
         GadgetConfig.bounded(wb.cannonKnockbackMultiplier(),0,100);GadgetConfig.bounded(wb.cannonSelfKnockback(),0,10);GadgetConfig.bounded(wb.cannonRange(),.5,128);
         GadgetConfig.bounded(wb.cannonRadius(),0,32);GadgetConfig.bounded(wb.cannonCooldownSeconds(),0,86400);
+        GadgetConfig.bounded(wb.windConeAngle(),0,89);GadgetConfig.bounded(wb.windMaxSpeed(),0,10);
         var sh=GadgetConfig.read("shuriken",Shuriken.class,SHURIKEN_DEFAULTS,overrides,apply);
+        var mb=GadgetConfig.read("magic_book",MagicBook.class,MAGIC_BOOK_DEFAULTS,overrides,apply);
+        GadgetConfig.bounded(mb.manaCapacity(),1,10000);GadgetConfig.bounded(mb.manaRegenSeconds(),.05,60);GadgetConfig.bounded(mb.lightningCount(),1,200);
+        GadgetConfig.bounded(mb.fireballIntervalSeconds(),.05,10);GadgetConfig.bounded(mb.lightIntervalSeconds(),.05,10);GadgetConfig.bounded(mb.flightSpeed(),.1,4);
+        for(double d:new double[]{mb.slamRange(),mb.quakeRadius(),mb.holyRange(),mb.dropRange(),mb.fireballRange(),mb.flameRange(),mb.lightRange(),mb.ruinRange()})GadgetConfig.bounded(d,1,512);
         GadgetConfig.bounded(sh.capacity(),1,1000);GadgetConfig.bounded(sh.ammoPerThrow(),1,sh.capacity());GadgetConfig.bounded(sh.reloadSeconds(),0,60);
         GadgetConfig.bounded(sh.attackIntervalSeconds(),.05,10);GadgetConfig.bounded(sh.projectileSpeed(),.2,8);GadgetConfig.bounded(sh.spreadDegrees(),0,45);
         GadgetConfig.bounded(sh.flightSeconds(),.1,30);GadgetConfig.bounded(sh.semiIntervalTicks(),0,20);GadgetConfig.bounded(sh.burstAngle(),0,90);
@@ -284,7 +310,7 @@ public final class ExtraGadgetConfig {
         GadgetConfig.bounded(s.durationSeconds(),.05,300);GadgetConfig.bounded(h.capacity(),1,10000);GadgetConfig.bounded(h.repairSeconds(),0,86400);
         GadgetConfig.bounded(h.movementPenaltyPercent(),0,99);GadgetConfig.bounded(h.regenDelaySeconds(),0,300);GadgetConfig.bounded(h.regenPerSecond(),0,10000);GadgetConfig.bounded(h.meleeReductionPercent(),0,100);
         for(double c:new double[]{m.cooldownSeconds(),o.cooldownSeconds(),l.cooldownSeconds(),j.cooldownSeconds(),s.cooldownSeconds(),x.cooldownSeconds()})GadgetConfig.bounded(c,0,86400);
-        if(apply){acidSprayer=as;barrage=pb;molotov=m;orbital=o;life=l;jet=j;hermes=hb;scanner=s;shield=h;handAxe=x;arrowGrenade=ag;rapier=r;katana=k;regeneration=rg;combat=cb;fallout=fo;twinBlades=tb;arcThrower=ac;windBlower=wb;shuriken=sh;}
+        if(apply){acidSprayer=as;barrage=pb;molotov=m;orbital=o;life=l;jet=j;hermes=hb;scanner=s;shield=h;handAxe=x;arrowGrenade=ag;rapier=r;katana=k;regeneration=rg;combat=cb;fallout=fo;twinBlades=tb;arcThrower=ac;windBlower=wb;shuriken=sh;magicBook=mb;}
     }
     private ExtraGadgetConfig() { }
 }

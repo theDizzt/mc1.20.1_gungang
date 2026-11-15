@@ -53,9 +53,13 @@ public final class GungangNetwork {
     public record ConveyorSet(net.minecraft.core.BlockPos pos,int speed,boolean reverse) { }
     public record SecretBlockSync(boolean full,long[] positions,byte[] modes) { }
     public record RapierStep(int entity,float yaw,float distance) { }
+    public record BladeSwing(int entity,int motion,float yaw,float pitch) { }
+    public record ShurikenImpact(int entity,double x,double y,double z,boolean block,boolean confirmed) { }
     /** Every online player's chosen effect colours ({@link EffectColors}), as JSON {uuid: {key: [first, second]}}. */
     public record EffectColorSync(String json) { }
     /** An arrow grenade burst: origin, shard speed (blocks a tick) and where blocks stop each shard (ArrowGrenadeEntity.DIRECTIONS order). */
+    /** A 39 magic book beam this tick (kind 0 holy water, 1 ruin): from the caster's eye to where it ends. */
+    public record BookBeam(int owner,int kind,double fx,double fy,double fz,double tx,double ty,double tz) { }
     public record ArrowBurst(double x,double y,double z,float speed,float[] stops) { }
     /** A 74 Hermes' Boots dash: the client replays the fixed-step motion and draws the owner's glow trail. */
     public record HermesDash(int entity,float yaw,float pitch,float distance,int ticks,float trailSeconds) { }
@@ -89,6 +93,14 @@ public final class GungangNetwork {
     /** Longest lobby action value: the game options JSON, with room for every mode's section and a long excluded-block list. */
     static final int ACTION_VALUE=8192;
     public static void register() {
+        CHANNEL.registerMessage(55,ShurikenImpact.class,(p,b)->{b.writeVarInt(p.entity);b.writeDouble(p.x);b.writeDouble(p.y);b.writeDouble(p.z);b.writeBoolean(p.block);b.writeBoolean(p.confirmed);},
+                b->new ShurikenImpact(b.readVarInt(),b.readDouble(),b.readDouble(),b.readDouble(),b.readBoolean(),b.readBoolean()),(p,context)->{
+                    var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.ShurikenImpactFx.receive(p)));ctx.setPacketHandled(true);
+                },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(54,BladeSwing.class,(p,b)->{b.writeVarInt(p.entity);b.writeByte(p.motion);b.writeFloat(p.yaw);b.writeFloat(p.pitch);},
+                b->new BladeSwing(b.readVarInt(),b.readUnsignedByte(),b.readFloat(),b.readFloat()),(p,context)->{
+                    var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.BladeSwingFx.receive(p)));ctx.setPacketHandled(true);
+                },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(51,BotProfiles.class,(p,b)->b.writeUtf(p.json,65536),b->new BotProfiles(b.readUtf(65536)),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.BotProfilesClient.receive(p.json)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
@@ -150,6 +162,10 @@ public final class GungangNetwork {
         CHANNEL.registerMessage(47,ShockLook.class,(p,b)->{b.writeVarInt(p.ticks);b.writeFloat(p.yaw);b.writeFloat(p.pitch);},
                 b->new ShockLook(b.readVarInt(),b.readFloat(),b.readFloat()),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.ArcShockClient.receive(p.ticks,p.yaw,p.pitch)));ctx.setPacketHandled(true);
+        },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(53,BookBeam.class,(p,b)->{b.writeVarInt(p.owner);b.writeByte(p.kind);b.writeDouble(p.fx);b.writeDouble(p.fy);b.writeDouble(p.fz);b.writeDouble(p.tx);b.writeDouble(p.ty);b.writeDouble(p.tz);},
+                b->new BookBeam(b.readVarInt(),b.readByte(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble()),(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.MagicBookFx.receive(p)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(52,ArrowBurst.class,(p,b)->{b.writeDouble(p.x);b.writeDouble(p.y);b.writeDouble(p.z);b.writeFloat(p.speed);b.writeVarInt(p.stops.length);for(float f:p.stops)b.writeFloat(f);},
                 b->{double x=b.readDouble(),y=b.readDouble(),z=b.readDouble();float speed=b.readFloat();int n=b.readVarInt();if(n<0||n>64)throw new IllegalArgumentException("Bad arrow burst");

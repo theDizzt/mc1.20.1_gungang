@@ -156,6 +156,43 @@ public final class TaczAmmoHud {
         textMarquee(g,font,name,x-8-Math.min(room,font.width(name)),l.rowTop()-11,room,0xFFE2E8F0);
         g.pose().popPose();
     }
+    /**
+     * 39 magic book: mana count and bar (no reload), the five elements with the current one lit, and the current
+     * element's left / right cooldowns.
+     */
+    public static void magicBook(net.minecraftforge.client.gui.overlay.ForgeGui gui,GuiGraphics g,float partial,int screenWidth,int screenHeight){
+        var mc=Minecraft.getInstance();if(mc.player==null||mc.options.hideGui||mc.player.isSpectator()||mc.level==null)return;
+        if(PropHuntClient.hider())return;
+        var stack=mc.player.getMainHandItem();if(!dev.gungang.acoustics.server.MagicBookItem.is(stack))return;
+        int mana=dev.gungang.acoustics.server.MagicBookItem.mana(stack),capacity=dev.gungang.acoustics.server.MagicBookItem.capacity(stack);
+        var current=dev.gungang.acoustics.server.MagicBookItem.element(stack);
+        var font=mc.font;String count=String.valueOf(mana);int places=Math.max(3,count.length());
+        String padding="0".repeat(places-count.length());
+        var l=layout(places);int right=l.right(),w=l.countW(),x0=right-w;
+        float scale=(float)(2.0/mc.getWindow().getGuiScale());g.pose().pushPose();g.pose().scale(scale,scale,1);
+        boolean low=mana<=capacity*.2;int color=low?0xFFFF5555:0xFF8FD3FF;
+        float ratio=capacity>0?Math.max(0,Math.min(1,mana/(float)capacity)):0;
+        int fill=Math.round(w*ratio),barTop=l.barTop();
+        g.fill(x0+1,barTop+1,right+1,barTop+BAR_H+1,SHADOW);
+        g.fill(x0,barTop,right,barTop+BAR_H,0x803A3B32);
+        g.fill(x0,barTop,x0+fill,barTop+BAR_H,color);
+        g.pose().pushPose();g.pose().translate(x0,l.countTop(),0);g.pose().scale(AMMO_SCALE,AMMO_SCALE,1);
+        digits(g,font,padding,0,ArenaScreen.blend(0xFF1A2230,color,.35f));digits(g,font,count,padding.length(),low?color:0xFFFFFFFF);g.pose().popPose();
+        var elements=dev.gungang.acoustics.server.MagicBookItem.Element.values();int x=right;
+        for(int i=elements.length-1;i>=0;i--){
+            String label=elements[i].label;x-=font.width(label);
+            text(g,font,label,x,l.rowTop()-11,elements[i]==current?elements[i].color:ArenaScreen.blend(0xFF2A303A,elements[i].color,.35f));
+            if(i>0)x-=font.width(" ");
+        }
+        long now=mc.level.getGameTime();
+        String cooldowns="L "+seconds(dev.gungang.acoustics.server.MagicBookItem.cooldown(stack,current,false)-now)
+                +"  R "+seconds(dev.gungang.acoustics.server.MagicBookItem.cooldown(stack,current,true)-now);
+        text(g,font,cooldowns,right-font.width(cooldowns),l.rowTop()-22,0xFFB8C2D0);
+        String name=stack.getHoverName().getString();int room=Math.max(1,mc.getWindow().getWidth()/4-MARGIN-(right-x+8));
+        textMarquee(g,font,name,x-8-Math.min(room,font.width(name)),l.rowTop()-11,room,0xFFE2E8F0);
+        g.pose().popPose();
+    }
+    private static String seconds(long ticks){return ticks<=0?"OK":String.format(java.util.Locale.ROOT,"%.1fs",ticks/20.0);}
     /** Seconds per round of the shuriken count's run-down, and when it last stepped. */
     private static final double SHURIKEN_STEP=.045;
     private static double shurikenStepAt=-10;

@@ -63,6 +63,29 @@ final class BotPropHunt {
     private Vec3 searchCentre;
     private double searchRadius=32;
     private boolean avoidSeen;
+    private record Option(BlockPos feet,double score){}
+    private static final class SearchWork {
+        final ArrayList<Option> options=new ArrayList<>();
+        final PropEntity prop;
+        final net.minecraft.world.level.block.state.BlockState block;
+        final String item;
+        final Vec3 centre;
+        final double radius;
+        final boolean avoid;
+        int sampled,scored;
+        boolean sorted;
+        SearchWork(PropEntity prop,Vec3 centre,double radius,boolean avoid){
+            this.prop=prop;this.block=prop.state();this.item=prop.item();this.centre=centre;this.radius=radius;this.avoid=avoid;
+        }
+    }
+    private SearchWork searchWork;
+    private static int searchBudgetTick=Integer.MIN_VALUE,searchBudget;
+    /** Shared candidate/raycast budget, separate from the existing pathfinding budget. */
+    private static boolean searchSlot(int now){
+        if(searchBudgetTick!=now){searchBudgetTick=now;searchBudget=24;}
+        if(searchBudget<=0)return false;
+        searchBudget--;return true;
+    }
     private int travelSince,nextSearch,fleeUntil,calmSince,nextTaunt,nextAbility,nextPerceive,struckAt=-1000,missAt=-1000,toggledAt=-1;
     private String lastItem="";
     private boolean reconsider;
@@ -109,6 +132,7 @@ final class BotPropHunt {
     private final Map<UUID,Integer> rememberedAt=new HashMap<>();
 
     void reset(BotAgent a,PropHuntMatch hunt){
+        searchWork=null;
         reactions.reset();
         var server=BotManager.server();int now=server==null?0:server.getTickCount();
         aiming=null;shotPending=false;quarry=null;investigate=null;seenAt.clear();seenTick.clear();
@@ -124,6 +148,7 @@ final class BotPropHunt {
         mode=a.team.equals("ALPHA")?"숨을 곳 찾기":"대기실";
     }
     void tick(BotAgent a,PropHuntMatch hunt,int now)throws Exception{
+        if(state!=Hide.SEARCH)searchWork=null;
         if(!hunt.hunting()&&!hunt.hiding()){a.bot.getNavigation().stop();mode="종료";return;}
         if(a.team.equals("ALPHA"))hide(a,hunt,now);else seek(a,hunt,now);
     }
@@ -161,7 +186,7 @@ final class BotPropHunt {
                 cleared.put(aiming.cell().asLong(),now+(aiming.prop()==null?1200:500)+random.nextInt(400));aiming=null;
             }
         }
-        if(aiming==null&&now>=nextScan){nextScan=now+8;scan(a,hunt,disguises,now);}
+        if(aiming==null&&now>=nextScan){nextScan=now+12;scan(a,hunt,disguises,now);}
         if(aiming!=null){
             var prop=aiming.prop();
             if(prop!=null&&(prop.isRemoved()||prop.marker()))aiming=null;
@@ -269,14 +294,27 @@ final class BotPropHunt {
         var below=BlockPos.containing(position.x,position.y-.05,position.z);
         if(level.getBlockState(below).getCollisionShape(level,below).isEmpty()&&level.getFluidState(below).isEmpty())score+=.3;
         // Alone among unlike blocks, or one of many alike.
-        int same=0;
-        for(var q:BlockPos.betweenClosed(pos.offset(-3,-2,-3),pos.offset(3,2,3)))if(!q.equals(pos)&&level.getBlockState(q).getBlock()==state.getBlock())same++;
+        int same=alike(level,pos,state.getBlock());
         score+=same==0?.2:same>=6?-.3:-.04*same;
         boolean full=state.isCollisionShapeFullBlock(level,pos);
         if(!full)score+=.1;
         int walls=0;for(var d:Direction.Plane.HORIZONTAL)if(!level.getBlockState(pos.relative(d)).getCollisionShape(level,pos.relative(d)).isEmpty())walls++;
         if(walls==0)score+=.1;
         return score;
+    }
+    /** Like blocks around a cell (7x5x7, the cell itself left out), cached a few seconds: the map does not change. */
+    private static final Map<Long,int[]> ALIKE=new HashMap<>();
+    private static long alikeTick;
+    private static int alike(Level level,BlockPos pos,net.minecraft.world.level.block.Block block){
+        long time=level.getGameTime();
+        if(time-alikeTick>100||time<alikeTick||ALIKE.size()>8192){ALIKE.clear();alikeTick=time;}
+        int id=net.minecraft.world.level.block.Block.getId(block.defaultBlockState());
+        var cached=ALIKE.get(pos.asLong());
+        if(cached!=null&&cached[0]==id)return cached[1];
+        int same=0;
+        for(var q:BlockPos.betweenClosed(pos.offset(-3,-2,-3),pos.offset(3,2,3)))if(!q.equals(pos)&&level.getBlockState(q).getBlock()==block)same++;
+        ALIKE.put(pos.asLong(),new int[]{id,same});
+        return same;
     }
     private double hot(Vec3 point){
         double bonus=0;for(var h:hotspots){double d=h.at().distanceTo(point);if(d<h.radius())bonus=Math.max(bonus,.45*(1-d/h.radius()));}
@@ -404,32 +442,53 @@ final class BotPropHunt {
     }
     private void search(BotAgent a,PropHuntMatch hunt,PropEntity prop,int now){
         var bot=a.bot;mode=roaming?"배회 · 다음 은신처 찾기":"숨을 곳 찾는 중";
-        if(now<nextSearch)return;nextSearch=now+10;
+        // Sample and score across ticks; wait a second before retrying a completed, unsuccessful search.
+        if(now<nextSearch)return;
         var arena=BotManager.arena();
         if(searchCentre==null){var s=arena.alphaSpawn();searchCentre=hunt.hiding()?new Vec3(s.x(),s.y(),s.z()):bot.position();}
         var level=bot.level();
-        record Option(BlockPos feet,double score){}
-        var options=new ArrayList<Option>();
+        if(searchWork==null||searchWork.prop!=prop||searchWork.block.getBlock()!=prop.state().getBlock()||!searchWork.item.equals(prop.item())
+                ||!searchWork.centre.equals(searchCentre)||searchWork.radius!=searchRadius||searchWork.avoid!=avoidSeen)
+            searchWork=new SearchWork(prop,searchCentre,searchRadius,avoidSeen);
+        var work=searchWork;var options=work.options;
         var graph=BotNavGraph.of(arena,level);
         // Every candidate gets the cheap part of the score (blocks around, walls, light, distances); only the best few
         // also get the raycasts and ground probes (sight lines, exits, seekers' view), which cost far more per spot.
         var others=hunt.disguises();
-        if(graph!=null&&!avoidSeen)for(int i=0;i<16;i++){
-            var feet=graph.roamSpot(bot.position(),random);if(feet==null)continue;
-            double distance=bot.position().distanceTo(Vec3.atBottomCenterOf(feet));
-            if(distance<16||recentSpots.stream().anyMatch(p->p.distSqr(feet)<144))continue;
-            if(exposed(feet,now))continue;
-            double quality=level.hasChunkAt(feet)?quick(a,prop,feet,others):0;
-            options.add(new Option(feet,quality+Math.min(4,distance/16)));
+        int allowance=4;
+        while(work.sampled<34){
+            if(allowance--<=0||!searchSlot(now))return;
+            int sampleIndex=work.sampled++;
+            if(sampleIndex<10){
+                if(graph==null||avoidSeen)continue;
+                var feet=graph.roamSpot(bot.position(),random);if(feet==null)continue;
+                double distance=bot.position().distanceTo(Vec3.atBottomCenterOf(feet));
+                if(distance<16||recentSpots.stream().anyMatch(p->p.distSqr(feet)<144))continue;
+                if(exposed(feet,now))continue;
+                double quality=level.hasChunkAt(feet)?quick(a,prop,feet,others):0;
+                options.add(new Option(feet,quality+Math.min(4,distance/16)));
+            }else{
+                double angle=random.nextDouble()*Math.PI*2,r=3+random.nextDouble()*searchRadius;
+                var sample=searchCentre.add(Math.cos(angle)*r,random.nextInt(9)-4,Math.sin(angle)*r);
+                var feet=BotMovement.ground(bot,arena,sample);if(feet==null)continue;
+                if(!exposed(feet,now))options.add(new Option(feet,quick(a,prop,feet,others)));
+            }
         }
-        for(int i=0;i<40;i++){
-            double angle=random.nextDouble()*Math.PI*2,r=3+random.nextDouble()*searchRadius;
-            var sample=searchCentre.add(Math.cos(angle)*r,random.nextInt(9)-4,Math.sin(angle)*r);
-            var feet=BotMovement.ground(bot,arena,sample);if(feet==null)continue;
-            if(!exposed(feet,now))options.add(new Option(feet,quick(a,prop,feet,others)));
+        if(!work.sorted){
+            options.sort(Comparator.comparingDouble(Option::score).reversed());
+            if(options.size()>THOROUGH)options.subList(THOROUGH,options.size()).clear();
+            work.sorted=true;
         }
-        if(options.size()>THOROUGH){options.sort(Comparator.comparingDouble(Option::score).reversed());options.subList(THOROUGH,options.size()).clear();}
-        options.replaceAll(o->level.hasChunkAt(o.feet())?new Option(o.feet(),o.score()+thorough(a,o.feet())):o);
+        // Only one expensive sight-line/exit evaluation per bot per tick.
+        if(work.scored<options.size()){
+            if(!searchSlot(now))return;
+            int index=work.scored++;var o=options.get(index);
+            if(level.hasChunkAt(o.feet()))options.set(index,new Option(o.feet(),o.score()+thorough(a,o.feet())));
+            return;
+        }
+        // Keep completed candidates when another bot consumed this tick's path budget.
+        if(BotMovement.spent())return;
+        searchWork=null;nextSearch=now+20+random.nextInt(5);
         // Blocks that belong on walls (paintings, signs, torches...) also try hanging there (Q), well above the floor.
         Direction wallChoice=null;double heightChoice=0;
         if(wallBlock(prop)&&!options.isEmpty()){

@@ -114,73 +114,36 @@ public final class CombatRules {
             return Math.max(0,((Number)dataKnockback.invoke(bulletData.invoke(index.get()))).doubleValue());
         }catch(ReflectiveOperationException|RuntimeException|LinkageError unavailable){gunDataMissing=true;return 0;}
     }
-    /** Guns whose bullets also knock teammates back (friendly fire blocks the damage, and with it vanilla's push). */
-    private static final Set<String> ALLY_KNOCKBACK_GUNS=Set.of("zeta:sg225sp");
     /**
-     * Guns that push whoever they hit, teammates and enemies alike, whatever their damage (the 35 classic blower deals
-     * none, so no hit would push). Their pellets push a target at most once per tick; any other push of that target in
-     * the same tick (its own damage hit) is dropped, so a strength of 1 means 1 whichever way the hit lands.
+     * Knockback guns (the Spray N' Pray knockback shotgun): every pellet pushes whoever it hits, teammates and enemies
+     * alike. GunGang applies the push itself after entity ticking ({@link #tick}), so damage handlers, AI, TaCZ's own
+     * knockback cache and other mods cannot cancel or overwrite it; the hit's own vanilla knockback is dropped.
      */
-    private static final Set<String> PUSH_GUNS=Set.of("bf1:wex");
-    /** Victims pushed by a {@link #PUSH_GUNS} bullet, by the game time of that push. */
+    private static final Set<String> KNOCKBACK_GUNS=Set.of("zeta:sg225sp");
+    public static boolean knockbackGun(Object bullet){
+        return bullet instanceof Las5Damage.BulletAccess access&&KNOCKBACK_GUNS.contains(String.valueOf(access.getGunId()));
+    }
+    /** Victims pushed by a knockback gun pellet, by the game time of that push. */
     private static final Map<LivingEntity,Long> PUSHED=new WeakHashMap<>();
-    private record Wind(Vec3 acceleration,LivingEntity owner) {}
-    private static final Map<LivingEntity,Wind> WIND=new WeakHashMap<>();
-    private static boolean pushing;
-    /** The strength of the push {@link #gunKnockback} is applying. */
-    private static double pushStrength;
+    private record Shove(Vec3 from,double strength) {}
+    /** Pellet pushes due at the end of this tick, in hit order. */
+    private static final Map<LivingEntity,List<Shove>> SHOVES=new WeakHashMap<>();
+    /** Pellet hits already counted this tick: TaCZ and TaCZ Tweaks may both report one hit. */
+    private static final Set<Long> COUNTED=new HashSet<>();
     private static boolean pushedNow(LivingEntity victim){return PUSHED.getOrDefault(victim,Long.MIN_VALUE)==victim.level().getGameTime();}
-    /**
-     * A knockback gun's bullet hitting someone, before TaCZ hurts them: pushes them by the bullet's knockback, away from
-     * the shooter, where the hit itself would not ({@link #ALLY_KNOCKBACK_GUNS}: teammates behind friendly fire;
-     * {@link #PUSH_GUNS}: everyone).
-     */
+    /** A knockback gun pellet hitting someone, before TaCZ hurts them: queues its push away from the shooter. */
     public static void gunKnockback(net.minecraft.world.entity.projectile.Projectile bullet,Entity target){
-        if(bullet.level().isClientSide||!(bullet instanceof Las5Damage.BulletAccess access))return;
-        String gun=String.valueOf(access.getGunId());
-        boolean everyone=PUSH_GUNS.contains(gun);
-        if(!everyone&&!ALLY_KNOCKBACK_GUNS.contains(gun))return;
-        if(everyone&&!(target instanceof LivingEntity)&&bullet.getOwner() instanceof LivingEntity windOwner
-                &&target!=windOwner&&target.isAlive()&&!target.isSpectator()&&!SafeZones.contains(target)
-                &&windOwner.distanceTo(target)<=ExtraGadgetConfig.windBlower.windRange()){
-            double wind=1;var loaded=LobbyManager.loaded();
-            if(loaded!=null)for(var weapon:loaded.primary())if(weapon.itemNbt().contains("bf1:wex")){wind=weapon.windStrength();break;}
-            var direction=bullet.getDeltaMovement().normalize();if(direction.lengthSqr()<1e-8)direction=windOwner.getLookAngle();
-            if(wind>0)WindBlower.push(target,direction,wind*.1);return;
-        }
+        if(bullet.level().isClientSide||!knockbackGun(bullet))return;
         if(!(bullet.getOwner() instanceof LivingEntity owner)||!(target instanceof LivingEntity victim)||victim==owner
-                ||(!everyone&&!target(victim))||LobbyManager.respawning(victim.getUUID())||SafeZones.contains(victim))return;
-        // The knockback shotgun owns the fall its hit causes, as the blower's wind does (kill and damage credit).
-        if(!everyone&&!owner.isAlliedTo(victim))DamageCredit.wind(victim,owner);
-        if(!everyone){
-            var team=owner.getTeam();
-            if(team==null||team.isAllowFriendlyFire()||!owner.isAlliedTo(victim))return;
-        }
+                ||!victim.isAlive()||victim.isSpectator()||!target(victim)||LobbyManager.respawning(victim.getUUID())||SafeZones.contains(victim))return;
+        if(!COUNTED.add(((long)bullet.getId()<<32)|(victim.getId()&0xffffffffL)))return;
         if(victim instanceof ServerPlayer p&&CombatGadgets.shieldBlocked(p))return;
-        if(everyone&&pushedNow(victim))return;
-        // The wind reaches only windRange blocks from the shooter (item setting wind_blower).
-        if(everyone&&owner.distanceTo(victim)>ExtraGadgetConfig.windBlower.windRange())return;
-        if(everyone){
-            double wind=1;
-            var loadouts=LobbyManager.loaded();
-            if(loadouts!=null)for(var weapon:loadouts.primary())if(weapon.itemNbt().contains("bf1:wex")){wind=weapon.windStrength();break;}
-            if(wind<=0)return;
-            PUSHED.put(victim,victim.level().getGameTime());
-            // Accelerate along the stream without vanilla's vertical hop or halving existing movement.
-            Vec3 direction=bullet.getDeltaMovement().normalize();
-            if(direction.lengthSqr()<1e-8)direction=owner.getLookAngle();
-            // Damage handlers and AI can restore velocity during the hit. Apply after entity ticking instead.
-            WIND.put(victim,new Wind(direction.scale(wind*.1),owner));
-            DamageCredit.wind(victim,owner);
-            return;
-        }
         double strength=strength(bullet);
         if(strength<=0)return;
-        if(everyone)PUSHED.put(victim,victim.level().getGameTime());
-        pushing=true;pushStrength=strength;
-        try{victim.knockback(strength,owner.getX()-victim.getX(),owner.getZ()-victim.getZ());}
-        finally{pushing=false;}
-        if(!(victim instanceof ServerPlayer))victim.hurtMarked=true;
+        // The knockback shotgun owns the fall its hit causes (kill and damage credit).
+        if(!owner.isAlliedTo(victim))DamageCredit.wind(victim,owner);
+        PUSHED.put(victim,victim.level().getGameTime());
+        SHOVES.computeIfAbsent(victim,v->new ArrayList<>()).add(new Shove(owner.position(),strength));
     }
     @SubscribeEvent(priority=EventPriority.LOWEST) public static void hit(LivingDamageEvent event){
         var victim=event.getEntity();
@@ -195,10 +158,8 @@ public final class CombatRules {
         var victim=event.getEntity();
         if(victim.level().isClientSide)return;
         if(quiet()||ArcShock.justHit(victim)){event.setCanceled(true);PENDING.remove(victim);return;}
-        // A push gun already pushed this victim this tick: drop the extra push of its own damage hit.
-        if(!pushing&&pushedNow(victim)){event.setCanceled(true);PENDING.remove(victim);return;}
-        // TaCZ forces the strength left on the victim by its last bullet hit; our own push keeps its strength.
-        if(pushing){if(event.getStrength()<pushStrength*.5)event.setStrength((float)pushStrength);return;}
+        // A knockback gun pellet pushes this victim at the end of the tick: drop its damage hit's own push.
+        if(pushedNow(victim)){event.setCanceled(true);PENDING.remove(victim);return;}
         var expected=PENDING.remove(victim);
         if(expected==null)return;
         boolean ours=victim instanceof ServerPlayer p&&CombatGadgets.shieldBlocked(p)||Turrets.bulletVictim(victim);
@@ -212,23 +173,40 @@ public final class CombatRules {
             event.setStrength((float)expected.strength());
         }
     }
-    /** Hits whose knockback never reached the event (another mod skipped it): push here, the way vanilla would. */
+    /**
+     * Knockback gun pellets push here, one vanilla knockback per pellet in hit order (old motion halved, then the push
+     * added, a hop when on the ground). Hits whose knockback never reached the event (another mod skipped it) are
+     * pushed here too, the way vanilla would.
+     */
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent event){
         if(event.phase!=TickEvent.Phase.END)return;
-        for(var entry:new ArrayList<>(WIND.entrySet())){
-            var victim=entry.getKey();var wind=entry.getValue();
-            if(!victim.isAlive()||victim.isRemoved()||victim.isSpectator()||LobbyManager.respawning(victim.getUUID())||SafeZones.contains(victim))continue;
-            var motion=victim.getDeltaMovement().add(wind.acceleration());
-            if(victim instanceof ServerPlayer player)PlayerImpulse.apply(player,motion);
-            else{victim.setDeltaMovement(motion);victim.hasImpulse=true;victim.hurtMarked=true;}
-            DamageCredit.wind(victim,wind.owner());
+        COUNTED.clear();
+        if(!SHOVES.isEmpty()){
+            var shoves=new ArrayList<>(SHOVES.entrySet());SHOVES.clear();
+            for(var entry:shoves){
+                var victim=entry.getKey();
+                if(!victim.isAlive()||victim.isRemoved()||victim.isSpectator()||LobbyManager.respawning(victim.getUUID())||SafeZones.contains(victim))continue;
+                double resistance=1-victim.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE);
+                var motion=victim.getDeltaMovement();boolean ground=victim.onGround();boolean moved=false;
+                for(var shove:entry.getValue()){
+                    double strength=shove.strength()*resistance;
+                    if(strength<=0)continue;
+                    double x=shove.from().x-victim.getX(),z=shove.from().z-victim.getZ();
+                    if(x*x+z*z<1e-4){x=(Math.random()-Math.random())*.01;z=(Math.random()-Math.random())*.01;}
+                    var push=new Vec3(x,0,z).normalize().scale(strength);
+                    motion=new Vec3(motion.x/2-push.x,ground?Math.min(.4,motion.y/2+strength):motion.y,motion.z/2-push.z);
+                    moved=true;
+                }
+                if(!moved)continue;
+                if(victim instanceof ServerPlayer player)PlayerImpulse.apply(player,motion);
+                else{victim.setDeltaMovement(motion);victim.hasImpulse=true;victim.hurtMarked=true;}
+            }
         }
-        WIND.clear();
         if(PENDING.isEmpty())return;
         var due=new ArrayList<>(PENDING.entrySet());PENDING.clear();
         for(var entry:due){
             var victim=entry.getKey();var expected=entry.getValue();
-            if(!victim.isAlive()||victim.isRemoved()||victim.isSpectator())continue;
+            if(!victim.isAlive()||victim.isRemoved()||victim.isSpectator()||pushedNow(victim))continue;
             if(victim instanceof ServerPlayer p&&CombatGadgets.shieldBlocked(p))continue;
             double strength=expected.strength()*(1-victim.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE));
             if(strength<=0)continue;
@@ -244,6 +222,6 @@ public final class CombatRules {
     private static void report(String kind,String message){
         if(REPORTED.add(kind))com.mojang.logging.LogUtils.getLogger().warn("GunGang knockback: {}",message);
     }
-    @SubscribeEvent public static void stopped(net.minecraftforge.event.server.ServerStoppedEvent event){PENDING.clear();WIND.clear();PUSHED.clear();}
+    @SubscribeEvent public static void stopped(net.minecraftforge.event.server.ServerStoppedEvent event){PENDING.clear();SHOVES.clear();COUNTED.clear();PUSHED.clear();}
     private CombatRules(){}
 }

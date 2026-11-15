@@ -60,15 +60,15 @@ public final class ShurikenEntity extends ThrowableItemProjectile implements net
         if(level().isClientSide)return;
         var target=(LivingEntity)result.getEntity();
         hit.add(target.getUUID());
+        boolean[] damaged={false};
         if(!SafeZones.contains(target)&&!LobbyManager.respawning(target.getUUID())){
             // Three shuriken can land in the same tick: each one is its own hit.
             target.invulnerableTime=0;
             CombatRules.quietly(()->{
-                if(target.hurt(damageSources().thrown(this,getOwner()),(float)damage)&&getOwner() instanceof net.minecraft.server.level.ServerPlayer shooter)
-                    shooter.playNotifySound(TurretSounds.SHURIKEN_HIT.get(),net.minecraft.sounds.SoundSource.PLAYERS,1,1);
+                damaged[0]=target.hurt(damageSources().thrown(this,getOwner()),(float)damage);
             });
         }
-        level().playSound(null,target.blockPosition(),net.minecraft.sounds.SoundEvents.TRIDENT_HIT,net.minecraft.sounds.SoundSource.PLAYERS,.6f,1.6f);
+        impact(result.getLocation(),false,damaged[0]);
         if(hop>=1&&hop<MAX_HOPS)ricochet(target);
         discard();
     }
@@ -97,8 +97,25 @@ public final class ShurikenEntity extends ThrowableItemProjectile implements net
         super.onHitBlock(result);
         if(level().isClientSide)return;
         GimmickEntity.hit(level(),result.getBlockPos(),(float)damage);
-        level().playSound(null,result.getBlockPos(),net.minecraft.sounds.SoundEvents.TRIDENT_HIT_GROUND,net.minecraft.sounds.SoundSource.PLAYERS,.6f,1.5f);
+        impact(result.getLocation(),true,false);
         discard();
+    }
+    /** Remove the visible projectile and play its impact together, before the normal tracker removal arrives. */
+    private void impact(Vec3 at,boolean block,boolean damaged){
+        if(!(level() instanceof net.minecraft.server.level.ServerLevel server))return;
+        for(var viewer:server.players()){
+            boolean confirmed=damaged&&viewer==getOwner();
+            // Match the projectile's tracking range; the thrower also receives distant ricochet confirmations.
+            if(viewer!=getOwner()&&viewer.distanceToSqr(at)>160*160)continue;
+            if(GungangNetwork.installed(viewer)){
+                GungangNetwork.send(viewer,new GungangNetwork.ShurikenImpact(getId(),at.x,at.y,at.z,block,confirmed));
+            }else{
+                if(confirmed)viewer.playNotifySound(TurretSounds.SHURIKEN_HIT.get(),net.minecraft.sounds.SoundSource.PLAYERS,1,1);
+                if(viewer.distanceToSqr(at)<16*16)viewer.connection.send(new net.minecraft.network.protocol.game.ClientboundSoundPacket(
+                        net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.wrapAsHolder(block?net.minecraft.sounds.SoundEvents.TRIDENT_HIT_GROUND:net.minecraft.sounds.SoundEvents.TRIDENT_HIT),
+                        net.minecraft.sounds.SoundSource.PLAYERS,at.x,at.y,at.z,.6f,block?1.5f:1.6f,random.nextLong()));
+            }
+        }
     }
     @Override public void tick(){
         if(!level().isClientSide&&homing!=null&&((net.minecraft.server.level.ServerLevel)level()).getEntity(homing) instanceof LivingEntity target&&target.isAlive()){

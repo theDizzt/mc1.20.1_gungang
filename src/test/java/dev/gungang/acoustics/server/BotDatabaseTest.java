@@ -52,7 +52,7 @@ class BotDatabaseTest {
         assertEquals("Legacy",db.profile(0).name());assertEquals(0,db.profile(0).statistics().kills());
         assertEquals(4,db.profile(1).statistics().kills());assertEquals(1,db.profile(1).statistics().wins());
         assertEquals("Third",db.profile(2).name());assertEquals("file:third.png",db.profile(2).skin());
-        assertEquals(12,BotDatabase.PROFILES);assertEquals(8,BotManager.MAX);assertEquals(-1,BotDatabase.slot(java.util.UUID.randomUUID()));
+        assertEquals(12,BotDatabase.PROFILES);assertEquals(12,BotManager.MAX);assertTrue(BotManager.MAX<=BotDatabase.PROFILES);assertEquals(-1,BotDatabase.slot(java.util.UUID.randomUUID()));
         // The four profiles missing from the old file start from defaults.
         assertEquals("Rookie 12",db.profile(11).name());assertEquals(11,BotDatabase.slot(BotDatabase.id(11)));
     }

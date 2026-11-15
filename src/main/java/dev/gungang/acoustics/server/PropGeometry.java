@@ -20,6 +20,9 @@ public final class PropGeometry {
         };
     }
     public static List<Part> parts(PropEntity prop){
+        return prop.geometryParts();
+    }
+    static List<Part> buildParts(PropEntity prop){
         if(prop.item().equals("minecraft:sugar_cane")){var result=new ArrayList<Part>();for(int y=0;y<prop.height();y++)result.add(new Part(BlockPos.ZERO.above(y),prop.state()));return result;}
         if(prop.item().equals("minecraft:farmland")&&prop.state().getBlock() instanceof FarmBlock){var result=new ArrayList<>(parts(prop.state()));result.add(new Part(BlockPos.ZERO.above(),crop(prop.mode())));return result;}
         return parts(prop.state());

@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class RapierOffhandLayerMixin {
     @Inject(method="renderArmWithItem",at=@At("HEAD"),cancellable=true)
     private void gungang$hideOffhand(LivingEntity entity,ItemStack stack,ItemDisplayContext context,HumanoidArm arm,PoseStack pose,MultiBufferSource buffers,int light,CallbackInfo ci){
-        // Shuriken: a one-handed throwing weapon, likewise drawn without the secondary in the other hand.
-        if(arm!=entity.getMainArm()&&(entity.getMainHandItem().getItem() instanceof RapierItem||entity.getMainHandItem().getItem() instanceof dev.gungang.acoustics.server.ShurikenItem))ci.cancel();
+        // Shuriken (a one-handed throwing weapon) and the 39 magic book are likewise drawn without the secondary.
+        if(arm!=entity.getMainArm()&&(entity.getMainHandItem().getItem() instanceof RapierItem||entity.getMainHandItem().getItem() instanceof dev.gungang.acoustics.server.ShurikenItem||entity.getMainHandItem().getItem() instanceof dev.gungang.acoustics.server.MagicBookItem))ci.cancel();
     }
 }
