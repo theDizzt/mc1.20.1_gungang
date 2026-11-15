@@ -78,7 +78,7 @@ public final class GungangNetwork {
     /** Saved match results for the stats screen: the numbered list or one match ({@link MatchHistory.View}). */
     public record MatchHistoryView(String json) { }
     /** Pending status-ailment damage per entity id in the receiver's dimension (purple share of health bars). */
-    public record StatusDamage(int[] ids,float[] amounts,float[] heals) { }
+    public record StatusDamage(int[] ids,float[] amounts,float[] heals,float[] health,int[] effects) { }
     /** A heal pack or recovery potion is healing this entity for the next {@code ticks}: its health bar draws the green ghost. */
     public record HealMark(int entity,int ticks) { }
     /** Health damage the receiving player just dealt (one hit), for the combo counter beside the health bar. */
@@ -147,10 +147,13 @@ public final class GungangNetwork {
                 b->new Las5Shot(b.readVarInt()-1,b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble()),(p,context)->{
             var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.Las5Beam.receive(p)));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
-        CHANNEL.registerMessage(39,StatusDamage.class,(p,b)->{b.writeVarIntArray(p.ids);b.writeVarInt(p.amounts.length);for(float f:p.amounts)b.writeFloat(f);b.writeVarInt(p.heals.length);for(float f:p.heals)b.writeFloat(f);},
+        CHANNEL.registerMessage(39,StatusDamage.class,(p,b)->{b.writeVarIntArray(p.ids);b.writeVarInt(p.amounts.length);for(float f:p.amounts)b.writeFloat(f);b.writeVarInt(p.heals.length);for(float f:p.heals)b.writeFloat(f);for(float f:p.health)b.writeFloat(f);for(int mask:p.effects)b.writeByte(mask);},
                 b->{var ids=b.readVarIntArray(256);int n=Math.min(256,b.readVarInt());var amounts=new float[n];for(int i=0;i<n;i++)amounts[i]=b.readFloat();
-                    int h=Math.min(256,b.readVarInt());var heals=new float[h];for(int i=0;i<h;i++)heals[i]=b.readFloat();return new StatusDamage(ids,amounts,heals);},(p,context)->{
-            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.StatusDamageClient.receive(p.ids(),p.amounts(),p.heals())));ctx.setPacketHandled(true);
+                    int h=Math.min(256,b.readVarInt());var heals=new float[h];for(int i=0;i<h;i++)heals[i]=b.readFloat();
+                    var health=new float[ids.length];for(int i=0;i<health.length;i++)health[i]=b.isReadable(4)?b.readFloat():Float.NaN;
+                    var effects=new int[ids.length];for(int i=0;i<effects.length;i++)effects[i]=b.isReadable()?b.readUnsignedByte():0;
+                    return new StatusDamage(ids,amounts,heals,health,effects);},(p,context)->{
+            var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.StatusDamageClient.receive(p.ids(),p.amounts(),p.heals(),p.health(),p.effects())));ctx.setPacketHandled(true);
         },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(42,M95Shot.class,(p,b)->{b.writeVarInt(p.owner+1);b.writeDouble(p.fx);b.writeDouble(p.fy);b.writeDouble(p.fz);b.writeDouble(p.tx);b.writeDouble(p.ty);b.writeDouble(p.tz);},
                 b->new M95Shot(b.readVarInt()-1,b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble()),(p,context)->{

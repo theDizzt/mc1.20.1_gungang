@@ -33,6 +33,7 @@ public final class ArcShock {
     /** Marks 감전 (health bar icon) for {@link #STUN_TICKS}, as a stun baton hit does (39 magic book's light). */
     static void stun(LivingEntity body){STUNNED.put(body,body.level().getGameTime()+STUN_TICKS);}
     static boolean stunned(LivingEntity body){Long end=STUNNED.get(body);return end!=null&&body.level().getGameTime()<end;}
+    static boolean shocked(LivingEntity body){var shock=ACTIVE.get(body);return stunned(body)||shock!=null&&body.level().getGameTime()<shock.end();}
     @SubscribeEvent(priority=net.minecraftforge.eventbus.api.EventPriority.LOWEST)
     public static void stunHit(net.minecraftforge.event.entity.living.LivingHurtEvent event){
         var body=event.getEntity();if(body.level().isClientSide||event.isCanceled())return;

@@ -17,7 +17,7 @@ import net.minecraftforge.fml.common.Mod;
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID)
 public final class StatusForecast {
     static final int PERIOD=4;
-    private record Snapshot(List<Integer> ids,List<Float> amounts,List<Float> heals){}
+    private record Snapshot(List<Integer> ids,List<Float> amounts,List<Float> heals,List<Float> health,List<Integer> effects){}
     private static final Map<UUID,Snapshot> SENT=new HashMap<>();
     private static final Map<ServerLevel,Set<UUID>> BOTS=new WeakHashMap<>();
 
@@ -91,18 +91,21 @@ public final class StatusForecast {
         for(ServerLevel level:event.getServer().getAllLevels()){
             if(level.players().isEmpty())continue;
             var ids=new ArrayList<Integer>();var amounts=new ArrayList<Float>();var heals=new ArrayList<Float>();
+            var health=new ArrayList<Float>();
+            var effects=new ArrayList<Integer>();
             var bodies=new ArrayList<LivingEntity>(level.players());
             addBots(level,bodies);
             for(var body:bodies){
                 float amount=Math.round(pending(body)*2)/2f,heal=Math.round(pendingHeal(body)*2)/2f;
-                if(amount>0||heal>0){ids.add(body.getId());amounts.add(amount);heals.add(heal);}
+                int mask=StatusBarEffects.of(body);
+                if(amount>0||heal>0||mask!=0){ids.add(body.getId());amounts.add(amount);heals.add(heal);health.add(body.getHealth());effects.add(mask);}
             }
-            var snapshot=new Snapshot(List.copyOf(ids),List.copyOf(amounts),List.copyOf(heals));
+            var snapshot=new Snapshot(List.copyOf(ids),List.copyOf(amounts),List.copyOf(heals),List.copyOf(health),List.copyOf(effects));
             GungangNetwork.StatusDamage packet=null;
             for(var player:level.players()){
                 if(!GungangNetwork.installed(player)||snapshot.equals(SENT.get(player.getUUID())))continue;
                 // The encoder only reads these arrays: construct once for all recipients in this dimension.
-                if(packet==null)packet=new GungangNetwork.StatusDamage(ids.stream().mapToInt(Integer::intValue).toArray(),toArray(amounts),toArray(heals));
+                if(packet==null)packet=new GungangNetwork.StatusDamage(ids.stream().mapToInt(Integer::intValue).toArray(),toArray(amounts),toArray(heals),toArray(health),effects.stream().mapToInt(Integer::intValue).toArray());
                 GungangNetwork.send(player,packet);
                 SENT.put(player.getUUID(),snapshot);
             }

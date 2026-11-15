@@ -236,9 +236,13 @@ final class BotGadgets {
         if(lifeActive) {
             if(now>=lifeDrain) {bot.setAbsorptionAmount(SurvivalRules.drain(bot.getAbsorptionAmount()));lifeDrain=now+ExtraGadgetConfig.ticks(ExtraGadgetConfig.life.drainIntervalSeconds());}
             if(now>=lifeEnd||bot.getAbsorptionAmount()<=0) {
+                float rest=bot.getAbsorptionAmount();
                 bot.setAbsorptionAmount(0);
                 // Stay active while die() runs so the same device cannot revive twice.
-                if(!SurvivalRules.recovered(bot.getHealth())) {bot.setHealth(0);bot.die(lifeSource==null?bot.damageSources().generic():lifeSource);}
+                if(!SurvivalRules.recovered(bot.getHealth())) {
+                    if(rest>0)bot.setHealth(rest);
+                    else {bot.setHealth(0);bot.die(lifeSource==null?bot.damageSources().generic():lifeSource);}
+                }
                 lifeActive=false;
             }
         }

@@ -57,6 +57,7 @@ public final class AcousticConfigScreen extends Screen {
         options.add(new Option(2, "hudBoldText", AcousticConfig.HUD_BOLD_TEXT, Boolean::parseBoolean, true));
         options.add(new Option(2, "lcdTimer", AcousticConfig.LCD_TIMER, Boolean::parseBoolean, true));
         options.add(new Option(2, "comboHud", AcousticConfig.COMBO_HUD, Boolean::parseBoolean, true));
+        options.add(new Option(2, "statusHealthBar", AcousticConfig.STATUS_HEALTH_BAR, Boolean::parseBoolean, true));
         options.add(new Option(2, "teamHud", AcousticConfig.TEAM_HUD, Boolean::parseBoolean, true).right());
         options.add(new Option(2, "legacyTeamHud", AcousticConfig.LEGACY_TEAM_HUD, Boolean::parseBoolean, true).right());
         options.add(new Option(2, "teamWeaponNumbers", AcousticConfig.TEAM_WEAPON_NUMBERS, Boolean::parseBoolean, true).right());
