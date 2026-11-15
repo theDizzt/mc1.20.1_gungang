@@ -57,27 +57,36 @@ public final class TargetHealthBar {
                 if (end > start) rectangle(vertices, matrix, -29 + 58 * start, -3, -29 + 58 * end, 3,
                         layers.colorAt((start + end) / 2, color));
             }
-            if (showNumbers) healthNumbers(mc, pose, target, color);
+            if (showNumbers) healthNumbers(mc, pose, target);
             pose.popPose();
         }
         BUFFER.endBatch();
     }
 
-    /** Outside a match, right-align the whole health label just to the left of the bar. */
-    private static void healthNumbers(Minecraft mc, com.mojang.blaze3d.vertex.PoseStack pose, LivingEntity target, int color) {
+    /** Outside a match, inset the label inside the bar's left edge. */
+    private static void healthNumbers(Minecraft mc, com.mojang.blaze3d.vertex.PoseStack pose, LivingEntity target) {
         var current = HudText.gungang(HudHealth.number(target.getHealth()));
         var maximum = HudText.gungang("/" + HudHealth.number(target.getMaxHealth()));
         float small = .65f;
         float currentWidth = mc.font.width(current), maxWidth = mc.font.width(maximum) * small;
-        float left = -34 - currentWidth - maxWidth;
-        mc.font.drawInBatch(current, left, -4, color, true, pose.last().pose(), BUFFER,
+        float scale = Math.min(.65f, 54f / Math.max(1, currentWidth + maxWidth));
+        pose.pushPose();
+        // The fill spans -29..29 and -3..3. Keep a two-unit left inset and draw in front of it.
+        pose.translate(-27, -2.5, .02);
+        pose.scale(scale, scale, 1);
+        mc.font.drawInBatch(current, .5f, .5f, 0xFFF5F5F0, false, pose.last().pose(), BUFFER,
+                net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, 15728880);
+        mc.font.drawInBatch(current, 0, 0, 0xFF232D38, false, pose.last().pose(), BUFFER,
                 net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, 15728880);
         pose.pushPose();
         // Align the smaller suffix to the current-health text's baseline.
-        pose.translate(left + currentWidth, -4 + 7 * (1 - small), 0);
+        pose.translate(currentWidth, 7 * (1 - small), 0);
         pose.scale(small, small, 1);
-        mc.font.drawInBatch(maximum, 0, 0, color, true, pose.last().pose(), BUFFER,
+        mc.font.drawInBatch(maximum, .5f, .5f, 0xFFF5F5F0, false, pose.last().pose(), BUFFER,
                 net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, 15728880);
+        mc.font.drawInBatch(maximum, 0, 0, 0xFF232D38, false, pose.last().pose(), BUFFER,
+                net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, 15728880);
+        pose.popPose();
         pose.popPose();
     }
 
