@@ -30,6 +30,8 @@ public final class ArcShock {
     static final int STUN_TICKS=60;
     private static final Map<LivingEntity,Long> STUNNED=new WeakHashMap<>();
     /** Hit by the stun baton within the last {@link #STUN_TICKS} (health bar 감전 icon). */
+    /** Marks 감전 (health bar icon) for {@link #STUN_TICKS}, as a stun baton hit does (39 magic book's light). */
+    static void stun(LivingEntity body){STUNNED.put(body,body.level().getGameTime()+STUN_TICKS);}
     static boolean stunned(LivingEntity body){Long end=STUNNED.get(body);return end!=null&&body.level().getGameTime()<end;}
     @SubscribeEvent(priority=net.minecraftforge.eventbus.api.EventPriority.LOWEST)
     public static void stunHit(net.minecraftforge.event.entity.living.LivingHurtEvent event){

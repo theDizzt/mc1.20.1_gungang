@@ -106,6 +106,7 @@ public final class ClientSetup {
         event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "shooter_hud", ShooterHud::render);
         event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "rapier_energy", TaczAmmoHud::rapier);
         event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "shuriken_ammo", TaczAmmoHud::shuriken);
+        event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "magic_book_mana", TaczAmmoHud::magicBook);
     }
     @SubscribeEvent
     public static void setup(FMLClientSetupEvent event) {

@@ -26,7 +26,7 @@ public final class FireModeWheel {
                 ||mc.screen!=null||mc.player==null||!mc.player.isAlive()||mc.player.isSpectator())return;
         var stack=mc.player.getMainHandItem();
         boolean back=event.getScrollDelta()>0;
-        String action=M95.is(stack)?"m95Mode":ShurikenItem.is(stack)?"shurikenMode":TwinBlades.is(stack)?"bladesReset":null;
+        String action=M95.is(stack)?"m95Mode":ShurikenItem.is(stack)?"shurikenMode":MagicBookItem.is(stack)?"bookMode":TwinBlades.is(stack)?"bladesReset":null;
         if(action!=null){event.setCanceled(true);if(coolingDown())return;GungangNetwork.CHANNEL.sendToServer(new GungangNetwork.Action(action,back?"-1":"",""));changed();return;}
         if(unavailable)return;
         try{

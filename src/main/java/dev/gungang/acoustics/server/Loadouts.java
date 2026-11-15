@@ -207,10 +207,22 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
             var paths = files.filter(p -> Files.isRegularFile(p) && p.getFileName().toString().endsWith(".json")).sorted().toList();
             if (paths.isEmpty() || paths.size() > 64) throw new java.io.IOException("Configure 1–64 weapon JSON files: " + directory);
             List<Weapon> weapons = new ArrayList<>();
+            boolean primary = directory.getFileName().toString().equals("weapons");
+            Set<String> ids = new HashSet<>();
             for (Path file : paths) {
-                Weapon weapon = ServerFiles.GSON.fromJson(read(file,65536), Weapon.class);
-                if (weapon == null) throw new java.io.IOException("Empty weapon: " + file);
-                weapons.add(directory.getFileName().toString().equals("sub_weapons")?OrdnanceLoadouts.upgradePlaceholder(weapon):weapon);
+                // One broken weapon file is skipped (and logged), not allowed to take every other weapon down with it.
+                try {
+                    Weapon weapon = ServerFiles.GSON.fromJson(read(file,65536), Weapon.class);
+                    if (weapon == null) throw new IllegalArgumentException("Empty weapon");
+                    if (!primary) weapon = OrdnanceLoadouts.upgradePlaceholder(weapon);
+                    weapon.validate(primary);
+                    if (!ids.add(weapon.id)) throw new IllegalArgumentException("Duplicate weapon id: " + weapon.id);
+                    weapons.add(weapon);
+                } catch (RuntimeException invalid) {
+                    String reason = invalid.getMessage() == null ? invalid.getClass().getSimpleName() : invalid.getMessage();
+                    if (invalid.getCause() != null && invalid.getCause().getMessage() != null) reason += " (" + invalid.getCause().getMessage() + ")";
+                    com.mojang.logging.LogUtils.getLogger().error("[GunGang] Skipped weapon file {}: {}", file, reason);
+                }
             }
             return List.copyOf(weapons);
         }

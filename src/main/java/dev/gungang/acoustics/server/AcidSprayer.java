@@ -182,7 +182,7 @@ public final class AcidSprayer {
             particles(level,cloud,config.cloudRadius(),clouds);
             if(now%interval!=0)continue;
             double r=config.cloudRadius();var c=cloud.position;
-            for(var body:level.getEntitiesOfClass(LivingEntity.class,new AABB(c,c).inflate(r+1),BotEntity::participant)){
+            for(var body:level.getEntitiesOfClass(LivingEntity.class,new AABB(c,c).inflate(r+1),HiddenWeaponTargets::valid)){
                 if(!body.isAlive()||body.isSpectator()||SafeZones.contains(body)||!touches(body,c,r)||!hurt.add(body))continue;
                 hurt(body,cloud,config,interval);
             }

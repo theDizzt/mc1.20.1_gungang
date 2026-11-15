@@ -12,7 +12,7 @@ public final class GimmickAttackInput {
         var mc=net.minecraft.client.Minecraft.getInstance();
         if(!event.isAttack()||mc.player==null||mc.level==null||mc.screen!=null)return;
         // The shuriken's own handler (ShurikenInput) throws instead; its shuriken hit gimmick blocks themselves.
-        if(ShurikenItem.is(mc.player.getMainHandItem()))return;
+        if(ShurikenItem.is(mc.player.getMainHandItem())||dev.gungang.acoustics.server.MagicBookItem.is(mc.player.getMainHandItem()))return;
         if(mc.player.getMainHandItem().getItem() instanceof RapierItem){
             if(event.isCanceled())return;
             event.setCanceled(true);event.setSwingHand(false);

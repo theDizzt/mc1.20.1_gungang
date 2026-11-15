@@ -30,7 +30,7 @@ public final class BotManager {
     /** The first bot's id; every bot id is {@link BotDatabase#id(int)}. */
     public static final UUID ID=BotDatabase.id(0);
     /** Bots in a lobby at once; each takes one of the {@link #PROFILES} profiles (profile index = slot = UUID). */
-    public static final int MAX=8;
+    public static final int MAX=12;
     public static final int PROFILES=BotDatabase.PROFILES;
     public static final String NAME="Rookie";
     private static BotDatabase database;

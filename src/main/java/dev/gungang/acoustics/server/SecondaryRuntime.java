@@ -82,7 +82,8 @@ public final class SecondaryRuntime {
         if(refill==0||maxCharges(stack)<=1)return refill;
         return Math.max(0,refill-(long)(maxCharges(stack)-1)*stack.getTag().getInt("GunGangCooldownTicks"));
     }
-    public static boolean ready(Player player,ItemStack stack) { return !FreeForAllMatch.blocked(player)&&remaining(player,stack)==0; }
+    /** The 39 magic book locks every secondary while it is carried. */
+    public static boolean ready(Player player,ItemStack stack) { return !FreeForAllMatch.blocked(player)&&!MagicBookItem.carried(player)&&remaining(player,stack)==0; }
     public static void commit(Player player,ItemStack stack) {
         if(!secondary(stack)||player.level().isClientSide)return;
         BotLearning.event(player,"secondary_cooldown_commit:"+BotLearning.weapon(stack));
@@ -135,6 +136,7 @@ public final class SecondaryRuntime {
             net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.LOWEST,false,type,event->{
                 try {
                     if(shooter.invoke(event) instanceof Player player&&(FreeForAllMatch.blocked(player)||CombatGadgets.holdingShield(player)||SurvivalGadgets.jetting(player)||GadgetManager.placing(player)||TwinBlades.guarding(player))) {if(event.isCancelable())event.setCanceled(true);return;}
+                    if(shooter.invoke(event) instanceof Player player&&item.invoke(event) instanceof ItemStack stack&&secondary(stack)&&MagicBookItem.carried(player)) {if(event.isCancelable())event.setCanceled(true);return;}
                     if(shooter.invoke(event) instanceof Player player&&item.invoke(event) instanceof ItemStack stack&&secondary(stack)) {
                         if(PropAwn.is(stack)){
                             var match=MatchManager.propHunt();

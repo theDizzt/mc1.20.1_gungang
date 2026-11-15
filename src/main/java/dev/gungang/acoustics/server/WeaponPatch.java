@@ -174,7 +174,7 @@ public final class WeaponPatch {
             Map.entry("respawnSeconds", "다시 생기는 시간 (초)"), Map.entry("soundVolume", "소리 크기"), Map.entry("soundIntervalTicks", "발소리 간격 (틱)"),
             Map.entry("poisonSeconds", "독 시간 (초)"), Map.entry("amplifier", "효과 단계 (0=I)"), Map.entry("height", "높이 (블록)"),
             Map.entry("particlesPerSecond", "초당 입자 수"),
-            Map.entry("windRange", "좌클릭 송풍 사거리 (블록)"), Map.entry("cannonAmmoCost", "공기대포 탄약 소모"), Map.entry("cannonDamage", "공기대포 피해"),
+            Map.entry("windRange", "좌클릭 송풍 사거리 (블록)"), Map.entry("windConeAngle", "좌클릭 바람 원뿔 각도 (°)"), Map.entry("windMaxSpeed", "좌클릭 바람 최대 속도 (블록/틱)"), Map.entry("cannonAmmoCost", "공기대포 탄약 소모"), Map.entry("cannonDamage", "공기대포 피해"),
             Map.entry("cannonKnockbackMultiplier", "공기대포 넉백 배수"), Map.entry("cannonSelfKnockback", "공기대포 사용자 반동 (블록/틱)"),
             Map.entry("cannonRange", "공기대포 사거리 (블록)"), Map.entry("cannonRadius", "공기대포 범위 반경 (블록)"), Map.entry("cannonCooldownSeconds", "공기대포 쿨타임 (초)"), Map.entry("damageIntervalTicks", "피해 간격 (틱)"),
             Map.entry("ammoPerThrow", "1회 투척 탄약 소모"), Map.entry("reloadSeconds", "재장전 시간 (초)"), Map.entry("spreadDegrees", "탄퍼짐 (°)"),
