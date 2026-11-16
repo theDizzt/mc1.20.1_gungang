@@ -326,7 +326,10 @@ public final class BotManager {
         BotMovement.newTick();
         try{
             BotNavGraph.tick(level(),arena);
-            for(var a:List.copyOf(agents)){
+            var scheduled=List.copyOf(agents);
+            // Rotate the first bot so a resumed search cannot monopolize the shared per-tick budget.
+            for(int i=0;i<scheduled.size();i++){
+                var a=scheduled.get(Math.floorMod(server.getTickCount()+i,scheduled.size()));
                 long begin=System.nanoTime();a.tick(running);
                 long ms=(System.nanoTime()-begin)/1_000_000;
                 // A bot tick over 20 ms is a visible hitch: log which bot and what it was doing (at most every 5 s).

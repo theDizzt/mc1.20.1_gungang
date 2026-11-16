@@ -38,8 +38,9 @@ final class BotNavGraph {
      * passes through one; whether the fall damage is survivable is checked by the bot at the edge (BotRoute).
      */
     private static final int MAX_FALL=24;
-    private static final int MAX_CELLS=8_000_000,CHUNKS_PER_TICK=4,LOADS_PER_TICK=1,FINISH_PER_TICK=400_000,
+    private static final int MAX_CELLS=8_000_000,CHUNKS_PER_TICK=4,FINISH_PER_TICK=400_000,
             SEARCHES_PER_TICK=2,EXPANSIONS=60_000,SWITCH_RANGE=8;
+    private static final long BUILD_NANOS=2_000_000,SEARCH_NANOS=1_500_000;
     private static final float DOOR_COST=12;
     /** A bot's path-walking pace in blocks per tick, against which a belt's drift is weighed. */
     private static final double PACE=.28;
@@ -56,6 +57,9 @@ final class BotNavGraph {
     private final List<BlockPos> switches=new ArrayList<>(),shutters=new ArrayList<>();
     private final Map<Integer,int[]> landings=new HashMap<>();
     private int finished=-1;
+    private int scanY,prepareShutter,prepareSwitch;
+    private net.minecraft.world.level.chunk.LevelChunk scanning;
+    private java.util.concurrent.CompletableFuture<net.minecraft.world.level.chunk.LevelChunk> loading;
     private boolean ready;
 
     private BotNavGraph(String key,ArenaMap arena,int[] b){
@@ -102,36 +106,60 @@ final class BotNavGraph {
 
     // ---- scan ----
     private void build(ServerLevel level){
+        long deadline=System.nanoTime()+BUILD_NANOS;
         if(!chunks.isEmpty()){
-            int loads=LOADS_PER_TICK;
             for(int done=0;done<CHUNKS_PER_TICK&&!chunks.isEmpty();done++){
                 var next=chunks.peekFirst();int cx=(int)next[0],cz=(int)next[1];
-                var chunk=level.getChunkSource().getChunkNow(cx,cz);
-                if(chunk==null){if(loads--<=0)return;chunk=level.getChunk(cx,cz);}
-                chunks.removeFirst();scan(chunk,cx,cz);
+                if(scanning==null){
+                    if(loading!=null){
+                        if(!loading.isDone())return;
+                        scanning=loading.join();loading=null;
+                    }else scanning=level.getChunkSource().getChunkNow(cx,cz);
+                    if(scanning==null){
+                        // Request loading, but never wait for disk or generation inside this server tick.
+                        var source=level.getChunkSource();
+                        // This API waits when called on the server thread; its off-thread branch only queues
+                        // the request back to that thread. No world reads or grid work run on the worker.
+                        loading=java.util.concurrent.CompletableFuture.supplyAsync(()->source.getChunkFuture(
+                                        cx,cz,net.minecraft.world.level.chunk.ChunkStatus.FULL,true))
+                                .thenCompose(future->future)
+                                .thenApply(result->result.left().filter(net.minecraft.world.level.chunk.LevelChunk.class::isInstance)
+                                        .map(net.minecraft.world.level.chunk.LevelChunk.class::cast).orElse(null));
+                        return;
+                    }
+                }
+                if(!scan(scanning,cx,cz,deadline))return;
+                chunks.removeFirst();scanning=null;scanY=0;
+                if(System.nanoTime()>=deadline)return;
             }
             return;
         }
-        if(finished<0){prepare();finished=0;parts=new int[cells.length];Arrays.fill(parts,-1);return;}
+        if(finished<0){
+            if(!prepare(deadline))return;
+            finished=0;parts=new int[cells.length];Arrays.fill(parts,-1);return;
+        }
         int end=Math.min(cells.length,finished+FINISH_PER_TICK);
-        for(int i=finished;i<end;i++){
+        while(finished<end){
+            if((finished&255)==0&&System.nanoTime()>=deadline)return;
+            int i=finished++;
             int x=x0+i%w,z=z0+(i/w)%d,y=y0+i/(w*d);
             if(stand(x,y,z,null,null,null)<0)continue;
             if(parts[i]<0)parts[i]=i;
             if((cells[i]&PAD)!=0)padLandings(i,level,x,y,z);
             int from=i;moves(x,y,z,null,null,null,(nx,ny,nz,cost,kind)->union(from,index(nx,ny,nz)));
         }
-        finished=end;
         if(finished>=cells.length){
             ready=true;
             com.mojang.logging.LogUtils.getLogger().info("[GunGang] Bot map grid ready for {}: {}x{}x{}, {} pads, {} shutters, {} switches",
                     arena.id(),w,h,d,landings.size(),shutters.size(),switches.size());
         }
     }
-    private void scan(net.minecraft.world.level.chunk.LevelChunk chunk,int cx,int cz){
+    private boolean scan(net.minecraft.world.level.chunk.LevelChunk chunk,int cx,int cz,long deadline){
         int ax=Math.max(x0,cx<<4),bx=Math.min(x0+w-1,(cx<<4)+15),az=Math.max(z0,cz<<4),bz=Math.min(z0+d-1,(cz<<4)+15);
         var pos=new BlockPos.MutableBlockPos();
-        for(int y=y0;y<y0+h;y++){
+        for(;scanY<h;scanY++){
+            if(System.nanoTime()>=deadline)return false;
+            int y=y0+scanY;
             int section=chunk.getSectionIndex(y);
             boolean above=section>=chunk.getSectionsCount(),below=section<0;
             var data=above||below?null:chunk.getSection(section);
@@ -146,6 +174,7 @@ final class BotNavGraph {
                 if(state.getBlock() instanceof ShutterBlock)shutters.add(pos.immutable());
             }
         }
+        return true;
     }
     private static int kind(BlockState state,net.minecraft.world.level.BlockGetter level,BlockPos pos){
         var cached=KINDS.get(state);if(cached!=null)return cached;
@@ -172,11 +201,21 @@ final class BotNavGraph {
         KINDS.put(state,(short)flags);return flags;
     }
     /** Shutters with a switch close enough to be the one wired to them. Death zones are blocks, flagged by kind(). */
-    private void prepare(){
-        for(var shutter:shutters)for(var lever:switches)
-            if(Math.abs(lever.getX()-shutter.getX())<=SWITCH_RANGE&&Math.abs(lever.getZ()-shutter.getZ())<=SWITCH_RANGE&&Math.abs(lever.getY()-shutter.getY())<=4){
-                cells[index(shutter.getX(),shutter.getY(),shutter.getZ())]|=SWITCHABLE;break;
+    private boolean prepare(long deadline){
+        int checked=0;
+        while(prepareShutter<shutters.size()){
+            if(System.nanoTime()>=deadline)return false;
+            var shutter=shutters.get(prepareShutter);
+            while(prepareSwitch<switches.size()){
+                if((checked++&255)==0&&System.nanoTime()>=deadline)return false;
+                var lever=switches.get(prepareSwitch++);
+                if(Math.abs(lever.getX()-shutter.getX())<=SWITCH_RANGE&&Math.abs(lever.getZ()-shutter.getZ())<=SWITCH_RANGE&&Math.abs(lever.getY()-shutter.getY())<=4){
+                    cells[index(shutter.getX(),shutter.getY(),shutter.getZ())]|=SWITCHABLE;break;
+                }
             }
+            prepareShutter++;prepareSwitch=0;
+        }
+        return true;
     }
     /** Every ledge a launch from this pad lands on: rise straight up, then drift over at walking pace. */
     private void padLandings(int i,ServerLevel level,int x,int y,int z){
@@ -372,28 +411,49 @@ final class BotNavGraph {
         return a>=0&&b>=0&&parts[a]>=0&&parts[b]>=0&&find(a)==find(b);
     }
     record Node(Vec3 pos,int kind,BlockPos cell,boolean belt) { }
-    /** A* from the bot to the goal, honouring live gates and shutters; null when none (or out of budget, see {@link #searchSpent}). */
-    List<Node> route(BotEntity bot,Vec3 goal,Set<Long> blocked){
-        if(searches<=0)return null;
+    /** Owned by one BotRoute, so cancellation releases the frontier instead of retaining abandoned searches. */
+    static final class Search {
+        final BotNavGraph graph;
+        final int start,end;
+        final Set<Long> blocked;
+        final Map<Integer,Float> g=new HashMap<>();
+        final Map<Integer,Long> from=new HashMap<>();
+        final PriorityQueue<long[]> open=new PriorityQueue<>(Comparator.comparingDouble(e->Double.longBitsToDouble(e[0])));
+        int expanded;
+        boolean done;
+        Search(BotNavGraph graph,int start,int end,Set<Long> blocked){
+            this.graph=graph;this.start=start;this.end=end;this.blocked=Set.copyOf(blocked);
+            g.put(start,0f);open.add(new long[]{Double.doubleToLongBits(0),start});
+        }
+    }
+    Search search(BotEntity bot,Vec3 goal,Set<Long> blocked){
         int start=snap(bot.position()),end=snap(goal);
         if(start<0||end<0||parts[start]<0||parts[end]<0||find(start)!=find(end))return null;
+        return new Search(this,start,end,blocked);
+    }
+    /** Null with !done means yield, not an unreachable goal. Total expansions remain bounded across ticks. */
+    List<Node> route(BotEntity bot,Search search){
+        if(searches<=0)return null;
         searches--;
+        long deadline=System.nanoTime()+SEARCH_NANOS;
+        int start=search.start,end=search.end;
+        var blocked=search.blocked;var g=search.g;var from=search.from;var open=search.open;
         var level=bot.level();
+        var agent=BotManager.agent(bot);
         int ex=x0+end%w,ey=y0+end/(w*d),ez=z0+(end/w)%d;
-        var g=new HashMap<Integer,Float>();var from=new HashMap<Integer,Long>();
-        var open=new PriorityQueue<long[]>(Comparator.comparingDouble(e->Double.longBitsToDouble(e[0])));
-        g.put(start,0f);open.add(new long[]{Double.doubleToLongBits(0),start});
-        int expanded=0;
-        while(!open.isEmpty()&&expanded++<EXPANSIONS){
+        while(!open.isEmpty()&&search.expanded<EXPANSIONS){
+            if((search.expanded&63)==0&&System.nanoTime()>=deadline)return null;
+            search.expanded++;
             var top=open.poll();int i=(int)top[1];
-            if(i==end)return path(from,start,end,level);
+            if(i==end){search.done=true;return path(from,start,end,level);}
             float base=g.get(i);int x=x0+i%w,y=y0+i/(w*d),z=z0+(i/w)%d;
             if(Double.longBitsToDouble(top[0])>base+(Math.abs(ex-x)+Math.abs(ez-z)+Math.abs(ey-y)*.5)*1.2+1e-3)continue; // stale entry
             moves(x,y,z,level,bot,blocked,(nx,ny,nz,cost,kind)->{
                 int n=index(nx,ny,nz);
                 // UXOs re-arm during the match, so they are checked live rather than baked into the grid.
                 float uxo=BotMovement.uxoCost(level,nx,ny,nz);if(uxo==Float.POSITIVE_INFINITY)return;
-                float extra=uxo+cost+BotManager.routeCost(bot,nx,ny,nz)+(BotManager.avoid(bot,nx,ny,nz)?8:0);
+                float risk=agent==null?0:(float)agent.movement.routeMemory.risk(nx+.5,ny,nz+.5,bot.getServer().getTickCount())*4;
+                float extra=uxo+cost+risk+(agent!=null&&agent.perception.avoid(nx+.5,ny,nz+.5)?8:0);
                 float score=base+extra;var known=g.get(n);
                 if(known!=null&&known<=score)return;
                 g.put(n,score);from.put(n,((long)kind<<32)|(i&0xffffffffL));
@@ -401,6 +461,7 @@ final class BotNavGraph {
                 open.add(new long[]{Double.doubleToLongBits(f),n});
             });
         }
+        search.done=true;
         return null;
     }
     private List<Node> path(Map<Integer,Long> from,int start,int end,Level level){
