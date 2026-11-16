@@ -76,17 +76,14 @@ public final class TargetHealthBar {
         // At +0.02 the text sat behind the fill and lost the depth test.
         pose.translate(-27, -2.5, -1);
         pose.scale(scale, scale, 1);
-        mc.font.drawInBatch(current, .5f, .5f, 0xFFF5F5F0, false, pose.last().pose(), BUFFER,
-                net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, 15728880);
-        mc.font.drawInBatch(current, 0, 0, 0xFF232D38, false, pose.last().pose(), BUFFER,
+        // Let Font separate the shadow and glyph depth; two offset labels at the same depth overlap.
+        mc.font.drawInBatch(current, 0, 0, 0xFFF5F5F0, true, pose.last().pose(), BUFFER,
                 net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, 15728880);
         pose.pushPose();
         // Align the smaller suffix to the current-health text's baseline.
         pose.translate(currentWidth, 7 * (1 - small), 0);
         pose.scale(small, small, 1);
-        mc.font.drawInBatch(maximum, .5f, .5f, 0xFFF5F5F0, false, pose.last().pose(), BUFFER,
-                net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, 15728880);
-        mc.font.drawInBatch(maximum, 0, 0, 0xFF232D38, false, pose.last().pose(), BUFFER,
+        mc.font.drawInBatch(maximum, 0, 0, 0xFFF5F5F0, true, pose.last().pose(), BUFFER,
                 net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, 15728880);
         pose.popPose();
         pose.popPose();
