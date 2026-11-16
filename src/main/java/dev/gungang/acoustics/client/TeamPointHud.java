@@ -22,14 +22,23 @@ import org.lwjgl.glfw.GLFW;
 public final class TeamPointHud {
     public static final KeyMapping POINT=new KeyMapping("gungang.key.team_point",KeyConflictContext.IN_GAME,InputConstants.Type.KEYSYM,GLFW.GLFW_KEY_Q,"key.categories.gungang");
     private static TeamPointState.View view=empty();
+    private static final Map<UUID,Integer> NUMBERS=new HashMap<>();
+    private static final Map<UUID,TeamPointState.Vital> VITALS=new HashMap<>();
     private static TeamPointState.View empty(){return new TeamPointState.View("",0,List.of(),List.of());}
-    public static void receive(String json){view=ServerFiles.GSON.fromJson(json,TeamPointState.View.class);}
-    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event){view=empty();}
+    public static void receive(String json){
+        view=ServerFiles.GSON.fromJson(json,TeamPointState.View.class);
+        NUMBERS.clear();VITALS.clear();
+        if(view!=null){
+            for(var member:view.members())NUMBERS.put(member.id(),member.number());
+            if(view.vitals()!=null)for(var vital:view.vitals())VITALS.put(vital.id(),vital);
+        }
+    }
+    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event){view=empty();NUMBERS.clear();VITALS.clear();HELD.clear();}
     private static boolean active() {
         var mc=Minecraft.getInstance();
         return mc.level!=null&&mc.player!=null&&view!=null&&TeamPointState.validTeam(view.team())&&mc.player.getTeam()!=null
                 &&mc.player.getTeam().getName().equals(view.team().equals("ALPHA")?"Red":"Blue")
-                &&view.members().stream().anyMatch(m->m.id().equals(mc.player.getUUID()));
+                &&NUMBERS.containsKey(mc.player.getUUID());
     }
     @SubscribeEvent public static void key(InputEvent.Key event) {
         var mc=Minecraft.getInstance();
@@ -44,13 +53,12 @@ public final class TeamPointHud {
     }
     public static void badge(GuiGraphics g,UUID id,int x,int y,int size) {
         if(!active())return;
-        var member=view.members().stream().filter(m->m.id().equals(id)).findFirst().orElse(null);
-        if(member!=null)drawBadge(g,member.number(),x,y,size,view.color());
+        var number=NUMBERS.get(id);
+        if(number!=null)drawBadge(g,number,x,y,size,view.color());
     }
     /** A teammate's health from the server, for when their entity is out of the client's tracking range. */
     static TeamPointState.Vital vital(UUID id){
-        if(!active()||view.vitals()==null)return null;
-        return view.vitals().stream().filter(v->v.id().equals(id)).findFirst().orElse(null);
+        return active()?VITALS.get(id):null;
     }
     private static final Map<String,net.minecraft.world.item.ItemStack> HELD=new HashMap<>();
     /** A teammate's held item as the server reports it (for beyond tracking range); empty when unknown. */
@@ -72,7 +80,7 @@ public final class TeamPointHud {
     /** A teammate's number in the team roster (the same one as on portraits and team points), or 0. */
     static int number(UUID id){
         if(!active())return 0;
-        return view.members().stream().filter(m->m.id().equals(id)).mapToInt(TeamPointState.Member::number).findFirst().orElse(0);
+        return NUMBERS.getOrDefault(id,0);
     }
     static void drawBadge(GuiGraphics g,int number,int x,int y,int size,int color){number(g,number,x+size-7,y+size-6,color);}
     private static void number(GuiGraphics g,int number,int cx,int cy,int color) {

@@ -876,7 +876,7 @@ public final class PropHuntMatch {
     }
     public PropEntity prop(UUID id){var m=members.get(id);return m==null||!game.alive(id)||reviewing?null:m.prop;}
     /** The last snapshot sent to each viewer; an unchanged one is not sent again (a new login is a new player object). */
-    private final Map<ServerPlayer,String> sent=new WeakHashMap<>();
+    private final Map<ServerPlayer,PropHuntSnapshot> sent=new WeakHashMap<>();
     private List<PropHuntSnapshot.Row> rows(boolean see){
         var rows=new ArrayList<PropHuntSnapshot.Row>(members.size());
         for(var m:members.values()){
@@ -886,10 +886,12 @@ public final class PropHuntMatch {
         return rows;
     }
     private void sync(){
+        var packets=new HashMap<PropHuntSnapshot,GungangNetwork.PropHunt>();
         // Every viewer gets one of two row lists (disguises shown or hidden), built once per sync.
         List<PropHuntSnapshot.Row> shown=null,hidden=null,shownKey=null,hiddenKey=null;
         // A test session only talks to its own players; everyone else keeps their normal HUD.
         for(var viewer:server.getPlayerList().getPlayers()){
+            if(!GungangNetwork.installed(viewer))continue;
             if(test&&!participant(viewer.getUUID()))continue;
             boolean see=hider(viewer.getUUID())||reviewing||!participant(viewer.getUUID());
             List<PropHuntSnapshot.Row> rows;
@@ -904,11 +906,13 @@ public final class PropHuntMatch {
             // The client counts cooldowns and active times down itself (PropHuntClient.elapsed), so a copy where only
             // those ran down is not news: compare with them as end times. Clocks in seconds still resync once a second.
             if(see){if(shownKey==null)shownKey=countdownKey(rows);}else if(hiddenKey==null)hiddenKey=countdownKey(rows);
-            String key=ServerFiles.GSON.toJson(new PropHuntSnapshot(snapshot.active(),snapshot.phase(),snapshot.seconds(),snapshot.changeSeconds(),see?shownKey:hiddenKey,snapshot.huntSeconds(),snapshot.rush(),snapshot.offers(),snapshot.picked(),snapshot.choiceSeconds(),snapshot.firstChoice(),snapshot.taken(),snapshot.clingOff(),snapshot.sharedChoice(),snapshot.scout()));
+            var key=new PropHuntSnapshot(snapshot.active(),snapshot.phase(),snapshot.seconds(),snapshot.changeSeconds(),see?shownKey:hiddenKey,snapshot.huntSeconds(),snapshot.rush(),snapshot.offers(),snapshot.picked(),snapshot.choiceSeconds(),snapshot.firstChoice(),snapshot.taken(),snapshot.clingOff(),snapshot.sharedChoice(),snapshot.scout());
             if(key.equals(sent.get(viewer)))continue;
             sent.put(viewer,key);
-            GungangNetwork.send(viewer,new GungangNetwork.PropHunt(ServerFiles.GSON.toJson(snapshot)));
+            // Sharing is keyed by the complete recipient view, including private offers and scout information.
+            GungangNetwork.send(viewer,packets.computeIfAbsent(snapshot,s->new GungangNetwork.PropHunt(ServerFiles.GSON.toJson(s))));
         }
+        sent.keySet().retainAll(server.getPlayerList().getPlayers());
     }
     /** Rows with the counting-down fields as the tick they end on (0: not running), unchanged while they only count down. */
     private List<PropHuntSnapshot.Row> countdownKey(List<PropHuntSnapshot.Row> rows){
