@@ -37,7 +37,7 @@ public final class StationEntity extends BlockEntity {
         // Taken when hurt or ailing; it also cures harmful status effects, burning and bleeding.
         if(level==null||!availableHealthPack())return;
         var block=(StationBlock)getBlockState().getBlock();
-        // The 39 magic book also takes a pack for its mana (small 30, large 50).
+        // The 38 magic book also takes a pack for its mana (small 30, large 50).
         int mana=MagicBook.packMana(entity,block.kind==StationBlock.Kind.SMALL);
         if(entity.getHealth()>=entity.getMaxHealth()&&!StatusCure.ailing(entity)&&mana<=0)return;
         var config=block.kind==StationBlock.Kind.SMALL?GadgetConfig.smallHealthPack:GadgetConfig.largeHealthPack;

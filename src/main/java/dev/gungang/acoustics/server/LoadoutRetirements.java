@@ -20,11 +20,12 @@ final class LoadoutRetirements {
         try(var files=Files.list(root.resolve("weapons"))){
             for(var file:files.filter(p->p.getFileName().toString().endsWith(".json")).toList()){
                 var json=definition(file);
-                if(json==null||!json.has("id")||!json.get("id").getAsString().equals("39")
+                // The magic book moved 39 -> 37 -> 38 (37 is now the glue gun); any older ID goes straight to 38.
+                if(json==null||!json.has("id")||!java.util.Set.of("37","39").contains(json.get("id").getAsString())
                         ||!json.has("itemNbt")||!json.get("itemNbt").getAsString().contains("gungang:magic_book"))continue;
-                json.addProperty("id","37");
+                json.addProperty("id","38");
                 Files.writeString(file,ServerFiles.GSON.toJson(json));
-                var target=file.resolveSibling("37_magic-book.json");
+                var target=file.resolveSibling("38_magic-book.json");
                 if(!file.equals(target)&&!Files.exists(target))Files.move(file,target);
             }
         }

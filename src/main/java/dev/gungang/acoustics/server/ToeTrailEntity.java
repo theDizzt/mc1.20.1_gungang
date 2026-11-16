@@ -58,10 +58,17 @@ public final class ToeTrailEntity extends Entity {
         var position=owner.position();double distance=last.distanceTo(position);
         // Never draw a damaging bridge across a teleport or respawn.
         if(distance>8){lastMoved=now;resetPath();}
-        else if(distance>=.25){
-            var direction=position.subtract(last).normalize();int steps=(int)(distance/.25);
-            for(int i=1;i<=steps;i++)path.add(0,last.add(direction.scale(i*.25)));
-            last=last.add(direction.scale(steps*.25));lastMoved=now;
+        else{
+            // Sample by horizontal distance only: a jump's rise and fall must not add samples, or the spikes right
+            // behind (and under) the owner fall outside the four-sample self-damage grace and hit them mid-jump.
+            var flat=new Vec3(position.x-last.x,0,position.z-last.z);double horizontal=flat.length();
+            if(horizontal>=.25){
+                var direction=flat.scale(1/horizontal);int steps=(int)(horizontal/.25);double rise=(position.y-last.y)/horizontal*.25;
+                for(int i=1;i<=steps;i++)path.add(0,last.add(direction.scale(i*.25)).add(0,rise*i,0));
+                last=last.add(direction.scale(steps*.25)).add(0,rise*steps,0);lastMoved=now;
+            }
+            // Airborne counts as moving: landing from a jump in place is not "standing still".
+            if(!owner.onGround())lastMoved=now;
         }
         // Retain older history for subsequent growth instead of replacing bends with straight guesses.
         while(path.size()>c.maximumLength()*4+1)path.remove(path.size()-1);

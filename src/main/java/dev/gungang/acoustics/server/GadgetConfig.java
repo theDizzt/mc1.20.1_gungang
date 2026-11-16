@@ -69,6 +69,13 @@ public final class GadgetConfig {
             // Pre-throw-only hand axes had these keys. Ignore them when upgrading existing servers.
             // The toe's critical spikes now scale with a multiplier of the length-based DPS.
             if(id.equals("toe")&&e.getKey().equals("criticalDamagePerSecond"))continue;
+            // The glue gun's rounds now end at a range in blocks, not after a flight time.
+            if(id.equals("glue_gun")&&e.getKey().equals("flightSeconds"))continue;
+            // The glue gun's fire rate is now set in RPM.
+            if(id.equals("glue_gun")&&e.getKey().equals("fireIntervalSeconds")){
+                if(!json.has("roundsPerMinute")&&e.getValue().getAsDouble()>0)merged.addProperty("roundsPerMinute",Math.round(60/e.getValue().getAsDouble()));
+                continue;
+            }
             if(id.equals("hand_axe")&&java.util.Set.of("meleeDamage","meleeCooldownSeconds").contains(e.getKey()))continue;
             if(!merged.has(e.getKey()))throw new IllegalArgumentException("Unknown item option: "+e.getKey());merged.add(e.getKey(),e.getValue());
         }

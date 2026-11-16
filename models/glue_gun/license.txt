@@ -1,0 +1,11 @@
+Model Information:
+* title:	MAXDONE Mini Glue Gun Game Asset
+* source:	https://sketchfab.com/3d-models/maxdone-mini-glue-gun-game-asset-33ecc1254cf7474fa30835af2308487a
+* author:	Zsófia Babarczi (https://sketchfab.com/zsofiababarczi)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "MAXDONE Mini Glue Gun Game Asset" (https://sketchfab.com/3d-models/maxdone-mini-glue-gun-game-asset-33ecc1254cf7474fa30835af2308487a) by Zsófia Babarczi (https://sketchfab.com/zsofiababarczi) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

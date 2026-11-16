@@ -8,7 +8,7 @@ import net.minecraft.world.item.*;
 import net.minecraft.world.level.Level;
 
 /**
- * Primary 37 magic book. Its mana, element (조정관) and the abilities' cooldowns live in the stack's tag, synced to the
+ * Primary 38 magic book. Its mana, element (조정관) and the abilities' cooldowns live in the stack's tag, synced to the
  * holder for the HUD; every ability is server-authoritative ({@link MagicBook}). Mana regenerates on its own (no reload)
  * and from health packs. While it is carried, secondaries cannot be used.
  */

@@ -12,7 +12,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 /**
- * 39 magic book controls: the attack and use keys are reported to the server as held or not ({@code bookInput}, on
+ * 38 magic book controls: the attack and use keys are reported to the server as held or not ({@code bookInput}, on
  * every change and twice a second while held); vanilla attacking and using are suppressed. TaCZ's fire select key and
  * the mouse wheel ({@link FireModeWheel}) change the element. While the server allows 흑 flight, the view direction
  * drives the body here (the client moves its own player).

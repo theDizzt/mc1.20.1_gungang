@@ -23,6 +23,22 @@ public final class PatchHelp {
     /** Help of one item setting's field, when the generic one would mislead. */
     private static void item(String setting, String field, String text) { ITEM_OF.put(setting + "." + field, text); }
     static {
+        item("glue_gun", "magazine", "용도: 글루건 장탄수. 발사마다 1발씩 줄고, R(TaCZ 재장전 키)이나 빈 탄창으로 쏘면 재장전합니다.");
+        item("glue_gun", "reloadSeconds", "용도: 재장전(글루건 스틱 교체) 시간(초). 다른 무기로 바꾸면 취소됩니다.");
+        item("glue_gun", "roundsPerMinute", "용도: 좌클릭을 누르고 있을 때 분당 발사 수(RPM).\n산출식: 발사 간격(틱) = 1200 / RPM을 반올림 (171 RPM = 7틱 = 0.35초)");
+        item("glue_gun", "directDamage", "용도: 탄환이 적에게 직접 맞았을 때의 피해. 직격은 적에게만 들어가며 사용자·아군은 통과합니다.");
+        item("glue_gun", "projectileSpeed", "용도: 탄환 비행 속도(블록/틱, 20틱 = 1초).\n산출식: 초당 비행 거리 = 속도 × 20");
+        item("glue_gun", "projectileGravity", "용도: 탄환이 매 틱 아래로 떨어지는 정도. 0이면 직선으로 날아갑니다.");
+        item("glue_gun", "spreadDegrees", "용도: 줌 없이 쏠 때 탄환이 조준점에서 벗어나는 최대 각도(°). 이 각도의 원뿔 안에서 무작위로 날아갑니다. 0이면 조준점으로 정확히 날아갑니다.");
+        item("glue_gun", "zoomSpreadDegrees", "용도: 우클릭 줌 중에 쏠 때의 최대 탄 퍼짐(°). 줌 상태는 발사할 때 클라이언트가 함께 보냅니다.");
+        item("glue_gun", "range", "용도: 탄환 사거리(블록). 이 거리 안에서 아무것도 맞히지 못한 탄환은 장판 없이 사라집니다.");
+        item("glue_gun", "poolRadius", "용도: 글루 장판 반경(블록). 발이 이 원 안에 있으면 장판을 밟은 것으로 봅니다.");
+        item("glue_gun", "poolSeconds", "용도: 글루 장판이 남아 있는 시간(초).");
+        item("glue_gun", "poolDamagePerSecond", "용도: 장판을 밟고 있는 동안의 초당 피해. 사용자·아군·적 모두 받으며, 장판이 겹쳐도 한 번만 받습니다.");
+        item("glue_gun", "damageIntervalSeconds", "용도: 장판 피해가 들어가는 간격(초).\n산출식: 회당 피해 = 초당 피해 × 간격. 간격을 바꿔도 DPS는 유지됩니다.");
+        item("glue_gun", "slowPercent", "용도: 장판을 밟은 동안 이동 속도 감소(%). 장판 위에서는 점프할 수 없습니다.");
+        item("glue_gun", "poolDropDistance", "용도: 탄환이 벽·천장·적에 맞아 터졌을 때 아래로 바닥을 찾는 최대 거리(블록). 이 안에 바닥이 없으면 장판이 생기지 않습니다.");
+        item("glue_gun", "zoomFovMultiplier", "용도: 우클릭 줌 시야 배율. 0.5면 시야각이 절반(2배 확대)이 됩니다.");
         item("toe","initialLength","장착 시 가시 길이. 이동 경로를 따라 유지됩니다.");
         item("toe","maximumLength","최대 길이. 서버 부하를 제한하기 위해 100블록까지 설정할 수 있습니다.");
         item("toe","criticalLength","꼬리 끝에서부터 크리티컬 피해와 2번 색상을 적용하는 길이.");

@@ -14,7 +14,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 /**
- * 39 magic book beams: the holy water stream (pale blue) and the ruin beam (violet with a dark core), drawn from the
+ * 38 magic book beams: the holy water stream (pale blue) and the ruin beam (violet with a dark core), drawn from the
  * book in the caster's hand to where the server's trace ended. The server refreshes them every other tick.
  */
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID,value=Dist.CLIENT)

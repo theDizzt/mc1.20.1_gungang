@@ -104,6 +104,22 @@ public final class WeaponPatch {
     private static final Map<String, String> SECONDARY_LABELS = Map.of("nameEn", "영어 이름 (비우면 한글 이름)", "cooldownSeconds", "쿨타임 (초)", "plantSeconds", "설치 시간 (초)", "fuseSeconds", "폭발 시간 (초)", "defuseSeconds", "해체 시간 (초)");
     /** Labels for one item's own fields ("setting.field"), ahead of {@link #ITEM_LABELS}, where the shared name would mislead. */
     private static final Map<String, String> ITEM_LABELS_OF = Map.ofEntries(
+            Map.entry("glue_gun.magazine","장탄수"),
+            Map.entry("glue_gun.reloadSeconds","재장전 시간 (초)"),
+            Map.entry("glue_gun.roundsPerMinute","연사력 (RPM)"),
+            Map.entry("glue_gun.directDamage","직격 피해"),
+            Map.entry("glue_gun.projectileSpeed","탄환 속도 (블록/틱)"),
+            Map.entry("glue_gun.projectileGravity","탄환 낙하 (블록/틱²)"),
+            Map.entry("glue_gun.spreadDegrees","탄 퍼짐 (°)"),
+            Map.entry("glue_gun.zoomSpreadDegrees","줌 탄 퍼짐 (°)"),
+            Map.entry("glue_gun.range","사거리 (블록)"),
+            Map.entry("glue_gun.poolRadius","글루 장판 반경 (블록)"),
+            Map.entry("glue_gun.poolSeconds","글루 장판 유지 시간 (초)"),
+            Map.entry("glue_gun.poolDamagePerSecond","장판 초당 피해"),
+            Map.entry("glue_gun.damageIntervalSeconds","장판 피해 간격 (초)"),
+            Map.entry("glue_gun.slowPercent","장판 이동 속도 감소 (%)"),
+            Map.entry("glue_gun.poolDropDistance","바닥 탐색 거리 (블록)"),
+            Map.entry("glue_gun.zoomFovMultiplier","줌 시야 배율"),
             Map.entry("toe.initialLength","시작 가시 길이 (블록)"),Map.entry("toe.maximumLength","최대 가시 길이 (블록)"),
             Map.entry("toe.criticalLength","끝 크리티컬 길이 (블록)"),Map.entry("toe.growthSeconds","1블록 성장 간격 (초)"),
             Map.entry("toe.damagePerSecond","시작 길이 일반 가시 초당 피해"),Map.entry("toe.damagePerSecondPerLength","1블록당 초당 피해 증가"),

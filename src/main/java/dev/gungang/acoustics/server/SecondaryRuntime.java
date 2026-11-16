@@ -82,7 +82,7 @@ public final class SecondaryRuntime {
         if(refill==0||maxCharges(stack)<=1)return refill;
         return Math.max(0,refill-(long)(maxCharges(stack)-1)*stack.getTag().getInt("GunGangCooldownTicks"));
     }
-    /** The 39 magic book locks every secondary while it is carried. */
+    /** The 38 magic book locks every secondary while it is carried. */
     public static boolean ready(Player player,ItemStack stack) { return !FreeForAllMatch.blocked(player)&&!MagicBookItem.carried(player)&&!ToeItem.blocksSecondary(player,stack)&&remaining(player,stack)==0; }
     public static void commit(Player player,ItemStack stack) {
         if(!secondary(stack)||player.level().isClientSide)return;

@@ -150,7 +150,7 @@ public final class ExtraGadgetConfig {
     public static final Shuriken SHURIKEN_DEFAULTS=new Shuriken(18,3,1.5,.5,3,1.5,5,13,2,13,8,33,22,11,16,.5,.42);
     public static Shuriken shuriken=SHURIKEN_DEFAULTS;
     /**
-     * 37 magic book ({@link MagicBook}): mana (manaCapacity, +1 every manaRegenSeconds, +smallPackMana / largePackMana
+     * 38 magic book ({@link MagicBook}): mana (manaCapacity, +1 every manaRegenSeconds, +smallPackMana / largePackMana
      * from a health pack) pays for the five elements' left and right click abilities. Costs per use, or per second
      * for the held ones (quake, holy water, flight); the ruin beam costs health per second instead.
      */
@@ -177,6 +177,19 @@ public final class ExtraGadgetConfig {
     }
     public static final Toe TOE_DEFAULTS=new Toe(8,100,3,3,16,.25,3,.25,.5,3,.8,1.5,1,150,5);
     public static Toe toe=TOE_DEFAULTS;
+    /**
+     * 37 glue gun ({@link GlueGunItem}): roundsPerMinute while the attack key is held (whole ticks: 1200 / RPM); each shot spends one of the magazine's rounds and fires a white glue round
+     * (projectileSpeed blocks/tick, falling by projectileGravity per tick, gone without a pool after range blocks). A direct hit deals
+     * directDamage to an enemy
+     * (each round leaves within spreadDegrees of the aim, zoomSpreadDegrees while zoomed); wherever the round bursts, a glue pool of poolRadius forms on the floor below (searched
+     * up to poolDropDistance blocks down) for poolSeconds. Anyone in a pool, owner and allies included, takes
+     * poolDamagePerSecond, moves slowPercent slower and cannot jump. Right click zooms the view to zoomFovMultiplier.
+     */
+    public record GlueGun(int magazine,double reloadSeconds,double roundsPerMinute,double directDamage,double projectileSpeed,
+                          double projectileGravity,double spreadDegrees,double zoomSpreadDegrees,double range,double poolRadius,double poolSeconds,
+                          double poolDamagePerSecond,double damageIntervalSeconds,double slowPercent,double poolDropDistance,double zoomFovMultiplier){}
+    public static final GlueGun GLUE_GUN_DEFAULTS=new GlueGun(5,2,171,32,3.5,.02,6,.5,24,3,3,7,.25,20,8,.5);
+    public static GlueGun glueGun=GLUE_GUN_DEFAULTS;
     public static TwinBlades twinBlades=new TwinBlades(24,24,24,24,48,72,4,100,30,100);
     public static Molotov molotov=new Molotov(5,8,3,36);
     public static Orbital orbital=new Orbital(24,256,84,5,64,240);
@@ -324,6 +337,13 @@ public final class ExtraGadgetConfig {
         GadgetConfig.bounded(toes.jumpHeight(),0,16);GadgetConfig.bounded(toes.spikeWidth(),.1,2);GadgetConfig.bounded(toes.spikeHeight(),.1,3);
         GadgetConfig.bounded(toes.sprintLengthPerSecond(),.05,100);GadgetConfig.bounded(toes.sprintMovementSpeed(),1,1000);GadgetConfig.bounded(toes.sprintCooldownSeconds(),0,3600);
         if(apply)toe=toes;
+        var gg=GadgetConfig.read("glue_gun",GlueGun.class,GLUE_GUN_DEFAULTS,overrides,apply);
+        GadgetConfig.bounded(gg.magazine(),1,1000);GadgetConfig.bounded(gg.reloadSeconds(),0,60);GadgetConfig.bounded(gg.roundsPerMinute(),6,1200);
+        GadgetConfig.bounded(gg.directDamage(),0,10000);GadgetConfig.bounded(gg.projectileSpeed(),.2,8);GadgetConfig.bounded(gg.projectileGravity(),0,1);
+        GadgetConfig.bounded(gg.spreadDegrees(),0,45);GadgetConfig.bounded(gg.zoomSpreadDegrees(),0,45);GadgetConfig.bounded(gg.range(),1,256);GadgetConfig.bounded(gg.poolRadius(),.25,16);
+        GadgetConfig.bounded(gg.poolSeconds(),.05,300);GadgetConfig.bounded(gg.poolDamagePerSecond(),0,10000);GadgetConfig.bounded(gg.damageIntervalSeconds(),.05,5);
+        GadgetConfig.bounded(gg.slowPercent(),0,100);GadgetConfig.bounded(gg.poolDropDistance(),0,64);GadgetConfig.bounded(gg.zoomFovMultiplier(),.05,1);
+        if(apply)glueGun=gg;
         GadgetConfig.bounded(mb.manaCapacity(),1,10000);GadgetConfig.bounded(mb.manaRegenSeconds(),.05,60);GadgetConfig.bounded(mb.lightningCount(),1,200);
         GadgetConfig.bounded(mb.fireballIntervalSeconds(),.05,10);GadgetConfig.bounded(mb.lightIntervalSeconds(),.05,10);GadgetConfig.bounded(mb.flightSpeed(),.1,4);
         for(double d:new double[]{mb.slamRange(),mb.quakeRadius(),mb.holyRange(),mb.dropRange(),mb.fireballRange(),mb.flameRange(),mb.lightRange(),mb.ruinRange()})GadgetConfig.bounded(d,1,512);

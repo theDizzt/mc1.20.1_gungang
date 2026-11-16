@@ -157,7 +157,7 @@ public final class TaczAmmoHud {
         g.pose().popPose();
     }
     /**
-     * 39 magic book: mana count and bar (no reload), the five elements with the current one lit, and the current
+     * 38 magic book: mana count and bar (no reload), the five elements with the current one lit, and the current
      * element's left / right cooldowns.
      */
     public static void magicBook(net.minecraftforge.client.gui.overlay.ForgeGui gui,GuiGraphics g,float partial,int screenWidth,int screenHeight){
@@ -225,6 +225,57 @@ public final class TaczAmmoHud {
         g.fill(x+52,y+5,x+70,y+13,color);
         g.fill(x+70,y+7,x+74,y+13,color);g.fill(x+74,y+9,x+77,y+13,color);
         g.fill(x+53,y+4,x+55,y+5,color);
+    }
+    /** 37 glue gun: magazine count and bar like a gun (reload progress while swapping the stick), name and silhouette. */
+    public static void glueGun(net.minecraftforge.client.gui.overlay.ForgeGui gui,GuiGraphics g,float partial,int screenWidth,int screenHeight){
+        var mc=Minecraft.getInstance();if(mc.player==null||mc.options.hideGui||mc.player.isSpectator()||mc.level==null||PropHuntClient.hider())return;
+        var stack=mc.player.getMainHandItem();if(!dev.gungang.acoustics.server.GlueGunItem.is(stack))return;
+        int ammo=dev.gungang.acoustics.server.GlueGunItem.ammo(stack),capacity=dev.gungang.acoustics.server.GlueGunItem.capacity(stack);
+        long end=dev.gungang.acoustics.server.GlueGunItem.reloadEnd(stack);boolean reloading=end>0;
+        double clock=System.nanoTime()/1e9;
+        String key=mc.player.getInventory().selected+"|glue_gun";
+        if(!key.equals(animatedGun)){animatedGun=key;BAR.reset();lastAmmo=ammo;shotAt=reloadAt=-10;}
+        if(ammo!=lastAmmo){if(ammo<lastAmmo)shotAt=clock;else reloadAt=clock;lastAmmo=ammo;}
+        // Red while reloading or empty, yellow at a quarter or less, like a gun.
+        boolean alert=reloading||ammo<=0;
+        int color=alert?0xFFFF5555:ammo<=capacity*.25?0xFFFFFF55:0xFFFFFFFF;
+        var font=mc.font;String count=String.valueOf(ammo);int places=Math.max(3,count.length());
+        String padding="0".repeat(places-count.length());
+        var l=layout(places);int right=l.right(),w=l.countW(),x0=right-w;
+        float scale=(float)(2.0/mc.getWindow().getGuiScale());g.pose().pushPose();g.pose().scale(scale,scale,1);
+        glueGunSilhouette(g,l.iconX()+2,l.iconY()+4,alert?0xB3FF4D4D:0xB3FFFFFF);
+        float ratio;
+        if(reloading){
+            int total=dev.gungang.acoustics.server.GlueGunItem.reloadTicks(stack);
+            float left=Math.max(0,end-(mc.level.getGameTime()+partial));
+            ratio=1-Math.min(1,left/total);BAR.reset();
+        }else ratio=BAR.update(capacity>0?Math.max(0,Math.min(1,ammo/(float)capacity)):0);
+        int fill=Math.round(w*ratio),barTop=l.barTop();
+        g.fill(x0+1,barTop+1,right+1,barTop+BAR_H+1,SHADOW);
+        g.fill(x0,barTop,right,barTop+BAR_H,0x803A3B32);
+        g.fill(x0,barTop,x0+fill,barTop+BAR_H,color);
+        float kick=pulse(clock-shotAt,.14),pop=pulse(clock-reloadAt,.38);
+        float grow=1+.10f*kick+.18f*pop;int digitColor=color;
+        if(kick>0)digitColor=ArenaScreen.blend(digitColor,0xFFFFFFFF,.6f*kick);
+        if(pop>0&&!alert)digitColor=ArenaScreen.blend(digitColor,0xFF9CF2B0,.75f*pop);
+        float cx=x0+w/2f,cy=l.countTop()+3.5f*AMMO_SCALE;
+        g.pose().pushPose();g.pose().translate(cx,cy-2.5f*kick,0);g.pose().scale(grow,grow,1);g.pose().translate(-cx,-cy,0);
+        g.pose().translate(x0,l.countTop(),0);g.pose().scale(AMMO_SCALE,AMMO_SCALE,1);
+        digits(g,font,padding,0,alert?color:ArenaScreen.blend(0xFF1A2230,color,.35f));digits(g,font,count,padding.length(),digitColor);g.pose().popPose();
+        // Where a gun lists its fire modes: the right-click zoom, then the name.
+        String mode="ZOOM";int x=right-font.width(mode);
+        text(g,font,mode,x,l.rowTop()-11,0xFF5A6474);
+        String name=stack.getHoverName().getString();int room=Math.max(1,mc.getWindow().getWidth()/4-MARGIN-(right-x+8));
+        textMarquee(g,font,name,x-8-Math.min(room,font.width(name)),l.rowTop()-11,room,0xFFE2E8F0);
+        g.pose().popPose();
+    }
+    /** Hot glue gun side view, nozzle to the right: stick out the back, body, nozzle, slanted grip and trigger. */
+    private static void glueGunSilhouette(GuiGraphics g,int x,int y,int color){
+        g.fill(x+6,y+3,x+24,y+6,color);
+        g.fill(x+24,y+1,x+28,y+8,color);g.fill(x+28,y,x+62,y+9,color);
+        g.fill(x+62,y+2,x+68,y+7,color);g.fill(x+68,y+3,x+72,y+6,color);g.fill(x+72,y+4,x+74,y+5,color);
+        for(int i=0;i<11;i++){int shift=i/2;g.fill(x+31-shift,y+9+i,x+42-shift,y+10+i,color);}
+        g.fill(x+46,y+9,x+49,y+14,color);g.fill(x+42,y+15,x+50,y+16,color);g.fill(x+49,y+12,x+51,y+16,color);
     }
     private static String seconds(long ticks){return ticks<=0?"OK":String.format(java.util.Locale.ROOT,"%.1fs",ticks/20.0);}
     /** Seconds per round of the shuriken count's run-down, and when it last stepped. */

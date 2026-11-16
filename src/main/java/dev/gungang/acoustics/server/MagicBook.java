@@ -30,7 +30,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 /**
- * 37 magic book abilities, five elements (조정관) with a left and a right click each. The client reports which of the two
+ * 38 magic book abilities, five elements (조정관) with a left and a right click each. The client reports which of the two
  * keys are held ({@code bookInput}); everything else runs here, on the server tick:
  * <ul>
  * <li>황 left: ground slam ahead, lifts every enemy in front. Right (held): earthquake around the caster.</li>

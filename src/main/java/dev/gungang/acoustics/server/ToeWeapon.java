@@ -83,18 +83,7 @@ public final class ToeWeapon {
     public static void death(net.minecraftforge.event.entity.living.LivingDeathEvent event){reset(event.getEntity());}
     @SubscribeEvent public static void respawn(net.minecraftforge.event.entity.player.PlayerEvent.PlayerRespawnEvent event){reset(event.getEntity());}
     @SubscribeEvent public static void logout(net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent event){reset(event.getEntity());}
-    static void ensureLoadout(java.nio.file.Path directory)throws java.io.IOException{
-        try(var files=java.nio.file.Files.list(directory)){
-            for(var path:files.filter(p->p.getFileName().toString().endsWith(".json")).toList())try{
-                var json=com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(path)).getAsJsonObject();
-                if(json.has("id")&&json.get("id").getAsString().equals("39"))return;
-            }catch(RuntimeException invalid){/* The normal catalog reader reports this file. */}
-        }
-        try(var input=ToeWeapon.class.getResourceAsStream("/gungang/defaults/39_toe.json")){
-            if(input==null)throw new java.io.IOException("Missing toe weapon definition");
-            ConfigLayout.writeNew(directory.resolve("39_toe.json"),new String(input.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8));
-        }
-    }
+    static void ensureLoadout(java.nio.file.Path directory)throws java.io.IOException{DefaultWeapons.ensure(directory,"39","39_toe.json");}
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent event){
         if(event.phase!=TickEvent.Phase.END)return;
         // Do not rely on entity ticks: an old trail can be in an unloaded chunk after death/teleport.

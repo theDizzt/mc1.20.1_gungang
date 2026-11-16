@@ -71,5 +71,9 @@
   "block.gungang.combat_unit": "자율형 전투병기",
   "block.gungang.shadow": "그림자",
   "block.gungang.command_flag_block": "지휘 깃발",
-  "item.gungang.toe": "종료의화신: 발가락"
+  "item.gungang.toe": "종료의화신: 발가락",
+  "item.gungang.glue_gun": "글루건",
+  "effect.gungang.glued": "접착",
+  "entity.gungang_acoustics.glue_shot": "글루건 탄환",
+  "entity.gungang_acoustics.glue_pool": "글루 장판"
 }

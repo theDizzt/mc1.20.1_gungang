@@ -1,0 +1,449 @@
+{
+  "accessors": [
+    {
+      "bufferView": 2,
+      "componentType": 5126,
+      "count": 441,
+      "max": [
+        20.882858276367188,
+        179.9437713623047,
+        82.96875762939453
+      ],
+      "min": [
+        -178.94020080566406,
+        90.54154205322266,
+        -82.96875
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 5292,
+      "componentType": 5126,
+      "count": 441,
+      "max": [
+        0.9999586939811707,
+        0.9969673752784729,
+        0.99991774559021
+      ],
+      "min": [
+        -0.9997000694274902,
+        -0.9981465935707092,
+        -0.99991774559021
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 3,
+      "componentType": 5126,
+      "count": 441,
+      "max": [
+        0.9997956156730652,
+        0.999925971031189,
+        0.999793529510498,
+        1.0
+      ],
+      "min": [
+        -0.9995215535163879,
+        -0.998481273651123,
+        -0.9997946619987488,
+        -1.0
+      ],
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 441,
+      "max": [
+        1.8847079277038574,
+        0.6275362968444824
+      ],
+      "min": [
+        0.7357879281044006,
+        0.005562186241149902
+      ],
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 0,
+      "componentType": 5125,
+      "count": 2208,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 10584,
+      "componentType": 5126,
+      "count": 3689,
+      "max": [
+        510.736328125,
+        343.27288818359375,
+        60.480960845947266
+      ],
+      "min": [
+        -400.53448486328125,
+        -293.6544189453125,
+        -63.19142150878906
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 54852,
+      "componentType": 5126,
+      "count": 3689,
+      "max": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "min": [
+        -1.0,
+        -1.0,
+        -1.0
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 3,
+      "byteOffset": 7056,
+      "componentType": 5126,
+      "count": 3689,
+      "max": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "min": [
+        -1.0,
+        -1.0,
+        -1.0,
+        -1.0
+      ],
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 3528,
+      "componentType": 5126,
+      "count": 3689,
+      "max": [
+        3.365847110748291,
+        1.8636701107025146
+      ],
+      "min": [
+        -0.6621900796890259,
+        0.0028010010719299316
+      ],
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 0,
+      "byteOffset": 8832,
+      "componentType": 5125,
+      "count": 11766,
+      "type": "SCALAR"
+    }
+  ],
+  "asset": {
+    "extras": {
+      "author": "Zsófia Babarczi (https://sketchfab.com/zsofiababarczi)",
+      "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+      "source": "https://sketchfab.com/3d-models/maxdone-mini-glue-gun-game-asset-33ecc1254cf7474fa30835af2308487a",
+      "title": "MAXDONE Mini Glue Gun Game Asset"
+    },
+    "generator": "Sketchfab-16.56.0",
+    "version": "2.0"
+  },
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteLength": 55896,
+      "name": "floatBufferViews",
+      "target": 34963
+    },
+    {
+      "buffer": 0,
+      "byteLength": 33040,
+      "byteOffset": 55896,
+      "byteStride": 8,
+      "name": "floatBufferViews",
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 99120,
+      "byteOffset": 88936,
+      "byteStride": 12,
+      "name": "floatBufferViews",
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 66080,
+      "byteOffset": 188056,
+      "byteStride": 16,
+      "name": "floatBufferViews",
+      "target": 34962
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 254136,
+      "uri": "scene.bin"
+    }
+  ],
+  "extensionsUsed": [
+    "KHR_materials_emissive_strength"
+  ],
+  "images": [
+    {
+      "uri": "textures/phong3_baseColor.png"
+    },
+    {
+      "uri": "textures/phong3_metallicRoughness.png"
+    },
+    {
+      "uri": "textures/phong3_emissive.png"
+    },
+    {
+      "uri": "textures/phong3_normal.png"
+    }
+  ],
+  "materials": [
+    {
+      "alphaMode": "BLEND",
+      "doubleSided": true,
+      "emissiveFactor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "emissiveTexture": {
+        "index": 2
+      },
+      "extensions": {
+        "KHR_materials_emissive_strength": {
+          "emissiveStrength": 10.0
+        }
+      },
+      "name": "phong3",
+      "normalTexture": {
+        "index": 3
+      },
+      "occlusionTexture": {
+        "index": 1
+      },
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 0
+        },
+        "metallicRoughnessTexture": {
+          "index": 1
+        }
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "BG_1_02_low_phong3_0",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 1,
+            "POSITION": 0,
+            "TANGENT": 2,
+            "TEXCOORD_0": 3
+          },
+          "indices": 4,
+          "material": 0,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "BG_2_03_low1_phong3_0",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 6,
+            "POSITION": 5,
+            "TANGENT": 7,
+            "TEXCOORD_0": 8
+          },
+          "indices": 9,
+          "material": 0,
+          "mode": 4
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "children": [
+        1
+      ],
+      "matrix": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        2.220446049250313e-16,
+        -1.0,
+        0.0,
+        0.0,
+        1.0,
+        2.220446049250313e-16,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "name": "Sketchfab_model"
+    },
+    {
+      "children": [
+        2
+      ],
+      "matrix": [
+        0.009999999776482582,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.009999999776482582,
+        0.0,
+        0.0,
+        -0.009999999776482582,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "name": "c9d7c8b4cbf748cc871325cf209b1144.fbx"
+    },
+    {
+      "children": [
+        3,
+        8
+      ],
+      "name": "RootNode"
+    },
+    {
+      "children": [
+        4
+      ],
+      "name": "hot_GlueGun"
+    },
+    {
+      "children": [
+        5
+      ],
+      "name": "BG_Lowpoly"
+    },
+    {
+      "children": [
+        6
+      ],
+      "name": "BG1_Low"
+    },
+    {
+      "children": [
+        7
+      ],
+      "matrix": [
+        -0.4536736233076959,
+        -0.8911679098322983,
+        0.0,
+        0.0,
+        0.8911679098322983,
+        -0.4536736233076959,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        -431.8204040527344,
+        96.92803955078125,
+        0.0,
+        1.0
+      ],
+      "name": "BG_1_02_low"
+    },
+    {
+      "mesh": 0,
+      "name": "BG_1_02_low_phong3_0"
+    },
+    {
+      "children": [
+        9
+      ],
+      "matrix": [
+        0.8566228257247299,
+        0.5159431504026185,
+        0.0,
+        0.0,
+        -0.5159431504026185,
+        0.8566228257247299,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        20.700368881225586,
+        134.35580444335938,
+        0.0,
+        1.0
+      ],
+      "name": "BG_2_03_low1"
+    },
+    {
+      "mesh": 1,
+      "name": "BG_2_03_low1_phong3_0"
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987,
+      "wrapS": 10497,
+      "wrapT": 10497
+    }
+  ],
+  "scene": 0,
+  "scenes": [
+    {
+      "name": "Sketchfab_Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "sampler": 0,
+      "source": 0
+    },
+    {
+      "sampler": 0,
+      "source": 1
+    },
+    {
+      "sampler": 0,
+      "source": 2
+    },
+    {
+      "sampler": 0,
+      "source": 3
+    }
+  ]
+}
