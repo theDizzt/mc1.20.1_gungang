@@ -218,23 +218,32 @@ public final class ShooterHud {
             graphics.pose().translate(x + 5, y + 4, 0);
             graphics.pose().scale(1.5f, 1.5f, 1);
             graphics.renderItem(stack, 0, 0);
-            graphics.renderItemDecorations(mc.font, stack, 0, 0);
+            dev.gungang.acoustics.server.SecondaryRuntime.hideCooldownOverlay = true;
+            try { graphics.renderItemDecorations(mc.font, stack, 0, 0); }
+            finally { dev.gungang.acoustics.server.SecondaryRuntime.hideCooldownOverlay = false; }
             graphics.pose().popPose();
             long cooldown=dev.gungang.acoustics.server.SecondaryRuntime.remaining(mc.player,stack);
+            int total=cooldown>0?stack.getTag().getInt("GunGangCooldownTicks"):0;
+            // 39 toe: its left-click sprint cooldown, in the same clock wipe.
+            if(cooldown<=0&&dev.gungang.acoustics.server.ToeItem.is(stack)){
+                cooldown=dev.gungang.acoustics.server.ToeItem.cooldown(mc.level,stack);total=dev.gungang.acoustics.server.ToeItem.cooldownTotal(stack);
+            }
+            // Other items on vanilla's cooldown (rapier dash and the like): the clock wipe only, without seconds.
+            float vanilla=cooldown>0?0:mc.player.getCooldowns().getCooldownPercent(stack.getItem(),partial);
             float ready=CooldownCue.flash(stack,partial);
-            if(cooldown>0||ready>0) {
+            if(cooldown>0||vanilla>0||ready>0) {
                 graphics.flush();
                 graphics.pose().pushPose();
                 // Item models and decorations write depth up to z=200; keep both overlay layers above them.
                 graphics.pose().translate(0,0,300);
                 if(cooldown>0){
-                    int total=Math.max(1,stack.getTag().getInt("GunGangCooldownTicks"));
+                    total=Math.max(1,total);
                     float left=Math.max(0,cooldown-partial),fraction=Math.min(1,left/total);
                     // The shade shrinks every frame, not per tick, and fades in over the first few ticks of the cooldown.
                     float fadeIn=Math.min(1,(total-left)/FADE_IN);
-                    int alpha=Math.round(0xAA*(fadeIn*fadeIn*(3-2*fadeIn)));
-                    // Clock wipe: the shade clears clockwise from 12 o'clock as the cooldown runs out.
-                    clockShade(graphics,x+1,y+1,32,30,fraction,alpha<<24|0x101820);
+                    int alpha=Math.round(0x70*(fadeIn*fadeIn*(3-2*fadeIn)));
+                    // Clock wipe: a translucent white shade (dark ones vanished on dark items) clears clockwise from 12 o'clock.
+                    clockShade(graphics,x+1,y+1,32,30,fraction,alpha<<24|0xFFFFFF);
                     // Seconds in the GunGang font with a black shadow.
                     var seconds=HudText.gungang(String.format(java.util.Locale.ROOT,"%.1f",left/20.0));
                     float textScale=Math.min(1f,30f/Math.max(1,mc.font.width(seconds)));
@@ -246,6 +255,7 @@ public final class ShooterHud {
                     graphics.drawString(mc.font,seconds,textX,0,0xFFFFFFFF,false);
                     graphics.pose().popPose();
                 }
+                else if(vanilla>0)clockShade(graphics,x+1,y+1,32,30,vanilla,0x70FFFFFF);
                 // The moment it is ready: a white glow over the slot that fades out.
                 if(ready>0&&cooldown==0)graphics.fill(x+1,y+1,x+33,y+31,Math.round(0x90*ready*ready)<<24|0xFFFFFF);
                 graphics.flush();

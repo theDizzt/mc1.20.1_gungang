@@ -159,6 +159,8 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
         BombEquipment.load(directory.resolve("sub_weapons"));
         M95.ensureLoadout(directory.resolve("weapons"));
         OrdnanceLoadouts.migrateBalanceDescriptions(directory.resolve("sub_weapons"));
+        LoadoutRetirements.migrate(directory);
+        ToeWeapon.ensureLoadout(directory.resolve("weapons"));
         Loadouts result = new Loadouts(readCategory(directory.resolve("weapons")), readCategory(directory.resolve("sub_weapons")),
                 Files.exists(slot9) ? ServerFiles.GSON.fromJson(read(slot9, 65536), Weapon.class) : null);
         validate(result);

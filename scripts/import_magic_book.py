@@ -1,5 +1,5 @@
 """Convert the "golden academy book" Blockbench glTF (zip with source/model.gltf, embedded buffers and textures) to the
-39 magic book OBJ item model.
+37 magic book OBJ item model.
 
 Usage: python scripts/import_magic_book.py <golden-academy-book-ia.zip>
 Writes assets/gungang/models/magic_book.obj/.mtl, textures/item/magic_book.png (+ magic_book_e.png, the emissive

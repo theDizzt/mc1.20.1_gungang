@@ -104,6 +104,13 @@ public final class WeaponPatch {
     private static final Map<String, String> SECONDARY_LABELS = Map.of("nameEn", "영어 이름 (비우면 한글 이름)", "cooldownSeconds", "쿨타임 (초)", "plantSeconds", "설치 시간 (초)", "fuseSeconds", "폭발 시간 (초)", "defuseSeconds", "해체 시간 (초)");
     /** Labels for one item's own fields ("setting.field"), ahead of {@link #ITEM_LABELS}, where the shared name would mislead. */
     private static final Map<String, String> ITEM_LABELS_OF = Map.ofEntries(
+            Map.entry("toe.initialLength","시작 가시 길이 (블록)"),Map.entry("toe.maximumLength","최대 가시 길이 (블록)"),
+            Map.entry("toe.criticalLength","끝 크리티컬 길이 (블록)"),Map.entry("toe.growthSeconds","1블록 성장 간격 (초)"),
+            Map.entry("toe.damagePerSecond","시작 길이 일반 가시 초당 피해"),Map.entry("toe.damagePerSecondPerLength","1블록당 초당 피해 증가"),
+            Map.entry("toe.criticalMultiplier","크리티컬 피해 배수"),Map.entry("toe.sprintLengthPerSecond","좌클릭 초당 길이 소모"),
+            Map.entry("toe.sprintMovementSpeed","좌클릭 이동 속도 (%)"),Map.entry("toe.sprintCooldownSeconds","좌클릭 쿨타임 (초)"),
+            Map.entry("toe.damageIntervalSeconds","피해 적용 간격 (초)"),Map.entry("toe.stationaryGraceSeconds","정지 후 자신 피해 유예 (초)"),
+            Map.entry("toe.jumpHeight","점프 높이 (블록)"),Map.entry("toe.spikeWidth","가시 폭 (블록)"),Map.entry("toe.spikeHeight","가시 높이 (블록)"),
             Map.entry("hermes_boots.dashDistance", "돌진 거리 (블록)"), Map.entry("hermes_boots.dashSeconds", "돌진 시간 (초)"),
             Map.entry("hermes_boots.maxCharges", "최대 충전 횟수"), Map.entry("hermes_boots.chargeSeconds", "1회 충전 시간 (초)"),
             Map.entry("hermes_boots.trailSeconds", "글로우 잔상 유지 시간 (초)"),

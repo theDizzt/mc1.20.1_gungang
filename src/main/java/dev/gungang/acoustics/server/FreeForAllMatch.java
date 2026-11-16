@@ -84,7 +84,7 @@ public final class FreeForAllMatch {
         var level=level();var spawn=spawnFor(p);
         p.setCamera(p);p.stopRiding();p.teleportTo(level,spawn.x(),spawn.y(),spawn.z(),spawn.yaw(),spawn.pitch());p.fallDistance=0;
     }
-    public void openingDeath(ServerPlayer p){p.setHealth(p.getMaxHealth());p.clearFire();spawn(p);}
+    public void openingDeath(ServerPlayer p){ToeWeapon.reset(p);p.setHealth(p.getMaxHealth());p.clearFire();spawn(p);}
     public void death(ServerPlayer p,ServerPlayer killer){death(p.getUUID(),killer==null?null:killer.getUUID());}
     /** Kill +1 for the killer; a death with no other killer (fall, death zone, own blast) costs the victim a point. */
     public void death(UUID victim,UUID killer){scores.death(victim,killer);}

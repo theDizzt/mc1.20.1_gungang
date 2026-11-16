@@ -70,7 +70,7 @@ public final class TaczAmmoHud {
             lastGauge=amount;
         }
         float scale=(float)(2.0/mc.getWindow().getGuiScale());g.pose().pushPose();g.pose().scale(scale,scale,1);
-        rapierSilhouette(g,l.iconX(),l.iconY()+6,alert?0xB3FF4D4D:0xB3000000);
+        rapierSilhouette(g,l.iconX(),l.iconY()+6,alert?0xB3FF4D4D:0xB3FFFFFF);
         String title=Lang.tr("레이피어 · 대시 ")+DASH_COST;
         text(g,mc.font,title,right-mc.font.width(title),l.rowTop()-11,0xFFE2E8F0);
         // Bar: eased fill with the same spent/gained flash and refill sheen as gun magazines.
@@ -124,7 +124,7 @@ public final class TaczAmmoHud {
         String padding="0".repeat(places-count.length());
         var l=layout(places);int right=l.right(),w=l.countW(),x0=right-w;
         float scale=(float)(2.0/mc.getWindow().getGuiScale());g.pose().pushPose();g.pose().scale(scale,scale,1);
-        star(g,l.iconX()+48,l.iconY()+13,alert?0xB3FF4D4D:0xB3000000);
+        star(g,l.iconX()+48,l.iconY()+13,alert?0xB3FF4D4D:0xB3FFFFFF);
         float ratio;
         if(reloading){
             int total=dev.gungang.acoustics.server.ShurikenItem.reloadTicks(stack);
@@ -191,6 +191,40 @@ public final class TaczAmmoHud {
         String name=stack.getHoverName().getString();int room=Math.max(1,mc.getWindow().getWidth()/4-MARGIN-(right-x+8));
         textMarquee(g,font,name,x-8-Math.min(room,font.width(name)),l.rowTop()-11,room,0xFFE2E8F0);
         g.pose().popPose();
+    }
+    public static void toe(net.minecraftforge.client.gui.overlay.ForgeGui gui,GuiGraphics g,float partial,int screenWidth,int screenHeight){
+        var mc=Minecraft.getInstance();if(mc.player==null||mc.options.hideGui||mc.player.isSpectator()||PropHuntClient.hider())return;
+        var stack=mc.player.getMainHandItem();if(!dev.gungang.acoustics.server.ToeItem.is(stack))return;
+        var tag=stack.getOrCreateTag();int length=tag.contains("ToeLength")?tag.getInt("ToeLength"):8;
+        int maximum=tag.contains("ToeMaximum")?tag.getInt("ToeMaximum"):100;
+        var l=layout(3);int right=l.right(),left=right-l.countW();
+        float scale=(float)(2.0/mc.getWindow().getGuiScale());g.pose().pushPose();g.pose().scale(scale,scale,1);
+        var colors=dev.gungang.acoustics.server.EffectColors.client(mc.player.getUUID(),"toe");int color=0xFF000000|colors[0];
+        toeSilhouette(g,l.iconX(),l.iconY()+6,0xB3FFFFFF);
+        g.fill(left+1,l.barTop()+1,right+1,l.barTop()+BAR_H+1,SHADOW);
+        g.fill(left,l.barTop(),right,l.barTop()+BAR_H,0x803A3B32);
+        g.fill(left,l.barTop(),left+Math.round(l.countW()*Math.min(1,length/(float)Math.max(1,maximum))),l.barTop()+BAR_H,color);
+        String count=Integer.toString(length),padding="0".repeat(Math.max(0,3-count.length()));
+        g.pose().pushPose();g.pose().translate(left,l.countTop(),0);g.pose().scale(AMMO_SCALE,AMMO_SCALE,1);
+        digits(g,mc.font,padding,0,ArenaScreen.blend(0xFF1A2230,0xFFFFFFFF,.35f));digits(g,mc.font,count,padding.length(),0xFFFFFFFF);g.pose().popPose();
+        // Maximum length where a gun shows its fire modes, the weapon name to its left.
+        var font=mc.font;String max="MAX "+maximum;int x=right-font.width(max);
+        text(g,font,max,x,l.rowTop()-11,color);
+        String name=stack.getHoverName().getString();int room=Math.max(1,mc.getWindow().getWidth()/4-MARGIN-(right-x+8));
+        textMarquee(g,font,name,x-8-Math.min(room,font.width(name)),l.rowTop()-11,room,0xFFE2E8F0);
+        g.pose().popPose();
+    }
+    /** Foot with toes pointing right, trailing a row of spikes that grow toward it. */
+    private static void toeSilhouette(GuiGraphics g,int x,int y,int color){
+        // Spike trail on the ground line (y+13).
+        for(int i=0;i<6;i++){int sx=x+4+i*8,h=2+i;
+            for(int r=0;r<h;r++){int half=Math.max(0,(h-r)*3/h);g.fill(sx+3-half,y+12-r,sx+4+half,y+13-r,color);}}
+        g.fill(x+2,y+12,x+52,y+13,color);
+        // Ankle, heel, sole and the toes.
+        g.fill(x+55,y-2,x+63,y+7,color);
+        g.fill(x+52,y+5,x+70,y+13,color);
+        g.fill(x+70,y+7,x+74,y+13,color);g.fill(x+74,y+9,x+77,y+13,color);
+        g.fill(x+53,y+4,x+55,y+5,color);
     }
     private static String seconds(long ticks){return ticks<=0?"OK":String.format(java.util.Locale.ROOT,"%.1fs",ticks/20.0);}
     /** Seconds per round of the shuriken count's run-down, and when it last stepped. */

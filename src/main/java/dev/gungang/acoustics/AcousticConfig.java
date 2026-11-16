@@ -24,7 +24,7 @@ public final class AcousticConfig {
     public static final ForgeConfigSpec.IntValue HUD_TEXT_SIZE;
     /** 74 Hermes' Boots dash input: false double-taps a movement key (W/A/S/D), true uses the offhand use macro key (H). */
     public static final ForgeConfigSpec.BooleanValue HERMES_MACRO_KEY;
-    public static final ForgeConfigSpec.BooleanValue TEAM_HUD, LEGACY_TEAM_HUD, TEAM_WEAPON_NUMBERS, COMBO_HUD, KILL_LOG, TEAM_SILHOUETTES, COMPASS, AUTO_SPRINT, STATUS_HEALTH_BAR;
+    public static final ForgeConfigSpec.BooleanValue TEAM_HUD, LEGACY_TEAM_HUD, TEAM_WEAPON_NUMBERS, COMBO_HUD, KILL_LOG, TEAM_SILHOUETTES, COMPASS, AUTO_SPRINT, STATUS_HEALTH_BAR, TEAM_NUMBER_MARKERS;
     public static final ForgeConfigSpec.BooleanValue ENABLED, DIFFRACTION, LOW_PASS, SHOOTER_HUD;
     public static final ForgeConfigSpec.DoubleValue REFERENCE_DISTANCE, ROLLOFF, WALL_STRENGTH, SMOOTHING;
     public static final ForgeConfigSpec.IntValue UPDATE_BUDGET, MAX_TRACE_DISTANCE, DIFFRACTION_RADIUS, HUD_OFFSET_X, HUD_OFFSET_Y, MIN_EFFECT_VOLUME;
@@ -70,6 +70,7 @@ public final class AcousticConfig {
         HERMES_MACRO_KEY = b.comment("Hermes' Boots dash input: false = double-tap a movement key (W/A/S/D), true = the offhand use macro key (default H). Set in the loadout screen's effect colour editor.")
                 .define("hermesMacroKey", false);
         TEAM_HUD = b.define("teamHud", true);
+        TEAM_NUMBER_MARKERS = b.comment("Show allied roster numbers overhead, occluded by blocks.").define("teamNumberMarkers", true);
         STATUS_HEALTH_BAR = b.comment("Use ailment-specific health-bar colours and three shock inversion cycles per second.").define("statusHealthBar", true);
         LEGACY_TEAM_HUD = b.comment("Draw teammates in the older wide layout (name, long health bar, item slot) instead of the compact one.").define("legacyTeamLayout", false);
         TEAM_WEAPON_NUMBERS = b.comment("Show each teammate's chosen primary (white) and secondary (yellow) weapon numbers beside their held item. Prop hunt block numbers always show.").define("teamWeaponNumbers", true);

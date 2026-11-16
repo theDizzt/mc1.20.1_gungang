@@ -52,6 +52,8 @@
   "gungang.options.lcdTimer.tip": "On: the seven-segment LCD match clock. Off: the GUNGANG-font display with a glow and an animation on every digit change.",
   "gungang.options.teamWeaponNumbers": "Teammate weapon numbers",
   "gungang.options.teamWeaponNumbers.tip": "Beside each teammate's held item: chosen primary weapon number (white, top) and secondary number (yellow, bottom). Prop hunt block numbers always show.",
+  "gungang.options.teamNumberMarkers": "Overhead squad numbers",
+  "gungang.options.teamNumberMarkers.tip": "Replace allied names with HUD/minimap roster numbers. Blocks hide the markers.",
   "gungang.options.statusHealthBar": "Status effect health bar",
   "gungang.options.statusHealthBar.tip": "Burn: neon orange; poison: neon purple; bleeding: dark red; radiation: neon green. Concurrent effects use separate colour bands. Shock inverts colours three times per second. Turn off for the classic design.",
   "gungang.options.comboHud": "Combo display",
