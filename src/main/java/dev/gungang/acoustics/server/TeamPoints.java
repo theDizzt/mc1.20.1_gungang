@@ -14,6 +14,7 @@ import net.minecraftforge.fml.common.Mod;
 /** Coordinates are ray-traced on the server and sent only to the owner's logical team. */
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID)
 public final class TeamPoints {
+    private static final int SYNC_PERIOD=4;
     static final TeamPointState STATE=new TeamPointState();
     private static final Map<UUID,String> sent=new HashMap<>();
     private static final Map<UUID,Integer> nextRequest=new HashMap<>();
@@ -103,13 +104,19 @@ public final class TeamPoints {
         return cached.text();
     }
     private static net.minecraft.nbt.CompoundTag heldTag(net.minecraft.world.item.ItemStack stack){
-        var copy=stack.copyWithCount(1);
-        if(copy.getTag()!=null){for(var key:VOLATILE)copy.getTag().remove(key);if(copy.getTag().isEmpty())copy.setTag(null);}
-        return copy.save(new net.minecraft.nbt.CompoundTag());
+        // ItemStack.save copies item NBT and preserves capabilities; avoid creating a second ItemStack first.
+        var saved=stack.save(new net.minecraft.nbt.CompoundTag());saved.putByte("Count",(byte)1);
+        if(saved.contains("tag",10)){
+            var tag=saved.getCompound("tag");for(var key:VOLATILE)tag.remove(key);
+            if(tag.isEmpty())saved.remove("tag");
+        }
+        return saved;
     }
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent event) {
         if(event.phase!=TickEvent.Phase.END)return;
-        var server=event.getServer();refresh(server);sync(server);
+        var server=event.getServer();refresh(server);
+        // Mark requests and resets still sync immediately; routine remote HUD snapshots run at 5 Hz.
+        if(server.getTickCount()%SYNC_PERIOD==0)sync(server);
     }
     @SubscribeEvent public static void stopped(ServerStoppedEvent event){STATE.reset();sent.clear();nextRequest.clear();cachedPayloads.clear();cachedHeld.clear();}
     private TeamPoints() { }

@@ -73,7 +73,7 @@ public final class TeamHud {
     }
 
     @SubscribeEvent
-    public static void logout(ClientPlayerNetworkEvent.LoggingOut event) { KILLS.clear(); rosterBottom = 8; lastFrame = 0; }
+    public static void logout(ClientPlayerNetworkEvent.LoggingOut event) { KILLS.clear(); rosterBottom = 8; lastFrame = 0; BOTS.clear(); botLevel.clear(); botTick=Long.MIN_VALUE; }
 
     public static void render(GuiGraphics g, int x, int mainY, int width, int height, float partialTick) {
         Minecraft mc = Minecraft.getInstance();
@@ -146,6 +146,19 @@ public final class TeamHud {
     }
 
     private record Member(UUID id, String name, ResourceLocation skin, LivingEntity entity) { }
+    private static final java.util.Map<UUID,Integer> BOTS=new java.util.HashMap<>();
+    private static java.lang.ref.WeakReference<net.minecraft.client.multiplayer.ClientLevel> botLevel=new java.lang.ref.WeakReference<>(null);
+    private static long botTick=Long.MIN_VALUE;
+    /** Scan loaded entities once per world tick, shared by roster rows and kill-log portraits. */
+    private static BotEntity bot(Minecraft mc,UUID id){
+        if(mc.level==null)return null;
+        if(botLevel.get()!=mc.level||botTick!=mc.level.getGameTime()){
+            BOTS.clear();botLevel=new java.lang.ref.WeakReference<>(mc.level);botTick=mc.level.getGameTime();
+            for(var entity:mc.level.entitiesForRendering())if(entity instanceof BotEntity bot)BOTS.put(bot.getUUID(),bot.getId());
+        }
+        var entityId=BOTS.get(id);
+        return entityId!=null&&mc.level.getEntity(entityId) instanceof BotEntity bot&&!bot.isRemoved()&&bot.getUUID().equals(id)?bot:null;
+    }
 
     /** Allied players plus allied bots (from the match rows, as bots have no PlayerInfo), sorted by name. */
     private static List<Member> members(Minecraft mc) {
@@ -164,9 +177,7 @@ public final class TeamHud {
             UUID id;
             try { id = UUID.fromString(row.id()); } catch (IllegalArgumentException notUuid) { continue; }
             if (BotDatabase.slot(id) < 0) continue;
-            BotEntity bot = null;
-            for (var entity : mc.level.entitiesForRendering())
-                if (entity instanceof BotEntity found && found.getUUID().equals(id)) { bot = found; break; }
+            BotEntity bot = bot(mc,id);
             // A dead bot is discarded and leaves the scoreboard team until it respawns; its match row still names the side.
             if (!(bot != null ? team.isAlliedTo(bot.getTeam()) : row.team().equals(side))) continue;
             String skin = row.skin() != null && !row.skin().isEmpty() ? row.skin() : bot != null ? bot.skin() : BotDatabase.DEFAULT_SKIN;
@@ -370,9 +381,8 @@ public final class TeamHud {
         var state = MatchHud.state();
         if (state != null) for (var row : state.players())
             if (row.id().equals(id.toString()) && row.skin() != null && !row.skin().isEmpty()) return row.skin();
-        if(mc.level!=null)for (var entity : mc.level.entitiesForRendering())
-            if (entity instanceof BotEntity bot && bot.getUUID().equals(id)) return bot.skin();
-        return null;
+        var bot=bot(mc,id);
+        return bot==null?null:bot.skin();
     }
 
     private static void skull(GuiGraphics g, int x, int y) {
