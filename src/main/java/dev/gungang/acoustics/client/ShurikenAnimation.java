@@ -39,8 +39,8 @@ public final class ShurikenAnimation {
 
     @SubscribeEvent(priority=EventPriority.HIGHEST) public static void offhand(RenderHandEvent event){
         var player=Minecraft.getInstance().player;
-        // The 39 magic book is held alone too: no secondary drawn in the other hand.
-        if(event.getHand()==InteractionHand.OFF_HAND&&player!=null&&(ShurikenItem.is(player.getMainHandItem())||dev.gungang.acoustics.server.MagicBookItem.is(player.getMainHandItem())))event.setCanceled(true);
+        // The 38 magic book is held alone too: no secondary drawn in the other hand.
+        if(event.getHand()==InteractionHand.OFF_HAND&&player!=null&&(ShurikenItem.is(player.getMainHandItem())||dev.gungang.acoustics.server.MagicBookItem.is(player.getMainHandItem())||dev.gungang.acoustics.server.GlueGunItem.is(player.getMainHandItem())))event.setCanceled(true);
     }
     @SubscribeEvent public static void hand(RenderHandEvent event){
         if(event.getHand()!=InteractionHand.MAIN_HAND||!ShurikenItem.is(event.getItemStack()))return;

@@ -71,8 +71,10 @@ public final class TargetHealthBar {
         float currentWidth = mc.font.width(current), maxWidth = mc.font.width(maximum) * small;
         float scale = Math.min(.65f, 54f / Math.max(1, currentWidth + maxWidth));
         pose.pushPose();
-        // The fill spans -29..29 and -3..3. Keep a two-unit left inset and draw in front of it.
-        pose.translate(-27, -2.5, .02);
+        // The fill spans -29..29 and -3..3. Keep a two-unit left inset and draw in front of it: under the billboard
+        // transform +z points away from the camera (vanilla puts label backgrounds at +0.01), so in front is -z.
+        // At +0.02 the text sat behind the fill and lost the depth test.
+        pose.translate(-27, -2.5, -1);
         pose.scale(scale, scale, 1);
         mc.font.drawInBatch(current, .5f, .5f, 0xFFF5F5F0, false, pose.last().pose(), BUFFER,
                 net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, 15728880);

@@ -58,7 +58,7 @@ public final class GungangNetwork {
     /** Every online player's chosen effect colours ({@link EffectColors}), as JSON {uuid: {key: [first, second]}}. */
     public record EffectColorSync(String json) { }
     /** An arrow grenade burst: origin, shard speed (blocks a tick) and where blocks stop each shard (ArrowGrenadeEntity.DIRECTIONS order). */
-    /** A 39 magic book beam this tick (kind 0 holy water, 1 ruin): from the caster's eye to where it ends. */
+    /** A 38 magic book beam this tick (kind 0 holy water, 1 ruin): from the caster's eye to where it ends. */
     public record BookBeam(int owner,int kind,double fx,double fy,double fz,double tx,double ty,double tz) { }
     public record ArrowBurst(double x,double y,double z,float speed,float[] stops) { }
     /** A 74 Hermes' Boots dash: the client replays the fixed-step motion and draws the owner's glow trail. */

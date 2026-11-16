@@ -50,6 +50,8 @@ public final class ClientSetup {
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.HAND_AXE_PROJECTILE.get(),HandAxeRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.SHURIKEN_PROJECTILE.get(),ShurikenRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.TOE_TRAIL.get(),ToeTrailRenderer::new);
+        event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.GLUE_SHOT.get(),net.minecraft.client.renderer.entity.ThrownItemRenderer::new);
+        event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.GLUE_POOL.get(),GluePoolRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.VOID_ANCHOR_ENTITY.get(),VoidAnchorRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.COMMAND_FLAG_ENTITY.get(),CommandFlagRenderer::new);
     }
@@ -109,6 +111,7 @@ public final class ClientSetup {
         event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "shuriken_ammo", TaczAmmoHud::shuriken);
         event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "magic_book_mana", TaczAmmoHud::magicBook);
         event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "toe_length", TaczAmmoHud::toe);
+        event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "glue_gun_ammo", TaczAmmoHud::glueGun);
     }
     @SubscribeEvent
     public static void setup(FMLClientSetupEvent event) {

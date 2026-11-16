@@ -161,6 +161,8 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
         OrdnanceLoadouts.migrateBalanceDescriptions(directory.resolve("sub_weapons"));
         LoadoutRetirements.migrate(directory);
         ToeWeapon.ensureLoadout(directory.resolve("weapons"));
+        // After the retirements: the 38 magic book used to hold 37.
+        DefaultWeapons.ensure(directory.resolve("weapons"),"37","37_glue-gun.json");
         Loadouts result = new Loadouts(readCategory(directory.resolve("weapons")), readCategory(directory.resolve("sub_weapons")),
                 Files.exists(slot9) ? ServerFiles.GSON.fromJson(read(slot9, 65536), Weapon.class) : null);
         validate(result);

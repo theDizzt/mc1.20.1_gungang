@@ -71,5 +71,9 @@
   "block.gungang.combat_unit": "Autonomous Combat Unit",
   "block.gungang.shadow": "Shadow",
   "block.gungang.command_flag_block": "Command Flag",
-  "item.gungang.toe": "Avatar of the End: Toe"
+  "item.gungang.toe": "Avatar of the End: Toe",
+  "item.gungang.glue_gun": "Glue Gun",
+  "effect.gungang.glued": "Glued",
+  "entity.gungang_acoustics.glue_shot": "Glue Round",
+  "entity.gungang_acoustics.glue_pool": "Glue Pool"
 }

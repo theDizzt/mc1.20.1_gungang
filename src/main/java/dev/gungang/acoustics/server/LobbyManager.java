@@ -320,6 +320,8 @@ public final class LobbyManager {
         if(action.action().equals("acidSpray")){AcidSprayer.spray(sender);return;}
         if(action.action().equals("bookInput")){MagicBook.input(sender,action.value());return;}
         if(action.action().equals("bookMode")){MagicBook.cycle(sender,action.value().equals("-1"));return;}
+        if(action.action().equals("glueFire")){GlueGunItem.fire(sender,action.value().equals("zoom"));return;}
+        if(action.action().equals("glueReload")){GlueGunItem.reload(sender);return;}
         if(action.action().equals("shurikenThrow")){ShurikenItem.attack(sender);return;}
         if(action.action().equals("shurikenMode")){ShurikenItem.cycleMode(sender,action.value().equals("-1"));return;}
         if(action.action().equals("shurikenReload")){ShurikenItem.reload(sender);return;}
