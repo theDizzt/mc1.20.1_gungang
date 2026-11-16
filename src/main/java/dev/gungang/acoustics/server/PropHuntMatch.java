@@ -52,7 +52,9 @@ public final class PropHuntMatch {
     private List<LivingEntity> bodiesCache;
     private int bodiesTick=Integer.MIN_VALUE;
     /** Active seekers, players and bots: every hider gimmick acts on both. */
-    List<LivingEntity> seekers(){return bodies().stream().filter(p->!p.isRemoved()&&!hider(p.getUUID())&&!frozen(p.getUUID())&&p.isAlive()&&!p.isSpectator()).toList();}
+    List<LivingEntity> seekers(){return bodies().stream().filter(this::activeSeeker).toList();}
+    /** Check live state directly: an earlier hit in this tick may already have frozen/eliminated a seeker. */
+    boolean activeSeeker(LivingEntity p){return p!=null&&participant(p.getUUID())&&!p.isRemoved()&&!hider(p.getUUID())&&!frozen(p.getUUID())&&p.isAlive()&&!p.isSpectator();}
     boolean bot(UUID id){var m=members.get(id);return m!=null&&m.bot;}
     String name(UUID id){var m=members.get(id);return m==null?"":m.name;}
     boolean locked(UUID id){var m=members.get(id);return m!=null&&m.fixed;}
