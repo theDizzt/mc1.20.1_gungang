@@ -6,18 +6,31 @@ import net.minecraft.core.particles.*;
 
 /** One clipped stream packet instead of a packet per droplet; contact is checked on the server. */
 public final class ThermalParticles {
+    private static final int PARTICLES_PER_TICK=256;
+    private static java.lang.ref.WeakReference<net.minecraft.client.multiplayer.ClientLevel> lastLevel=new java.lang.ref.WeakReference<>(null);
+    private static long tick=Long.MIN_VALUE;
+    private static int remaining;
     private static final DustParticleOptions WATER=new DustParticleOptions(new org.joml.Vector3f(.22f,.7f,1),.8f);
     public static void receive(GungangNetwork.ThermalBurst burst){
-        var level=Minecraft.getInstance().level;if(level==null)return;
-        var delta=burst.end().subtract(burst.start());double length=delta.length();if(length<.05||length>10)return;
+        var mc=Minecraft.getInstance();var level=mc.level;if(level==null||mc.player==null)return;
+        var delta=burst.end().subtract(burst.start());double length=delta.length();if(!Double.isFinite(length)||length<.05||length>10)return;
+        double distance=mc.player.position().distanceToSqr(burst.start());
+        if(!Double.isFinite(distance)||distance>=48*48)return;
+        if(lastLevel.get()!=level||tick!=level.getGameTime()){
+            lastLevel=new java.lang.ref.WeakReference<>(level);tick=level.getGameTime();remaining=PARTICLES_PER_TICK;
+        }
+        if(remaining<=0)return;
         var motion=delta.normalize().scale(burst.scald()?.18:.08);
         int count=Math.min(30,Math.max(4,(int)(length/(burst.scald()?.5:.25))));
+        if(distance>40*40)count=Math.max(2,count/4);
+        else if(distance>24*24)count=Math.max(2,count/2);
+        count=Math.min(count,remaining);remaining-=count;
         for(int i=0;i<count;i++){
             var p=burst.start().add(delta.scale((i+level.random.nextDouble())/count));
             var particle=Minecraft.getInstance().particleEngine.createParticle(WATER,p.x+level.random.nextGaussian()*.05,p.y,p.z+level.random.nextGaussian()*.05,motion.x,motion.y,motion.z);
             if(particle!=null)particle.setParticleSpeed(motion.x,motion.y,motion.z);
         }
-        if(level.random.nextInt(4)==0){var p=burst.end();level.addParticle(ParticleTypes.CLOUD,p.x,p.y+.1,p.z,0,.035,0);}
+        if(remaining>0&&level.random.nextInt(4)==0){remaining--;var p=burst.end();level.addParticle(ParticleTypes.CLOUD,p.x,p.y+.1,p.z,0,.035,0);}
     }
     private ThermalParticles(){}
 }

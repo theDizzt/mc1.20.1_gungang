@@ -542,7 +542,7 @@ public final class PropAbilities {
             if(hunting&&now>=r.eruptReady&&seekers.stream().anyMatch(s->s.level()==level&&s.getBoundingBox().intersects(plume.inflate(3,0,3)))){
                 r.erupt=now+60;r.eruptReady=now+140;level.playSound(null,prop.blockPosition(),net.minecraft.sounds.SoundEvents.FIRE_EXTINGUISH,net.minecraft.sounds.SoundSource.BLOCKS,1.2f,.65f);
             }
-            if(now<r.erupt)for(int x=-1;x<=1;x++)for(int z=-1;z<=1;z++){var start=base.add(x,.3,z);ThermalEmitterEntity.spray(level,start,start.add(0,7.7,0),true,q->hunting&&seekers.contains(q));}
+            if(now<r.erupt)ThermalEmitterEntity.geyser(level,base,q->hunting&&seekers.contains(q));
             else if(now%10==0)level.sendParticles(ParticleTypes.CLOUD,base.x,base.y+.3,base.z,2,.4,.1,.4,.02);
         }else{
             var forward=Vec3.atLowerCornerOf(prop.state().getValue(ThermalEmitterBlock.FACING).getNormal());
@@ -654,8 +654,8 @@ public final class PropAbilities {
         var from=prop.position().add(0,1,0);var ids=new StringBuilder();
         if(match.hunting()&&now<r.crystalUntil){
             for(var id:r.crystal){
-                var target=match.seekers().stream().filter(q->q.getUUID().equals(id)&&q.level()==prop.level()&&q.isAlive()).findFirst().orElse(null);
-                if(target==null||target.distanceToSqr(from)>CRYSTAL_RANGE*CRYSTAL_RANGE)continue;
+                var target=match.body(id);
+                if(!match.activeSeeker(target)||target.level()!=prop.level()||target.distanceToSqr(from)>CRYSTAL_RANGE*CRYSTAL_RANGE)continue;
                 if(!ids.isEmpty())ids.append(',');ids.append(target.getId());
                 if(now%2==0){target.invulnerableTime=0;match.credit(target,p.getUUID());target.hurt(p.damageSources().magic(),CRYSTAL_DPS/10);}
             }
@@ -863,7 +863,7 @@ public final class PropAbilities {
         for(var body:match.bodies()){
             if(body==p||body.level()!=level||body.getDeltaMovement().y>BURST_LAUNCH*.5)continue;
             boolean seeker=!match.hider(body.getUUID());
-            if(seeker&&!match.seekers().contains(body))continue; // frozen (hiding time) or out
+            if(seeker&&!match.activeSeeker(body))continue; // frozen (hiding time) or out
             var disguise=match.prop(body.getUUID());
             var box=seeker||disguise==null?body.getBoundingBox():disguise.getBoundingBox();
             if(box.intersects(column))match.launch(body,BURST_LAUNCH);
@@ -955,7 +955,7 @@ public final class PropAbilities {
         storm(p,prop,r,now);
         // Hot spring water heals the hider soaking in it (only while hunting; seekers never touch the healing).
         if(item.equals("gungang:hot_spring_water"))HotSpringEffect.touch(p);
-        if(now<r.contact)return;
+        if(now<r.contact||!contactAbility(item,moving))return;
         for(var target:match.seekers()){
             if(target.level()!=prop.level()||!target.getBoundingBox().inflate(.1).intersects(prop.getBoundingBox()))continue;
             if(item.equals("minecraft:fire")||item.equals("minecraft:soul_fire")){match.credit(target,p.getUUID());target.hurt(p.damageSources().inFire(),50);target.setSecondsOnFire(10);r.contact=now+20;}
@@ -970,6 +970,14 @@ public final class PropAbilities {
             }
             if(item.equals("minecraft:minecart")&&moving){match.credit(target,p.getUUID());target.hurt(p.damageSources().generic(),50);var away=target.position().subtract(prop.position()).normalize();PropHuntMatch.impulse(target,target.getDeltaMovement().add(away.x*1.4,.5,away.z*1.4));r.stun=now+20;r.stunPosition=p.position();r.contact=now+20;}
         }
+    }
+    /** Most disguises have no contact ability here; their block callbacks run in PropHuntMatch.hazards. */
+    private static boolean contactAbility(String item,boolean moving){
+        return switch(item){
+            case "minecraft:fire","minecraft:soul_fire","minecraft:torchflower","minecraft:water","minecraft:bubble_column" -> true;
+            case "minecraft:minecart" -> moving;
+            default -> false;
+        };
     }
     /**
      * 255: while hunting, the body walks itself at the nearest seeker (hopping up steps, sidestepping when it stalls),

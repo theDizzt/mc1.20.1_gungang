@@ -16,6 +16,9 @@ public final class ShutterReset {
     private static final String KEY="GunGangShutterReset";
     private static final Map<LevelChunk,Long> epochs=Collections.synchronizedMap(new WeakHashMap<>());
     private static final Set<LevelChunk> loaded=Collections.newSetFromMap(new WeakHashMap<>());
+    // Epoch changes reset loaded chunks explicitly; only new loads need a tick-time catch-up.
+    // Weak chunk references also prevent the values from retaining their ServerLevel keys.
+    private static final Map<ServerLevel,Set<LevelChunk>> pending=new WeakHashMap<>();
     @SubscribeEvent public static void read(ChunkDataEvent.Load e){
         if(e.getChunk() instanceof LevelChunk chunk)epochs.put(chunk,e.getData().contains(KEY)?e.getData().getLong(KEY):-1L);
     }
@@ -25,12 +28,23 @@ public final class ShutterReset {
         if(access instanceof LevelChunk chunk)e.getData().putLong(KEY,epochs.getOrDefault(chunk,-1L));
     }
     @SubscribeEvent public static void load(ChunkEvent.Load e){
-        if(e.getLevel() instanceof ServerLevel&&e.getChunk() instanceof LevelChunk chunk)loaded.add(chunk);
+        if(e.getLevel() instanceof ServerLevel level&&e.getChunk() instanceof LevelChunk chunk){
+            loaded.add(chunk);
+            pending.computeIfAbsent(level,key->Collections.newSetFromMap(new WeakHashMap<>())).add(chunk);
+        }
     }
-    @SubscribeEvent public static void unload(ChunkEvent.Unload e){if(e.getChunk() instanceof LevelChunk chunk)loaded.remove(chunk);}
+    @SubscribeEvent public static void unload(ChunkEvent.Unload e){
+        if(e.getChunk() instanceof LevelChunk chunk){
+            loaded.remove(chunk);
+            if(e.getLevel() instanceof ServerLevel level){var waiting=pending.get(level);if(waiting!=null)waiting.remove(chunk);}
+        }
+    }
     @SubscribeEvent public static void tick(net.minecraftforge.event.TickEvent.LevelTickEvent e){
         if(e.phase!=net.minecraftforge.event.TickEvent.Phase.END||!(e.level instanceof ServerLevel level))return;
-        for(var chunk:List.copyOf(loaded))if(chunk.getLevel()==level)catchUp(level,chunk);
+        var waiting=pending.remove(level);
+        if(waiting==null||waiting.isEmpty())return;
+        // Detach the batch first: chunks loaded by neighbor updates wait for the next tick.
+        for(var chunk:List.copyOf(waiting))if(loaded.contains(chunk))catchUp(level,chunk);
     }
     static void catchUp(ServerLevel level,LevelChunk chunk){
         long epoch=GimmickEpoch.get(level).generation;
