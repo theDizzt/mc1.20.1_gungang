@@ -49,6 +49,8 @@ final class BotGadgets {
 
     void equip(BotEntity bot,Loadouts.Weapon weapon,ItemStack item,boolean held) {
         reset(bot);
+        // Quiet time starts with this loadout/life, not with the world's creation.
+        lastSeen=bot.level().getGameTime();
         kind=weapon==null?"":kind(item,held);id=weapon==null?"":weapon.id();stack=item;disabled=false;
         if(id.equals(Defibrillator.ID))kind="mercy";
         if(kind.equals("hermes_boots")){hermesCharges=ExtraGadgetConfig.hermes.maxCharges();hermesRecharge=0;}
@@ -183,7 +185,7 @@ final class BotGadgets {
             boolean used=switch(kind) {
                 case "turret"->placeTurret(bot,level,target);
                 case "molotov","arrow_grenade"->throwGrenade(bot,target,kind.equals("arrow_grenade"));
-                case "landmine","bear_trap"->bot.onGround()&&placeTrap(bot,level,kind.equals("bear_trap"));
+                case "landmine","bear_trap"->bot.onGround()&&placeTrap(bot,level,arena,kind.equals("bear_trap"));
                 case "barrier"->placeBarrier(bot,level,target);
                 case "orbital_strike"->strike(bot,level,team,target);
                 case "perimeter_barrage"->barrage(bot,level,target);
@@ -236,9 +238,13 @@ final class BotGadgets {
         if(lifeActive) {
             if(now>=lifeDrain) {bot.setAbsorptionAmount(SurvivalRules.drain(bot.getAbsorptionAmount()));lifeDrain=now+ExtraGadgetConfig.ticks(ExtraGadgetConfig.life.drainIntervalSeconds());}
             if(now>=lifeEnd||bot.getAbsorptionAmount()<=0) {
+                float rest=bot.getAbsorptionAmount();
                 bot.setAbsorptionAmount(0);
                 // Stay active while die() runs so the same device cannot revive twice.
-                if(!SurvivalRules.recovered(bot.getHealth())) {bot.setHealth(0);bot.die(lifeSource==null?bot.damageSources().generic():lifeSource);}
+                if(!SurvivalRules.recovered(bot.getHealth())) {
+                    if(rest>0)bot.setHealth(rest);
+                    else {bot.setHealth(0);bot.die(lifeSource==null?bot.damageSources().generic():lifeSource);}
+                }
                 lifeActive=false;
             }
         }
@@ -283,7 +289,8 @@ final class BotGadgets {
         bot.level().playSound(null,bot.blockPosition(),SoundEvents.SPLASH_POTION_THROW,SoundSource.PLAYERS,.7f,1);
         bot.swing(InteractionHand.OFF_HAND);return true;
     }
-    private static boolean placeTrap(BotEntity bot,ServerLevel level,boolean bear) {
+    private static boolean placeTrap(BotEntity bot,ServerLevel level,ArenaMap arena,boolean bear) {
+        if(!clearOfTrapSpawns(bot,level,arena))return false;
         var pos=BlockPos.containing(bot.getX(),Math.ceil(bot.getY()-1e-6),bot.getZ());
         if(!PlacementSurface.supports(level,pos,PlacementSurface.height(level,pos)))return false;
         if(SafeZones.contains(level,pos.getX()+.5,pos.getY(),pos.getZ()+.5))return false;
@@ -299,6 +306,20 @@ final class BotGadgets {
         }
         if(DeployableLedger.get(level.getServer()).count(bot.getUUID(),false)>=GadgetConfig.mine.maxPlaced())return false;
         return deploy(bot,level,pos,false,false);
+    }
+    private static boolean clearOfTrapSpawns(BotEntity bot,ServerLevel level,ArenaMap arena) {
+        if(MatchManager.freeForAll()!=null)return true;
+        // Read current spawn regions every time: escort/Normandy stages can move them.
+        if(LobbyManager.inEitherSpawn(level,bot.getBoundingBox().inflate(4)))return false;
+        var alpha=BotMovement.homeSpawn(arena,"ALPHA");
+        var bravo=BotMovement.homeSpawn(arena,"BRAVO");
+        var attack=MatchManager.attackSpawn();
+        if(attack!=null)bravo=attack;
+        // Keep useful space on small maps while avoiding the opening deployment cluster.
+        double separation=Math.hypot(alpha.x()-bravo.x(),alpha.z()-bravo.z());
+        double radius=Math.min(16,Math.max(8,separation*.25));
+        return Math.hypot(bot.getX()-alpha.x(),bot.getZ()-alpha.z())>=radius
+                &&Math.hypot(bot.getX()-bravo.x(),bot.getZ()-bravo.z())>=radius;
     }
     private static boolean placeBarrier(BotEntity bot,ServerLevel level,net.minecraft.world.entity.LivingEntity target) {
         if(DeployableLedger.get(level.getServer()).count(bot.getUUID(),true)>=GadgetConfig.barrier.maxPlaced())return false;

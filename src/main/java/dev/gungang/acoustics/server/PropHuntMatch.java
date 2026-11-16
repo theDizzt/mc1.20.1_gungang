@@ -52,7 +52,9 @@ public final class PropHuntMatch {
     private List<LivingEntity> bodiesCache;
     private int bodiesTick=Integer.MIN_VALUE;
     /** Active seekers, players and bots: every hider gimmick acts on both. */
-    List<LivingEntity> seekers(){return bodies().stream().filter(p->!p.isRemoved()&&!hider(p.getUUID())&&!frozen(p.getUUID())&&p.isAlive()&&!p.isSpectator()).toList();}
+    List<LivingEntity> seekers(){return bodies().stream().filter(this::activeSeeker).toList();}
+    /** Check live state directly: an earlier hit in this tick may already have frozen/eliminated a seeker. */
+    boolean activeSeeker(LivingEntity p){return p!=null&&participant(p.getUUID())&&!p.isRemoved()&&!hider(p.getUUID())&&!frozen(p.getUUID())&&p.isAlive()&&!p.isSpectator();}
     boolean bot(UUID id){var m=members.get(id);return m!=null&&m.bot;}
     String name(UUID id){var m=members.get(id);return m==null?"":m.name;}
     boolean locked(UUID id){var m=members.get(id);return m!=null&&m.fixed;}
@@ -474,7 +476,10 @@ public final class PropHuntMatch {
     }
     private void hold(ServerPlayer p,Vec3 pos,float yaw,float pitch){
         p.setDeltaMovement(Vec3.ZERO);p.fallDistance=0;
-        if(p.position().distanceToSqr(pos)>.0001||p.getYRot()!=yaw||p.getXRot()!=pitch)p.connection.teleport(pos.x,pos.y,pos.z,yaw,pitch);
+        // Only the position is held, with a few centimetres of play. The view is free: a locked disguise keeps its own
+        // stored facing and the waiting room is blind, but forcing the view back sent a teleport every tick the mouse
+        // moved, and the snapping looked like lag.
+        if(p.position().distanceToSqr(pos)>.0025)p.connection.teleport(pos.x,pos.y,pos.z,p.getYRot(),p.getXRot());
     }
     private void hazards(LivingEntity owner,Member m){
         if(phase()!=PropHuntGame.Phase.HUNTING)return;
@@ -873,7 +878,7 @@ public final class PropHuntMatch {
     }
     public PropEntity prop(UUID id){var m=members.get(id);return m==null||!game.alive(id)||reviewing?null:m.prop;}
     /** The last snapshot sent to each viewer; an unchanged one is not sent again (a new login is a new player object). */
-    private final Map<ServerPlayer,String> sent=new WeakHashMap<>();
+    private final Map<ServerPlayer,PropHuntSnapshot> sent=new WeakHashMap<>();
     private List<PropHuntSnapshot.Row> rows(boolean see){
         var rows=new ArrayList<PropHuntSnapshot.Row>(members.size());
         for(var m:members.values()){
@@ -883,10 +888,12 @@ public final class PropHuntMatch {
         return rows;
     }
     private void sync(){
+        var packets=new HashMap<PropHuntSnapshot,GungangNetwork.PropHunt>();
         // Every viewer gets one of two row lists (disguises shown or hidden), built once per sync.
-        List<PropHuntSnapshot.Row> shown=null,hidden=null;
+        List<PropHuntSnapshot.Row> shown=null,hidden=null,shownKey=null,hiddenKey=null;
         // A test session only talks to its own players; everyone else keeps their normal HUD.
         for(var viewer:server.getPlayerList().getPlayers()){
+            if(!GungangNetwork.installed(viewer))continue;
             if(test&&!participant(viewer.getUUID()))continue;
             boolean see=hider(viewer.getUUID())||reviewing||!participant(viewer.getUUID());
             List<PropHuntSnapshot.Row> rows;
@@ -897,12 +904,24 @@ public final class PropHuntMatch {
             boolean shared=choice==GameOptions.Choice.FIRST_COME&&!offers.isEmpty();
             int picked=offers.isEmpty()?-1:shared?game.claimed(own.id):own.picked;
             int seconds=offers.isEmpty()?0:Math.max(0,((shared?sharedUntil:own.choiceUntil)-server.getTickCount()+19)/20);
-            String json=ServerFiles.GSON.toJson(new PropHuntSnapshot(true,phase().name(),test?0:(game.remaining()+19)/20,test?0:(game.nextChange()+19)/20,rows,test?0:(game.huntRemaining()+19)/20,!test&&game.finalMinute(),offers,picked,seconds,!offers.isEmpty()&&own.initial,shared?game.takenByOthers(own.id):List.of(),!cling,shared,abilities.scout(viewer.getUUID())));
-            // Cooldowns and clocks change the text whenever they tick, so a skipped copy is one the client already holds.
-            if(json.equals(sent.get(viewer)))continue;
-            sent.put(viewer,json);
-            GungangNetwork.send(viewer,new GungangNetwork.PropHunt(json));
+            var snapshot=new PropHuntSnapshot(true,phase().name(),test?0:(game.remaining()+19)/20,test?0:(game.nextChange()+19)/20,rows,test?0:(game.huntRemaining()+19)/20,!test&&game.finalMinute(),offers,picked,seconds,!offers.isEmpty()&&own.initial,shared?game.takenByOthers(own.id):List.of(),!cling,shared,abilities.scout(viewer.getUUID()));
+            // The client counts cooldowns and active times down itself (PropHuntClient.elapsed), so a copy where only
+            // those ran down is not news: compare with them as end times. Clocks in seconds still resync once a second.
+            if(see){if(shownKey==null)shownKey=countdownKey(rows);}else if(hiddenKey==null)hiddenKey=countdownKey(rows);
+            var key=new PropHuntSnapshot(snapshot.active(),snapshot.phase(),snapshot.seconds(),snapshot.changeSeconds(),see?shownKey:hiddenKey,snapshot.huntSeconds(),snapshot.rush(),snapshot.offers(),snapshot.picked(),snapshot.choiceSeconds(),snapshot.firstChoice(),snapshot.taken(),snapshot.clingOff(),snapshot.sharedChoice(),snapshot.scout());
+            if(key.equals(sent.get(viewer)))continue;
+            sent.put(viewer,key);
+            // Sharing is keyed by the complete recipient view, including private offers and scout information.
+            GungangNetwork.send(viewer,packets.computeIfAbsent(snapshot,s->new GungangNetwork.PropHunt(ServerFiles.GSON.toJson(s))));
         }
+        sent.keySet().retainAll(server.getPlayerList().getPlayers());
+    }
+    /** Rows with the counting-down fields as the tick they end on (0: not running), unchanged while they only count down. */
+    private List<PropHuntSnapshot.Row> countdownKey(List<PropHuntSnapshot.Row> rows){
+        int now=server.getTickCount();var keys=new ArrayList<PropHuntSnapshot.Row>(rows.size());
+        for(var r:rows)keys.add(new PropHuntSnapshot.Row(r.id(),r.name(),r.team(),r.block(),r.state(),r.entity(),r.found(),r.fixed(),r.hiddenSeconds(),r.finds(),
+                r.cooldown()>0?now+r.cooldown():0,r.cooldownTotal(),r.active()>0?now+r.active():0,r.auxiliary(),r.auxiliaryMax(),r.stunned(),r.wall()));
+        return keys;
     }
     private int abilityRemaining(Member m){
         if(m.prop==null)return 0;String item=m.prop.item();

@@ -25,8 +25,35 @@ public final class WorldAcoustics {
     public record Transmission(double gain, double highFrequency) { }
     private record BodyPath(long tick, Vec3 listener, Vec3 camera, AABB bounds, Trace trace) { }
     private static final Map<Player, BodyPath> BODY_PATHS = new WeakHashMap<>();
+    private record PathKey(Vec3 source,Vec3 listener,Vec3 camera,int emitter,AABB bounds,boolean diffraction){}
+    private record RayKey(Vec3 start,Vec3 end){}
+    private static final Map<PathKey,Transmission> PATHS=new java.util.HashMap<>();
+    private static final Map<RayKey,Trace> RAYS=new java.util.HashMap<>();
+    private static final Map<BlockState,Double> MATERIAL_LOSSES=new java.util.IdentityHashMap<>();
+    private static java.lang.ref.WeakReference<Level> cachedLevel=new java.lang.ref.WeakReference<>(null);
+    private static long cachedTick=Long.MIN_VALUE,spentNanos;
+    private static int evaluations;
+    private static final long BUDGET_NANOS=2_000_000;
+    private static void beginTick(Level level){
+        if(cachedLevel.get()==level&&cachedTick==level.getGameTime())return;
+        cachedLevel=new java.lang.ref.WeakReference<>(level);cachedTick=level.getGameTime();
+        PATHS.clear();RAYS.clear();MATERIAL_LOSSES.clear();spentNanos=0;evaluations=0;
+    }
 
     public static Transmission evaluate(Level level, Vec3 source, Vec3 listener, Vec3 viewPosition, Player emitter, boolean allowDiffraction) {
+        beginTick(level);
+        var key=new PathKey(source,listener,viewPosition,emitter==null?-1:emitter.getId(),emitter==null?null:emitter.getBoundingBox(),allowDiffraction);
+        var cached=PATHS.get(key);if(cached!=null)return cached;
+        long started=System.nanoTime();
+        boolean detailed=allowDiffraction&&spentNanos<BUDGET_NANOS
+                &&evaluations<dev.gungang.acoustics.server.AcousticPolicy.get(AcousticConfig.UPDATE_BUDGET);
+        if(detailed)evaluations++;
+        var result=evaluatePath(level,source,listener,viewPosition,emitter,detailed,started+Math.max(0,BUDGET_NANOS-spentNanos));
+        spentNanos+=System.nanoTime()-started;
+        if(PATHS.size()<512)PATHS.put(key,result);
+        return result;
+    }
+    private static Transmission evaluatePath(Level level,Vec3 source,Vec3 listener,Vec3 viewPosition,Player emitter,boolean allowDiffraction,long deadline){
         double distance = source.distanceTo(listener);
         if (distance < 0.05 || distance > dev.gungang.acoustics.server.AcousticPolicy.get(AcousticConfig.MAX_TRACE_DISTANCE)) return new Transmission(1, 1);
         Trace direct = trace(level, source, listener);
@@ -44,8 +71,9 @@ public final class WorldAcoustics {
             side = side.normalize();
             Vec3 up = side.cross(direction).normalize();
             // A single bend is intentionally conservative: both legs must be completely unobstructed.
-            for (int radius = 1; radius <= dev.gungang.acoustics.server.AcousticPolicy.get(AcousticConfig.DIFFRACTION_RADIUS); radius *= 2) {
+            diffraction: for (int radius = 1; radius <= dev.gungang.acoustics.server.AcousticPolicy.get(AcousticConfig.DIFFRACTION_RADIUS); radius *= 2) {
                 for (int i = 0; i < 8; i++) {
+                    if(System.nanoTime()>=deadline)break diffraction;
                     double angle = i * Math.PI / 4;
                     Vec3 bend = direct.firstObstacle().add(side.scale(Math.cos(angle) * (radius + 0.25)))
                             .add(up.scale(Math.sin(angle) * (radius + 0.25)));
@@ -104,6 +132,14 @@ public final class WorldAcoustics {
     }
 
     public static Trace trace(Level level, Vec3 start, Vec3 end) {
+        beginTick(level);
+        var key=new RayKey(start,end);var cached=RAYS.get(key);
+        if(cached!=null)return cached;
+        var result=traceUncached(level,start,end);
+        if(RAYS.size()<2048)RAYS.put(key,result);
+        return result;
+    }
+    private static Trace traceUncached(Level level,Vec3 start,Vec3 end){
         Vec3 delta = end.subtract(start);
         double length = delta.length();
         if (length < 1e-6) return new Trace(0, null);
@@ -150,6 +186,9 @@ public final class WorldAcoustics {
     }
 
     private static double materialLoss(BlockState state) {
+        return MATERIAL_LOSSES.computeIfAbsent(state,WorldAcoustics::uncachedMaterialLoss);
+    }
+    private static double uncachedMaterialLoss(BlockState state) {
         String id = BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
         for (String entry : dev.gungang.acoustics.server.AcousticPolicy.get(AcousticConfig.MATERIALS)) {
             int equals = entry.indexOf('=');

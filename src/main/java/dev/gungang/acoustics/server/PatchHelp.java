@@ -22,9 +22,41 @@ public final class PatchHelp {
     private static void item(String field, String text) { ITEM.put(field, text); }
     /** Help of one item setting's field, when the generic one would mislead. */
     private static void item(String setting, String field, String text) { ITEM_OF.put(setting + "." + field, text); }
+    static {
+        item("glue_gun", "magazine", "용도: 글루건 장탄수. 발사마다 1발씩 줄고, R(TaCZ 재장전 키)이나 빈 탄창으로 쏘면 재장전합니다.");
+        item("glue_gun", "reloadSeconds", "용도: 재장전(글루건 스틱 교체) 시간(초). 다른 무기로 바꾸면 취소됩니다.");
+        item("glue_gun", "roundsPerMinute", "용도: 좌클릭을 누르고 있을 때 분당 발사 수(RPM).\n산출식: 발사 간격(틱) = 1200 / RPM을 반올림 (171 RPM = 7틱 = 0.35초)");
+        item("glue_gun", "directDamage", "용도: 탄환이 적에게 직접 맞았을 때의 피해. 직격은 적에게만 들어가며 사용자·아군은 통과합니다.");
+        item("glue_gun", "projectileSpeed", "용도: 탄환 비행 속도(블록/틱, 20틱 = 1초).\n산출식: 초당 비행 거리 = 속도 × 20");
+        item("glue_gun", "projectileGravity", "용도: 탄환이 매 틱 아래로 떨어지는 정도. 0이면 직선으로 날아갑니다.");
+        item("glue_gun", "spreadDegrees", "용도: 줌 없이 쏠 때 탄환이 조준점에서 벗어나는 최대 각도(°). 이 각도의 원뿔 안에서 무작위로 날아갑니다. 0이면 조준점으로 정확히 날아갑니다.");
+        item("glue_gun", "zoomSpreadDegrees", "용도: 우클릭 줌 중에 쏠 때의 최대 탄 퍼짐(°). 줌 상태는 발사할 때 클라이언트가 함께 보냅니다.");
+        item("glue_gun", "range", "용도: 탄환 사거리(블록). 이 거리 안에서 아무것도 맞히지 못한 탄환은 장판 없이 사라집니다.");
+        item("glue_gun", "poolRadius", "용도: 글루 장판 반경(블록). 발이 이 원 안에 있으면 장판을 밟은 것으로 봅니다.");
+        item("glue_gun", "poolSeconds", "용도: 글루 장판이 남아 있는 시간(초).");
+        item("glue_gun", "poolDamagePerSecond", "용도: 장판을 밟고 있는 동안의 초당 피해. 사용자·아군·적 모두 받으며, 장판이 겹쳐도 한 번만 받습니다.");
+        item("glue_gun", "damageIntervalSeconds", "용도: 장판 피해가 들어가는 간격(초).\n산출식: 회당 피해 = 초당 피해 × 간격. 간격을 바꿔도 DPS는 유지됩니다.");
+        item("glue_gun", "slowPercent", "용도: 장판을 밟은 동안 이동 속도 감소(%). 장판 위에서는 점프할 수 없습니다.");
+        item("glue_gun", "poolDropDistance", "용도: 탄환이 벽·천장·적에 맞아 터졌을 때 아래로 바닥을 찾는 최대 거리(블록). 이 안에 바닥이 없으면 장판이 생기지 않습니다.");
+        item("glue_gun", "zoomFovMultiplier", "용도: 우클릭 줌 시야 배율. 0.5면 시야각이 절반(2배 확대)이 됩니다.");
+        item("toe","initialLength","장착 시 가시 길이. 이동 경로를 따라 유지됩니다.");
+        item("toe","maximumLength","최대 길이. 서버 부하를 제한하기 위해 100블록까지 설정할 수 있습니다.");
+        item("toe","criticalLength","꼬리 끝에서부터 크리티컬 피해와 2번 색상을 적용하는 길이.");
+        item("toe","growthSeconds","이 시간이 지날 때마다 가시 길이가 1블록 증가합니다.");
+        item("toe","damagePerSecond","시작 길이에서의 일반 구간 DPS. 아군과 자신도 피해를 받으며 쌍수도검 방어를 무시합니다.");
+        item("toe","damagePerSecondPerLength","시작 길이보다 1블록 길어질 때마다 늘어나는 일반 구간 DPS.");
+        item("toe","criticalMultiplier","끝부분 DPS = 일반 구간 DPS × 이 배수. 여러 가시에 겹치면 가장 높은 피해만 적용됩니다.");
+        item("toe","sprintLengthPerSecond","좌클릭을 누르는 동안 초당 소모하는 가시 길이. 시작 길이에 닿으면 강제로 멈춥니다.");
+        item("toe","sprintMovementSpeed","좌클릭 중 이동 속도 (%).");
+        item("toe","sprintCooldownSeconds","좌클릭을 멈춘 뒤 다시 쓸 수 있을 때까지의 쿨타임.");
+        item("toe","damageIntervalSeconds","회당 피해 = 초당 피해 × 실제 틱 간격 / 20. 간격을 바꿔도 DPS는 유지됩니다.");
+        item("toe","stationaryGraceSeconds","이동 중 바로 발밑의 가시만 자신 피해를 유예합니다. 정지 후 이 시간이 지나면 피해를 받습니다.");
+        item("toe","jumpHeight","중력과 공기 저항을 반영한 점프 정점 높이.");
+        item("toe","spikeWidth","입체 가시와 피격 영역의 폭.");item("toe","spikeHeight","입체 가시와 피격 영역의 높이.");
+    }
 
     static {
-        gear("windStrength", "송풍기 바람 세기. 기본 1, 0~100 사이를 0.01 단위로 입력합니다.\n적중 방향으로 속도를 세기 × 0.1 블록/틱만큼 더하며, 대상마다 한 틱에 한 번 적용됩니다.\n위로 튕기는 넉백과 별개이며, 0이면 바람으로 밀지 않습니다.");
+        gear("windStrength", "송풍기 바람 세기. 기본 1, 0~100 사이를 0.01 단위로 입력합니다.\n좌클릭 바람 영역(원뿔) 안의 대상에게 매 틱 조준 방향으로 세기 × 0.1 블록/틱의 가속을 주며, 조준 방향 속도가 바람 최대 속도(windMaxSpeed)에 닿으면 더 가속하지 않습니다.\n0이면 바람으로 밀지 않습니다.");
         tacz("heat.max", "용도: 과열되기까지 쌓을 수 있는 열의 최대치. 열이 이 값에 닿으면 과열되어 '과열 잠금' 시간 동안 사격할 수 없습니다.\n산출식(추정): 과열까지 발사 수 ≈ 과열 한도 / 발당 발열량");
         tacz("heat.per_shot", "용도: 한 발 쏠 때마다 쌓이는 열. 0이면 과열되지 않습니다.\n산출식(추정): 과열까지 발사 수 ≈ 과열 한도 / 발당 발열량, 과열까지 시간 ≈ 발사 수 × 60 / RPM 초");
         tacz("heat.cooling_multiplier", "용도: 열이 식는 속도 배수. 클수록 빨리 식습니다 (1 = 기본).");
@@ -48,7 +80,7 @@ public final class PatchHelp {
                 + "작동: 일렬로 선 적을 이 수만큼 차례로 맞히며, 대상마다 같은 피해가 들어갑니다(추정: 관통으로 피해가 줄지 않음).");
         tacz("bullet.knockback", "용도: 탄환에 맞은 대상을 쏜 사람 반대쪽으로 밀어내는 세기 (0.01 단위, 0 = 넉백 없음).\n"
                 + "작동: 피해가 들어갈 때 함께 밀립니다. 넉백 저항이 있으면 그만큼 줄어듭니다.\n"
-                + "송풍기·넉백 샷건처럼 아군도 미는 총은 GunGang이 직접 밀어냅니다. 송풍기는 대상마다 틱(0.05초)당 한 번만 밀려 탄환 수와 무관합니다.\n"
+                + "넉백 샷건은 GunGang이 틱 끝에 직접 밀어내며(아군 포함), 송풍기는 탄환 대신 원뿔 바람 영역으로 밀어 이 값과 무관합니다.\n"
                 + "산출식(추정): 순간 속도 ≈ 세기 블록/틱 (0.4 = 맨손 타격 정도). 계속 맞으면 속도 = 이전/2 + 세기 로 쌓여 최대 약 2배까지.");
         tacz("bullet.speed", "용도: 탄속 (초당 블록, 추정).\n"
                 + "작동: 높을수록 먼 표적에 빨리 닿아 리드(예측 사격)가 덜 필요합니다.\n"
@@ -271,7 +303,9 @@ public final class PatchHelp {
         item("turret", "capacity", "용도: 포탑 탄약. 바닥나면 재장전 범위 안에서 채워야 합니다.\n산출식: 연속 사격 시간 = 탄약 × 사격 간격 / 20 초");
         item("acid_nozzle", "damage", "용도: 산성 분수 안에 있을 때 1회 피해.\n산출식: DPS = 피해 × 20 / 피해 간격(틱)");
         item("arc_thrower", "damage", "용도: 직격 대상의 피해. 주변 대상은 전격 피해를 따로 받습니다.");
-        item("wind_blower", "windRange", "용도: 좌클릭 송풍이 대상을 밀어내는 최대 거리(블록). 사용자와 대상 사이 거리가 이보다 멀면 바람이 닿아도 밀리지 않습니다.\n0이면 좌클릭 송풍으로 밀지 않습니다.");
+        item("wind_blower", "windRange", "용도: 좌클릭 송풍의 원뿔 바람 영역 길이(블록). 사용자 눈에서 조준 방향으로 이 거리까지 바람이 닿으며, 벽 뒤에는 닿지 않습니다.\n0이면 좌클릭 송풍으로 밀지 않습니다.");
+        item("wind_blower", "windConeAngle", "용도: 원뿔 바람 영역이 조준선에서 벌어지는 각도(°, 반각). 0이면 조준선 위(폭 약 0.6블록)만 바람이 닿습니다.\n산출식: 거리 d에서 바람 반경 ≈ d × tan(각도) + 0.3 블록");
+        item("wind_blower", "windMaxSpeed", "용도: 바람이 대상을 밀어주는 최대 속도(블록/틱, 20배하면 블록/초). 바람 영역 안에서 조준 방향 속도가 이 값보다 느리면 매 틱 바람 세기 × 0.1만큼 가속합니다.\n0이면 좌클릭 송풍으로 밀지 않습니다.");
         item("wind_blower", "cannonAmmoCost", "용도: 우클릭 공기대포 1회에 쓰는 탄약 수. 탄창에 이보다 적게 남았으면 발사되지 않습니다.");
         item("wind_blower", "cannonDamage", "용도: 공기대포에 맞은 대상마다 들어가는 피해. 아군에게는 피해가 들어가지 않지만 밀리기는 합니다.\n산출식: 피해 = 공기대포 피해 × 전투자극제 배수");
         item("wind_blower", "cannonKnockbackMultiplier", "용도: 공기대포에 맞은 대상의 넉백 배수 (일반 타격 넉백 0.4 기준).\n산출식: 넉백 세기 = 0.4 × 배수 × (1 − 넉백 저항). 쏜 방향으로 밀립니다.");

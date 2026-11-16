@@ -14,7 +14,7 @@ import net.minecraftforge.registries.*;
 /** The visible disguise is also the authoritative bullet target, including very small props. */
 public final class PropEntity extends LivingEntity {
     private static final DeferredRegister<EntityType<?>> TYPES=DeferredRegister.create(ForgeRegistries.ENTITY_TYPES,"gungang");
-    public static final RegistryObject<EntityType<PropEntity>> TYPE=TYPES.register("prop",()->EntityType.Builder.<PropEntity>of(PropEntity::new,MobCategory.MISC).sized(1,1).clientTrackingRange(32).updateInterval(1).noSave().build("gungang:prop"));
+    public static final RegistryObject<EntityType<PropEntity>> TYPE=TYPES.register("prop",()->EntityType.Builder.<PropEntity>of(PropEntity::new,MobCategory.MISC).sized(1,1).clientTrackingRange(10).updateInterval(2).noSave().build("gungang:prop"));
     private static final EntityDataAccessor<Integer> STATE=SynchedEntityData.defineId(PropEntity.class,EntityDataSerializers.INT);
     private static final EntityDataAccessor<String> ITEM=SynchedEntityData.defineId(PropEntity.class,EntityDataSerializers.STRING);
     private static final EntityDataAccessor<Integer> PAINTING=SynchedEntityData.defineId(PropEntity.class,EntityDataSerializers.INT);
@@ -34,6 +34,19 @@ public final class PropEntity extends LivingEntity {
     public int mode(){return entityData.get(MODE);}public void mode(int mode){entityData.set(MODE,mode);}
     public int height(){return entityData.get(HEIGHT);}public void height(int height){entityData.set(HEIGHT,height);setBoundingBox(makeBoundingBox());}
     public BlockState state(){return Block.stateById(entityData.get(STATE));}
+    private BlockState partsState;
+    private String partsItem;
+    private int partsMode,partsHeight;
+    private List<PropGeometry.Part> cachedParts;
+    /** Geometry depends on synced values, not position; usable by collision, bounds and client rendering alike. */
+    List<PropGeometry.Part> geometryParts(){
+        var state=state();var item=item();int mode=mode(),height=height();
+        if(cachedParts==null||partsState!=state||!item.equals(partsItem)||partsMode!=mode||partsHeight!=height){
+            cachedParts=List.copyOf(PropGeometry.buildParts(this));
+            partsState=state;partsItem=item;partsMode=mode;partsHeight=height;
+        }
+        return cachedParts;
+    }
     public void state(BlockState state){entityData.set(STATE,Block.getId(state));setBoundingBox(makeBoundingBox());}
     public String item(){return entityData.get(ITEM);}
     public int painting(){return entityData.get(PAINTING);}

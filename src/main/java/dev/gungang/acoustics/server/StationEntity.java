@@ -35,14 +35,18 @@ public final class StationEntity extends BlockEntity {
     }
     private void heal(net.minecraft.world.entity.LivingEntity entity){
         // Taken when hurt or ailing; it also cures harmful status effects, burning and bleeding.
-        if(level==null||!availableHealthPack()||entity.getHealth()>=entity.getMaxHealth()&&!StatusCure.ailing(entity))return;
+        if(level==null||!availableHealthPack())return;
         var block=(StationBlock)getBlockState().getBlock();
+        // The 38 magic book also takes a pack for its mana (small 30, large 50).
+        int mana=MagicBook.packMana(entity,block.kind==StationBlock.Kind.SMALL);
+        if(entity.getHealth()>=entity.getMaxHealth()&&!StatusCure.ailing(entity)&&mana<=0)return;
         var config=block.kind==StationBlock.Kind.SMALL?GadgetConfig.smallHealthPack:GadgetConfig.largeHealthPack;
         float before=entity.getHealth();
         if(entity.getHealth()<entity.getMaxHealth())HealCue.mark(entity,HealCue.GHOST_TICKS);
         entity.heal((float)config.heal());
         boolean cured=StatusCure.cure(entity);
-        if(entity.getHealth()<=before&&!cured)return;
+        if(mana>0&&entity instanceof net.minecraft.world.entity.player.Player player)MagicBook.addMana(player,mana);
+        if(entity.getHealth()<=before&&!cured&&mana<=0)return;
         if(entity instanceof ServerPlayer)HealCue.received(entity);
         else entity.playSound(net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP,.8f,1.2f);
         readyAt=level.getGameTime()+(long)Math.ceil(config.cooldownSeconds()*20);

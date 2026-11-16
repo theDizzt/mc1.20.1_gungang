@@ -128,12 +128,14 @@ public final class ExtraGadgetConfig {
     public record ArcThrower(double damage,double arcDamage,double arcRadius,double glowSeconds) { }
     public static ArcThrower arcThrower=new ArcThrower(36,24,3,1);
     /**
-     * 35 classic blower: windRange limits the left-click wind's push; right click fires an air cannon
+     * 35 classic blower: the left-click wind is a cone windRange blocks long and windConeAngle degrees off the aim that
+     * accelerates what it touches up to windMaxSpeed blocks/tick along the aim; right click fires an air cannon
      * ({@link dev.gungang.acoustics.server.WindBlower}).
      */
     public record WindBlower(double windRange,int cannonAmmoCost,double cannonDamage,double cannonKnockbackMultiplier,double cannonSelfKnockback,
-                             double cannonRange,double cannonRadius,double cannonCooldownSeconds) { }
-    public static WindBlower windBlower=new WindBlower(7,30,10,3,1,8,1.5,1);
+                             double cannonRange,double cannonRadius,double cannonCooldownSeconds,double windConeAngle,double windMaxSpeed) { }
+    static final WindBlower WIND_BLOWER_DEFAULTS=new WindBlower(7,30,10,3,1,8,1.5,1,15,1);
+    public static WindBlower windBlower=WIND_BLOWER_DEFAULTS;
     /**
      * 33 shuriken ({@link ShurikenItem}): every throw spends ammoPerThrow of the capacity-round magazine. Semi throws
      * three in a row along the aim (semiIntervalTicks apart), burst three at once fanned burstAngle degrees apart, and
@@ -147,6 +149,47 @@ public final class ExtraGadgetConfig {
     }
     public static final Shuriken SHURIKEN_DEFAULTS=new Shuriken(18,3,1.5,.5,3,1.5,5,13,2,13,8,33,22,11,16,.5,.42);
     public static Shuriken shuriken=SHURIKEN_DEFAULTS;
+    /**
+     * 38 magic book ({@link MagicBook}): mana (manaCapacity, +1 every manaRegenSeconds, +smallPackMana / largePackMana
+     * from a health pack) pays for the five elements' left and right click abilities. Costs per use, or per second
+     * for the held ones (quake, holy water, flight); the ruin beam costs health per second instead.
+     */
+    public record MagicBook(int manaCapacity,double manaRegenSeconds,int smallPackMana,int largePackMana,
+                            double slamDamage,int slamMana,double slamCooldownSeconds,double slamRange,double slamLift,
+                            double quakeDamagePerSecond,double quakeManaPerSecond,double quakeCooldownSeconds,double quakeRadius,
+                            double holyManaPerSecond,double holyRange,double holyHealPerSecond,
+                            int dropMana,double dropCooldownSeconds,double dropRange,double dropSpeedSeconds,
+                            double fireballDamage,int fireballMana,double fireballIntervalSeconds,double fireballRange,
+                            double flameDamagePerSecond,int flameMana,double flameCooldownSeconds,double flameSeconds,double flameRange,
+                            double lightDamage,int lightMana,double lightIntervalSeconds,double lightRange,
+                            double lightningDamage,int lightningMana,double lightningCooldownSeconds,double lightningSeconds,int lightningCount,double lightningRadius,
+                            double ruinDamagePerSecond,double ruinHealthPerSecond,double ruinRange,
+                            double flightManaPerSecond,double flightCooldownSeconds,double flightSpeed) { }
+    public static final MagicBook MAGIC_BOOK_DEFAULTS=new MagicBook(100,.5,30,50,
+            24,15,3,8,.9, 6,15,3,16, 4,32,1, 45,15,32,7, 8,9,.3,24, 13,90,3,8,16, 8,12,.3,256, 8,100,60,8,24,2.5, 16,3,128, 11,10,1.1);
+    public static MagicBook magicBook=MAGIC_BOOK_DEFAULTS;
+    public record Toe(int initialLength,int maximumLength,int criticalLength,double growthSeconds,
+                      double damagePerSecond,double damagePerSecondPerLength,double criticalMultiplier,double damageIntervalSeconds,
+                      double stationaryGraceSeconds,double jumpHeight,double spikeWidth,double spikeHeight,
+                      double sprintLengthPerSecond,double sprintMovementSpeed,double sprintCooldownSeconds){
+        /** Normal spike DPS at {@code length}: the initial-length DPS plus a fixed amount per block grown. */
+        public double damageAt(int length){return damagePerSecond+damagePerSecondPerLength*Math.max(0,length-initialLength);}
+    }
+    public static final Toe TOE_DEFAULTS=new Toe(8,100,3,3,16,.25,3,.25,.5,3,.8,1.5,1,150,5);
+    public static Toe toe=TOE_DEFAULTS;
+    /**
+     * 37 glue gun ({@link GlueGunItem}): roundsPerMinute while the attack key is held (whole ticks: 1200 / RPM); each shot spends one of the magazine's rounds and fires a white glue round
+     * (projectileSpeed blocks/tick, falling by projectileGravity per tick, gone without a pool after range blocks). A direct hit deals
+     * directDamage to an enemy
+     * (each round leaves within spreadDegrees of the aim, zoomSpreadDegrees while zoomed); wherever the round bursts, a glue pool of poolRadius forms on the floor below (searched
+     * up to poolDropDistance blocks down) for poolSeconds. Anyone in a pool, owner and allies included, takes
+     * poolDamagePerSecond, moves slowPercent slower and cannot jump. Right click zooms the view to zoomFovMultiplier.
+     */
+    public record GlueGun(int magazine,double reloadSeconds,double roundsPerMinute,double directDamage,double projectileSpeed,
+                          double projectileGravity,double spreadDegrees,double zoomSpreadDegrees,double range,double poolRadius,double poolSeconds,
+                          double poolDamagePerSecond,double damageIntervalSeconds,double slowPercent,double poolDropDistance,double zoomFovMultiplier){}
+    public static final GlueGun GLUE_GUN_DEFAULTS=new GlueGun(5,2,171,32,3.5,.02,6,.5,24,3,3,7,.25,20,8,.5);
+    public static GlueGun glueGun=GLUE_GUN_DEFAULTS;
     public static TwinBlades twinBlades=new TwinBlades(24,24,24,24,48,72,4,100,30,100);
     public static Molotov molotov=new Molotov(5,8,3,36);
     public static Orbital orbital=new Orbital(24,256,84,5,64,240);
@@ -261,11 +304,49 @@ public final class ExtraGadgetConfig {
         for(double padding:new double[]{sniper.smallHitPadding(),sniper.largeHitPadding(),sniper.thirdHitPadding(),sniper.unlimitedHitPadding()})GadgetConfig.bounded(padding,0,4);
         if(apply)m95=sniper;
         GadgetConfig.bounded(ac.damage(),0,10000);GadgetConfig.bounded(ac.arcDamage(),0,10000);GadgetConfig.bounded(ac.arcRadius(),0,32);GadgetConfig.bounded(ac.glowSeconds(),0,300);
-        var wb=GadgetConfig.read("wind_blower",WindBlower.class,new WindBlower(7,30,10,3,1,8,1.5,1),overrides,apply);
+        var wb=GadgetConfig.read("wind_blower",WindBlower.class,WIND_BLOWER_DEFAULTS,overrides,apply);
         GadgetConfig.bounded(wb.windRange(),0,256);GadgetConfig.bounded(wb.cannonAmmoCost(),0,10000);GadgetConfig.bounded(wb.cannonDamage(),0,10000);
         GadgetConfig.bounded(wb.cannonKnockbackMultiplier(),0,100);GadgetConfig.bounded(wb.cannonSelfKnockback(),0,10);GadgetConfig.bounded(wb.cannonRange(),.5,128);
         GadgetConfig.bounded(wb.cannonRadius(),0,32);GadgetConfig.bounded(wb.cannonCooldownSeconds(),0,86400);
+        GadgetConfig.bounded(wb.windConeAngle(),0,89);GadgetConfig.bounded(wb.windMaxSpeed(),0,10);
         var sh=GadgetConfig.read("shuriken",Shuriken.class,SHURIKEN_DEFAULTS,overrides,apply);
+        var mb=GadgetConfig.read("magic_book",MagicBook.class,MAGIC_BOOK_DEFAULTS,overrides,apply);
+        var toes=GadgetConfig.read("toe",Toe.class,TOE_DEFAULTS,overrides,apply);
+        var toeLength100=ServerFiles.root().resolve("item/.toe-length-100-v1");
+        if(!java.nio.file.Files.exists(toeLength100)&&!overrides.containsKey("toe")){
+            if(toes.maximumLength()==50){
+                var json=ServerFiles.GSON.toJsonTree(toes).getAsJsonObject();json.addProperty("maximumLength",100);
+                toes=ServerFiles.GSON.fromJson(json,Toe.class);
+                if(apply)java.nio.file.Files.writeString(ServerFiles.root().resolve("item/toe.json"),ServerFiles.GSON.toJson(toes));
+            }
+            if(apply)java.nio.file.Files.writeString(toeLength100,"Default maximum trail length migrated to 100 blocks.\n");
+        }
+        var toeGrounded=ServerFiles.root().resolve("item/.toe-grounded-v1");
+        if(!java.nio.file.Files.exists(toeGrounded)&&!overrides.containsKey("toe")){
+            if(Math.abs(toes.spikeHeight()-.8)<1e-6){
+                var json=ServerFiles.GSON.toJsonTree(toes).getAsJsonObject();json.addProperty("spikeHeight",1.5);
+                toes=ServerFiles.GSON.fromJson(json,Toe.class);
+                if(apply)java.nio.file.Files.writeString(ServerFiles.root().resolve("item/toe.json"),ServerFiles.GSON.toJson(toes));
+            }
+            if(apply)java.nio.file.Files.writeString(toeGrounded,"Grounded spikes: default height migrated to 1.5 blocks.\n");
+        }
+        GadgetConfig.bounded(toes.initialLength(),1,100);GadgetConfig.bounded(toes.maximumLength(),toes.initialLength(),100);
+        GadgetConfig.bounded(toes.criticalLength(),0,toes.maximumLength());GadgetConfig.bounded(toes.growthSeconds(),.05,3600);
+        GadgetConfig.bounded(toes.damagePerSecond(),0,10000);GadgetConfig.bounded(toes.damagePerSecondPerLength(),0,1000);GadgetConfig.bounded(toes.criticalMultiplier(),0,100);
+        GadgetConfig.bounded(toes.damageIntervalSeconds(),.05,5);GadgetConfig.bounded(toes.stationaryGraceSeconds(),0,10);
+        GadgetConfig.bounded(toes.jumpHeight(),0,16);GadgetConfig.bounded(toes.spikeWidth(),.1,2);GadgetConfig.bounded(toes.spikeHeight(),.1,3);
+        GadgetConfig.bounded(toes.sprintLengthPerSecond(),.05,100);GadgetConfig.bounded(toes.sprintMovementSpeed(),1,1000);GadgetConfig.bounded(toes.sprintCooldownSeconds(),0,3600);
+        if(apply)toe=toes;
+        var gg=GadgetConfig.read("glue_gun",GlueGun.class,GLUE_GUN_DEFAULTS,overrides,apply);
+        GadgetConfig.bounded(gg.magazine(),1,1000);GadgetConfig.bounded(gg.reloadSeconds(),0,60);GadgetConfig.bounded(gg.roundsPerMinute(),6,1200);
+        GadgetConfig.bounded(gg.directDamage(),0,10000);GadgetConfig.bounded(gg.projectileSpeed(),.2,8);GadgetConfig.bounded(gg.projectileGravity(),0,1);
+        GadgetConfig.bounded(gg.spreadDegrees(),0,45);GadgetConfig.bounded(gg.zoomSpreadDegrees(),0,45);GadgetConfig.bounded(gg.range(),1,256);GadgetConfig.bounded(gg.poolRadius(),.25,16);
+        GadgetConfig.bounded(gg.poolSeconds(),.05,300);GadgetConfig.bounded(gg.poolDamagePerSecond(),0,10000);GadgetConfig.bounded(gg.damageIntervalSeconds(),.05,5);
+        GadgetConfig.bounded(gg.slowPercent(),0,100);GadgetConfig.bounded(gg.poolDropDistance(),0,64);GadgetConfig.bounded(gg.zoomFovMultiplier(),.05,1);
+        if(apply)glueGun=gg;
+        GadgetConfig.bounded(mb.manaCapacity(),1,10000);GadgetConfig.bounded(mb.manaRegenSeconds(),.05,60);GadgetConfig.bounded(mb.lightningCount(),1,200);
+        GadgetConfig.bounded(mb.fireballIntervalSeconds(),.05,10);GadgetConfig.bounded(mb.lightIntervalSeconds(),.05,10);GadgetConfig.bounded(mb.flightSpeed(),.1,4);
+        for(double d:new double[]{mb.slamRange(),mb.quakeRadius(),mb.holyRange(),mb.dropRange(),mb.fireballRange(),mb.flameRange(),mb.lightRange(),mb.ruinRange()})GadgetConfig.bounded(d,1,512);
         GadgetConfig.bounded(sh.capacity(),1,1000);GadgetConfig.bounded(sh.ammoPerThrow(),1,sh.capacity());GadgetConfig.bounded(sh.reloadSeconds(),0,60);
         GadgetConfig.bounded(sh.attackIntervalSeconds(),.05,10);GadgetConfig.bounded(sh.projectileSpeed(),.2,8);GadgetConfig.bounded(sh.spreadDegrees(),0,45);
         GadgetConfig.bounded(sh.flightSeconds(),.1,30);GadgetConfig.bounded(sh.semiIntervalTicks(),0,20);GadgetConfig.bounded(sh.burstAngle(),0,90);
@@ -284,7 +365,7 @@ public final class ExtraGadgetConfig {
         GadgetConfig.bounded(s.durationSeconds(),.05,300);GadgetConfig.bounded(h.capacity(),1,10000);GadgetConfig.bounded(h.repairSeconds(),0,86400);
         GadgetConfig.bounded(h.movementPenaltyPercent(),0,99);GadgetConfig.bounded(h.regenDelaySeconds(),0,300);GadgetConfig.bounded(h.regenPerSecond(),0,10000);GadgetConfig.bounded(h.meleeReductionPercent(),0,100);
         for(double c:new double[]{m.cooldownSeconds(),o.cooldownSeconds(),l.cooldownSeconds(),j.cooldownSeconds(),s.cooldownSeconds(),x.cooldownSeconds()})GadgetConfig.bounded(c,0,86400);
-        if(apply){acidSprayer=as;barrage=pb;molotov=m;orbital=o;life=l;jet=j;hermes=hb;scanner=s;shield=h;handAxe=x;arrowGrenade=ag;rapier=r;katana=k;regeneration=rg;combat=cb;fallout=fo;twinBlades=tb;arcThrower=ac;windBlower=wb;shuriken=sh;}
+        if(apply){acidSprayer=as;barrage=pb;molotov=m;orbital=o;life=l;jet=j;hermes=hb;scanner=s;shield=h;handAxe=x;arrowGrenade=ag;rapier=r;katana=k;regeneration=rg;combat=cb;fallout=fo;twinBlades=tb;arcThrower=ac;windBlower=wb;shuriken=sh;magicBook=mb;}
     }
     private ExtraGadgetConfig() { }
 }

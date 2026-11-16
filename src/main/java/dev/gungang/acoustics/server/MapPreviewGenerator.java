@@ -21,6 +21,8 @@ import java.nio.file.*;
 import java.security.MessageDigest;
 import java.util.zip.CRC32;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import javax.imageio.ImageIO;
 
 /** Server-side map colors, one existing chunk per tick. Never generates new terrain.
@@ -35,6 +37,7 @@ public final class MapPreviewGenerator {
     private static final BufferedImage ALPHA_EMBLEM=emblem("alpha"),BRAVO_EMBLEM=emblem("bravo");
     private static final Map<ArenaMap,byte[]> CACHE=new LinkedHashMap<>();
     private static final Map<ArenaMap,Job> JOBS=new LinkedHashMap<>();
+    private static final Object FILE_LOCK=new Object();
     private record Pixel(int px,int pz,int x,int z) {}
     private static final class Job {
         final ArenaMap map;
@@ -43,9 +46,23 @@ public final class MapPreviewGenerator {
         final int width,height,unit;
         final Set<UUID> viewers=new HashSet<>();
         final Iterator<Map.Entry<Long,java.util.List<Pixel>>> chunks;
+        final int alphaColor,bravoColor;
+        final Path storage;
+        final String fingerprint;
+        CompletableFuture<byte[]> saved,encoded;
+        CompletableFuture<Optional<net.minecraft.nbt.CompoundTag>> reading;
+        CompletableFuture<net.minecraft.world.level.chunk.LevelChunk> loading;
+        Map.Entry<Long,java.util.List<Pixel>> current;
+        net.minecraft.world.level.chunk.LevelChunk chunk;
+        int pixelIndex;
+        boolean checkedDisk;
+        volatile boolean cancelled;
         boolean missing;
         Job(ArenaMap map,ServerLevel level){
             this.map=map;this.level=level;var a=map.previewArea();
+            alphaColor=LobbyManager.options().color("ALPHA");bravoColor=LobbyManager.options().color("BRAVO");
+            storage=directory();fingerprint=fingerprint(map);
+            saved=CompletableFuture.supplyAsync(()->load(storage,map.id(),fingerprint));
             double scale=Math.min(1,256.0/Math.max(a.maxX()-a.minX()+1,a.maxZ()-a.minZ()+1));
             width=Math.max(1,(int)Math.ceil((a.maxX()-a.minX()+1)*scale));
             height=Math.max(1,(int)Math.ceil((a.maxZ()-a.minZ()+1)*scale));
@@ -60,20 +77,42 @@ public final class MapPreviewGenerator {
             chunks=groups.entrySet().iterator();
         }
         boolean step(){
-            if(!chunks.hasNext())return true;
-            var entry=chunks.next();var cp=new net.minecraft.world.level.ChunkPos(entry.getKey());
-            var chunk=level.getChunk(cp.x,cp.z,ChunkStatus.FULL,false);
-            if(chunk==null){
+            if(saved!=null){
+                if(!saved.isDone())return false;
+                var png=saved.join();saved=null;
+                if(png!=null){encoded=CompletableFuture.completedFuture(png);return true;}
+            }
+            if(current==null){
+                if(!chunks.hasNext())return true;
+                current=chunks.next();pixelIndex=0;checkedDisk=false;
+                var cp=new net.minecraft.world.level.ChunkPos(current.getKey());
+                chunk=level.getChunkSource().getChunkNow(cp.x,cp.z);
+            }
+            var cp=new net.minecraft.world.level.ChunkPos(current.getKey());
+            if(chunk==null&&!checkedDisk){
                 // create=false only sees available chunks. Check disk before loading distant arenas,
                 // so a valid saved map works even when no player is near it.
-                var saved=level.getChunkSource().chunkMap.read(cp).join();
-                if(saved.isPresent()){
-                    String status=saved.get().getString("Status");
-                    if(status.equals("minecraft:full")||status.equals("full"))chunk=level.getChunk(cp.x,cp.z,ChunkStatus.FULL,true);
+                if(reading==null){reading=level.getChunkSource().chunkMap.read(cp);return false;}
+                if(!reading.isDone())return false;
+                var data=reading.join();reading=null;checkedDisk=true;
+                if(data.isPresent()){
+                    String status=data.get().getString("Status");
+                    if(status.equals("minecraft:full")||status.equals("full")){
+                        var source=level.getChunkSource();
+                        // The off-thread API branch schedules the request without managedBlock on the server.
+                        loading=CompletableFuture.supplyAsync(()->source.getChunkFuture(cp.x,cp.z,ChunkStatus.FULL,true))
+                                .thenCompose(future->future).thenApply(result->result.left()
+                                        .filter(net.minecraft.world.level.chunk.LevelChunk.class::isInstance)
+                                        .map(net.minecraft.world.level.chunk.LevelChunk.class::cast).orElse(null));
+                    }
                 }
             }
+            if(loading!=null){if(!loading.isDone())return false;chunk=loading.join();loading=null;}
+            long deadline=System.nanoTime()+2_000_000;
             var a=map.previewArea();var pos=new BlockPos.MutableBlockPos();
-            for(var pixel:entry.getValue()){
+            while(pixelIndex<current.getValue().size()){
+                if(System.nanoTime()>=deadline)return false;
+                var pixel=current.getValue().get(pixelIndex++);
                 int color=0x202a33;
                 if(chunk==null){missing=true;color=((pixel.px+pixel.pz)/4%2==0)?0x403743:0x29232c;}
                 else for(int y=Math.min(a.maxY(),level.getMaxBuildHeight()-1);y>=Math.max(a.minY(),level.getMinBuildHeight());y--){
@@ -85,6 +124,7 @@ public final class MapPreviewGenerator {
                 }
                 for(int dz=0;dz<unit;dz++)for(int dx=0;dx<unit;dx++)image.setRGB(pixel.px*unit+dx,pixel.pz*unit+dz,color);
             }
+            current=null;chunk=null;
             return !chunks.hasNext();
         }
         int x(double world){return (int)Math.round(map.previewArea().u(world)*width*unit);}
@@ -117,7 +157,7 @@ public final class MapPreviewGenerator {
         }
         byte[] finish() throws Exception {
             var g=image.createGraphics();g.setFont(new Font(Font.SANS_SERIF,Font.BOLD,11));g.setClip(0,0,width*unit,height*unit);
-            var options=LobbyManager.options();var red=new Color(options.color("ALPHA")&0xFFFFFF);var blue=new Color(options.color("BRAVO")&0xFFFFFF);var gold=new Color(210,155,20);var orange=new Color(240,120,20);
+            var red=new Color(alphaColor&0xFFFFFF);var blue=new Color(bravoColor&0xFFFFFF);var gold=new Color(210,155,20);var orange=new Color(240,120,20);
             area(g,map.alphaArea(),red);area(g,map.bravoArea(),blue);
             // Bomb maps: spawn circles stay unlabelled, so A/B always means a bomb site.
             boolean bomb=map.bomb()!=null;
@@ -179,27 +219,29 @@ public final class MapPreviewGenerator {
         var text=new String(png,41,length,StandardCharsets.ISO_8859_1);
         return text.startsWith(KEYWORD+SEPARATOR)?text.substring(KEYWORD.length()+1):"";
     }
-    private static byte[] load(ArenaMap map){
-        var path=file(map.id());
+    private static byte[] load(Path directory,String id,String fingerprint){
+        var path=directory.resolve(id+".png");
         if(!Files.isRegularFile(path))return null;
         try{
-            var png=MapPreviewFiles.read(directory(),map.id()+".png");
-            return key(png).equals(fingerprint(map))?png:null;
+            var png=MapPreviewFiles.read(directory,id+".png");
+            return key(png).equals(fingerprint)?png:null;
         }catch(Exception failure){
-            com.mojang.logging.LogUtils.getLogger().warn("Map data {} ignored: {}",map.id(),failure.getMessage());return null;
+            com.mojang.logging.LogUtils.getLogger().warn("Map data {} ignored: {}",id,failure.getMessage());return null;
         }
     }
-    private static void save(ArenaMap map,byte[] png){
+    private static void save(Job job,byte[] png){
         try{
-            Files.createDirectories(directory());
-            var tagged=tag(png,fingerprint(map));MapPreviewFiles.dimensions(tagged);
-            var temp=directory().resolve(map.id()+".png.tmp");
-            Files.write(temp,tagged);
-            Files.move(temp,file(map.id()),StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);
-        }catch(Exception failure){com.mojang.logging.LogUtils.getLogger().warn("Map data {} could not be saved",map.id(),failure);}
+            var tagged=tag(png,job.fingerprint);MapPreviewFiles.dimensions(tagged);
+            synchronized(FILE_LOCK){
+                if(job.cancelled)return;
+                Files.createDirectories(job.storage);
+                var temp=job.storage.resolve(job.map.id()+".png.tmp");
+                Files.write(temp,tagged);
+                Files.move(temp,job.storage.resolve(job.map.id()+".png"),StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);
+            }
+        }catch(Exception failure){com.mojang.logging.LogUtils.getLogger().warn("Map data {} could not be saved",job.map.id(),failure);}
     }
     public static void request(ServerPlayer player,ArenaMap map){
-        if(!CACHE.containsKey(map)){var saved=load(map);if(saved!=null)remember(map,saved);}
         if(CACHE.containsKey(map)){GungangNetwork.send(player,new GungangNetwork.MapPreview(map.id(),CACHE.get(map),""));return;}
         var job=JOBS.get(map);
         if(job==null){
@@ -213,10 +255,18 @@ public final class MapPreviewGenerator {
         if(event.phase!=TickEvent.Phase.END||JOBS.isEmpty())return;
         var iterator=JOBS.entrySet().iterator();var entry=iterator.next();var job=entry.getValue();
         try{
-            if(!job.step())return;
-            byte[] png=job.finish();remember(entry.getKey(),png);
-            // Unexplored chunks may load later; keep those maps in memory only so they are retried.
-            if(!job.missing)save(job.map,png);
+            if(job.encoded==null){
+                if(!job.step())return;
+                if(job.encoded==null){
+                    job.encoded=CompletableFuture.supplyAsync(()->{
+                        try{var png=job.finish();if(!job.missing)save(job,png);return png;}
+                        catch(Exception failure){throw new CompletionException(failure);}
+                    });
+                    return;
+                }
+            }
+            if(!job.encoded.isDone())return;
+            byte[] png=job.encoded.join();remember(entry.getKey(),png);
             for(var id:job.viewers){var player=job.level.getServer().getPlayerList().getPlayer(id);if(player!=null)GungangNetwork.send(player,new GungangNetwork.MapPreview(job.map.id(),png,""));}
         }catch(Exception failure){
             com.mojang.logging.LogUtils.getLogger().warn("Map generation failed: {}",job.map.id(),failure);
@@ -225,10 +275,12 @@ public final class MapPreviewGenerator {
         iterator.remove();
     }
     private static void remember(ArenaMap map,byte[] png){CACHE.put(map,png);while(CACHE.size()>8)CACHE.remove(CACHE.keySet().iterator().next());}
-    public static void clear(){CACHE.clear();JOBS.clear();}
+    public static void clear(){CACHE.clear();JOBS.values().forEach(job->job.cancelled=true);JOBS.clear();}
     /** Deletes saved map data (all maps when id is null) so the next preview request regenerates it. */
     public static int purge(String id)throws java.io.IOException{
-        CACHE.keySet().removeIf(m->id==null||m.id().equals(id));JOBS.keySet().removeIf(m->id==null||m.id().equals(id));
+        synchronized(FILE_LOCK){
+        CACHE.keySet().removeIf(m->id==null||m.id().equals(id));
+        JOBS.entrySet().removeIf(e->{if(id!=null&&!e.getKey().id().equals(id))return false;e.getValue().cancelled=true;return true;});
         var dir=directory();if(!Files.isDirectory(dir))return 0;
         int removed=0;
         try(var paths=Files.list(dir)){
@@ -240,6 +292,7 @@ public final class MapPreviewGenerator {
             }
         }
         return removed;
+        }
     }
     @SubscribeEvent public static void stop(net.minecraftforge.event.server.ServerStoppedEvent event){clear();}
     private MapPreviewGenerator(){}

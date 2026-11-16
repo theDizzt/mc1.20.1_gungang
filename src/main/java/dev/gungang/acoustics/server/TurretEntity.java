@@ -33,6 +33,8 @@ public final class TurretEntity extends LivingEntity {
     private long reloadUntil;
     private double reloadFraction;
     private int fireDelay;
+    private static final int IDLE_SCAN_TICKS=5;
+    private long nextTargetScan;
     private boolean repairing,destroyed;
     private ItemStack deploymentStack=ItemStack.EMPTY;
     void deployment(ItemStack stack){deploymentStack=stack.copy();}
@@ -86,11 +88,19 @@ public final class TurretEntity extends LivingEntity {
         if(fireDelay>0){fireDelay--;return;}
         if(ammo()==0||SafeZones.contains(this))return;
         if(MatchManager.preparationGate()!=null||MatchManager.bomb()!=null&&!MatchManager.bomb().activePlay())return;
+        long now=level().getGameTime();
+        if(now<nextTargetScan)return;
         double range=Turrets.config.detectionRange();
         // Nearest first, so the two ray casts of clearShot run only until a target is found.
         var target=level().getEntitiesOfClass(LivingEntity.class,getBoundingBox().inflate(range),e->enemy(e)&&distanceToSqr(e)<=range*range)
                 .stream().sorted(Comparator.comparingDouble(this::distanceToSqr)).filter(this::clearShot).findFirst().orElse(null);
-        if(target==null)return;
+        if(target==null){
+            // Idle/occluded turrets retry at 4 Hz, on a stable phase spread across five server ticks.
+            int phase=Math.floorMod(getUUID().hashCode(),IDLE_SCAN_TICKS);
+            nextTargetScan=now+1+Math.floorMod(phase-(now+1),IDLE_SCAN_TICKS);
+            return;
+        }
+        nextTargetScan=0; // Once acquired, retain the configured firing cadence and nearest-target selection.
         Vec3 from=muzzle(),to=target.getBoundingBox().getCenter(),direction=to.subtract(from);
         entityData.set(AIM,(float)(Math.toDegrees(Math.atan2(direction.z,direction.x))-90));
         entityData.set(AMMO,ammo()-1);fireDelay=Turrets.config.fireIntervalTicks()-1;

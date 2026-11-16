@@ -21,9 +21,14 @@ public final class TeamPointState {
     private final LinkedHashMap<UUID,String> roster=new LinkedHashMap<>();
     private final Map<UUID,Mark> points=new HashMap<>();
     private long sequence;
+    public void join(UUID id,String team){
+        if(!validTeam(team)){roster.remove(id);points.remove(id);return;}
+        if(!team.equals(roster.get(id))){points.remove(id);roster.remove(id);}
+        roster.put(id,team);
+    }
     public void roster(Map<UUID,String> current) {
         roster.entrySet().removeIf(e->!e.getValue().equals(current.get(e.getKey())));
-        current.forEach((id,team)->{if(validTeam(team))roster.putIfAbsent(id,team);});
+        current.forEach(this::join);
         points.entrySet().removeIf(e->!e.getValue().team().equals(roster.get(e.getKey())));
     }
     public static boolean validTeam(String team){return "ALPHA".equals(team)||"BRAVO".equals(team);}
@@ -40,6 +45,7 @@ public final class TeamPointState {
             var mark=points.get(e.getKey());
             if(mark!=null)marks.add(new Point(e.getKey(),number,mark.dimension(),mark.x(),mark.y(),mark.z(),mark.sequence()));
         }
+        members.sort(Comparator.comparingInt(Member::number));
         return new View(team,color,List.copyOf(members),List.copyOf(marks));
     }
     public void clear(){points.clear();}

@@ -49,12 +49,29 @@ final class HudHealthBars {
      * {@code statusStart}: where the share of health that status ailments will still take begins (purple to {@code health}).
      * {@code healEnd}: where health will be once running heals finish (green from {@code health}); absorption follows it.
      */
-    record Layers(float health, float healthTrail, float absorptionEnd, float absorptionTrailEnd, float statusStart, float healEnd) {
+    record Layers(float health, float healthTrail, float absorptionEnd, float absorptionTrailEnd, float statusStart, float healEnd,
+                  int effects, boolean styled, boolean inverted) {
+        Layers(float health,float healthTrail,float absorptionEnd,float absorptionTrailEnd,float statusStart,float healEnd){
+            this(health,healthTrail,absorptionEnd,absorptionTrailEnd,statusStart,healEnd,0,false,false);
+        }
         Layers(float health, float healthTrail, float absorptionEnd, float absorptionTrailEnd, float statusStart) { this(health, healthTrail, absorptionEnd, absorptionTrailEnd, statusStart, health); }
         Layers(float health, float healthTrail, float absorptionEnd, float absorptionTrailEnd) { this(health, healthTrail, absorptionEnd, absorptionTrailEnd, health, health); }
         int colorAt(float point, int healthColor) {
+            int color=baseColor(point,healthColor);
+            return inverted?(color&0xFF000000)|(~color&0xFFFFFF):color;
+        }
+        private float effectStart(){return statusStart<health?statusStart:0;}
+        private int baseColor(float point,int healthColor){
+            if(styled&&point<health){
+                int count=Integer.bitCount(effects&15);
+                float start=effectStart();
+                if(count==0||point<start)return healthColor;
+                int index=Math.min(count-1,(int)((point-start)/Math.max(.000001f,health-start)*count));
+                for(int bit=0;bit<4;bit++)if((effects&(1<<bit))!=0&&index--==0)
+                    return switch(bit){case 0->0xFFFF7900;case 1->0xFFD52BFF;case 2->0xFF8B101C;default->0xFF62FF18;};
+            }
             if (point < statusStart) return healthColor;
-            if (point < health) return STATUS;
+            if (point < health) return styled?healthColor:STATUS;
             if (point < healEnd) return HEAL;
             if (point < absorptionEnd) return 0xFFFFD36B;
             if (point < absorptionTrailEnd) return 0xFFB9903F;
@@ -62,15 +79,20 @@ final class HudHealthBars {
             return 0x8029353E;
         }
         float[] boundaries() {
-            float[] edges = {0, statusStart, health, healEnd, healthTrail, absorptionEnd, absorptionTrailEnd, 1};
+            int count=styled?Integer.bitCount(effects&15):0;
+            float[] edges = new float[8+Math.max(0,count-1)];
+            float[] base={0, statusStart, health, healEnd, healthTrail, absorptionEnd, absorptionTrailEnd, 1};
+            System.arraycopy(base,0,edges,0,8);
+            for(int i=1;i<count;i++)edges[7+i]=effectStart()+(health-effectStart())*i/count;
             java.util.Arrays.sort(edges);
             return edges;
         }
     }
 
     static Layers layers(LivingEntity entity, float partialTick) {
-        float health = fraction(entity, partialTick);
         double seconds = clock();
+        var healthAnimation = ANIMATIONS.computeIfAbsent(entity, ignored -> new HealthBarAnimation());
+        float health = healthAnimation.update(entity.getHealth(), entity.getMaxHealth(), seconds);
         float maximum = Math.max(1, entity.getMaxHealth());
         float amount = Math.max(0, entity.getAbsorptionAmount());
         HealthBarAnimation animation = ABSORPTION.computeIfAbsent(entity, ignored -> {
@@ -81,17 +103,21 @@ final class HudHealthBars {
         // Animate a bounded ratio with a fixed maximum, so absorption changes do not reset easing.
         float ratio = animation.update(amount / (maximum + amount), 1, seconds);
         float trailRatio = animation.trail(seconds);
-        var healthAnimation = ANIMATIONS.get(entity);
-        float target = healthAnimation == null ? health : healthAnimation.target();
         // Green only for heal packs and the recovery potion; natural regeneration fills the bar plainly.
         boolean healing = StatusDamageClient.gadgetHealing(entity);
-        float healGoal = Math.min(1, Math.max(health, target) + StatusDamageClient.pendingHeal(entity) / maximum);
+        float healGoal = HudHealth.fraction(StatusDamageClient.healEnd(entity), maximum);
         float pending = StatusDamageClient.pending(entity);
-        float statusGoal = Math.min(health, target - pending / maximum);
+        float statusGoal = HudHealth.fraction(StatusDamageClient.statusEnd(entity), maximum);
         var edges = EDGES.computeIfAbsent(entity, ignored -> new Edges());
         edges.update(health, healGoal, healing, statusGoal, pending > 0, seconds);
-        return compose(health, trail(entity, partialTick), ratio, trailRatio,
-                Math.max(0, health - edges.statusStart), Math.max(0, edges.healEnd - health));
+        boolean styled=dev.gungang.acoustics.AcousticConfig.STATUS_HEALTH_BAR.get();
+        var composed=compose(health, healthAnimation.trail(seconds), ratio, trailRatio,
+                styled ? Math.max(0, health - edges.statusStart) : 0, Math.max(0, edges.healEnd - health));
+        int effects=styled?StatusDamageClient.effects(entity):0;
+        double gameSeconds=(entity.level().getGameTime()+partialTick)/20.0;
+        boolean inverted=styled&&(effects&dev.gungang.acoustics.server.StatusBarEffects.SHOCK)!=0&&((long)Math.floor(gameSeconds*6)&1)==0;
+        return new Layers(composed.health(),composed.healthTrail(),composed.absorptionEnd(),composed.absorptionTrailEnd(),
+                composed.statusStart(),composed.healEnd(),effects,styled,inverted);
     }
 
     static Layers compose(float health, float healthTrail, float ratio, float trailRatio) { return compose(health, healthTrail, ratio, trailRatio, 0); }

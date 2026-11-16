@@ -23,13 +23,13 @@ import net.minecraft.world.phys.shapes.*;
 /**
  * Escort-only team spawn gate. Each gate belongs to one respawn stage: 0 is the opening spawn, N the spawn the escort
  * rules switch to once checkpoint N is cleared. Only during an escort match, and only while its team spawns at that
- * stage, is it ACTIVE and works exactly like a team spawn gate. Gates of the other stages display red crosses and stay LOCKED,
- * keeping every player out of spawns no longer in use. Outside escort matches a gate is invisible and does nothing.
+ * stage, is it ACTIVE and works exactly like a team spawn gate. Other stages are invisible and passable,
+ * allowing everyone to use rooms that are no longer spawns. Outside escort matches a gate does nothing.
  * Creative editors holding one see inactive gates as markers and right-click a gate to cycle its stage.
  */
 public final class EscortSpawnGateBlock extends SpawnGateBlock {
     public static final BooleanProperty ACTIVE=BooleanProperty.create("active");
-    /** During an escort match an inactive gate is a red-cross wall no player may pass; bullets still fly through. */
+    /** Retained for old saved block states; inactive gates no longer lock players out. */
     public static final BooleanProperty LOCKED=BooleanProperty.create("locked");
     public static final IntegerProperty STAGE=IntegerProperty.create("stage",0,3);
     /** Client: the local player is a creative editor holding an escort gate; set by ClientSetup. */
@@ -39,11 +39,9 @@ public final class EscortSpawnGateBlock extends SpawnGateBlock {
         registerDefaultState(stateDefinition.any().setValue(ACTIVE,false).setValue(LOCKED,false).setValue(STAGE,0));
     }
     @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> builder){builder.add(ACTIVE,LOCKED,STAGE);}
-    @Override public net.minecraft.world.level.block.RenderShape getRenderShape(BlockState state){return state.getValue(ACTIVE)||state.getValue(LOCKED)?net.minecraft.world.level.block.RenderShape.MODEL:net.minecraft.world.level.block.RenderShape.INVISIBLE;}
+    @Override public net.minecraft.world.level.block.RenderShape getRenderShape(BlockState state){return state.getValue(ACTIVE)?net.minecraft.world.level.block.RenderShape.MODEL:net.minecraft.world.level.block.RenderShape.INVISIBLE;}
     @Override public boolean present(BlockState state){return state.getValue(ACTIVE);}
     @Override public VoxelShape getCollisionShape(BlockState state,BlockGetter level,BlockPos pos,CollisionContext context){
-        if(!present(state)&&state.getValue(LOCKED))
-            return context instanceof EntityCollisionContext entity&&entity.getEntity() instanceof Player player&&!player.isSpectator()?Shapes.block():Shapes.empty();
         return super.getCollisionShape(state,level,pos,context);
     }
     public static boolean editing(Entity entity){
@@ -81,16 +79,16 @@ public final class EscortSpawnGateBlock extends SpawnGateBlock {
     }
 
     /**
-     * Switches every indexed gate in a level: on when its stage is the one its team currently spawns at, locked for
-     * every other stage. A null map (no escort match) turns every gate fully off.
+     * Switches every indexed gate in a level: only the team's current stage is active.
+     * All other stages, and a null map (no escort match), are fully open.
      */
     public static void apply(ServerLevel level,Map<String,Integer> stages){
         var index=Index.get(level);
         for(var pos:List.copyOf(index.gates)){
             var state=level.getBlockState(pos);
             if(!(state.getBlock() instanceof EscortSpawnGateBlock gate)){index.change(pos,false);continue;}
-            boolean on=stages!=null&&Objects.equals(stages.get(gate.team),state.getValue(STAGE)),locked=stages!=null&&!on;
-            var next=state.setValue(ACTIVE,on).setValue(LOCKED,locked);
+            boolean on=stages!=null&&Objects.equals(stages.get(gate.team),state.getValue(STAGE));
+            var next=state.setValue(ACTIVE,on).setValue(LOCKED,false);
             if(next!=state)level.setBlock(pos,next,3);
         }
     }

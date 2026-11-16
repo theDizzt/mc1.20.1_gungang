@@ -8,6 +8,7 @@ import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
 
 public final class GadgetItems {
     private static final DeferredRegister<Item> ITEMS=DeferredRegister.create(ForgeRegistries.ITEMS,"gungang");
+    private static final DeferredRegister<net.minecraft.world.effect.MobEffect> EFFECTS=DeferredRegister.create(ForgeRegistries.MOB_EFFECTS,"gungang");
     private static final DeferredRegister<EntityType<?>> ENTITIES=DeferredRegister.create(ForgeRegistries.ENTITY_TYPES,GungangAcoustics.ID);
     public static final RegistryObject<Item> BOMB=ITEMS.register("bomb",()->new BombItem(false));
     public static final RegistryObject<Item> SPATIAL_WAND=ITEMS.register("spatial_wand",SpatialWand::new);
@@ -32,6 +33,14 @@ public final class GadgetItems {
     public static final RegistryObject<Item> DEFIBRILLATOR=ITEMS.register("defibrillator",DefibrillatorItem::new);
     public static final RegistryObject<Item> RAPIER=ITEMS.register("rapier",RapierItem::new);
     public static final RegistryObject<Item> SHURIKEN=ITEMS.register("shuriken",ShurikenItem::new);
+    public static final RegistryObject<Item> MAGIC_BOOK=ITEMS.register("magic_book",MagicBookItem::new);
+    public static final RegistryObject<Item> TOE=ITEMS.register("toe",ToeItem::new);
+    /** 37 glue gun, its rounds, its pools and the pools' glued effect. */
+    public static final RegistryObject<Item> GLUE_GUN=ITEMS.register("glue_gun",GlueGunItem::new);
+    public static final RegistryObject<EntityType<GlueShotEntity>> GLUE_SHOT=ENTITIES.register("glue_shot",()->EntityType.Builder.<GlueShotEntity>of(GlueShotEntity::new,MobCategory.MISC).sized(.25f,.25f).clientTrackingRange(10).updateInterval(1).build("gungang_acoustics:glue_shot"));
+    public static final RegistryObject<EntityType<GluePoolEntity>> GLUE_POOL=ENTITIES.register("glue_pool",()->EntityType.Builder.<GluePoolEntity>of(GluePoolEntity::new,MobCategory.MISC).sized(1,.1f).clientTrackingRange(10).updateInterval(20).build("gungang_acoustics:glue_pool"));
+    public static final RegistryObject<net.minecraft.world.effect.MobEffect> GLUED=EFFECTS.register("glued",GluedEffect::new);
+    public static final RegistryObject<EntityType<ToeTrailEntity>> TOE_TRAIL=ENTITIES.register("toe_trail",()->EntityType.Builder.<ToeTrailEntity>of(ToeTrailEntity::new,MobCategory.MISC).sized(1,1).clientTrackingRange(12).updateInterval(2).build("gungang_acoustics:toe_trail"));
     public static final RegistryObject<EntityType<ShurikenEntity>> SHURIKEN_PROJECTILE=ENTITIES.register("shuriken",()->EntityType.Builder.<ShurikenEntity>of(ShurikenEntity::new,MobCategory.MISC).sized(.35f,.35f).clientTrackingRange(10).updateInterval(1).build("gungang_acoustics:shuriken"));
     public static final RegistryObject<Item> JETPACK=ITEMS.register("jetpack",()->new GadgetItem("jetpack"));
     public static final RegistryObject<Item> HERMES_BOOTS=ITEMS.register("hermes_boots",()->new GadgetItem("hermes_boots"));
@@ -48,7 +57,7 @@ public final class GadgetItems {
     public static final RegistryObject<EntityType<OrdnanceEntity>> ORDNANCE=ENTITIES.register("ordnance",()->EntityType.Builder.<OrdnanceEntity>of(OrdnanceEntity::new,MobCategory.MISC).sized(.1f,.1f).clientTrackingRange(16).updateInterval(1).build("gungang_acoustics:ordnance"));
     public static final RegistryObject<EntityType<DeployableEntity>> DEPLOYABLE=ENTITIES.register("deployable",()->EntityType.Builder.<DeployableEntity>of(DeployableEntity::new,MobCategory.MISC).sized(0.7f,0.15f).clientTrackingRange(10).updateInterval(1).build("gungang_acoustics:deployable"));
     public static final RegistryObject<EntityType<BearTrapEntity>> BEAR_TRAP_ENTITY=ENTITIES.register("bear_trap",()->EntityType.Builder.<BearTrapEntity>of(BearTrapEntity::new,MobCategory.MISC).sized(.9f,.2f).clientTrackingRange(10).updateInterval(1).build("gungang_acoustics:bear_trap"));
-    public static void register(IEventBus bus) { ITEMS.register(bus);ENTITIES.register(bus);TurretSounds.register(bus);bus.addListener(GadgetItems::attributes); }
+    public static void register(IEventBus bus) { ITEMS.register(bus);ENTITIES.register(bus);EFFECTS.register(bus);TurretSounds.register(bus);bus.addListener(GadgetItems::attributes); }
     private static void attributes(EntityAttributeCreationEvent e) {
         e.put(COMMAND_FLAG_ENTITY.get(),LivingEntity.createLivingAttributes().add(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH,100).add(net.minecraft.world.entity.ai.attributes.Attributes.KNOCKBACK_RESISTANCE,1).build());
         e.put(VOID_ANCHOR_ENTITY.get(),LivingEntity.createLivingAttributes().add(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH,60).add(net.minecraft.world.entity.ai.attributes.Attributes.KNOCKBACK_RESISTANCE,1).build());

@@ -32,6 +32,7 @@ final class BotGun {
         return api;
     }
     static boolean supports(ItemStack stack){
+        if(AcidSprayer.is(stack))return false; // Uses custom input and regeneration, never TaCZ reload.
         try{return api()!=null&&api.gun.invoke(null,stack)!=null;}
         catch(ReflectiveOperationException failure){return false;}
     }

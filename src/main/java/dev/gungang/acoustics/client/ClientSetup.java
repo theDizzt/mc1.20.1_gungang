@@ -17,7 +17,7 @@ public final class ClientSetup {
     @SubscribeEvent public static void layers(net.minecraftforge.client.event.EntityRenderersEvent.AddLayers event) {
         for(String skin:event.getSkins()) {
             net.minecraft.client.renderer.entity.player.PlayerRenderer renderer=event.getSkin(skin);
-            if(renderer!=null){renderer.addLayer(new ShieldRenderLayer(renderer));renderer.addLayer(new JetpackBackLayer<>(renderer));renderer.addLayer(new HermesBootsLayer<>(renderer));}
+            if(renderer!=null){renderer.addLayer(new ShieldRenderLayer(renderer));renderer.addLayer(new JetpackBackLayer<>(renderer));renderer.addLayer(new HermesBootsLayer<>(renderer));renderer.addLayer(new ToeBootsLayer<>(renderer));}
         }
     }
     @SubscribeEvent public static void renderers(net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
@@ -49,6 +49,9 @@ public final class ClientSetup {
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.BARRAGE.get(),net.minecraft.client.renderer.entity.NoopRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.HAND_AXE_PROJECTILE.get(),HandAxeRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.SHURIKEN_PROJECTILE.get(),ShurikenRenderer::new);
+        event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.TOE_TRAIL.get(),ToeTrailRenderer::new);
+        event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.GLUE_SHOT.get(),net.minecraft.client.renderer.entity.ThrownItemRenderer::new);
+        event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.GLUE_POOL.get(),GluePoolRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.VOID_ANCHOR_ENTITY.get(),VoidAnchorRenderer::new);
         event.registerEntityRenderer(dev.gungang.acoustics.server.GadgetItems.COMMAND_FLAG_ENTITY.get(),CommandFlagRenderer::new);
     }
@@ -106,6 +109,9 @@ public final class ClientSetup {
         event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "shooter_hud", ShooterHud::render);
         event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "rapier_energy", TaczAmmoHud::rapier);
         event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "shuriken_ammo", TaczAmmoHud::shuriken);
+        event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "magic_book_mana", TaczAmmoHud::magicBook);
+        event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "toe_length", TaczAmmoHud::toe);
+        event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "glue_gun_ammo", TaczAmmoHud::glueGun);
     }
     @SubscribeEvent
     public static void setup(FMLClientSetupEvent event) {

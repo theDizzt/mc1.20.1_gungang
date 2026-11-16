@@ -25,6 +25,7 @@ public final class TargetHealthBar {
         // Prop hunt: overhead bars would give hidden players away.
         if (!ShooterHud.visible(mc) || mc.getCameraEntity() == null || PropHuntClient.active()) return;
         Vec3 eye = event.getCamera().getPosition();
+        boolean showNumbers = !MatchHud.active();
         for (var entity : mc.level.entitiesForRendering()) {
             if (!(entity instanceof LivingEntity target) || !target.isAlive() || target == mc.player
                     || target.isSpectator() || target.isInvisibleTo(mc.player)
@@ -56,9 +57,36 @@ public final class TargetHealthBar {
                 if (end > start) rectangle(vertices, matrix, -29 + 58 * start, -3, -29 + 58 * end, 3,
                         layers.colorAt((start + end) / 2, color));
             }
+            if (showNumbers) healthNumbers(mc, pose, target);
             pose.popPose();
         }
         BUFFER.endBatch();
+    }
+
+    /** Outside a match, inset the label inside the bar's left edge. */
+    private static void healthNumbers(Minecraft mc, com.mojang.blaze3d.vertex.PoseStack pose, LivingEntity target) {
+        var current = HudText.gungang(HudHealth.number(target.getHealth()));
+        var maximum = HudText.gungang("/" + HudHealth.number(target.getMaxHealth()));
+        float small = .65f;
+        float currentWidth = mc.font.width(current), maxWidth = mc.font.width(maximum) * small;
+        float scale = Math.min(.65f, 54f / Math.max(1, currentWidth + maxWidth));
+        pose.pushPose();
+        // The fill spans -29..29 and -3..3. Keep a two-unit left inset and draw in front of it: under the billboard
+        // transform +z points away from the camera (vanilla puts label backgrounds at +0.01), so in front is -z.
+        // At +0.02 the text sat behind the fill and lost the depth test.
+        pose.translate(-27, -2.5, -1);
+        pose.scale(scale, scale, 1);
+        // Let Font separate the shadow and glyph depth; two offset labels at the same depth overlap.
+        mc.font.drawInBatch(current, 0, 0, 0xFFF5F5F0, true, pose.last().pose(), BUFFER,
+                net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, 15728880);
+        pose.pushPose();
+        // Align the smaller suffix to the current-health text's baseline.
+        pose.translate(currentWidth, 7 * (1 - small), 0);
+        pose.scale(small, small, 1);
+        mc.font.drawInBatch(maximum, 0, 0, 0xFFF5F5F0, true, pose.last().pose(), BUFFER,
+                net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, 15728880);
+        pose.popPose();
+        pose.popPose();
     }
 
     private static void rectangle(VertexConsumer out, Matrix4f matrix, float x0, float y0, float x1, float y1, int color) {

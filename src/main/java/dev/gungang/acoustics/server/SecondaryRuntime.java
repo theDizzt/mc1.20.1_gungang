@@ -82,7 +82,8 @@ public final class SecondaryRuntime {
         if(refill==0||maxCharges(stack)<=1)return refill;
         return Math.max(0,refill-(long)(maxCharges(stack)-1)*stack.getTag().getInt("GunGangCooldownTicks"));
     }
-    public static boolean ready(Player player,ItemStack stack) { return !FreeForAllMatch.blocked(player)&&remaining(player,stack)==0; }
+    /** The 38 magic book locks every secondary while it is carried. */
+    public static boolean ready(Player player,ItemStack stack) { return !FreeForAllMatch.blocked(player)&&!MagicBookItem.carried(player)&&!ToeItem.blocksSecondary(player,stack)&&remaining(player,stack)==0; }
     public static void commit(Player player,ItemStack stack) {
         if(!secondary(stack)||player.level().isClientSide)return;
         BotLearning.event(player,"secondary_cooldown_commit:"+BotLearning.weapon(stack));
@@ -123,6 +124,8 @@ public final class SecondaryRuntime {
         if(scope!=null&&scope.stack==stack&&next<stack.getCount()) { scope.consumed=true;return true; }
         return false;
     }
+    /** Set while the HUD's weapon slots draw item decorations: they show a clock wipe instead of vanilla's cooldown bar. */
+    public static boolean hideCooldownOverlay;
     public static boolean overriding() { return CURRENT.get()!=null; }
     public static void requestedCooldown() { var scope=CURRENT.get();if(scope!=null)scope.consumed=true; }
     @SuppressWarnings("unchecked")
@@ -135,6 +138,7 @@ public final class SecondaryRuntime {
             net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.LOWEST,false,type,event->{
                 try {
                     if(shooter.invoke(event) instanceof Player player&&(FreeForAllMatch.blocked(player)||CombatGadgets.holdingShield(player)||SurvivalGadgets.jetting(player)||GadgetManager.placing(player)||TwinBlades.guarding(player))) {if(event.isCancelable())event.setCanceled(true);return;}
+                    if(shooter.invoke(event) instanceof Player player&&item.invoke(event) instanceof ItemStack stack&&secondary(stack)&&MagicBookItem.carried(player)) {if(event.isCancelable())event.setCanceled(true);return;}
                     if(shooter.invoke(event) instanceof Player player&&item.invoke(event) instanceof ItemStack stack&&secondary(stack)) {
                         if(PropAwn.is(stack)){
                             var match=MatchManager.propHunt();
@@ -151,7 +155,7 @@ public final class SecondaryRuntime {
         catch(ReflectiveOperationException incompatible) {com.mojang.logging.LogUtils.getLogger().warn("GunGang TaCZ cooldown event unavailable",incompatible);}
     }
     public static Float cooldown(ItemCooldowns cooldowns,Item item,float partial) {
-        if(overriding()) return 0f;
+        if(overriding()||hideCooldownOverlay) return 0f;
         var ref=OWNERS.get(cooldowns);Player p=ref==null?null:ref.get();if(p==null)return null;
         ItemStack stack=p.getOffhandItem();
         if(!stack.is(item)||!secondary(stack)) {

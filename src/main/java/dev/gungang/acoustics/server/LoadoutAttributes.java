@@ -18,6 +18,11 @@ public final class LoadoutAttributes {
         speed.addTransientModifier(new AttributeModifier(SPEED,"GunGang primary speed",weapon.movementSpeed()/100-1,AttributeModifier.Operation.MULTIPLY_TOTAL));
         player.setHealth(needsRecovery?SurvivalRules.LIFE_HEALTH:Math.max(1,Math.min(player.getMaxHealth(),ratio*player.getMaxHealth())));
     }
+    /** Movement speed multiplier the primary weapon gives (1.2 for 120%), or 1 without one. */
+    public static double primarySpeed(net.minecraft.world.entity.LivingEntity entity) {
+        var speed=entity.getAttribute(Attributes.MOVEMENT_SPEED);var modifier=speed==null?null:speed.getModifier(SPEED);
+        return modifier==null?1:1+modifier.getAmount();
+    }
     /** Whether the player currently carries a primary weapon's health/speed bonus. */
     public static boolean active(ServerPlayer player) {
         var speed=player.getAttribute(Attributes.MOVEMENT_SPEED);

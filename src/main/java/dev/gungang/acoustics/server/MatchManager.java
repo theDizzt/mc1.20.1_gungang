@@ -15,6 +15,10 @@ import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(modid = GungangAcoustics.ID)
 public final class MatchManager {
+    private record Payload(MatchSnapshot snapshot,GungangNetwork.Match packet){}
+    private static final Map<String,Payload> PAYLOADS=new HashMap<>();
+    // Player objects distinguish reconnects and respawns, which must receive a fresh initial snapshot.
+    private static final Map<ServerPlayer,Payload> SENT=new WeakHashMap<>();
     private static MinecraftServer server;
     private static ArenaMap map;
     private static MatchLedger ledger;
@@ -71,6 +75,7 @@ public final class MatchManager {
     private static final CaptureFloor floor = new CaptureFloor();
     private static final CapturePresence presence = new CapturePresence();
     public static void prepare(MinecraftServer s, ArenaMap arena, DeathmatchRules teamDeathmatch) {
+        PAYLOADS.clear();SENT.clear();
         learningMatch++;
         TeamPoints.clear(s);
         PropHuntMatch.endTest();
@@ -209,14 +214,27 @@ public final class MatchManager {
         level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,c.x(),c.y()+2,c.z(),12,0.1,2,0.1,0);
     }
     private static void send(MatchSnapshot value) {
-        if(value.bomb()==null){var packet=new GungangNetwork.Match(ServerFiles.GSON.toJson(value)); for(var p:server.getPlayerList().getPlayers())GungangNetwork.send(p,packet);return;}
         // Minimap positions are team-only, so each team (and everyone else) gets its own copy.
-        var packets=new HashMap<String,GungangNetwork.Match>();
+        var packets=new HashMap<String,Payload>();
         for(var p:server.getPlayerList().getPlayers()){
-            String team=LobbyManager.team(p.getUUID());if(!team.equals("ALPHA")&&!team.equals("BRAVO"))team="";
-            GungangNetwork.send(p,packets.computeIfAbsent(team,t->new GungangNetwork.Match(ServerFiles.GSON.toJson(value.withBomb(value.bomb().forTeam(t))))));
+            if(!GungangNetwork.installed(p))continue;
+            String team=value.bomb()==null?"":LobbyManager.team(p.getUUID());
+            if(!team.equals("ALPHA")&&!team.equals("BRAVO"))team="";
+            var payload=packets.computeIfAbsent(team,t->{
+                var snapshot=value.bomb()==null?value:value.withBomb(value.bomb().forTeam(t));
+                var cached=PAYLOADS.get(t);
+                if(cached==null||!cached.snapshot().equals(snapshot)){
+                    cached=new Payload(snapshot,new GungangNetwork.Match(ServerFiles.GSON.toJson(snapshot)));
+                    PAYLOADS.put(t,cached);
+                }
+                return cached;
+            });
+            if(SENT.get(p)!=payload){GungangNetwork.send(p,payload.packet());SENT.put(p,payload);}
         }
+        PAYLOADS.keySet().retainAll(packets.keySet());
+        SENT.keySet().retainAll(server.getPlayerList().getPlayers());
     }
+    @SubscribeEvent public static void clearSnapshotCache(net.minecraftforge.event.server.ServerStoppedEvent event){PAYLOADS.clear();SENT.clear();}
     public static void end(String winner) {
         TeamPoints.clear(server);
         BombDrops.clear(server);

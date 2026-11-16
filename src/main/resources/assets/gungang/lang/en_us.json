@@ -24,6 +24,7 @@
   "item.gungang.turret": "Turret",
   "item.gungang.rapier": "Rapier",
   "item.gungang.shuriken": "Shuriken",
+  "item.gungang.magic_book": "Magic Book Vol. 69",
   "item.gungang.secret_wand": "Secret Wand",
   "entity.gungang_acoustics.turret": "Turret",
   "death.attack.gungang.turret": "%1$s was shot by %2$s's turret",
@@ -69,5 +70,10 @@
   "block.gungang.unpleasant_photo": "Unpleasant Photo",
   "block.gungang.combat_unit": "Autonomous Combat Unit",
   "block.gungang.shadow": "Shadow",
-  "block.gungang.command_flag_block": "Command Flag"
+  "block.gungang.command_flag_block": "Command Flag",
+  "item.gungang.toe": "Avatar of the End: Toe",
+  "item.gungang.glue_gun": "Glue Gun",
+  "effect.gungang.glued": "Glued",
+  "entity.gungang_acoustics.glue_shot": "Glue Round",
+  "entity.gungang_acoustics.glue_pool": "Glue Pool"
 }

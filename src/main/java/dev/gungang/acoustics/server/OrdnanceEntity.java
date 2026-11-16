@@ -62,10 +62,10 @@ public final class OrdnanceEntity extends Entity {
         if(orbital()) {
             long remaining=expires-now;
             // The warning ring pulses faster and the sky starts raining light in the final two seconds.
-            if(tickCount%(remaining<=40?2:5)==0)for(int i=0;i<96;i++) {
-                double angle=i*Math.PI*2/96;
-                level.sendParticles(new net.minecraft.core.particles.DustParticleOptions(EffectColors.vector(EffectColors.at(colors(),i%2==0?0:1)),remaining<=40?2.2f:1.5f),
-                        getX()+Math.cos(angle)*ExtraGadgetConfig.orbital.radius(),getY()+.15,getZ()+Math.sin(angle)*ExtraGadgetConfig.orbital.radius(),1,0,.08,0,0);
+            if(tickCount%(remaining<=40?2:5)==0) {
+                var palette=colors();
+                ParticlePatterns.emit(level,ParticlePatterns.ORBITAL,getX(),getY()+.15,getZ(),ExtraGadgetConfig.orbital.radius(),
+                        96,EffectColors.at(palette,0),EffectColors.at(palette,1),remaining<=40?2.2f:1.5f);
             }
             if(remaining<=40) {
                 for(int i=0;i<3;i++)level.sendParticles(ParticleTypes.END_ROD,getX()+random.nextGaussian()*1.5,getY()+18+random.nextDouble()*20,getZ()+random.nextGaussian()*1.5,0,0,-1,0,2.5);
@@ -76,10 +76,7 @@ public final class OrdnanceEntity extends Entity {
             return;
         }
         if(tickCount%4==0) {
-            for(int i=0;i<65;i++) {
-                double angle=random.nextDouble()*Math.PI*2,r=Math.sqrt(random.nextDouble())*ExtraGadgetConfig.molotov.radius();
-                level.sendParticles(ParticleTypes.FLAME,getX()+Math.cos(angle)*r,getY()+.08,getZ()+Math.sin(angle)*r,1,0,.08,0,.015);
-            }
+            ParticlePatterns.emit(level,ParticlePatterns.FIRE,getX(),getY()+.08,getZ(),ExtraGadgetConfig.molotov.radius(),65,0,0,1);
         }
         for(var victim:level.getEntitiesOfClass(LivingEntity.class,new AABB(getX()-ExtraGadgetConfig.molotov.radius(),getY()-1,getZ()-ExtraGadgetConfig.molotov.radius(),getX()+ExtraGadgetConfig.molotov.radius(),getY()+3,getZ()+ExtraGadgetConfig.molotov.radius()),e->e.isAlive()&&!e.isSpectator())) {
             if(!OrdnanceRules.inFire(victim.getX()-getX(),victim.getY()-getY(),victim.getZ()-getZ())||victim.fireImmune()||victim.isInWaterRainOrBubble()||SafeZones.contains(victim))continue;

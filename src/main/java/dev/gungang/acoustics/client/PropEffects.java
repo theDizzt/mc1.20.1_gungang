@@ -25,8 +25,9 @@ import net.minecraftforge.fml.common.Mod;
  */
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID,value=Dist.CLIENT)
 public final class PropEffects {
-    private record Glow(BlockPos pos,BlockState original){}
-    private static final Map<Integer,Glow> GLOWS=new HashMap<>();
+    private record Glow(BlockState original){}
+    private static final Map<BlockPos,Glow> GLOWS=new HashMap<>();
+    private static final int LIGHT_UPDATE_TICKS=4;
     private static final Map<Integer,Map<BlockPos,BlockEntity>> TICKING=new HashMap<>();
     /** Open/close progress (previous tick, this tick) of shutter and shulker box disguises, 0 = closed. */
     private static final Map<Integer,float[]> MOTION=new HashMap<>();
@@ -56,6 +57,9 @@ public final class PropEffects {
         if(level!=last){GLOWS.clear();TICKING.clear();MOTION.clear();RINGS.clear();last=level;}
         if(level==null||mc.isPaused())return;
         var seen=new HashSet<Integer>();
+        // Merge overlapping lights before touching the world, at most five updates per second.
+        boolean updateLights=level.getGameTime()%LIGHT_UPDATE_TICKS==0;
+        Map<BlockPos,Integer> lights=updateLights?new HashMap<>():null;
         for(var entity:level.entitiesForRendering()){
             if(!(entity instanceof PropEntity prop)||prop.isRemoved())continue;
             seen.add(prop.getId());
@@ -89,9 +93,9 @@ public final class PropEffects {
                 if(random.nextInt(6)==0)level.addParticle(net.minecraft.core.particles.ParticleTypes.SOUL_FIRE_FLAME,prop.getX()+(random.nextDouble()-.5)*.9,prop.getY()+1.02,prop.getZ()+(random.nextDouble()-.5)*.9,0,.01,0);
             }
             BlockPos cell=BlockPos.containing(prop.getX(),prop.getY()+.5,prop.getZ());
-            glow(level,prop.getId(),emission>0&&!PropRenderer.concealed(prop)?cell:null,emission);
+            if(updateLights&&emission>0&&!PropRenderer.concealed(prop))lights.merge(cell,emission,Math::max);
         }
-        for(var id:List.copyOf(GLOWS.keySet()))if(!seen.contains(id))glow(level,id,null,0);
+        if(updateLights)glow(level,lights);
         TICKING.keySet().retainAll(seen);MOTION.keySet().retainAll(seen);RINGS.keySet().retainAll(seen);
     }
     /** Vanilla bubble particles die outside water, and the disguise's cell is air: pops rise (or sink) through the column instead. */
@@ -155,16 +159,25 @@ public final class PropEffects {
             var awake=(dev.gungang.acoustics.mixin.ConduitStateAccessor)conduit;awake.gungang$setActive(true);awake.gungang$setHunting(true);
         }
     }
-    private static void glow(ClientLevel level,int id,BlockPos pos,int emission){
-        var current=GLOWS.get(id);
-        if(current!=null&&current.pos().equals(pos)&&level.getBlockState(pos).is(Blocks.LIGHT))return;
-        if(current!=null){
-            GLOWS.remove(id);
-            if(level.getBlockState(current.pos()).is(Blocks.LIGHT))level.setBlock(current.pos(),current.original(),3);
+    private static void glow(ClientLevel level,Map<BlockPos,Integer> lights){
+        for(var it=GLOWS.entrySet().iterator();it.hasNext();){
+            var entry=it.next();var pos=entry.getKey();
+            if(!level.hasChunkAt(pos)){it.remove();continue;}
+            if(!lights.containsKey(pos)){
+                if(level.getBlockState(pos).is(Blocks.LIGHT))level.setBlock(pos,entry.getValue().original(),3);
+                it.remove();
+            }else if(!level.getBlockState(pos).is(Blocks.LIGHT))it.remove();
         }
-        if(pos==null||!level.getBlockState(pos).isAir())return;
-        GLOWS.put(id,new Glow(pos,level.getBlockState(pos)));
-        level.setBlock(pos,Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL,emission),3);
+        for(var entry:lights.entrySet()){
+            var pos=entry.getKey();if(!level.hasChunkAt(pos))continue;
+            var state=level.getBlockState(pos);
+            if(!GLOWS.containsKey(pos)){
+                if(!state.isAir())continue;
+                GLOWS.put(pos,new Glow(state));
+            }
+            var desired=Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL,entry.getValue());
+            if(!state.equals(desired))level.setBlock(pos,desired,3);
+        }
     }
     private PropEffects(){}
 }

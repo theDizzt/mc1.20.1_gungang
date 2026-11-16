@@ -30,7 +30,7 @@ public final class BotManager {
     /** The first bot's id; every bot id is {@link BotDatabase#id(int)}. */
     public static final UUID ID=BotDatabase.id(0);
     /** Bots in a lobby at once; each takes one of the {@link #PROFILES} profiles (profile index = slot = UUID). */
-    public static final int MAX=8;
+    public static final int MAX=12;
     public static final int PROFILES=BotDatabase.PROFILES;
     public static final String NAME="Rookie";
     private static BotDatabase database;
@@ -125,7 +125,8 @@ public final class BotManager {
         if(lobby.size()>=MAX)throw new IllegalStateException("AI 봇은 최대 "+MAX+"명까지 추가할 수 있습니다.");
         selectWeapon(loadouts);selectSecondary(loadouts);
         var free=new ArrayList<Integer>();for(int slot=0;slot<PROFILES;slot++)if(!lobby.containsKey(slot))free.add(slot);
-        lobby.put(free.get(new Random().nextInt(free.size())),"");
+        int added=free.get(new Random().nextInt(free.size()));lobby.put(added,"");
+        TeamPoints.STATE.join(BotDatabase.id(added),lobbyTeam(added));
     }
     /** Gives a lobby bot another profile (name, skin, tag and career), keeping its place in the list and its team. */
     static void lobbyProfile(UUID id,int profile){
@@ -152,6 +153,7 @@ public final class BotManager {
         if(!lobby.containsKey(slot))throw new IllegalStateException("로비에 추가된 봇이 아닙니다.");
         if(!Set.of("ALPHA","BRAVO").contains(value))throw new IllegalArgumentException("봇은 ALPHA / BRAVO에만 배치할 수 있습니다.");
         lobby.put(slot,value);
+        TeamPoints.STATE.join(id,value);
     }
 
     // ---- profiles and skins ----
@@ -219,13 +221,15 @@ public final class BotManager {
     static void validate(Loadouts loadouts){if(added()){selectWeapon(loadouts);selectSecondary(loadouts);}}
     /** Swords, axes and any modded melee item that carries main-hand attack damage (e.g. lrtactical knives). */
     static boolean melee(ItemStack stack){
+        if(ToeItem.is(stack))return true; // Passive trail wielder closes distance instead of waiting at rifle range.
+        if(AcidSprayer.is(stack)||MagicBookItem.is(stack))return false;
         if(new net.minecraft.resources.ResourceLocation("lrtactical","melee").equals(net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(stack.getItem())))return true;
         if(stack.getItem() instanceof SwordItem||stack.getItem() instanceof AxeItem)return true;
         if(stack.isEmpty()||stack.getItem() instanceof GadgetItem||BotGun.supports(stack)||BotRanged.supports(stack))return false;
         return stack.getAttributeModifiers(EquipmentSlot.MAINHAND).get(Attributes.ATTACK_DAMAGE).stream().anyMatch(m->m.getAmount()>0);
     }
     /** Held secondaries replace the primary in hand; everything else is used as an ability by {@link BotGadgets}. */
-    static boolean held(ItemStack stack){return BotGun.supports(stack)||BotRanged.supports(stack)||melee(stack);}
+    static boolean held(ItemStack stack){return AcidSprayer.is(stack)||MagicBookItem.is(stack)||BotGun.supports(stack)||BotRanged.supports(stack)||melee(stack);}
     static boolean supportedPrimary(Loadouts.Weapon w){return !w.commandOnly()&&held(w.stack());}
     static boolean supportedSecondary(Loadouts.Weapon w){
         // Command-only entries run a player command; the bot has no player to run it as.
@@ -322,7 +326,10 @@ public final class BotManager {
         BotMovement.newTick();
         try{
             BotNavGraph.tick(level(),arena);
-            for(var a:List.copyOf(agents)){
+            var scheduled=List.copyOf(agents);
+            // Rotate the first bot so a resumed search cannot monopolize the shared per-tick budget.
+            for(int i=0;i<scheduled.size();i++){
+                var a=scheduled.get(Math.floorMod(server.getTickCount()+i,scheduled.size()));
                 long begin=System.nanoTime();a.tick(running);
                 long ms=(System.nanoTime()-begin)/1_000_000;
                 // A bot tick over 20 ms is a visible hitch: log which bot and what it was doing (at most every 5 s).

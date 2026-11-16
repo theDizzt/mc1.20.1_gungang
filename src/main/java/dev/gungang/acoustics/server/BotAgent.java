@@ -243,7 +243,7 @@ final class BotAgent {
         else if(bot!=null&&weapon!=null)bot.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(
                 Math.sqrt(PLAYER_SPRINT*(usingSecondary?secondary:weapon).movementSpeed()/100*BotManager.settings().movementSpeed()));
     }
-    private boolean heldSecondary(){return secondary!=null&&!secondary.id().equals(Defibrillator.ID)&&secondaryStack!=null&&!secondaryStack.isEmpty()&&BotManager.held(secondaryStack);}
+    private boolean heldSecondary(){return !MagicBookItem.is(primaryStack)&&!ToeItem.blocksSecondary(bot,secondaryStack)&&secondary!=null&&!secondary.id().equals(Defibrillator.ID)&&secondaryStack!=null&&!secondaryStack.isEmpty()&&BotManager.held(secondaryStack);}
     private void equip(boolean useSecondary,int now)throws ReflectiveOperationException{
         if(useSecondary==usingSecondary||useSecondary&&!heldSecondary()||now<nextSwitch)return;
         if(gun!=null)gun.unequip();
@@ -254,6 +254,7 @@ final class BotAgent {
         updateSpeed();switchedAt=now;nextSwitch=now+60;nextShot=now+4;nextPath=0;
     }
     void died(UUID killer){
+        if(bot!=null)ToeWeapon.reset(bot);
         BotLearning.end(this,true);
         var server=BotManager.server();
         lastLife=new BotLoadoutChoice.Outcome(killer!=null||lifeDamage>0||encounterDistance>0,lifeDamage,
@@ -306,6 +307,8 @@ final class BotAgent {
             MatchManager.botDeath(id,null);return;
         }
         int now=server.getTickCount();
+        AcidSprayer.regenerateBot(bot,primaryStack);
+        if(MagicBookItem.is(primaryStack))primaryStack.getItem().inventoryTick(primaryStack,bot.level(),bot,0,true);
         if(bot.parkour.active()){aim.idle(bot);return;}
         if(bot.isInWater())bot.getJumpControl().jump();
         boolean thought=now>=nextThink;
@@ -320,7 +323,7 @@ final class BotAgent {
         boolean seen=!shielded&&target!=null&&visible(target);
         var action=tactics.action();
         boolean traveling=Set.of(BotTactics.Action.PATROL,BotTactics.Action.INVESTIGATE,BotTactics.Action.REGROUP,BotTactics.Action.SUPPORT).contains(action);
-        gadgets.tick(bot,arena,team,target,seen,movement,thought,traveling);
+        if(!MagicBookItem.is(primaryStack))gadgets.tick(bot,arena,team,target,seen,movement,thought,traveling);
         if(bot==null||bot.isRemoved())return;
         long time=bot.level().getGameTime();
         if(thought&&!gadgets.jetting())dash(now,seen,arena,traveling);
@@ -374,6 +377,7 @@ final class BotAgent {
         ctx.shielding=gadgets.shielding(time);ctx.reloading=reloading;ctx.target=seen?target:null;
         ctx.ammo=gun==null?1:gun.ammo(bot.getMainHandItem());ctx.reloadRequested=false;
         ctx.profile=BotCombatProfile.of(gun==null?"":gun.type(),(usingSecondary?secondary:weapon).category());
+        if(AcidSprayer.is(bot.getMainHandItem()))ctx.profile=new BotCombatProfile(6,11,ExtraGadgetConfig.acidSprayer.pushRange(),.5f,24);
         movement.profile(ctx.profile);
         ctx.perception=perception;ctx.movement=movement;ctx.health=health;ctx.aim=aim;
         ctx.teamPoint=point==null?null:new Vec3(point.x(),point.y(),point.z());
@@ -391,6 +395,7 @@ final class BotAgent {
             var contact=perception.contact(target.getUUID());
             boolean bow=BotRanged.supports(bot.getMainHandItem());
             var flight=bow?BotRanged.data(bot.getMainHandItem()):gun==null?BotWeaponData.UNKNOWN:gun.ballistics();
+            if(MagicBookItem.is(bot.getMainHandItem()))flight=new BotWeaponData("magic",bot.distanceTo(target)<=ExtraGadgetConfig.magicBook.fireballRange()?1.2:4,0,1,0,0,0,0);
             aim.track(bot,target,contact==null?null:contact.velocity,settings,now,melee?0:flight.speed(),flight.gravity(),flight.drag());
             if(ctx.allowFire&&(melee||BotLearning.allowFire(this,now))&&(melee||bot.distanceTo(target)<=ctx.profile.engage())&&now>=nextShot&&(gun==null||!gun.reloading())&&!gadgets.blocksAttack(time)&&aim.ready(bot,target,now,melee)){
                 nextShot=now+1;
@@ -478,6 +483,13 @@ final class BotAgent {
         var server=BotManager.server();
         float yaw=aim.yaw(),pitch=aim.pitch();
         bot.setYRot(yaw);bot.setYHeadRot(yaw);bot.setXRot(pitch);
+        if(AcidSprayer.is(bot.getMainHandItem())){
+            var c=ExtraGadgetConfig.acidSprayer;
+            if(bot.distanceTo(enemy)>c.sprayDistance()+c.cloudRadius())AcidSprayer.push(bot);else AcidSprayer.spray(bot);
+            nextShot=server.getTickCount()+AcidSprayer.SPRAY_INTERVAL;
+            return;
+        }
+        if(MagicBookItem.is(bot.getMainHandItem())){MagicBook.botCast(bot,enemy);return;}
         if(gun!=null){
             String result=gun.fire(pitch,yaw);
             if(result.equals("SUCCESS"))aim.kick(bot,gun.recoil());

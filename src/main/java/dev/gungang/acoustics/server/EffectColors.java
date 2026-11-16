@@ -19,6 +19,7 @@ public final class EffectColors {
     /** {@code first}/{@code second}: the default colours (second -1: a single colour). */
     public record Effect(String key,String weapon,String label,int first,int second) { }
     public static final List<Effect> EFFECTS=List.of(
+            new Effect("toe","39 종료의화신: 발가락","1번 일반 가시 / 2번 크리티컬 가시",0x59D9FF,0xFF385C),
             new Effect("hermes_boots","74 헤르메스의 부츠","돌진 글로우",0x6FE8FF,0xFFFFFF),
             new Effect("rapier","28 레이피어","돌진 잔상·섬광",0xB3E6FF,-1),
             new Effect("las5","27 LAS-5","레이저 광선",0xFFDB1A,-1),
@@ -72,7 +73,7 @@ public final class EffectColors {
             String[] parts=value.strip().split(",");
             if(parts.length>2)throw new IllegalArgumentException("색상은 최대 2개까지 고를 수 있습니다.");
             int first=hex(parts[0]),second=parts.length>1?hex(parts[1]):-1;
-            if(second==first)second=-1;
+            if(second==first&&!key.equals("toe"))second=-1;
             color=new PlayerRecord.EffectColor(key,first,second);
         }
         ProgressionService.store(ProgressionService.record(p).withEffectColor(key,color));

@@ -14,17 +14,28 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.WeakHashMap;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Finds what still breaks map blocks: whenever a map block turns into air or fire on the server, the code that did it
  * (the first frame outside Minecraft, Forge and Mixin) and the nearest fighters with what they hold go to the server
  * log and to {@code logs/gungang-block-breaks.log}. One line per cause every 30 seconds.
+ * Diagnostics sample at most 16 changes per server tick; a full log queue drops new diagnostics.
  */
 public final class BlockBreakTrace {
     private static final StackWalker WALKER=StackWalker.getInstance();
     private static final Map<String,Long> LAST=new HashMap<>();
     private static final long QUIET_MS=30_000;
     private static final Path FILE=Paths.get("logs","gungang-block-breaks.log");
+    private static final Map<net.minecraft.server.MinecraftServer,TraceBudget> BUDGETS=new WeakHashMap<>();
+    private static final class TraceBudget {int tick,used;}
+    // Never run disk I/O on the submitting server thread, even when the disk is slow.
+    private static final ThreadPoolExecutor WRITER=new ThreadPoolExecutor(0,1,30,TimeUnit.SECONDS,
+            new ArrayBlockingQueue<>(128),task->{var thread=new Thread(task,"gungang-block-trace");thread.setDaemon(true);return thread;},
+            new ThreadPoolExecutor.DiscardPolicy());
     private static boolean busy;
 
     /** Called from {@code BlockBreakTraceMixin} before {@code Level.setBlock}. */
@@ -35,6 +46,11 @@ public final class BlockBreakTrace {
         if(old.isAir()||old.getBlock()==next.getBlock()||ambient(old))return;
         var oldId=ForgeRegistries.BLOCKS.getKey(old.getBlock());
         if(oldId==null||oldId.getNamespace().equals("gungang"))return;
+        var budget=BUDGETS.computeIfAbsent(server.getServer(),s->new TraceBudget());
+        int tick=server.getServer().getTickCount();
+        if(budget.tick!=tick){budget.tick=tick;budget.used=0;}
+        if(budget.used>=16)return;
+        budget.used++;
         busy=true;
         try{
             String cause=cause();
@@ -47,13 +63,17 @@ public final class BlockBreakTrace {
             String line="%s %s at %s %d,%d,%d -> %s | cause: %s | near: %s".formatted(
                     LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),oldId,server.dimension().location(),
                     pos.getX(),pos.getY(),pos.getZ(),ForgeRegistries.BLOCKS.getKey(next.getBlock()),cause,near(server,pos));
-            com.mojang.logging.LogUtils.getLogger().warn("[GunGang] Map block broken: {}",line);
-            try{
-                Files.createDirectories(FILE.getParent());
-                Files.writeString(FILE,line+System.lineSeparator(),StandardCharsets.UTF_8,StandardOpenOption.CREATE,StandardOpenOption.APPEND);
-            }catch(java.io.IOException ignored){}
+            // Capture all world/entity details above; the writer receives only an immutable string.
+            WRITER.execute(()->write(line));
         }catch(RuntimeException ignored){
         }finally{busy=false;}
+    }
+    private static void write(String line){
+        com.mojang.logging.LogUtils.getLogger().warn("[GunGang] Map block broken: {}",line);
+        try{
+            Files.createDirectories(FILE.getParent());
+            Files.writeString(FILE,line+System.lineSeparator(),StandardCharsets.UTF_8,StandardOpenOption.CREATE,StandardOpenOption.APPEND);
+        }catch(java.io.IOException ignored){}
     }
     /** Blocks the world removes by itself all the time (fire burning out, snow, plants, leaves, liquids). */
     private static boolean ambient(BlockState state){
@@ -64,9 +84,10 @@ public final class BlockBreakTrace {
     /** The first frames outside the game, Forge and Mixin, else the vanilla caller of setBlock. */
     private static String cause(){
         return WALKER.walk(frames->{
-            var list=frames.skip(2).limit(48).toList();
+            var iterator=frames.skip(2).limit(48).iterator();
             var outside=new StringBuilder();String vanilla=null;
-            for(var f:list){
+            while(iterator.hasNext()){
+                var f=iterator.next();
                 String c=f.getClassName();
                 if(c.equals(BlockBreakTrace.class.getName()))continue;
                 boolean game=c.startsWith("net.minecraft.")||c.startsWith("net.minecraftforge.")||c.startsWith("org.spongepowered.")
@@ -74,10 +95,16 @@ public final class BlockBreakTrace {
                 String frame=c+"."+f.getMethodName()+":"+f.getLineNumber();
                 if(!game){if(outside.length()>0)outside.append(" <- ");outside.append(frame);if(outside.length()>300)break;}
                 else if(outside.length()>0)break;
-                else if(vanilla==null&&!f.getMethodName().matches("setBlock|m_6933_|m_7731_|removeBlock|m_7471_|destroyBlock|m_7740_|m_46953_|m_46961_"))vanilla=frame;
+                else if(vanilla==null&&!blockMutation(f.getMethodName()))vanilla=frame;
             }
             return outside.length()>0?outside.toString():"vanilla "+vanilla;
         });
+    }
+    private static boolean blockMutation(String method){
+        return switch(method){
+            case "setBlock","m_6933_","m_7731_","removeBlock","m_7471_","destroyBlock","m_7740_","m_46953_","m_46961_" -> true;
+            default -> false;
+        };
     }
     /** The three nearest players or bots within 24 blocks, with what they hold. */
     private static String near(ServerLevel level,BlockPos pos){

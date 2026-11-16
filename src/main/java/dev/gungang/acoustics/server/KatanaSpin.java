@@ -30,6 +30,7 @@ public final class KatanaSpin {
     /** Called by MeleeAttackMixin around lrtactical's MeleeItem.attack. */
     public static void begin(LivingEntity attacker,ItemStack stack,Object action){
         spinning=attacker!=null&&!attacker.level().isClientSide&&"RIGHT".equals(String.valueOf(action))&&katana(stack)?attacker:null;
+        if(attacker!=null&&!attacker.level().isClientSide&&katana(stack))BladeSwings.send(attacker,spinning!=null?8:7);
     }
     public static void end(){spinning=null;}
     static boolean katana(ItemStack stack){

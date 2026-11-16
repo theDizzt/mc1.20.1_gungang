@@ -64,25 +64,25 @@ public final class AcidSprayer {
     public static final int SPRAY_INTERVAL=2;
     private static final Map<UUID,Long> LAST_SOUND=new HashMap<>();
 
-    private static boolean allowed(ServerPlayer owner){
+    private static boolean allowed(LivingEntity owner){
         return is(owner.getMainHandItem())&&owner.isAlive()&&!owner.isSpectator()
                 &&!LobbyManager.respawning(owner.getUUID())&&!FreeForAllMatch.blocked(owner)&&!SafeZones.contains(owner);
     }
     /** Server rate limiting also prevents simultaneous mouse buttons from consuming twice in one tick. */
-    private static boolean consume(ServerPlayer owner,int cost){
+    private static boolean consume(LivingEntity owner,int cost){
         long now=owner.level().getGameTime();
         if(now-LAST_USE.getOrDefault(owner.getUUID(),Long.MIN_VALUE/2)<SPRAY_INTERVAL)return false;
         var tag=owner.getMainHandItem().getOrCreateTag();int ammo=tag.getInt(AMMO);
-        if(!owner.getAbilities().instabuild){
+        if(!(owner instanceof Player creative&&creative.getAbilities().instabuild)){
             if(ammo<cost)return false;
-            tag.putInt(AMMO,ammo-cost);owner.inventoryMenu.broadcastChanges();
+            tag.putInt(AMMO,ammo-cost);if(owner instanceof ServerPlayer player)player.inventoryMenu.broadcastChanges();
         }
         LAST_USE.put(owner.getUUID(),now);
         return true;
     }
-    public static void spray(ServerPlayer owner){
+    public static void spray(LivingEntity owner){
         if(!allowed(owner)||!consume(owner,1))return;
-        var config=ExtraGadgetConfig.acidSprayer;var level=owner.serverLevel();long now=level.getGameTime();
+        var config=ExtraGadgetConfig.acidSprayer;var level=((ServerLevel)owner.level());long now=level.getGameTime();
         var position=muzzle(level,owner,config.sprayDistance());
         if(position!=null){
             var cloud=new Cloud(level,owner.getUUID(),position,now+ExtraGadgetConfig.ticks(config.cloudSeconds()));
@@ -95,18 +95,18 @@ public final class AcidSprayer {
         }
         feedback(owner,false);
     }
-    private static void feedback(ServerPlayer owner,boolean push){
+    private static void feedback(LivingEntity owner,boolean push){
         long now=owner.level().getGameTime();
         if(now-LAST_SOUND.getOrDefault(owner.getUUID(),Long.MIN_VALUE/2)>=12){
             sound(owner,"acid_warmup");LAST_SOUND.put(owner.getUUID(),now);
         }
-        if(!owner.getAbilities().instabuild&&owner.getMainHandItem().getOrCreateTag().getInt(AMMO)==0){
+        if(!(owner instanceof Player creative&&creative.getAbilities().instabuild)&&owner.getMainHandItem().getOrCreateTag().getInt(AMMO)==0){
             sound(owner,"acid_empty");LAST_SOUND.remove(owner.getUUID());
         }
-        GungangNetwork.send(owner,new GungangNetwork.AcidShot(push));
+        if(owner instanceof ServerPlayer player)GungangNetwork.send(player,new GungangNetwork.AcidShot(push));
     }
-    private static void sound(ServerPlayer owner,String name){
-        owner.serverLevel().playSound(null,owner.blockPosition(),SoundEvent.createVariableRangeEvent(
+    private static void sound(LivingEntity owner,String name){
+        ((ServerLevel)owner.level()).playSound(null,owner.blockPosition(),SoundEvent.createVariableRangeEvent(
                 new ResourceLocation(GungangAcoustics.ID,name)),SoundSource.PLAYERS,1f,1f);
     }
 
@@ -138,12 +138,12 @@ public final class AcidSprayer {
     }
 
     /** Right click: a new cloud at the muzzle, and every cloud ahead, driven along the aim up to pushRange blocks. */
-    public static void push(ServerPlayer owner){
+    public static void push(LivingEntity owner){
         var stack=owner.getMainHandItem();
         if(!allowed(owner))return;
-        var config=ExtraGadgetConfig.acidSprayer;var level=owner.serverLevel();long now=level.getGameTime();
+        var config=ExtraGadgetConfig.acidSprayer;var level=((ServerLevel)owner.level());long now=level.getGameTime();
         var tag=stack.getOrCreateTag();int ammo=tag.getInt(AMMO),cost=config.pushAmmoCost();
-        if(!owner.getAbilities().instabuild&&ammo<cost){owner.displayClientMessage(Component.literal("산성가스 밀어내기 탄약 부족 ("+ammo+"/"+cost+")"),true);return;}
+        if(!(owner instanceof Player creative&&creative.getAbilities().instabuild)&&ammo<cost){if(owner instanceof ServerPlayer player)player.displayClientMessage(Component.literal("산성가스 밀어내기 탄약 부족 ("+ammo+"/"+cost+")"),true);return;}
         if(!consume(owner,cost))return;
         var eye=owner.getEyePosition();var look=owner.getLookAngle().normalize();
         var position=muzzle(level,owner,config.sprayDistance());
@@ -171,7 +171,8 @@ public final class AcidSprayer {
         int interval=Math.max(1,ExtraGadgetConfig.ticks(config.damageIntervalSeconds()));
         var hurt=new HashSet<LivingEntity>();
         int clouds=CLOUDS.size();
-        for(var cloud:CLOUDS){
+        for(int cloudIndex=0;cloudIndex<clouds;cloudIndex++){
+            var cloud=CLOUDS.get(cloudIndex);
             var level=cloud.level;long now=level.getGameTime();
             if(cloud.to!=null){
                 double t=Math.min(1,(double)(now-cloud.pushStart)/Math.max(1,cloud.pushEnd-cloud.pushStart));
@@ -179,10 +180,13 @@ public final class AcidSprayer {
                 cloud.position=cloud.from.add(cloud.to.subtract(cloud.from).scale(eased));
                 if(t>=1)cloud.to=null;
             }
-            particles(level,cloud,config.cloudRadius(),clouds);
+            // Rotate which clouds emit when there are more clouds than the global particle budget permits.
+            int visible=Math.min(clouds,PARTICLE_BUDGET/2);
+            int first=(int)Math.floorMod(now/2*visible,(long)clouds);
+            if(Math.floorMod(cloudIndex-first,clouds)<visible)particles(level,cloud,config.cloudRadius(),visible);
             if(now%interval!=0)continue;
             double r=config.cloudRadius();var c=cloud.position;
-            for(var body:level.getEntitiesOfClass(LivingEntity.class,new AABB(c,c).inflate(r+1),BotEntity::participant)){
+            for(var body:level.getEntitiesOfClass(LivingEntity.class,new AABB(c,c).inflate(r+1),HiddenWeaponTargets::valid)){
                 if(!body.isAlive()||body.isSpectator()||SafeZones.contains(body)||!touches(body,c,r)||!hurt.add(body))continue;
                 hurt(body,cloud,config,interval);
             }
@@ -219,12 +223,11 @@ public final class AcidSprayer {
      */
     private static void particles(ServerLevel level,Cloud cloud,double radius,int clouds){
         if(level.getGameTime()%2!=0)return;
-        var c=cloud.position;var random=level.random;
+        var c=cloud.position;
         int count=particlesPerCloud(radius,clouds),dark=Math.max(1,count/3);
         double spread=radius*.45,vertical=radius*.27;
         level.sendParticles(GAS,c.x,c.y,c.z,count-dark,spread,vertical,spread,0);
         level.sendParticles(GAS_DARK,c.x,c.y,c.z,dark,spread,vertical,spread,0);
-        if(clouds<=8&&random.nextInt(3)==0)level.sendParticles(ParticleTypes.ITEM_SLIME,c.x,c.y,c.z,2,radius*.4,.3,radius*.4,.02);
     }
 
     /** No reload: after regenDelaySeconds without firing, one round per regenIntervalSeconds up to the magazine. */
@@ -242,6 +245,16 @@ public final class AcidSprayer {
             if(ammo<config.magazine()){tag.putInt(AMMO,ammo+1);changed=true;}
         }
         if(changed)p.inventoryMenu.broadcastChanges();
+    }
+    static void regenerateBot(BotEntity bot,ItemStack stack){
+        if(!is(stack))return;
+        var c=ExtraGadgetConfig.acidSprayer;long now=bot.level().getGameTime();
+        long since=now-LAST_USE.getOrDefault(bot.getUUID(),Long.MIN_VALUE/2);
+        int delay=ExtraGadgetConfig.ticks(c.regenDelaySeconds()),every=Math.max(1,ExtraGadgetConfig.ticks(c.regenIntervalSeconds()));
+        if(since>=delay&&(since-delay)%every==0){
+            var tag=stack.getOrCreateTag();int ammo=tag.getInt(AMMO);
+            if(ammo<c.magazine())tag.putInt(AMMO,ammo+1);
+        }
     }
     /** TaCZ's reload (R) does nothing with this gun. */
     @SuppressWarnings("unchecked") public static void registerReload(){

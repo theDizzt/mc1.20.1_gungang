@@ -1,0 +1,66 @@
+{
+  "loader": "forge:obj",
+  "model": "gungang:models/toe.obj",
+  "automatic_culling": false,
+  "flip_v": true,
+  "render_type": "minecraft:cutout",
+  "textures": {
+    "particle": "gungang:item/toe"
+  },
+  "display": {
+    "gui": {
+      "rotation": [
+        25,
+        -35,
+        0
+      ],
+      "scale": [
+        2.2,
+        2.2,
+        2.2
+      ]
+    },
+    "ground": {
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    "fixed": {
+      "scale": [
+        2,
+        2,
+        2
+      ]
+    },
+    "firstperson_righthand": {
+      "scale": [
+        0,
+        0,
+        0
+      ]
+    },
+    "firstperson_lefthand": {
+      "scale": [
+        0,
+        0,
+        0
+      ]
+    },
+    "thirdperson_righthand": {
+      "scale": [
+        0,
+        0,
+        0
+      ]
+    },
+    "thirdperson_lefthand": {
+      "scale": [
+        0,
+        0,
+        0
+      ]
+    }
+  }
+}

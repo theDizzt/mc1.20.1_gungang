@@ -318,6 +318,10 @@ public final class LobbyManager {
         if(action.action().equals("airCannon")){WindBlower.fire(sender);return;}
         if(action.action().equals("acidPush")){AcidSprayer.push(sender);return;}
         if(action.action().equals("acidSpray")){AcidSprayer.spray(sender);return;}
+        if(action.action().equals("bookInput")){MagicBook.input(sender,action.value());return;}
+        if(action.action().equals("bookMode")){MagicBook.cycle(sender,action.value().equals("-1"));return;}
+        if(action.action().equals("glueFire")){GlueGunItem.fire(sender,action.value().equals("zoom"));return;}
+        if(action.action().equals("glueReload")){GlueGunItem.reload(sender);return;}
         if(action.action().equals("shurikenThrow")){ShurikenItem.attack(sender);return;}
         if(action.action().equals("shurikenMode")){ShurikenItem.cycleMode(sender,action.value().equals("-1"));return;}
         if(action.action().equals("shurikenReload")){ShurikenItem.reload(sender);return;}
@@ -325,6 +329,8 @@ public final class LobbyManager {
         if(action.action().equals("shurikenClimb")){ShurikenItem.climb(sender);return;}
         if(action.action().equals("bladesReset")){TwinBlades.resetCombo(sender);return;}
         if(action.action().equals("defibTarget")){Defibrillator.choose(sender,action.value());return;}
+        // Press and release must both arrive, so the toe's sprint bypasses the action rate limit below.
+        if(action.action().equals("toeSprint")){ToeWeapon.sprint(sender,action.value().equals("down"));return;}
         if(action.action().equals("rapierAttack")){int aimed;try{aimed=action.value().isEmpty()?-1:Integer.parseInt(action.value());}catch(NumberFormatException e){aimed=-1;}RapierItem.thrust(sender,aimed);return;}
         // A double-tap dash must not be dropped by the rate limit below; charges and the running dash limit it instead.
         if(action.action().equals("hermesDash")){try{HermesBoots.request(sender,Integer.parseInt(action.value()));}catch(NumberFormatException ignored){}return;}
@@ -581,6 +587,7 @@ public final class LobbyManager {
         Entry e = PLAYERS.get(p.getUUID());
         if(e.team.equals(team))return;
         e.team = team;
+        TeamPoints.STATE.join(p.getUUID(),team);
         PLAYERS.values().forEach(entry -> entry.ready = false);
         if (team.equals("SPECTATOR")) { server.getScoreboard().removePlayerFromTeam(p.getScoreboardName()); p.setGameMode(GameType.SPECTATOR); }
         else {
@@ -837,6 +844,57 @@ public final class LobbyManager {
         var bounds = p.getBoundingBox();
         return area.contains(bounds.minX, bounds.minY, bounds.minZ) && area.contains(bounds.maxX, bounds.maxY, bounds.maxZ);
     }
+    private record SpawnRegion(ArenaMap.Area area,ArenaMap.Spawn spawn){
+        boolean contains(net.minecraft.world.entity.LivingEntity body){
+            if(area==null)return body.distanceToSqr(spawn.x(),spawn.y(),spawn.z())<=16;
+            var box=body.getBoundingBox();
+            return box.intersects(new net.minecraft.world.phys.AABB(area.minX(),area.minY(),area.minZ(),area.maxX(),area.maxY(),area.maxZ()));
+        }
+    }
+    private static Map<String,SpawnRegion> currentSpawnRegions(){
+        if(activeMap==null||!(phase.equals("PREPARING")||phase.equals("RUNNING"))
+                ||MatchManager.freeForAll()!=null||MatchManager.realPropHunt()!=null)return Map.of();
+        var result=new HashMap<String,SpawnRegion>();
+        for(String team:List.of("ALPHA","BRAVO")){
+            var spawn=BotMovement.homeSpawn(activeMap,team);
+            var area=BotMovement.homeRoom(activeMap,team);
+            if(phase.equals("RUNNING")&&team.equals("BRAVO")&&activeMap.normandy()!=null){spawn=MatchManager.attackSpawn();area=null;}
+            if(spawn!=null)result.put(team,new SpawnRegion(area,spawn));
+        }
+        return result;
+    }
+    private static final Map<UUID,Integer> SPAWN_CHANGED_NOTICE=new HashMap<>();
+    /** A newly claimed enemy base must never trap bodies already standing in it. */
+    private static void relocateChangedSpawns(Map<String,SpawnRegion> before){
+        var after=currentSpawnRegions();if(before.isEmpty()||after.isEmpty()||before.equals(after))return;
+        var world=level(activeMap);
+        var bodies=new ArrayList<net.minecraft.world.entity.LivingEntity>(world.players());bodies.addAll(BotManager.entities());
+        for(var body:bodies){
+            if(body.level()!=world||!body.isAlive()||body.isSpectator()||respawning(body.getUUID()))continue;
+            String team=BotManager.side(body);if(!team.equals("ALPHA")&&!team.equals("BRAVO"))continue;
+            String enemy=team.equals("ALPHA")?"BRAVO":"ALPHA";
+            var old=before.get(enemy);var next=after.get(enemy);var home=after.get(team);
+            if(old==null||next==null||home==null||old.equals(next)||!next.contains(body)||old.contains(body))continue;
+            body.stopRiding();body.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);body.fallDistance=0;
+            var spawn=home.spawn();
+            if(body instanceof ServerPlayer player){
+                player.teleportTo(world,spawn.x(),spawn.y(),spawn.z(),spawn.yaw(),spawn.pitch());
+                SPAWN_CHANGED_NOTICE.put(player.getUUID(),server.getTickCount()+60);
+            }else if(body instanceof BotEntity bot){
+                bot.getNavigation().stop();bot.teleportTo(spawn.x(),spawn.y(),spawn.z());
+                bot.setYRot(spawn.yaw());bot.setYHeadRot(spawn.yaw());bot.setXRot(spawn.pitch());
+                bot.hasImpulse=true;bot.hurtMarked=true;
+            }
+        }
+    }
+    private static void spawnChangedNotices(int now){
+        if(!phase.equals("RUNNING")&&!phase.equals("PREPARING")){SPAWN_CHANGED_NOTICE.clear();return;}
+        SPAWN_CHANGED_NOTICE.entrySet().removeIf(e->e.getValue()<=now||server.getPlayerList().getPlayer(e.getKey())==null);
+        for(var id:SPAWN_CHANGED_NOTICE.keySet()){
+            var p=server.getPlayerList().getPlayer(id);
+            p.displayClientMessage(Component.literal("이 지역이 상대팀 스폰 위치로 변경되어 아군의 현재 스폰 위치로 이동했습니다."),true);
+        }
+    }
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END || server == null) return;
         int now = server.getTickCount();
@@ -870,7 +928,12 @@ public final class LobbyManager {
                 broadcast(false);
             }
         }
-        if (phase.equals("PREPARING") || phase.equals("RUNNING")) MatchManager.tick(Math.max(0,(deadline-now+19)/20));
+        if (phase.equals("PREPARING") || phase.equals("RUNNING")) {
+            var previousSpawns=currentSpawnRegions();
+            MatchManager.tick(Math.max(0,(deadline-now+19)/20));
+            relocateChangedSpawns(previousSpawns);
+        }
+        spawnChangedNotices(now);
         if (now % 4 == 0) {
             for (var p : server.getPlayerList().getPlayers()) {
                 equipment(p, false);
@@ -1246,6 +1309,7 @@ public final class LobbyManager {
         // Void deaths would otherwise leave the camera below the world.
         Vec3 spot=self?new Vec3(victim.getX(),Math.max(victim.getY(),victim.level().getMinBuildHeight()+2),victim.getZ()):null;
         RESPAWNING.put(victim.getUUID(),new Respawning(server.getTickCount()+duration,duration,killer==null?null:killer.getUUID(),victim.level().dimension(),spot));
+        ToeWeapon.reset(victim);
         victim.setHealth(victim.getMaxHealth()); victim.removeAllEffects();Bleeding.clear(victim); victim.clearFire(); victim.fallDistance=0;
         victim.setGameMode(GameType.SPECTATOR);
         if(killer!=null&&killer!=victim&&killer.isAlive()&&!killer.isSpectator()&&killer.level()==victim.level()) victim.setCamera(killer);
