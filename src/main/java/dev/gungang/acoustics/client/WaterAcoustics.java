@@ -7,7 +7,18 @@ import net.minecraft.world.phys.Vec3;
 
 /** Bounded water-path sampling with perceptually compressed interface transmission loss. */
 final class WaterAcoustics {
+    private record Path(Vec3 source,Vec3 listener){}
+    private static final java.util.Map<Path,WorldAcoustics.Transmission> CACHE=new java.util.HashMap<>();
+    private static java.lang.ref.WeakReference<Level> cachedLevel=new java.lang.ref.WeakReference<>(null);
+    private static long cachedTick=Long.MIN_VALUE;
     static WorldAcoustics.Transmission evaluate(Level level, Vec3 source, Vec3 listener) {
+        if(cachedLevel.get()!=level||cachedTick!=level.getGameTime()){
+            cachedLevel=new java.lang.ref.WeakReference<>(level);cachedTick=level.getGameTime();CACHE.clear();
+        }
+        var key=new Path(source,listener);var cached=CACHE.get(key);if(cached!=null)return cached;
+        var result=sample(level,source,listener);if(CACHE.size()<512)CACHE.put(key,result);return result;
+    }
+    private static WorldAcoustics.Transmission sample(Level level,Vec3 source,Vec3 listener){
         double distance = source.distanceTo(listener);
         int samples = Math.max(1, Math.min(96, (int) Math.ceil(distance * 2)));
         boolean previous = submerged(level, source);

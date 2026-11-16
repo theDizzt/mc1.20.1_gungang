@@ -23,16 +23,12 @@ public final class AcousticManager {
     // Weak keys also release sounds cancelled by another mod or never assigned a channel.
     private static final Map<SoundInstance, AcousticFrame> PENDING = Collections.synchronizedMap(new WeakHashMap<>());
     private static int cursor;
-    private static long tickStamp;
-    private static int initialTraces;
 
     public static void prepare(SoundInstance sound) {
         Minecraft mc = Minecraft.getInstance();
         if (!mc.isSameThread()) return;
-        // Bound expensive diffraction searches during bursts; direct wall transmission always runs.
-        long now = mc.level == null ? 0 : mc.level.getGameTime();
-        if (tickStamp != now) { tickStamp = now; initialTraces = 0; }
-        PENDING.put(sound, frame(sound, initialTraces++ < dev.gungang.acoustics.server.AcousticPolicy.get(AcousticConfig.UPDATE_BUDGET)));
+        // WorldAcoustics shares one cache/budget between new sounds and active-channel updates.
+        PENDING.put(sound, frame(sound, true));
     }
 
     @SubscribeEvent
