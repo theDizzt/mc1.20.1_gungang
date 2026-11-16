@@ -96,6 +96,7 @@ public record Loadouts(List<Weapon> primary, List<Weapon> secondary, Weapon slot
                 if (stack.isEmpty() || stack.getCount() < 1 || stack.getCount() > stack.getMaxStackSize()) throw new IllegalArgumentException("Invalid item stack: " + id);
                 stack.setHoverName(Component.literal(name));
                 stack.getOrCreateTag().putString("GunGangLearningWeaponId",id);
+                if (AcidSprayer.is(stack)) stack.getOrCreateTag().putInt("GunCurrentAmmoCount",ExtraGadgetConfig.acidSprayer.magazine());
                 return stack;
             } catch (com.mojang.brigadier.exceptions.CommandSyntaxException failure) {
                 throw new IllegalArgumentException("Invalid SNBT for " + id, failure);

@@ -71,7 +71,7 @@ public final class AcousticConfig {
                 .define("hermesMacroKey", false);
         TEAM_HUD = b.define("teamHud", true);
         TEAM_NUMBER_MARKERS = b.comment("Show allied roster numbers overhead, occluded by blocks.").define("teamNumberMarkers", true);
-        STATUS_HEALTH_BAR = b.comment("Use ailment-specific health-bar colours and three shock inversion cycles per second.").define("statusHealthBar", true);
+        STATUS_HEALTH_BAR = b.comment("Show status-effect colours, pending damage and shock inversion on health bars. Absorption and healing remain visible when disabled.").define("statusHealthBar", true);
         LEGACY_TEAM_HUD = b.comment("Draw teammates in the older wide layout (name, long health bar, item slot) instead of the compact one.").define("legacyTeamLayout", false);
         TEAM_WEAPON_NUMBERS = b.comment("Show each teammate's chosen primary (white) and secondary (yellow) weapon numbers beside their held item. Prop hunt block numbers always show.").define("teamWeaponNumbers", true);
         COMBO_HUD = b.comment("Right of the health bar: hit combo (x99) and the damage it dealt (3942.6). A combo ends 3 seconds after the last hit. Replaces the game mode label.").define("comboHud", true);

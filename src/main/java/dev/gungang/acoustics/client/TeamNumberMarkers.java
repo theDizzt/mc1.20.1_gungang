@@ -34,15 +34,21 @@ public final class TeamNumberMarkers {
             if(!(entity instanceof LivingEntity target)||!replaces(target)||!target.isAlive()
                     ||target.isInvisibleTo(mc.player)||target.distanceToSqr(mc.player)>96*96)continue;
             var position=target.getPosition(event.getPartialTick());
-            var text=HudText.gungang(Integer.toString(TeamPointHud.number(target.getUUID())));
-            float half=Math.max(6,(mc.font.width(text)+4)/2f);
+            int number=TeamPointHud.number(target.getUUID());
+            var text=HudText.gungang(Integer.toString(number));
+            float textScale=number>=10?.8f:1f;
+            float half=Math.max(6,(mc.font.width(text)*textScale+4)/2f);
             pose.pushPose();
             pose.translate(position.x-camera.x,position.y+target.getBbHeight()+.5-camera.y,position.z-camera.z);
             pose.mulPose(mc.getEntityRenderDispatcher().cameraOrientation());pose.scale(-.025f,-.025f,.025f);
-            rectangle(pose.last().pose(),-half-1,-6,half+1,6,0xFF101820);
-            pose.translate(0,0,.01);
+            // Non-overlapping border and fill avoid depth fighting, including with shaders.
+            rectangle(pose.last().pose(),-half-1,-6,half+1,-5,0xFF101820);
+            rectangle(pose.last().pose(),-half-1,5,half+1,6,0xFF101820);
+            rectangle(pose.last().pose(),-half-1,-5,-half,5,0xFF101820);
+            rectangle(pose.last().pose(),half,-5,half+1,5,0xFF101820);
             rectangle(pose.last().pose(),-half,-5,half,5,TeamHud.teamColor(target));
-            pose.translate(0,0,.01);
+            pose.translate(0,0,-1);
+            pose.scale(textScale,textScale,1);
             int color=target.getTeam()!=null&&target.getTeam().getName().equals("Red")?0xFF000000:0xFFFFFFFF;
             mc.font.drawInBatch(text,-mc.font.width(text)/2f,-3.5f,color,false,pose.last().pose(),BUFFER,Font.DisplayMode.NORMAL,0,15728880);
             pose.popPose();

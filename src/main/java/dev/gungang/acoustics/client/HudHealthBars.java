@@ -110,9 +110,9 @@ final class HudHealthBars {
         float statusGoal = HudHealth.fraction(StatusDamageClient.statusEnd(entity), maximum);
         var edges = EDGES.computeIfAbsent(entity, ignored -> new Edges());
         edges.update(health, healGoal, healing, statusGoal, pending > 0, seconds);
-        var composed=compose(health, healthAnimation.trail(seconds), ratio, trailRatio,
-                Math.max(0, health - edges.statusStart), Math.max(0, edges.healEnd - health));
         boolean styled=dev.gungang.acoustics.AcousticConfig.STATUS_HEALTH_BAR.get();
+        var composed=compose(health, healthAnimation.trail(seconds), ratio, trailRatio,
+                styled ? Math.max(0, health - edges.statusStart) : 0, Math.max(0, edges.healEnd - health));
         int effects=styled?StatusDamageClient.effects(entity):0;
         double gameSeconds=(entity.level().getGameTime()+partialTick)/20.0;
         boolean inverted=styled&&(effects&dev.gungang.acoustics.server.StatusBarEffects.SHOCK)!=0&&((long)Math.floor(gameSeconds*6)&1)==0;

@@ -77,11 +77,16 @@ public final class TeamPointHud {
     static void drawBadge(GuiGraphics g,int number,int x,int y,int size,int color){number(g,number,x+size-7,y+size-6,color);}
     private static void number(GuiGraphics g,int number,int cx,int cy,int color) {
         var font=Minecraft.getInstance().font;var text=HudText.number(Integer.toString(number));
-        int width=Math.max(10,font.width(text)+4);
+        float scale=number>=10?.8f:1f;
+        int width=Math.max(10,(int)Math.ceil(font.width(text)*scale)+4);
         g.fill(cx-width/2-1,cy-6,cx+(width+1)/2+1,cy+6,0xFF101820);
         g.fill(cx-width/2,cy-5,cx+(width+1)/2,cy+5,color|0xFF000000);
         // The number font sits 1.5 px low in its line: y = cy-5 centres its 7-row digits in the badge.
-        g.drawString(font,text,cx-font.width(text)/2,cy-5,numberColor(),false);
+        g.pose().pushPose();
+        g.pose().translate(cx-font.width(text)*scale/2,cy-5*scale,0);
+        g.pose().scale(scale,scale,1);
+        g.drawString(font,text,0,0,numberColor(),false);
+        g.pose().popPose();
     }
     /** Roster numbers read black on ALPHA's badge and white on BRAVO's. */
     private static int numberColor(){return active()&&"ALPHA".equals(view.team())?0xFF000000:0xFFFFFFFF;}
@@ -89,11 +94,16 @@ public final class TeamPointHud {
     static void square(GuiGraphics g,UUID id,int x,int y,int size){
         int n=number(id);if(n<=0)return;
         var font=Minecraft.getInstance().font;var text=HudText.number(Integer.toString(n));
-        int width=Math.max(size,font.width(text)+4);
+        float scale=n>=10?.8f:1f;
+        int width=Math.max(size,(int)Math.ceil(font.width(text)*scale)+4);
         g.fill(x-1,y-1,x+width+1,y+size+1,0xFF101820);
         g.fill(x,y,x+width,y+size,view.color()|0xFF000000);
         // Measured in game: the 7-row digits start at the draw y, so this leaves equal gaps above and below.
-        g.drawString(font,text,x+(width-font.width(text)+1)/2,y+(size-7)/2,numberColor(),false);
+        g.pose().pushPose();
+        g.pose().translate(x+(width-font.width(text)*scale)/2,y+(size-7*scale)/2,0);
+        g.pose().scale(scale,scale,1);
+        g.drawString(font,text,0,0,numberColor(),false);
+        g.pose().popPose();
     }
     private static List<TeamPointState.Point> points() {
         if(!active())return List.of();
