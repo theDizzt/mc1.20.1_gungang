@@ -22,6 +22,22 @@ public final class PatchHelp {
     private static void item(String field, String text) { ITEM.put(field, text); }
     /** Help of one item setting's field, when the generic one would mislead. */
     private static void item(String setting, String field, String text) { ITEM_OF.put(setting + "." + field, text); }
+    static {
+        item("toe","initialLength","장착 시 가시 길이. 이동 경로를 따라 유지됩니다.");
+        item("toe","maximumLength","최대 길이. 서버 부하를 제한하기 위해 100블록까지 설정할 수 있습니다.");
+        item("toe","criticalLength","꼬리 끝에서부터 크리티컬 피해와 2번 색상을 적용하는 길이.");
+        item("toe","growthSeconds","이 시간이 지날 때마다 가시 길이가 1블록 증가합니다.");
+        item("toe","damagePerSecond","시작 길이에서의 일반 구간 DPS. 아군과 자신도 피해를 받으며 쌍수도검 방어를 무시합니다.");
+        item("toe","damagePerSecondPerLength","시작 길이보다 1블록 길어질 때마다 늘어나는 일반 구간 DPS.");
+        item("toe","criticalMultiplier","끝부분 DPS = 일반 구간 DPS × 이 배수. 여러 가시에 겹치면 가장 높은 피해만 적용됩니다.");
+        item("toe","sprintLengthPerSecond","좌클릭을 누르는 동안 초당 소모하는 가시 길이. 시작 길이에 닿으면 강제로 멈춥니다.");
+        item("toe","sprintMovementSpeed","좌클릭 중 이동 속도 (%).");
+        item("toe","sprintCooldownSeconds","좌클릭을 멈춘 뒤 다시 쓸 수 있을 때까지의 쿨타임.");
+        item("toe","damageIntervalSeconds","회당 피해 = 초당 피해 × 실제 틱 간격 / 20. 간격을 바꿔도 DPS는 유지됩니다.");
+        item("toe","stationaryGraceSeconds","이동 중 바로 발밑의 가시만 자신 피해를 유예합니다. 정지 후 이 시간이 지나면 피해를 받습니다.");
+        item("toe","jumpHeight","중력과 공기 저항을 반영한 점프 정점 높이.");
+        item("toe","spikeWidth","입체 가시와 피격 영역의 폭.");item("toe","spikeHeight","입체 가시와 피격 영역의 높이.");
+    }
 
     static {
         gear("windStrength", "송풍기 바람 세기. 기본 1, 0~100 사이를 0.01 단위로 입력합니다.\n좌클릭 바람 영역(원뿔) 안의 대상에게 매 틱 조준 방향으로 세기 × 0.1 블록/틱의 가속을 주며, 조준 방향 속도가 바람 최대 속도(windMaxSpeed)에 닿으면 더 가속하지 않습니다.\n0이면 바람으로 밀지 않습니다.");

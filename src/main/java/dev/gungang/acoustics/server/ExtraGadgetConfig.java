@@ -150,7 +150,7 @@ public final class ExtraGadgetConfig {
     public static final Shuriken SHURIKEN_DEFAULTS=new Shuriken(18,3,1.5,.5,3,1.5,5,13,2,13,8,33,22,11,16,.5,.42);
     public static Shuriken shuriken=SHURIKEN_DEFAULTS;
     /**
-     * 39 magic book ({@link MagicBook}): mana (manaCapacity, +1 every manaRegenSeconds, +smallPackMana / largePackMana
+     * 37 magic book ({@link MagicBook}): mana (manaCapacity, +1 every manaRegenSeconds, +smallPackMana / largePackMana
      * from a health pack) pays for the five elements' left and right click abilities. Costs per use, or per second
      * for the held ones (quake, holy water, flight); the ruin beam costs health per second instead.
      */
@@ -166,8 +166,17 @@ public final class ExtraGadgetConfig {
                             double ruinDamagePerSecond,double ruinHealthPerSecond,double ruinRange,
                             double flightManaPerSecond,double flightCooldownSeconds,double flightSpeed) { }
     public static final MagicBook MAGIC_BOOK_DEFAULTS=new MagicBook(100,.5,30,50,
-            24,10,3,8,.9, 6,10,3,16, 2,32,1, 30,15,32,7, 8,6,.3,24, 13,60,3,8,16, 8,8,.3,256, 8,100,60,8,24,2.5, 16,3,128, 7,10,1.1);
+            24,15,3,8,.9, 6,15,3,16, 4,32,1, 45,15,32,7, 8,9,.3,24, 13,90,3,8,16, 8,12,.3,256, 8,100,60,8,24,2.5, 16,3,128, 11,10,1.1);
     public static MagicBook magicBook=MAGIC_BOOK_DEFAULTS;
+    public record Toe(int initialLength,int maximumLength,int criticalLength,double growthSeconds,
+                      double damagePerSecond,double damagePerSecondPerLength,double criticalMultiplier,double damageIntervalSeconds,
+                      double stationaryGraceSeconds,double jumpHeight,double spikeWidth,double spikeHeight,
+                      double sprintLengthPerSecond,double sprintMovementSpeed,double sprintCooldownSeconds){
+        /** Normal spike DPS at {@code length}: the initial-length DPS plus a fixed amount per block grown. */
+        public double damageAt(int length){return damagePerSecond+damagePerSecondPerLength*Math.max(0,length-initialLength);}
+    }
+    public static final Toe TOE_DEFAULTS=new Toe(8,100,3,3,16,.25,3,.25,.5,3,.8,1.5,1,150,5);
+    public static Toe toe=TOE_DEFAULTS;
     public static TwinBlades twinBlades=new TwinBlades(24,24,24,24,48,72,4,100,30,100);
     public static Molotov molotov=new Molotov(5,8,3,36);
     public static Orbital orbital=new Orbital(24,256,84,5,64,240);
@@ -289,6 +298,32 @@ public final class ExtraGadgetConfig {
         GadgetConfig.bounded(wb.windConeAngle(),0,89);GadgetConfig.bounded(wb.windMaxSpeed(),0,10);
         var sh=GadgetConfig.read("shuriken",Shuriken.class,SHURIKEN_DEFAULTS,overrides,apply);
         var mb=GadgetConfig.read("magic_book",MagicBook.class,MAGIC_BOOK_DEFAULTS,overrides,apply);
+        var toes=GadgetConfig.read("toe",Toe.class,TOE_DEFAULTS,overrides,apply);
+        var toeLength100=ServerFiles.root().resolve("item/.toe-length-100-v1");
+        if(!java.nio.file.Files.exists(toeLength100)&&!overrides.containsKey("toe")){
+            if(toes.maximumLength()==50){
+                var json=ServerFiles.GSON.toJsonTree(toes).getAsJsonObject();json.addProperty("maximumLength",100);
+                toes=ServerFiles.GSON.fromJson(json,Toe.class);
+                if(apply)java.nio.file.Files.writeString(ServerFiles.root().resolve("item/toe.json"),ServerFiles.GSON.toJson(toes));
+            }
+            if(apply)java.nio.file.Files.writeString(toeLength100,"Default maximum trail length migrated to 100 blocks.\n");
+        }
+        var toeGrounded=ServerFiles.root().resolve("item/.toe-grounded-v1");
+        if(!java.nio.file.Files.exists(toeGrounded)&&!overrides.containsKey("toe")){
+            if(Math.abs(toes.spikeHeight()-.8)<1e-6){
+                var json=ServerFiles.GSON.toJsonTree(toes).getAsJsonObject();json.addProperty("spikeHeight",1.5);
+                toes=ServerFiles.GSON.fromJson(json,Toe.class);
+                if(apply)java.nio.file.Files.writeString(ServerFiles.root().resolve("item/toe.json"),ServerFiles.GSON.toJson(toes));
+            }
+            if(apply)java.nio.file.Files.writeString(toeGrounded,"Grounded spikes: default height migrated to 1.5 blocks.\n");
+        }
+        GadgetConfig.bounded(toes.initialLength(),1,100);GadgetConfig.bounded(toes.maximumLength(),toes.initialLength(),100);
+        GadgetConfig.bounded(toes.criticalLength(),0,toes.maximumLength());GadgetConfig.bounded(toes.growthSeconds(),.05,3600);
+        GadgetConfig.bounded(toes.damagePerSecond(),0,10000);GadgetConfig.bounded(toes.damagePerSecondPerLength(),0,1000);GadgetConfig.bounded(toes.criticalMultiplier(),0,100);
+        GadgetConfig.bounded(toes.damageIntervalSeconds(),.05,5);GadgetConfig.bounded(toes.stationaryGraceSeconds(),0,10);
+        GadgetConfig.bounded(toes.jumpHeight(),0,16);GadgetConfig.bounded(toes.spikeWidth(),.1,2);GadgetConfig.bounded(toes.spikeHeight(),.1,3);
+        GadgetConfig.bounded(toes.sprintLengthPerSecond(),.05,100);GadgetConfig.bounded(toes.sprintMovementSpeed(),1,1000);GadgetConfig.bounded(toes.sprintCooldownSeconds(),0,3600);
+        if(apply)toe=toes;
         GadgetConfig.bounded(mb.manaCapacity(),1,10000);GadgetConfig.bounded(mb.manaRegenSeconds(),.05,60);GadgetConfig.bounded(mb.lightningCount(),1,200);
         GadgetConfig.bounded(mb.fireballIntervalSeconds(),.05,10);GadgetConfig.bounded(mb.lightIntervalSeconds(),.05,10);GadgetConfig.bounded(mb.flightSpeed(),.1,4);
         for(double d:new double[]{mb.slamRange(),mb.quakeRadius(),mb.holyRange(),mb.dropRange(),mb.fireballRange(),mb.flameRange(),mb.lightRange(),mb.ruinRange()})GadgetConfig.bounded(d,1,512);

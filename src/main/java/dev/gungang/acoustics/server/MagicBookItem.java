@@ -8,7 +8,7 @@ import net.minecraft.world.item.*;
 import net.minecraft.world.level.Level;
 
 /**
- * Primary 39 magic book. Its mana, element (조정관) and the abilities' cooldowns live in the stack's tag, synced to the
+ * Primary 37 magic book. Its mana, element (조정관) and the abilities' cooldowns live in the stack's tag, synced to the
  * holder for the HUD; every ability is server-authoritative ({@link MagicBook}). Mana regenerates on its own (no reload)
  * and from health packs. While it is carried, secondaries cannot be used.
  */
@@ -64,7 +64,7 @@ public final class MagicBookItem extends Item {
     }
 
     @Override public void inventoryTick(ItemStack stack,Level level,Entity entity,int slot,boolean selected){
-        if(level.isClientSide||!(entity instanceof Player))return;
+        if(level.isClientSide||!(entity instanceof Player||entity instanceof BotEntity))return;
         var c=ExtraGadgetConfig.magicBook;var tag=stack.getOrCreateTag();
         if(tag.getInt(CAPACITY)!=c.manaCapacity())tag.putInt(CAPACITY,c.manaCapacity());
         if(tag.getDouble(FLIGHT_SPEED)!=c.flightSpeed())tag.putDouble(FLIGHT_SPEED,c.flightSpeed());

@@ -30,7 +30,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 /**
- * 39 magic book abilities, five elements (조정관) with a left and a right click each. The client reports which of the two
+ * 37 magic book abilities, five elements (조정관) with a left and a right click each. The client reports which of the two
  * keys are held ({@code bookInput}); everything else runs here, on the server tick:
  * <ul>
  * <li>황 left: ground slam ahead, lifts every enemy in front. Right (held): earthquake around the caster.</li>
@@ -56,9 +56,9 @@ public final class MagicBook {
     private static final Map<UUID,State> STATES=new HashMap<>();
     private enum Kind {WATER,FIRE,LIGHT}
     private static final class Shot {
-        final ServerPlayer owner;final ServerLevel level;final Kind kind;Vec3 pos,dir;final double speed;double left;final LivingEntity homing;
-        Shot(ServerPlayer owner,Kind kind,Vec3 pos,Vec3 dir,double speed,double range,LivingEntity homing){
-            this.owner=owner;level=owner.serverLevel();this.kind=kind;this.pos=pos;this.dir=dir.normalize();this.speed=speed;left=range;this.homing=homing;
+        final LivingEntity owner;final ServerLevel level;final Kind kind;Vec3 pos,dir;final double speed;double left;final LivingEntity homing;
+        Shot(LivingEntity owner,Kind kind,Vec3 pos,Vec3 dir,double speed,double range,LivingEntity homing){
+            this.owner=owner;level=((ServerLevel)owner.level());this.kind=kind;this.pos=pos;this.dir=dir.normalize();this.speed=speed;left=range;this.homing=homing;
         }
     }
     private static final List<Shot> SHOTS=new ArrayList<>();
@@ -68,6 +68,18 @@ public final class MagicBook {
     private static ExtraGadgetConfig.MagicBook config(){return ExtraGadgetConfig.magicBook;}
     private static int ticks(double seconds){return Math.max(1,(int)Math.round(seconds*20));}
 
+    private static void sync(LivingEntity entity){if(entity instanceof ServerPlayer player)player.inventoryMenu.broadcastChanges();}
+    /** Bots share spell costs, cooldowns, projectiles and damage with players. */
+    static void botCast(BotEntity bot,LivingEntity target){
+        if(!usable(bot))return;
+        var stack=bot.getMainHandItem();var c=config();long now=bot.level().getGameTime();
+        var state=STATES.computeIfAbsent(bot.getUUID(),id->new State());
+        double distance=bot.distanceTo(target);
+        Element element=distance<=c.slamRange()&&ready(stack,Element.YELLOW,false,now)&&MagicBookItem.mana(stack)>=c.slamMana()
+                ?Element.YELLOW:distance<=c.fireballRange()?Element.RED:Element.WHITE;
+        stack.getOrCreateTag().putInt(MagicBookItem.ELEMENT,element.ordinal());
+        press(bot,stack,state,element,false,now);
+    }
     // ---- input ----
     /** The client's held keys: {@code value} "LR" digits, e.g. "10" for the left key alone. */
     public static void input(ServerPlayer p,String value){
@@ -82,9 +94,9 @@ public final class MagicBook {
         stack.getOrCreateTag().putInt(MagicBookItem.ELEMENT,(back?element.previous():element.next()).ordinal());
         var state=STATES.get(p.getUUID());if(state!=null)stopChannel(p,stack,state);
         p.level().playSound(null,p.blockPosition(),SoundEvents.BOOK_PAGE_TURN,SoundSource.PLAYERS,.8f,1.2f);
-        p.inventoryMenu.broadcastChanges();
+        sync(p);
     }
-    private static boolean usable(ServerPlayer p){
+    private static boolean usable(LivingEntity p){
         return MagicBookItem.is(p.getMainHandItem())&&p.isAlive()&&!p.isSpectator()&&!LobbyManager.respawning(p.getUUID())
                 &&!FreeForAllMatch.blocked(p)&&!SafeZones.contains(p);
     }
@@ -94,19 +106,20 @@ public final class MagicBook {
         if(event.phase!=TickEvent.Phase.END)return;
         var server=event.getServer();
         for(var it=STATES.entrySet().iterator();it.hasNext();){
-            var entry=it.next();var p=server.getPlayerList().getPlayer(entry.getKey());
+            var entry=it.next();LivingEntity p=server.getPlayerList().getPlayer(entry.getKey());
+            if(p==null)for(var level:server.getAllLevels())if(level.getEntity(entry.getKey()) instanceof BotEntity bot&&!bot.isRemoved()&&bot.isAlive()){p=bot;break;}
             if(p==null){it.remove();continue;}
             run(p,entry.getValue());
         }
         if(!SHOTS.isEmpty())SHOTS.removeIf(MagicBook::fly);
     }
-    private static void run(ServerPlayer p,State state){
+    private static void run(LivingEntity p,State state){
         long now=p.level().getGameTime();
         if(now-state.refreshed>HOLD_TIMEOUT)state.left=state.right=false;
         var stack=p.getMainHandItem();
         if(!usable(p)){
             state.left=state.right=false;state.flameEnd=state.lightningEnd=0;
-            var carried=MagicBookItem.carriedStack(p);if(!carried.isEmpty())stopChannel(p,carried,state);else state.channel=null;
+            var carried=p instanceof Player player?MagicBookItem.carriedStack(player):p.getMainHandItem();if(!carried.isEmpty())stopChannel(p,carried,state);else state.channel=null;
             return;
         }
         var element=MagicBookItem.element(stack);var c=config();
@@ -122,16 +135,16 @@ public final class MagicBook {
         else if(state.right)press(p,stack,state,element,true,now);
     }
     private static boolean ready(ItemStack stack,Element element,boolean right,long now){return now>=MagicBookItem.cooldown(stack,element,right);}
-    private static boolean pay(ServerPlayer p,ItemStack stack,int mana){
+    private static boolean pay(LivingEntity p,ItemStack stack,int mana){
         int have=MagicBookItem.mana(stack);
-        if(have<mana){p.displayClientMessage(net.minecraft.network.chat.Component.literal("마나가 부족합니다").withStyle(net.minecraft.ChatFormatting.AQUA),true);return false;}
+        if(have<mana){if(p instanceof ServerPlayer player)player.displayClientMessage(net.minecraft.network.chat.Component.literal("마나가 부족합니다").withStyle(net.minecraft.ChatFormatting.AQUA),true);return false;}
         MagicBookItem.setMana(stack,have-mana);return true;
     }
-    private static void cooldown(ServerPlayer p,ItemStack stack,Element element,boolean right,double seconds){
+    private static void cooldown(LivingEntity p,ItemStack stack,Element element,boolean right,double seconds){
         if(seconds>0)MagicBookItem.setCooldown(stack,element,right,p.level().getGameTime()+ticks(seconds));
-        p.inventoryMenu.broadcastChanges();
+        sync(p);
     }
-    private static void press(ServerPlayer p,ItemStack stack,State state,Element element,boolean right,long now){
+    private static void press(LivingEntity p,ItemStack stack,State state,Element element,boolean right,long now){
         if(!ready(stack,element,right,now))return;
         var c=config();
         switch(element){
@@ -151,7 +164,7 @@ public final class MagicBook {
                     if(now<state.nextShot||!pay(p,stack,c.fireballMana()))return;
                     state.nextShot=now+ticks(c.fireballIntervalSeconds());
                     SHOTS.add(new Shot(p,Kind.FIRE,p.getEyePosition().add(0,-.15,0),p.getLookAngle(),1.2,c.fireballRange()+8,aimed(p,c.fireballRange(),20)));
-                    sound(p,SoundEvents.BLAZE_SHOOT,.7f,1.2f);p.inventoryMenu.broadcastChanges();
+                    sound(p,SoundEvents.BLAZE_SHOOT,.7f,1.2f);sync(p);
                 }else if(pay(p,stack,c.flameMana())){
                     state.flameEnd=now+ticks(c.flameSeconds());
                     // The cooldown runs from the end of the flames.
@@ -163,7 +176,7 @@ public final class MagicBook {
                     if(now<state.nextShot||!pay(p,stack,c.lightMana()))return;
                     state.nextShot=now+ticks(c.lightIntervalSeconds());
                     SHOTS.add(new Shot(p,Kind.LIGHT,p.getEyePosition().add(0,-.15,0),p.getLookAngle(),4,c.lightRange(),null));
-                    sound(p,SoundEvents.AMETHYST_BLOCK_CHIME,1,1.6f);p.inventoryMenu.broadcastChanges();
+                    sound(p,SoundEvents.AMETHYST_BLOCK_CHIME,1,1.6f);sync(p);
                 }else if(pay(p,stack,c.lightningMana())){
                     state.lightningEnd=now+ticks(c.lightningSeconds());state.boltsLeft=c.lightningCount();state.nextBolt=now;
                     cooldown(p,stack,element,true,c.lightningCooldownSeconds());
@@ -177,27 +190,27 @@ public final class MagicBook {
     }
 
     // ---- held abilities ----
-    private static void startChannel(ServerPlayer p,ItemStack stack,State state,Element element,boolean right){
+    private static void startChannel(LivingEntity p,ItemStack stack,State state,Element element,boolean right){
         state.channel=element;state.channelRight=right;state.manaDebt=state.healthDebt=0;state.beamTarget=null;state.beamTicks=0;
-        if(element==Element.BLACK&&right){stack.getOrCreateTag().putBoolean(MagicBookItem.FLYING,true);p.inventoryMenu.broadcastChanges();sound(p,SoundEvents.PHANTOM_FLAP,.8f,.7f);}
+        if(element==Element.BLACK&&right){stack.getOrCreateTag().putBoolean(MagicBookItem.FLYING,true);sync(p);sound(p,SoundEvents.PHANTOM_FLAP,.8f,.7f);}
         if(element==Element.YELLOW)sound(p,SoundEvents.RAVAGER_ROAR,.6f,.5f);
     }
-    private static void stopChannel(ServerPlayer p,ItemStack stack,State state){
+    private static void stopChannel(LivingEntity p,ItemStack stack,State state){
         if(state.channel==null)return;
         var c=config();var element=state.channel;boolean right=state.channelRight;state.channel=null;
         if(MagicBookItem.flying(stack))stack.getOrCreateTag().putBoolean(MagicBookItem.FLYING,false);
         if(element==Element.YELLOW&&right)cooldown(p,stack,element,true,c.quakeCooldownSeconds());
         else if(element==Element.BLACK&&right)cooldown(p,stack,element,true,c.flightCooldownSeconds());
-        else p.inventoryMenu.broadcastChanges();
+        else sync(p);
     }
     /** Spends {@code perSecond} mana over the tick; false when the book ran dry. */
-    private static boolean drain(ServerPlayer p,ItemStack stack,State state,double perSecond){
+    private static boolean drain(LivingEntity p,ItemStack stack,State state,double perSecond){
         state.manaDebt+=perSecond/20;
         int whole=(int)state.manaDebt;if(whole<=0)return true;
         int have=MagicBookItem.mana(stack);if(have<whole)return false;
         state.manaDebt-=whole;MagicBookItem.setMana(stack,have-whole);return true;
     }
-    private static void channel(ServerPlayer p,ItemStack stack,State state,long now){
+    private static void channel(LivingEntity p,ItemStack stack,State state,long now){
         var c=config();boolean ok;
         switch(state.channel){
             case YELLOW->{ok=drain(p,stack,state,c.quakeManaPerSecond());if(ok)quake(p,now);}
@@ -211,8 +224,8 @@ public final class MagicBook {
         if(!ok)stopChannel(p,stack,state);
     }
     /** 황 right: every second, damage to every enemy within the radius; the ground shakes. */
-    private static void quake(ServerPlayer p,long now){
-        var c=config();var level=p.serverLevel();
+    private static void quake(LivingEntity p,long now){
+        var c=config();var level=((ServerLevel)p.level());
         if(now%10==0){
             var ground=level.getBlockState(p.blockPosition().below());
             if(!ground.isAir())level.sendParticles(new BlockParticleOption(ParticleTypes.BLOCK,ground),p.getX(),p.getY()+.1,p.getZ(),40,c.quakeRadius()*.35,.1,c.quakeRadius()*.35,.15);
@@ -224,7 +237,7 @@ public final class MagicBook {
             hurt(p,target,(float)c.quakeDamagePerSecond());
     }
     /** 청 left: a 32-block stream; the ally it touches heals one point a second. */
-    private static void holy(ServerPlayer p,State state,long now){
+    private static void holy(LivingEntity p,State state,long now){
         var c=config();var hit=trace(p,c.holyRange(),HiddenWeaponTargets::valid);
         beam(p,hit.end,0,now);
         if(hit.entity!=null&&Defibrillator.ally(p,hit.entity)){
@@ -232,13 +245,13 @@ public final class MagicBook {
             int every=Math.max(1,(int)Math.round(20/Math.max(.05,c.holyHealPerSecond())));
             if(++state.beamTicks%every==0&&hit.entity.getHealth()<hit.entity.getMaxHealth()){
                 hit.entity.heal(1);HealCue.mark(hit.entity,HealCue.GHOST_TICKS);
-                p.serverLevel().sendParticles(ParticleTypes.HEART,hit.entity.getX(),hit.entity.getY()+hit.entity.getBbHeight()+.3,hit.entity.getZ(),1,.2,.1,.2,0);
+                ((ServerLevel)p.level()).sendParticles(ParticleTypes.HEART,hit.entity.getX(),hit.entity.getY()+hit.entity.getBbHeight()+.3,hit.entity.getZ(),1,.2,.1,.2,0);
             }
         }else state.beamTarget=null;
         if(now%6==0)sound(p,SoundEvents.WATER_AMBIENT,.35f,1.6f);
     }
     /** 흑 left: an unlimited beam that eats the caster's health; false once the caster could not pay. */
-    private static boolean ruin(ServerPlayer p,State state,long now){
+    private static boolean ruin(LivingEntity p,State state,long now){
         var c=config();
         state.healthDebt+=c.ruinHealthPerSecond()/20;
         if(state.healthDebt>=1){
@@ -258,8 +271,8 @@ public final class MagicBook {
 
     // ---- one-shot abilities ----
     /** 황 left: slams the ground; every enemy up to slamRange ahead (a 90° fan) is hurt and thrown up. */
-    private static void slam(ServerPlayer p){
-        var c=config();var level=p.serverLevel();var look=p.getLookAngle().multiply(1,0,1);
+    private static void slam(LivingEntity p){
+        var c=config();var level=((ServerLevel)p.level());var look=p.getLookAngle().multiply(1,0,1);
         if(look.lengthSqr()<1e-4)look=net.minecraft.world.phys.Vec3.directionFromRotation(0,p.getYRot());look=look.normalize();
         double range=c.slamRange();
         for(var target:level.getEntitiesOfClass(LivingEntity.class,p.getBoundingBox().inflate(range,3,range),e->enemy(p,e))){
@@ -281,8 +294,8 @@ public final class MagicBook {
         p.swing(net.minecraft.world.InteractionHand.MAIN_HAND,true);
     }
     /** 적 right, each tick: flames along the view, damage every half second to the enemies in the cone. */
-    private static void flame(ServerPlayer p,long now,State state){
-        var c=config();var level=p.serverLevel();var eye=p.getEyePosition();var look=p.getLookAngle();var random=p.getRandom();
+    private static void flame(LivingEntity p,long now,State state){
+        var c=config();var level=((ServerLevel)p.level());var eye=p.getEyePosition();var look=p.getLookAngle();var random=p.getRandom();
         for(int i=0;i<4;i++){
             var spread=look.add((random.nextDouble()-.5)*.25,(random.nextDouble()-.5)*.25,(random.nextDouble()-.5)*.25).normalize();
             var from=eye.add(look.scale(.8)).add(0,-.2,0);
@@ -298,8 +311,8 @@ public final class MagicBook {
         }
     }
     /** 백 right: one bolt where the caster looks (up to 32 blocks), scattered a little, onto the ground. */
-    private static void bolt(ServerPlayer p){
-        var c=config();var level=p.serverLevel();var eye=p.getEyePosition();var random=p.getRandom();
+    private static void bolt(LivingEntity p){
+        var c=config();var level=((ServerLevel)p.level());var eye=p.getEyePosition();var random=p.getRandom();
         var aim=level.clip(new ClipContext(eye,eye.add(p.getLookAngle().scale(32)),ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,p)).getLocation();
         var spot=aim.add((random.nextDouble()*2-1)*3,0,(random.nextDouble()*2-1)*3);
         var down=level.clip(new ClipContext(spot.add(0,4,0),spot.add(0,-24,0),ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,p));
@@ -372,8 +385,8 @@ public final class MagicBook {
     // ---- helpers ----
     private record Trace(Vec3 end,LivingEntity entity){}
     /** The first block or matching body along the view, up to {@code range}. */
-    private static Trace trace(ServerPlayer p,double range,java.util.function.Predicate<LivingEntity> filter){
-        var level=p.serverLevel();var eye=p.getEyePosition();var end=eye.add(p.getLookAngle().scale(range));
+    private static Trace trace(LivingEntity p,double range,java.util.function.Predicate<LivingEntity> filter){
+        var level=((ServerLevel)p.level());var eye=p.getEyePosition();var end=eye.add(p.getLookAngle().scale(range));
         var block=level.clip(new ClipContext(eye,end,ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,p));
         if(block.getType()!=HitResult.Type.MISS)end=block.getLocation();
         LivingEntity hit=null;double best=Double.MAX_VALUE;
@@ -385,9 +398,9 @@ public final class MagicBook {
         return new Trace(hit==null?end:eye.add(p.getLookAngle().scale(Math.sqrt(best))),hit);
     }
     /** The enemy nearest the crosshair within {@code range} and {@code degrees} of the view, in sight. */
-    private static LivingEntity aimed(ServerPlayer p,double range,double degrees){
+    private static LivingEntity aimed(LivingEntity p,double range,double degrees){
         var eye=p.getEyePosition();var look=p.getLookAngle();LivingEntity best=null;double bestAngle=Math.toRadians(degrees);
-        for(var e:p.serverLevel().getEntitiesOfClass(LivingEntity.class,p.getBoundingBox().inflate(range),e->enemy(p,e))){
+        for(var e:((ServerLevel)p.level()).getEntitiesOfClass(LivingEntity.class,p.getBoundingBox().inflate(range),e->enemy(p,e))){
             var to=e.getBoundingBox().getCenter().subtract(eye);if(to.length()>range)continue;
             double angle=Math.acos(Math.max(-1,Math.min(1,look.dot(to.normalize()))));
             if(angle<bestAngle&&p.hasLineOfSight(e)){bestAngle=angle;best=e;}
@@ -395,23 +408,23 @@ public final class MagicBook {
         return best;
     }
     /** Beam visuals for the caster and everyone tracking them, every other tick. */
-    private static void beam(ServerPlayer p,Vec3 end,int kind,long now){
+    private static void beam(LivingEntity p,Vec3 end,int kind,long now){
         if(now%2!=0)return;
         var eye=p.getEyePosition();
         GungangNetwork.CHANNEL.send(net.minecraftforge.network.PacketDistributor.TRACKING_ENTITY_AND_SELF.with(()->p),
                 new GungangNetwork.BookBeam(p.getId(),kind,eye.x,eye.y,eye.z,end.x,end.y,end.z));
     }
-    static boolean enemy(ServerPlayer owner,LivingEntity target){
+    static boolean enemy(LivingEntity owner,LivingEntity target){
         if(target==owner||!HiddenWeaponTargets.valid(target))return false;
         return owner.getTeam()==null||target.getTeam()==null||!owner.getTeam().getName().equals(target.getTeam().getName());
     }
     /** Magic damage from the caster; repeated ticks are not swallowed by the hurt cooldown. */
-    private static boolean hurt(ServerPlayer p,LivingEntity target,float amount){
+    private static boolean hurt(LivingEntity p,LivingEntity target,float amount){
         target.invulnerableTime=0;
         return target.hurt(p.damageSources().indirectMagic(p,p),(float)(amount*AdrenalineDamage.multiplier(p)));
     }
     private static void shock(LivingEntity target,Vec3 from){ArcShock.apply(target,from);ArcShock.stun(target);}
-    private static void sound(ServerPlayer p,SoundEvent sound,float volume,float pitch){p.level().playSound(null,p.blockPosition(),sound,SoundSource.PLAYERS,volume,pitch);}
+    private static void sound(LivingEntity p,SoundEvent sound,float volume,float pitch){p.level().playSound(null,p.blockPosition(),sound,SoundSource.PLAYERS,volume,pitch);}
 
     /** Mana a health pack restores to a carried book, or 0 when there is none to fill. */
     static int packMana(LivingEntity entity,boolean small){
@@ -421,7 +434,7 @@ public final class MagicBook {
     }
     static void addMana(Player p,int amount){
         var stack=MagicBookItem.carriedStack(p);if(stack.isEmpty()||amount<=0)return;
-        MagicBookItem.setMana(stack,MagicBookItem.mana(stack)+amount);p.inventoryMenu.broadcastChanges();
+        MagicBookItem.setMana(stack,MagicBookItem.mana(stack)+amount);sync(p);
     }
 
     /** Vanilla melee with the book does nothing; the client sends its keys instead. */

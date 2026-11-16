@@ -327,6 +327,8 @@ public final class LobbyManager {
         if(action.action().equals("shurikenClimb")){ShurikenItem.climb(sender);return;}
         if(action.action().equals("bladesReset")){TwinBlades.resetCombo(sender);return;}
         if(action.action().equals("defibTarget")){Defibrillator.choose(sender,action.value());return;}
+        // Press and release must both arrive, so the toe's sprint bypasses the action rate limit below.
+        if(action.action().equals("toeSprint")){ToeWeapon.sprint(sender,action.value().equals("down"));return;}
         if(action.action().equals("rapierAttack")){int aimed;try{aimed=action.value().isEmpty()?-1:Integer.parseInt(action.value());}catch(NumberFormatException e){aimed=-1;}RapierItem.thrust(sender,aimed);return;}
         // A double-tap dash must not be dropped by the rate limit below; charges and the running dash limit it instead.
         if(action.action().equals("hermesDash")){try{HermesBoots.request(sender,Integer.parseInt(action.value()));}catch(NumberFormatException ignored){}return;}
@@ -583,6 +585,7 @@ public final class LobbyManager {
         Entry e = PLAYERS.get(p.getUUID());
         if(e.team.equals(team))return;
         e.team = team;
+        TeamPoints.STATE.join(p.getUUID(),team);
         PLAYERS.values().forEach(entry -> entry.ready = false);
         if (team.equals("SPECTATOR")) { server.getScoreboard().removePlayerFromTeam(p.getScoreboardName()); p.setGameMode(GameType.SPECTATOR); }
         else {
@@ -1304,6 +1307,7 @@ public final class LobbyManager {
         // Void deaths would otherwise leave the camera below the world.
         Vec3 spot=self?new Vec3(victim.getX(),Math.max(victim.getY(),victim.level().getMinBuildHeight()+2),victim.getZ()):null;
         RESPAWNING.put(victim.getUUID(),new Respawning(server.getTickCount()+duration,duration,killer==null?null:killer.getUUID(),victim.level().dimension(),spot));
+        ToeWeapon.reset(victim);
         victim.setHealth(victim.getMaxHealth()); victim.removeAllEffects();Bleeding.clear(victim); victim.clearFire(); victim.fallDistance=0;
         victim.setGameMode(GameType.SPECTATOR);
         if(killer!=null&&killer!=victim&&killer.isAlive()&&!killer.isSpectator()&&killer.level()==victim.level()) victim.setCamera(killer);

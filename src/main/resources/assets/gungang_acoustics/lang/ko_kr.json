@@ -52,6 +52,8 @@
   "gungang.options.lcdTimer.tip": "켜면 7세그먼트 LCD 타이머를 씁니다. 끄면 GUNGANG 폰트의 미래형 타이머로, 숫자가 바뀔 때마다 효과가 나타납니다.",
   "gungang.options.teamWeaponNumbers": "팀원 무기 번호",
   "gungang.options.teamWeaponNumbers.tip": "팀원 체력바의 아이템 옆에 선택한 주무기 번호(흰색, 윗줄)와 보조무기 번호(노란색, 아랫줄)를 표시합니다. 숨바꼭질 블록 번호는 이 옵션과 상관없이 항상 표시됩니다.",
+  "gungang.options.teamNumberMarkers": "팀원 머리 위 분대원 번호",
+  "gungang.options.teamNumberMarkers.tip": "팀원 닉네임 대신 HUD·미니맵과 같은 번호를 표시합니다. 벽 뒤에서는 보이지 않습니다.",
   "gungang.options.statusHealthBar": "상태 이상 체력바 디자인",
   "gungang.options.statusHealthBar.tip": "화상: 형광 주황, 중독: 형광 보라, 출혈: 어두운 빨강, 피폭: 형광 초록. 여러 효과는 색상 구간으로 표시하며, 감전 중에는 초당 3회 색반전합니다. 끄면 기존 디자인을 사용합니다.",
   "gungang.options.comboHud": "콤보 표시",

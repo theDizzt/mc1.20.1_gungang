@@ -21,7 +21,7 @@ public final class TeamPoints {
     private record HeldItem(net.minecraft.nbt.CompoundTag tag,String text){}
     private static final Map<String,Payload> cachedPayloads=new HashMap<>();
     private static final Map<UUID,HeldItem> cachedHeld=new HashMap<>();
-    private static boolean available(){return MatchManager.active()&&MatchManager.freeForAll()==null;}
+    private static boolean available(){return MatchManager.freeForAll()==null;}
     static void refresh(MinecraftServer server) {
         var roster=new LinkedHashMap<UUID,String>();
         if(available()) {
@@ -31,7 +31,7 @@ public final class TeamPoints {
         STATE.roster(roster);
     }
     public static void request(ServerPlayer player) {
-        if(player==null||!available()||!player.isAlive()||player.isSpectator()||LobbyManager.respawning(player.getUUID())
+        if(player==null||!MatchManager.active()||!available()||!player.isAlive()||player.isSpectator()||LobbyManager.respawning(player.getUUID())
                 ||!TeamPointState.validTeam(LobbyManager.team(player.getUUID())))return;
         var server=player.getServer();int now=server.getTickCount();
         if(now<nextRequest.getOrDefault(player.getUUID(),0))return;

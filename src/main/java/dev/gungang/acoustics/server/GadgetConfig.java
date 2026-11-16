@@ -67,6 +67,8 @@ public final class GadgetConfig {
             // M95 now uses a damage multiplier; old fixed headshot damage is superseded.
             if(id.equals("m95")&&e.getKey().equals("headshotDamage"))continue;
             // Pre-throw-only hand axes had these keys. Ignore them when upgrading existing servers.
+            // The toe's critical spikes now scale with a multiplier of the length-based DPS.
+            if(id.equals("toe")&&e.getKey().equals("criticalDamagePerSecond"))continue;
             if(id.equals("hand_axe")&&java.util.Set.of("meleeDamage","meleeCooldownSeconds").contains(e.getKey()))continue;
             if(!merged.has(e.getKey()))throw new IllegalArgumentException("Unknown item option: "+e.getKey());merged.add(e.getKey(),e.getValue());
         }
