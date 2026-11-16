@@ -30,7 +30,6 @@ import net.minecraftforge.fml.common.Mod;
 @Mod.EventBusSubscriber(modid=GungangAcoustics.ID)
 public final class Fallout {
     public static final String GUN_ID="zeta:ultimatum";
-    private static final DustParticleOptions GREEN=new DustParticleOptions(new org.joml.Vector3f(.42f,1f,.18f),2.2f);
     private static final DustParticleOptions DARK=new DustParticleOptions(new org.joml.Vector3f(.16f,.55f,.08f),3f);
     private record Zone(ServerLevel level,Vec3 center,long end,UUID owner) { }
     private static final class Exposure { int hits; long next; }
@@ -79,10 +78,7 @@ public final class Fallout {
             var level=zone.level();var c=zone.center();
             if(level.getGameTime()%3==0){
                 int count=(int)Math.min(60,radius*radius*1.6);
-                for(int i=0;i<count;i++){
-                    double angle=level.random.nextDouble()*Math.PI*2,r=radius*Math.sqrt(level.random.nextDouble());
-                    level.sendParticles(GREEN,c.x+Math.cos(angle)*r,c.y+level.random.nextDouble()*Math.min(2.5,radius),c.z+Math.sin(angle)*r,1,0,.05,0,0);
-                }
+                ParticlePatterns.emit(level,ParticlePatterns.FALLOUT,c.x,c.y,c.z,radius,count,0x6BFF2E,0x6BFF2E,2.2f);
             }
             for(var body:level.getEntitiesOfClass(LivingEntity.class,new AABB(c,c).inflate(radius+2),CombatRules::target))
                 if(!inside.containsKey(body)&&!SafeZones.contains(body)&&inside(body,zone,radius))inside.put(body,zone);

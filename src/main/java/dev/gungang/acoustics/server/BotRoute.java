@@ -24,6 +24,8 @@ final class BotRoute {
     private record Step(int kind,Vec3 pos,Vec3 landing,BlockPos cell) { }
     private final ArrayDeque<Step> steps=new ArrayDeque<>();
     private Vec3 target,point,leverStand;
+    private BotNavGraph.Search search;
+    private Vec3 searchGoal;
     /** Shutters with no usable switch, and jump/pad landings that failed for real, skipped for a while. */
     private final Map<Long,Integer> blocked=new HashMap<>();
     private final Map<Long,Integer> failedSwitches=new HashMap<>();
@@ -34,7 +36,7 @@ final class BotRoute {
     private int leverSince,usedAt,doorSince,presses;
     private String state="없음";
 
-    void clear(){steps.clear();target=null;point=null;lever=null;usedLever=null;door=null;presses=0;state="없음";}
+    void clear(){steps.clear();search=null;searchGoal=null;target=null;point=null;lever=null;usedLever=null;door=null;presses=0;state="없음";}
     void reset(){clear();blocked.clear();failedSwitches.clear();}
     void avoidCurrent(int now){if(point!=null)blocked.put(BlockPos.containing(point).asLong(),now+200);clear();}
     boolean active(){return target!=null&&!steps.isEmpty();}
@@ -53,8 +55,15 @@ final class BotRoute {
             if(flat(bot.position(),goal)<FAR*FAR){clear();return Result.OFF;}
             if(BotNavGraph.searchSpent())return Result.WAIT;
             blocked.values().removeIf(until->now>=until);
-            var nodes=graph.route(bot,goal,blocked.keySet());
+            if(search==null||search.graph!=graph||searchGoal.distanceToSqr(goal)>.25
+                    ||!search.blocked.equals(blocked.keySet())||graph.snap(bot.position())!=search.start){
+                search=graph.search(bot,goal,blocked.keySet());searchGoal=goal;
+                if(search==null){clear();return Result.NONE;}
+            }
+            var nodes=graph.route(bot,search);
+            if(nodes==null&&!search.done)return Result.WAIT;
             if(nodes==null){clear();return Result.NONE;}
+            search=null;searchGoal=null;
             load(nodes);target=goal;
         }
         return follow(bot,arena,graph,now);

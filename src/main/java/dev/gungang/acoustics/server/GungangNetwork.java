@@ -11,10 +11,11 @@ import net.minecraftforge.network.simple.SimpleChannel;
 
 public final class GungangNetwork {
     private static boolean accepts(String version) {
-        return version.equals("5") || version.equals(NetworkRegistry.ABSENT) || version.equals(NetworkRegistry.ACCEPTVANILLA);
+        return version.equals("6") || version.equals(NetworkRegistry.ABSENT) || version.equals(NetworkRegistry.ACCEPTVANILLA);
     }
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-            new ResourceLocation(GungangAcoustics.ID, "server"), () -> "5", GungangNetwork::accepts, GungangNetwork::accepts);
+            new ResourceLocation(GungangAcoustics.ID, "server"), () -> "6", GungangNetwork::accepts, GungangNetwork::accepts);
+    public record ParticlePattern(int kind,double x,double y,double z,float radius,int count,int first,int second,float scale){}
     public record Acoustics(String json) { }
     public record Lobby(String json) { }
     public record Equipment(String json) { }
@@ -93,6 +94,10 @@ public final class GungangNetwork {
     /** Longest lobby action value: the game options JSON, with room for every mode's section and a long excluded-block list. */
     static final int ACTION_VALUE=8192;
     public static void register() {
+        CHANNEL.registerMessage(56,ParticlePattern.class,(p,b)->{b.writeByte(p.kind);b.writeDouble(p.x);b.writeDouble(p.y);b.writeDouble(p.z);b.writeFloat(p.radius);b.writeVarInt(p.count);b.writeInt(p.first);b.writeInt(p.second);b.writeFloat(p.scale);},
+                b->new ParticlePattern(b.readUnsignedByte(),b.readDouble(),b.readDouble(),b.readDouble(),b.readFloat(),b.readVarInt(),b.readInt(),b.readInt(),b.readFloat()),(p,context)->{
+                    var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.PatternParticles.receive(p)));ctx.setPacketHandled(true);
+                },Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(55,ShurikenImpact.class,(p,b)->{b.writeVarInt(p.entity);b.writeDouble(p.x);b.writeDouble(p.y);b.writeDouble(p.z);b.writeBoolean(p.block);b.writeBoolean(p.confirmed);},
                 b->new ShurikenImpact(b.readVarInt(),b.readDouble(),b.readDouble(),b.readDouble(),b.readBoolean(),b.readBoolean()),(p,context)->{
                     var ctx=context.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->dev.gungang.acoustics.client.ShurikenImpactFx.receive(p)));ctx.setPacketHandled(true);

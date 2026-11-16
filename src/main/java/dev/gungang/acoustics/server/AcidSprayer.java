@@ -171,7 +171,8 @@ public final class AcidSprayer {
         int interval=Math.max(1,ExtraGadgetConfig.ticks(config.damageIntervalSeconds()));
         var hurt=new HashSet<LivingEntity>();
         int clouds=CLOUDS.size();
-        for(var cloud:CLOUDS){
+        for(int cloudIndex=0;cloudIndex<clouds;cloudIndex++){
+            var cloud=CLOUDS.get(cloudIndex);
             var level=cloud.level;long now=level.getGameTime();
             if(cloud.to!=null){
                 double t=Math.min(1,(double)(now-cloud.pushStart)/Math.max(1,cloud.pushEnd-cloud.pushStart));
@@ -179,7 +180,10 @@ public final class AcidSprayer {
                 cloud.position=cloud.from.add(cloud.to.subtract(cloud.from).scale(eased));
                 if(t>=1)cloud.to=null;
             }
-            particles(level,cloud,config.cloudRadius(),clouds);
+            // Rotate which clouds emit when there are more clouds than the global particle budget permits.
+            int visible=Math.min(clouds,PARTICLE_BUDGET/2);
+            int first=(int)Math.floorMod(now/2*visible,(long)clouds);
+            if(Math.floorMod(cloudIndex-first,clouds)<visible)particles(level,cloud,config.cloudRadius(),visible);
             if(now%interval!=0)continue;
             double r=config.cloudRadius();var c=cloud.position;
             for(var body:level.getEntitiesOfClass(LivingEntity.class,new AABB(c,c).inflate(r+1),HiddenWeaponTargets::valid)){
@@ -219,12 +223,11 @@ public final class AcidSprayer {
      */
     private static void particles(ServerLevel level,Cloud cloud,double radius,int clouds){
         if(level.getGameTime()%2!=0)return;
-        var c=cloud.position;var random=level.random;
+        var c=cloud.position;
         int count=particlesPerCloud(radius,clouds),dark=Math.max(1,count/3);
         double spread=radius*.45,vertical=radius*.27;
         level.sendParticles(GAS,c.x,c.y,c.z,count-dark,spread,vertical,spread,0);
         level.sendParticles(GAS_DARK,c.x,c.y,c.z,dark,spread,vertical,spread,0);
-        if(clouds<=8&&random.nextInt(3)==0)level.sendParticles(ParticleTypes.ITEM_SLIME,c.x,c.y,c.z,2,radius*.4,.3,radius*.4,.02);
     }
 
     /** No reload: after regenDelaySeconds without firing, one round per regenIntervalSeconds up to the magazine. */
