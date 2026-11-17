@@ -66,6 +66,7 @@ final class BotPropHunt {
     private record Option(BlockPos feet,double score){}
     private static final class SearchWork {
         final ArrayList<Option> options=new ArrayList<>();
+        final Map<BlockPos,Integer> pathTimeouts=new HashMap<>();
         final PropEntity prop;
         final net.minecraft.world.level.block.state.BlockState block;
         final String item;
@@ -73,17 +74,20 @@ final class BotPropHunt {
         final double radius;
         final boolean avoid;
         int sampled,scored;
-        boolean sorted;
+        boolean sorted,finalized;
+        Direction wall;
+        double wallHeight;
         SearchWork(PropEntity prop,Vec3 centre,double radius,boolean avoid){
             this.prop=prop;this.block=prop.state();this.item=prop.item();this.centre=centre;this.radius=radius;this.avoid=avoid;
         }
     }
     private SearchWork searchWork;
     private static int searchBudgetTick=Integer.MIN_VALUE,searchBudget;
+    private static long searchDeadline;
     /** Shared candidate/raycast budget, separate from the existing pathfinding budget. */
     private static boolean searchSlot(int now){
-        if(searchBudgetTick!=now){searchBudgetTick=now;searchBudget=24;}
-        if(searchBudget<=0)return false;
+        if(searchBudgetTick!=now){searchBudgetTick=now;searchBudget=24;searchDeadline=System.nanoTime()+4_000_000;}
+        if(searchBudget<=0||System.nanoTime()>=searchDeadline)return false;
         searchBudget--;return true;
     }
     private int travelSince,nextSearch,fleeUntil,calmSince,nextTaunt,nextAbility,nextPerceive,struckAt=-1000,missAt=-1000,toggledAt=-1;
@@ -91,6 +95,17 @@ final class BotPropHunt {
     private boolean reconsider;
     private double nervous;
     private Vec3 fleeTo;
+    private int nextEscape;
+    private EscapeWork escapeWork;
+    private static final class EscapeWork {
+        final Vec3 here,centre;
+        final List<Option> options=new ArrayList<>();
+        final int started;
+        int sampled,chosen,checked,limitedRetries;
+        boolean sorted;
+        net.minecraft.world.level.pathfinder.Path path;
+        EscapeWork(Vec3 here,Vec3 centre,int now){this.here=here;this.centre=centre;started=now;}
+    }
     /** Where it holds still once hidden (on a wall: up on the wall). */
     private Vec3 holdPos;
     /** Q wall cling: the wall of the chosen spot, the height to climb to, and whether it now hangs there. */
@@ -132,7 +147,7 @@ final class BotPropHunt {
     private final Map<UUID,Integer> rememberedAt=new HashMap<>();
 
     void reset(BotAgent a,PropHuntMatch hunt){
-        searchWork=null;
+        searchWork=null;escapeWork=null;nextEscape=0;
         reactions.reset();
         var server=BotManager.server();int now=server==null?0:server.getTickCount();
         aiming=null;shotPending=false;quarry=null;investigate=null;seenAt.clear();seenTick.clear();
@@ -141,7 +156,7 @@ final class BotPropHunt {
         threats=List.of();nervous=0;fleeTo=null;reconsider=false;lastItem="";toggledAt=-1;
         holdPos=null;clingWall=null;clinging=false;ramTarget=null;revertAt=-1;nextFidget=now+600+random.nextInt(600);
         lastThreatAt=-10000;roaming=false;sweepTo=null;recentSpots.clear();exposed.clear();nextRoam=now+roamDelay();
-        nextTaunt=now+400+random.nextInt(400);nextAbility=now;nextPerceive=now;
+        nextTaunt=now+400+random.nextInt(400);nextAbility=now;nextPerceive=now+Math.floorMod(a.slot,5);
         nerve=.35+random.nextDouble()*.3;boldness=.3+random.nextDouble()*.6;
         if(a.bot!=null){aimYaw=a.bot.getYRot();aimPitch=a.bot.getXRot();}
         if(!a.team.equals("ALPHA"))a.movement.prepareSpawnExit();
@@ -149,6 +164,7 @@ final class BotPropHunt {
     }
     void tick(BotAgent a,PropHuntMatch hunt,int now)throws Exception{
         if(state!=Hide.SEARCH)searchWork=null;
+        if(state!=Hide.FLEE)escapeWork=null;
         if(!hunt.hunting()&&!hunt.hiding()){a.bot.getNavigation().stop();mode="종료";return;}
         if(a.team.equals("ALPHA"))hide(a,hunt,now);else seek(a,hunt,now);
     }
@@ -186,7 +202,7 @@ final class BotPropHunt {
                 cleared.put(aiming.cell().asLong(),now+(aiming.prop()==null?1200:500)+random.nextInt(400));aiming=null;
             }
         }
-        if(aiming==null&&now>=nextScan){nextScan=now+12;scan(a,hunt,disguises,now);}
+        if(aiming==null&&now>=nextScan&&searchSlot(now)){nextScan=now+12;scan(a,hunt,disguises,now);}
         if(aiming!=null){
             var prop=aiming.prop();
             if(prop!=null&&(prop.isRemoved()||prop.marker()))aiming=null;
@@ -232,14 +248,14 @@ final class BotPropHunt {
                 }
             }
             if(sweepTo!=null){
-                if(now>=a.nextPath||bot.getNavigation().isDone()){
+                if(now>=a.nextPath&&!BotMovement.spent()){
                     a.nextPath=now+10;
                     if(a.movement.travel(bot,BotManager.arena(),a.team,sweepTo,now,false))sweepTo=null;
                 }
                 return;
             }
         }
-        if(now>=a.nextPath||bot.getNavigation().isDone()){a.nextPath=now+BotManager.settings().pathTicks();a.movement.travel(bot,BotManager.arena(),a.team,null,now,true);}
+        if(now>=a.nextPath&&!BotMovement.spent()){a.nextPath=now+BotManager.settings().pathTicks();a.movement.travel(bot,BotManager.arena(),a.team,null,now,true);}
     }
     /** What this seeker notices in front of it this glance, scored alike for real blocks and disguises. */
     private void scan(BotAgent a,PropHuntMatch hunt,List<PropEntity> disguises,int now){
@@ -285,6 +301,7 @@ final class BotPropHunt {
     }
     /** How out of place a block (or a disguise standing at {@code position}) looks; about 0 for walls, about 1 for a misfit. */
     private static double awkward(Level level,BlockPos pos,BlockState state,Vec3 position){
+        if(!loaded(level,pos,3))return 0;
         double score=.2;
         // Off the block grid, or hovering at a fractional height.
         double offX=Math.abs(position.x-Math.floor(position.x)-.5),offZ=Math.abs(position.z-Math.floor(position.z)-.5);
@@ -347,7 +364,7 @@ final class BotPropHunt {
         a.nextShot=now+(result.equals("SUCCESS")?14:4);
     }
     private void go(BotAgent a,Vec3 point,int now){
-        if(now<a.nextPath&&!a.bot.getNavigation().isDone())return;
+        if(now<a.nextPath||BotMovement.spent())return;
         a.nextPath=now+10;
         var bot=a.bot;var arena=BotManager.arena();
         // Aim at the block's centre, but walk to reachable feet beside/below it, including airborne disguises.
@@ -399,7 +416,7 @@ final class BotPropHunt {
         var own=hunt.prop(a.bot.getUUID());if(own!=null&&own.item().equals(PartyBlocks.AUTO)){a.bot.getNavigation().stop();a.movement.halt(a.bot);mode="자율 전투";return;}
         var bot=a.bot;var prop=bot.disguise();if(prop==null)return;
         if(!prop.item().equals(lastItem)){boolean first=lastItem.isEmpty();lastItem=prop.item();toggledAt=-1;if(!first)reconsider=true;}
-        if(now>=nextPerceive){nextPerceive=now+5;perceive(a,hunt,prop,now);}
+        if(now>=nextPerceive&&searchSlot(now)){nextPerceive=now+5;perceive(a,hunt,prop,now);}
         // Seeing a seeker is enough to run; never freeze in its line of fire waiting to be hit.
         if(hunt.hunting()&&!threats.isEmpty()&&state!=Hide.FLEE&&state!=Hide.RAM)flee(a,now);
         reactions.tick(bot,hunt,now,!threats.isEmpty()||state==Hide.FLEE||state==Hide.RAM);
@@ -488,9 +505,9 @@ final class BotPropHunt {
         }
         // Keep completed candidates when another bot consumed this tick's path budget.
         if(BotMovement.spent())return;
-        searchWork=null;nextSearch=now+20+random.nextInt(5);
         // Blocks that belong on walls (paintings, signs, torches...) also try hanging there (Q), well above the floor.
-        Direction wallChoice=null;double heightChoice=0;
+        Direction wallChoice=work.wall;double heightChoice=work.wallHeight;
+        if(!work.finalized){
         if(wallBlock(prop)&&!options.isEmpty()){
             var top=options.stream().max(Comparator.comparingDouble(Option::score)).get();
             for(var option:new ArrayList<>(options)){
@@ -499,26 +516,38 @@ final class BotPropHunt {
                 double h=1+random.nextInt(3)*.5,bonus=prop.item().equals("minecraft:painting")?1.8:.9;
                 if(option.score()+bonus>top.score()){top=new Option(option.feet(),option.score()+bonus);wallChoice=wall;heightChoice=h;}
             }
-            if(wallChoice!=null){options.remove(top);options.add(0,top);}
+            if(wallChoice!=null){var chosenFeet=top.feet();options.removeIf(o->o.feet().equals(chosenFeet));options.add(0,top);}
         }
         if(wallChoice==null)options.sort(Comparator.comparingDouble(Option::score).reversed());
         else{var first=options.remove(0);options.sort(Comparator.comparingDouble(Option::score).reversed());options.add(0,first);}
+        work.wall=wallChoice;work.wallHeight=heightChoice;work.finalized=true;
+        }
         int tries=0;
         for(var option:options){
-            if(tries++>=3||BotMovement.spent())break;
+            if(work.pathTimeouts.getOrDefault(option.feet(),0)>=2)continue;
+            if(tries++>=3)break;
+            if(BotMovement.spent())return;
             var destination=Vec3.atBottomCenterOf(option.feet());
             if(graph!=null&&bot.position().distanceToSqr(destination)>BotRoute.FAR*BotRoute.FAR&&graph.reachable(bot.position(),destination)){
                 if(a.movement.travel(bot,arena,a.team,destination,now,false))continue;
                 spot=option.feet();state=Hide.TRAVEL;travelSince=now;clingWall=null;clingHeight=0;return;
             }
             var path=BotMovement.path(bot,option.feet(),0);
-            if(path!=null&&path.canReach()&&bot.getNavigation().moveTo(path,avoidSeen?.85:1)){
-                spot=option.feet();state=Hide.TRAVEL;travelSince=now;
-                boolean hang=tries==1&&wallChoice!=null&&hunt.clingEnabled();clingWall=hang?wallChoice:null;clingHeight=hang?heightChoice:0;
+            if((path==null||!path.canReach())&&BotPathBudget.limited()){
+                // Retry at most twice per candidate, without labelling it an unreachable map location.
+                work.pathTimeouts.merge(option.feet(),1,Integer::sum);
                 return;
             }
+            if(path!=null&&path.canReach()&&bot.getNavigation().moveTo(path,avoidSeen?.85:1)){
+                searchWork=null;
+                spot=option.feet();state=Hide.TRAVEL;travelSince=now;
+                boolean hang=option==options.get(0)&&wallChoice!=null&&hunt.clingEnabled();clingWall=hang?wallChoice:null;clingHeight=hang?heightChoice:0;
+                return;
+            }
+            work.pathTimeouts.put(option.feet(),2);
         }
         // Nothing reachable: widen the search, and in the end settle right here.
+        searchWork=null;nextSearch=now+20+random.nextInt(5);
         searchRadius=Math.max(8,searchRadius*.8);
         if(now-calmSince>200&&options.isEmpty()){spot=bot.blockPosition();settle(a,hunt,prop,now);}
     }
@@ -529,6 +558,7 @@ final class BotPropHunt {
     /** The score's block lookups: what is around, walls, roof, light, spawns, other hiders, recent spots (plus noise). */
     private double quick(BotAgent a,PropEntity prop,BlockPos feet,List<PropEntity> others){
         var bot=a.bot;var level=bot.level();var arena=BotManager.arena();var mine=prop.state();var point=Vec3.atBottomCenterOf(feet);
+        if(!loaded(level,feet,7))return -1000;
         double s=0;int same=0,similar=0;
         for(var q:BlockPos.betweenClosed(feet.offset(-3,-1,-3),feet.offset(3,2,3))){
             var state=level.getBlockState(q);if(state.isAir())continue;
@@ -555,6 +585,7 @@ final class BotPropHunt {
     /** The score's sight lines and ground probes: open directions, ways out, and whether a seeker seen lately could see it. */
     private double thorough(BotAgent a,BlockPos feet){
         var bot=a.bot;var level=bot.level();var point=Vec3.atBottomCenterOf(feet);double s=0;
+        if(!loaded(level,feet,8))return -1000;
         int open=0;
         for(int i=0;i<8;i++){
             double angle=i*Math.PI/4;var to=point.add(Math.cos(angle)*7,.5,Math.sin(angle)*7);
@@ -584,10 +615,11 @@ final class BotPropHunt {
                 var dir=new Vec3(target.x-bot.getX(),0,target.z-bot.getZ()).normalize().scale(.25);
                 bot.setDeltaMovement(dir.x,PropHuntGame.jumpVelocity(bot,(int)Math.min(20,(target.y-bot.getY())*7)),dir.z);bot.hurtMarked=true;return;
             }
-            if(BotMovement.spent())return;
+            if(now<a.nextPath||BotMovement.spent())return;
+            a.nextPath=now+10;
             if(a.movement.travel(bot,BotManager.arena(),a.team,target,now,false)){state=Hide.SEARCH;nextSearch=now;}
         }
-        else if(now>=a.nextPath){a.nextPath=now+10;a.movement.travel(bot,BotManager.arena(),a.team,target,now,false);}
+        else if(now>=a.nextPath&&!BotMovement.spent()){a.nextPath=now+10;a.movement.travel(bot,BotManager.arena(),a.team,target,now,false);}
         // Out of hiding time (or stuck): take the nearest decent cell rather than be caught walking.
         if(now-travelSince>(hunt.hiding()?900:400)){spot=bot.blockPosition();settle(a,hunt,prop,now);}
     }
@@ -672,7 +704,7 @@ final class BotPropHunt {
             mode="자리 옮기는 중";return;
         }
         // A new block that fits this place badly moves on, but only while nobody watches.
-        if(reconsider&&threats.isEmpty()&&now>=nextSearch){
+        if(reconsider&&threats.isEmpty()&&now>=nextSearch&&searchSlot(now)){
             reconsider=false;
             double here=score(a,hunt,prop,spot==null?bot.blockPosition():spot);
             if(here<1.2){state=Hide.SEARCH;searchCentre=bot.position();searchRadius=16;avoidSeen=true;nextSearch=now;}
@@ -767,7 +799,7 @@ final class BotPropHunt {
     /** Found out (or about to be): run from the seekers it knows about, toward ground they cannot see. */
     private void flee(BotAgent a,int now){
         if(state!=Hide.FLEE)exposed.put(a.bot.blockPosition(),now+600);
-        if(state!=Hide.FLEE){expose(now);state=Hide.FLEE;fleeUntil=now+300;calmSince=now;fleeTo=null;release(a.bot);a.movement.halt(a.bot);a.nextPath=now;}
+        if(state!=Hide.FLEE){expose(now);state=Hide.FLEE;fleeUntil=now+300;calmSince=now;fleeTo=null;escapeWork=null;nextEscape=now;release(a.bot);a.movement.halt(a.bot);a.nextPath=now;}
     }
     private void fleeing(BotAgent a,PropHuntMatch hunt,PropEntity prop,int now){
         var bot=a.bot;mode="발각 · 도주";
@@ -783,8 +815,8 @@ final class BotPropHunt {
         if(now-calmSince>60||now>fleeUntil){
             state=Hide.SEARCH;searchCentre=bot.position();searchRadius=18;avoidSeen=true;nextSearch=now;nervous=0;return;
         }
-        if(fleeTo==null||bot.getNavigation().isDone()||now%20==0&&watched){
-            if(!BotMovement.spent()){var next=escape(a,known);if(next!=null)fleeTo=next;}
+        if(escapeWork!=null||now>=nextEscape&&(fleeTo==null||bot.getNavigation().isDone()||watched)){
+            var next=escape(a,known,now);if(next!=null)fleeTo=next;
         }
         // Charged leaps make it a hard target at close range.
         var nearest=threats.stream().mapToDouble(Threat::distance).min().orElse(99);
@@ -820,7 +852,11 @@ final class BotPropHunt {
             ramTarget=null;flee(a,now);return;
         }
         var to=ramTarget.position();
-        bot.getNavigation().moveTo(to.x,to.y,to.z,1.2);
+        if(now>=a.nextPath&&!BotMovement.spent()){
+            a.nextPath=now+5;
+            var path=BotMovement.path(bot,BlockPos.containing(to),1);
+            if(path!=null)bot.getNavigation().moveTo(path,1.2);
+        }
         bot.getLookControl().setLookAt(ramTarget,30,30);
     }
     /**
@@ -886,38 +922,58 @@ final class BotPropHunt {
         return null;
     }
     /** A reachable point away from the known seekers, preferably out of their sight. */
-    private Vec3 escape(BotAgent a,List<Vec3> seekers){
+    private Vec3 escape(BotAgent a,List<Vec3> seekers,int now){
         var bot=a.bot;var level=bot.level();var arena=BotManager.arena();var here=bot.position();
         Vec3 centre=seekers.isEmpty()?here.add(bot.getLookAngle().scale(-4)):seekers.stream().reduce(Vec3.ZERO,Vec3::add).scale(1.0/seekers.size());
+        if(escapeWork==null||now-escapeWork.started>60||escapeWork.here.distanceToSqr(here)>16)
+            escapeWork=new EscapeWork(here,centre,now);
+        var work=escapeWork;var options=work.options;
         double nearestNow=seekers.stream().mapToDouble(s->s.distanceTo(here)).min().orElse(99);
-        record Escape(BlockPos feet,double score){}
-        var options=new ArrayList<Escape>();
-        for(int i=0;i<16;i++){
+        int allowance=2;
+        while(work.sampled<22){
+            if(allowance--<=0||!searchSlot(now))return null;
+            int sample=work.sampled++;
             double angle=random.nextDouble()*Math.PI*2,r=4+random.nextDouble()*15;
-            var feet=BotMovement.ground(bot,arena,here.add(Math.cos(angle)*r,0,Math.sin(angle)*r));if(feet==null)continue;
+            Vec3 at=work.here.add(Math.cos(angle)*r,0,Math.sin(angle)*r);
+            // Keep the old six away-from-danger fallback directions, but score them incrementally too.
+            if(sample>=16){
+                double base=Math.atan2(work.here.z-work.centre.z,work.here.x-work.centre.x);
+                double turn=new double[]{0,.6,-.6,1.2,-1.2,Math.PI}[sample-16];
+                at=new Vec3(work.centre.x+Math.cos(base+turn)*11,work.here.y,work.centre.z+Math.sin(base+turn)*11);
+            }
+            var feet=BotMovement.ground(bot,arena,at);if(feet==null)continue;
             var point=Vec3.atBottomCenterOf(feet);
             double nearest=seekers.stream().mapToDouble(s->s.distanceTo(point)).min().orElse(99);
             if(nearest<Math.min(4,nearestNow))continue;
             int ways=exits(bot,feet);
             double score=Math.min(24,nearest)+point.subtract(here).normalize().dot(here.subtract(centre).normalize())*2+(ways>=2?8:-12);
             for(var s:seekers)if(blocked(level,s.add(0,1.5,0),point.add(0,.5,0),bot))score+=24;
-            options.add(new Escape(feet,score));
+            options.add(new Option(feet,score));
         }
-        options.sort(Comparator.comparingDouble(Escape::score).reversed());
-        for(var option:options.stream().limit(3).toList()){
-            if(BotMovement.spent())return null;
-            var path=BotMovement.path(bot,option.feet(),0);
-            if(path==null||!path.canReach())continue;
-            boolean safe=true;
-            for(int n=0;n<path.getNodeCount();n++){
-                var step=Vec3.atBottomCenterOf(path.getNode(n).asBlockPos());
-                if(seekers.stream().anyMatch(seeker->seeker.distanceToSqr(step)<9&&clear(level,seeker.add(0,1.5,0),step.add(0,.5,0),bot))){safe=false;break;}
+        if(!work.sorted){options.sort(Comparator.comparingDouble(Option::score).reversed());work.sorted=true;}
+        if(work.chosen<Math.min(6,options.size())){
+            var option=options.get(work.chosen);
+            if(work.path==null){
+                if(BotMovement.spent())return null;
+                work.path=BotMovement.path(bot,option.feet(),0);work.checked=0;
+                if(work.path==null||!work.path.canReach()){
+                    work.path=null;
+                    if(!BotPathBudget.limited()||++work.limitedRetries>=2){work.chosen++;work.limitedRetries=0;}
+                    return null;
+                }
             }
-            if(safe&&bot.getNavigation().moveTo(path,1))return Vec3.atBottomCenterOf(option.feet());
+            int checked=0;
+            while(work.checked<work.path.getNodeCount()){
+                if(checked++>=8||!searchSlot(now))return null;
+                var step=Vec3.atBottomCenterOf(work.path.getNode(work.checked++).asBlockPos());
+                if(seekers.stream().anyMatch(seeker->seeker.distanceToSqr(step)<9&&clear(level,seeker.add(0,1.5,0),step.add(0,.5,0),bot))){work.path=null;work.chosen++;return null;}
+            }
+            if(bot.getNavigation().moveTo(work.path,1)){
+                escapeWork=null;nextEscape=now+20;return Vec3.atBottomCenterOf(option.feet());
+            }
+            work.path=null;work.chosen++;return null;
         }
-        var fallback=a.movement.escape(bot,arena,centre,8);
-        if(fallback!=null)bot.getNavigation().moveTo(fallback.x,fallback.y,fallback.z,1);
-        return fallback;
+        escapeWork=null;nextEscape=now+10;return null;
     }
     /** Shot by a seeker but still alive: found out, so run. */
     void struck(LivingEntity seeker){
@@ -942,10 +998,18 @@ final class BotPropHunt {
     // ---- sight ----
     private static boolean sees(LivingEntity viewer,Vec3 point){return clear(viewer.level(),viewer.getEyePosition(),point,viewer);}
     private static boolean clear(Level level,Vec3 from,Vec3 to,net.minecraft.world.entity.Entity viewer){
+        for(int cx=Mth.floor(Math.min(from.x,to.x))>>4;cx<=Mth.floor(Math.max(from.x,to.x))>>4;cx++)
+            for(int cz=Mth.floor(Math.min(from.z,to.z))>>4;cz<=Mth.floor(Math.max(from.z,to.z))>>4;cz++)
+                if(!level.hasChunk(cx,cz))return false;
         var hit=level.clip(new ClipContext(from,to,ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,viewer));
         return hit.getType()==HitResult.Type.MISS||hit.getLocation().distanceToSqr(to)<.36;
     }
     private static boolean blocked(Level level,Vec3 from,Vec3 to,net.minecraft.world.entity.Entity viewer){return !clear(level,from,to,viewer);}
+    private static boolean loaded(Level level,BlockPos pos,int radius){
+        for(int cx=(pos.getX()-radius)>>4;cx<=(pos.getX()+radius)>>4;cx++)
+            for(int cz=(pos.getZ()-radius)>>4;cz<=(pos.getZ()+radius)>>4;cz++)if(!level.hasChunk(cx,cz))return false;
+        return true;
+    }
     private static boolean inView(float yaw,Vec3 eye,Vec3 point,double fov){
         var d=point.subtract(eye);float angle=(float)(Mth.atan2(d.z,d.x)*180/Math.PI)-90;
         return Math.abs(Mth.wrapDegrees(angle-yaw))<=fov/2;

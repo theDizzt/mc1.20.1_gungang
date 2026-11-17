@@ -76,10 +76,10 @@ final class BotMovement {
     }
     static void newTick() {pathBudget=PATHS_PER_TICK;}
     /** The budget ran out this tick: callers retry next tick rather than treating "no path" as a real failure. */
-    static boolean spent() {return pathBudget<=0;}
+    static boolean spent() {return pathBudget<=0||BotPathBudget.spent();}
     static int remainingPaths(){return pathBudget;}
     static net.minecraft.world.level.pathfinder.Path path(BotEntity bot,BlockPos target,int accuracy) {
-        if(pathBudget<=0)return null;
+        if(spent())return null;
         pathBudget--;return bot.getNavigation().createPath(target,accuracy);
     }
     private boolean pendingMove,findExit,departingSpawn;
@@ -285,6 +285,7 @@ final class BotMovement {
                     else moved=nav.moveTo(ground.getX()+.5,ground.getY(),ground.getZ()+.5,1);
                 }
                 if(!moved) {
+                    if(BotPathBudget.limited()){pendingMove=true;return doneChasing;}
                     if(bot.parkour.start(bot,arena,goal,now))return false;
                     failed(bot.position(),goal,now,ground==null?"목적지 주변에 안전한 지면 없음":"경로가 막혔거나 목적지까지 이어지지 않음");nav.stop();route.clear();doneChasing|=chasing;goal=null;exit=null;chasing=false;progressPos=null;
                 }

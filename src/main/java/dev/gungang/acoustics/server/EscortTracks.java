@@ -15,10 +15,12 @@ public final class EscortTracks extends SavedData {
     private final Set<BlockPos> markers=new HashSet<>();
     private static final Set<ServerLevel> DIRTY=Collections.newSetFromMap(new WeakHashMap<>());
     long revision;
+    private static long markerRevision;
+    static long markerRevision(){return markerRevision;}
     public static EscortTracks get(ServerLevel level){return level.getDataStorage().computeIfAbsent(EscortTracks::load,EscortTracks::new,"gungang_escort_tracks");}
     private static EscortTracks load(CompoundTag tag){var data=new EscortTracks();data.revision=tag.getLong("Revision");for(long p:tag.getLongArray("Markers"))data.markers.add(BlockPos.of(p));return data;}
     @Override public CompoundTag save(CompoundTag tag){tag.putLong("Revision",revision);tag.putLongArray("Markers",markers.stream().mapToLong(BlockPos::asLong).toArray());return tag;}
-    public static void changed(ServerLevel level,BlockPos pos,boolean add){var data=get(level);if(add)data.markers.add(pos.immutable());else data.markers.remove(pos);data.setDirty();DIRTY.add(level);}
+    public static void changed(ServerLevel level,BlockPos pos,boolean add){markerRevision++;var data=get(level);if(add)data.markers.add(pos.immutable());else data.markers.remove(pos);data.setDirty();DIRTY.add(level);}
     @SubscribeEvent public static void tick(net.minecraftforge.event.TickEvent.ServerTickEvent event){
         if(event.phase!=net.minecraftforge.event.TickEvent.Phase.END)return;
         for(var level:List.copyOf(DIRTY)){

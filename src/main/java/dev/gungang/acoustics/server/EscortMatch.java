@@ -22,8 +22,7 @@ public final class EscortMatch {
         var l=server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,new net.minecraft.resources.ResourceLocation(map.dimension())));
         if(l==null)throw new IllegalArgumentException("호위 맵 차원이 없습니다.");return l;
     }
-    public static EscortRoute validate(MinecraftServer server,ArenaMap map){
-        var r=EscortRoute.scan(level(server,map),map.escort());
+    static EscortRoute validate(ArenaMap map,EscortRoute r){
         if(r.length>2048)throw new IllegalArgumentException("호위 경로는 2048블록 이하여야 합니다.");
         for(var spawn:map.escort().respawns())if(spawn.checkpoint()>r.checkpoints.size())throw new IllegalArgumentException("존재하지 않는 체크포인트 부활 설정");
         return r;

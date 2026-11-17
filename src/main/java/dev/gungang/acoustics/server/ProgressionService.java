@@ -21,7 +21,7 @@ public final class ProgressionService {
     private static final Set<String> FIELDS=Set.of("xp","matches","wins","kills","deaths","damage","playSeconds");
     /** Opens player-db.json on its own so a broken weapon/map/xp config cannot leave every player without records. */
     public static void open() throws java.io.IOException {
-        if(database==null)database=new PlayerDatabase(ServerFiles.root().resolve("player-db.json"));
+        if(database==null)database=PlayerDatabase.background(ServerFiles.root().resolve("player-db.json"));
     }
     public static void configure(MinecraftServer server) throws java.io.IOException {
         open();
@@ -97,7 +97,20 @@ public final class ProgressionService {
         }
         catch(Exception e) {com.mojang.logging.LogUtils.getLogger().error("[GunGang] Player database login failed",e);}
     }
-    @SubscribeEvent public static void stopped(ServerStoppedEvent event) {database=null;table=XpTable.defaults();}
+    private static boolean saveFailureReported;
+    @SubscribeEvent public static void saving(net.minecraftforge.event.TickEvent.ServerTickEvent event){
+        if(event.phase!=net.minecraftforge.event.TickEvent.Phase.END||database==null||event.getServer().getTickCount()%20!=0)return;
+        boolean failed=database.saveFailure()!=null;
+        if(failed&&!saveFailureReported)for(var p:event.getServer().getPlayerList().getPlayers())if(p.hasPermissions(2))
+            p.sendSystemMessage(Component.literal("[GunGang] 플레이어 DB 저장에 실패해 재시도 중입니다. 서버 로그와 저장 공간을 확인하세요.").withStyle(net.minecraft.ChatFormatting.RED));
+        saveFailureReported=failed;
+    }
+    // Stopped runs after LobbyManager's stopping handler records the final match statistics.
+    @SubscribeEvent public static void stopped(ServerStoppedEvent event) {
+        try{if(database!=null)database.close();}
+        catch(java.io.IOException error){com.mojang.logging.LogUtils.getLogger().error("[GunGang] Final player database save failed",error);}
+        finally{database=null;table=XpTable.defaults();saveFailureReported=false;}
+    }
     public static void finish(MinecraftServer server,MatchSnapshot match) {
         if(database==null) {com.mojang.logging.LogUtils.getLogger().error("[GunGang] Player database unavailable; match statistics not saved");return;}
         try {

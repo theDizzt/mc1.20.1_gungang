@@ -335,12 +335,18 @@ public final class BotManager {
                 // A bot tick over 20 ms is a visible hitch: log which bot and what it was doing (at most every 5 s).
                 if(ms>=20&&server.getTickCount()>=slowLogAt){
                     slowLogAt=server.getTickCount()+100;
-                    LogUtils.getLogger().warn("[GunGang] Slow bot tick: {} took {} ms ({})",a.name(),ms,a.bot==null?"spawning":a.tactics.action());
+                    LogUtils.getLogger().warn("[GunGang] Slow bot tick: {} took {} ms ({})",a.name(),ms,a.bot==null?"spawning":MatchManager.realPropHunt()!=null?a.propHunt.describe():a.tactics.action());
                 }
             }
         }
         catch(Exception error){fail(error);}
-        finally{long elapsed=System.nanoTime()-start;workNanos+=elapsed;workSamples++;maxWorkNanos=Math.max(maxWorkNanos,elapsed);}
+        finally{
+            long elapsed=System.nanoTime()-start;workNanos+=elapsed;workSamples++;maxWorkNanos=Math.max(maxWorkNanos,elapsed);
+            if(elapsed>=25_000_000&&server.getTickCount()>=slowLogAt){
+                slowLogAt=server.getTickCount()+100;
+                LogUtils.getLogger().warn("[GunGang] Slow bot group: {} bots took {} ms (propHunt={})",agents.size(),elapsed/1_000_000,MatchManager.realPropHunt()!=null);
+            }
+        }
     }
 
     // ---- events ----

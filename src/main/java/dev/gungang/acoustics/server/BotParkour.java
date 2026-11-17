@@ -121,19 +121,33 @@ final class BotParkour {
      * and vanilla gravity/drag as {@link #steer}, the body swept between ticks.
      */
     static int padFlight(Vec3 from,double velocity,Vec3 landing,java.util.function.Predicate<Vec3> clear){
-        double x=from.x,y=from.y,z=from.z,vy=velocity;
-        for(int t=1;t<=120;t++){
+        var flight=new PadFlight(from,velocity,landing);
+        while(flight.step(clear)==0){}
+        return flight.result;
+    }
+    /** Resumable prediction. One step performs at most three swept-body collision checks. */
+    static final class PadFlight {
+        private final Vec3 landing;
+        private double x,y,z,vy;
+        private int t,result;
+        PadFlight(Vec3 from,double velocity,Vec3 landing){
+            x=from.x;y=from.y;z=from.z;vy=velocity;this.landing=landing;
+        }
+        /** 0 pending, -1 unreachable, positive = landing tick, matching padFlight. */
+        int step(java.util.function.Predicate<Vec3> clear){
+            if(result!=0)return result;
+            t++;
             double rx=landing.x-x,rz=landing.z-z,rest=Math.sqrt(rx*rx+rz*rz),mx=0,mz=0;
             if(y>=landing.y+.1&&rest>1e-6){double scale=Math.min(PAD_SPEED,rest)/rest;mx=rx*scale;mz=rz*scale;}
             double nx=x+mx,ny=y+vy,nz=z+mz;
             if(vy<0&&ny<=landing.y){
                 double ax=landing.x-nx,az=landing.z-nz;
-                return ax*ax+az*az<=.0225&&clear.test(new Vec3(nx,landing.y,nz))?t:-1;
+                return result=ax*ax+az*az<=.0225&&clear.test(new Vec3(nx,landing.y,nz))?t:-1;
             }
-            for(int sub=1;sub<=3;sub++)if(!clear.test(new Vec3(x+(nx-x)*sub/3,y+(ny-y)*sub/3,z+(nz-z)*sub/3)))return -1;
+            for(int sub=1;sub<=3;sub++)if(!clear.test(new Vec3(x+(nx-x)*sub/3,y+(ny-y)*sub/3,z+(nz-z)*sub/3)))return result=-1;
             x=nx;y=ny;z=nz;vy=(vy-.08)*.98;
+            return result=t>=120?-1:0;
         }
-        return -1;
     }
     /** Called by the body's travel method, exactly once per physics tick. */
     Vec3 steer(BotEntity bot) {
