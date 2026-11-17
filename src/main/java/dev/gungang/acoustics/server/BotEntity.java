@@ -58,6 +58,12 @@ public final class BotEntity extends PathfinderMob {
         return new GroundPathNavigation(this,level){
             @Override protected PathFinder createPathFinder(int nodes){
                 nodeEvaluator=new WalkNodeEvaluator(){
+                    @Override public int getNeighbors(Node[] neighbors,Node node){
+                        // Let vanilla drain its frontier and return its best partial path normally.
+                        // Throwing here would skip evaluator/profiler cleanup.
+                        if(BotPathBudget.expired())return 0;
+                        return super.getNeighbors(neighbors,node);
+                    }
                     @Override protected Node getNode(int x,int y,int z) {
                         Node node=super.getNode(x,y,z);
                         // Personal experience changes cost, never the terrain's walkability or collision type.
@@ -89,7 +95,15 @@ public final class BotEntity extends PathfinderMob {
                 nodeEvaluator.setCanPassDoors(true);
                 // Swim at the surface (the bot jumps in water) instead of treating water as a wall.
                 nodeEvaluator.setCanFloat(true);
-                return new PathFinder(nodeEvaluator,nodes);
+                return new PathFinder(nodeEvaluator,nodes){
+                    @Override public net.minecraft.world.level.pathfinder.Path findPath(net.minecraft.world.level.PathNavigationRegion region,
+                            net.minecraft.world.entity.Mob mob,java.util.Set<net.minecraft.core.BlockPos> targets,float range,int accuracy,float multiplier){
+                        if(MatchManager.realPropHunt()==null)return super.findPath(region,mob,targets,range,accuracy,multiplier);
+                        if(!BotPathBudget.begin())return null;
+                        try{return super.findPath(region,mob,targets,range,accuracy,Math.min(multiplier,512f/Math.max(1,nodes)));}
+                        finally{BotPathBudget.end();}
+                    }
+                };
             }
         };
     }
