@@ -73,14 +73,24 @@ public final class MatchManager {
     private static boolean running;
     private static int ticks;
     private static final CaptureFloor floor = new CaptureFloor();
+    @SubscribeEvent(priority=EventPriority.LOWEST)
+    public static void tickCaptureFloor(net.minecraftforge.event.TickEvent.ServerTickEvent event){
+        if(event.phase==net.minecraftforge.event.TickEvent.Phase.END)floor.tick();
+    }
+    @SubscribeEvent(priority=EventPriority.LOWEST)
+    public static void restoreCaptureFloor(net.minecraftforge.event.server.ServerStoppingEvent event){floor.shutdown();}
     private static final CapturePresence presence = new CapturePresence();
     public static void prepare(MinecraftServer s, ArenaMap arena, DeathmatchRules teamDeathmatch) {
+        if(arena.escort()!=null)throw new IllegalArgumentException("호위 경로 검사를 완료한 뒤 준비해야 합니다.");
+        prepare(s,arena,teamDeathmatch,null);
+    }
+    static void prepare(MinecraftServer s,ArenaMap arena,DeathmatchRules teamDeathmatch,EscortRoute escortRoute){
+        if(arena.escort()!=null)EscortMatch.validate(arena,Objects.requireNonNull(escortRoute));
         PAYLOADS.clear();SENT.clear();
         learningMatch++;
         TeamPoints.clear(s);
         PropHuntMatch.endTest();
         BombDrops.clear(s);
-        var escortRoute=arena.escort()==null?null:EscortMatch.validate(s,arena);
         // Before EscortMatch records its own marker flags, so its close restores to the hidden state first.
         EscortTracks.hideMarkers(s);
         // Every mode starts with escort spawn gates off; only an EscortMatch turns its stage on.
@@ -234,7 +244,7 @@ public final class MatchManager {
         PAYLOADS.keySet().retainAll(packets.keySet());
         SENT.keySet().retainAll(server.getPlayerList().getPlayers());
     }
-    @SubscribeEvent public static void clearSnapshotCache(net.minecraftforge.event.server.ServerStoppedEvent event){PAYLOADS.clear();SENT.clear();}
+    @SubscribeEvent public static void clearSnapshotCache(net.minecraftforge.event.server.ServerStoppedEvent event){PAYLOADS.clear();SENT.clear();floor.clear();}
     public static void end(String winner) {
         TeamPoints.clear(server);
         BombDrops.clear(server);
