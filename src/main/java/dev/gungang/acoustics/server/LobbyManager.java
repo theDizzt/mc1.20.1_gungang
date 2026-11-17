@@ -48,6 +48,41 @@ public final class LobbyManager {
     private static String selectedMode="CONTROL";
     private static int deadline;
     private static ArenaMap activeMap;
+    private static EscortRouteScan escortScan;
+    private static java.util.function.Consumer<EscortRoute> escortComplete;
+    private static java.util.function.BooleanSupplier escortCurrent;
+    private static void cancelEscortScan(){
+        if(escortScan!=null)escortScan.close();
+        escortScan=null;escortComplete=null;escortCurrent=null;
+    }
+    private static void scanEscort(ArenaMap arena,java.util.function.BooleanSupplier valid,java.util.function.Consumer<EscortRoute> complete){
+        cancelEscortScan();
+        var scan=new EscortRouteScan(level(arena),arena.escort());
+        var expectedFiles=files;String expectedMap=selected,expectedMode=selectedMode;boolean expectedEnabled=enabled;
+        escortScan=scan;
+        escortCurrent=()->enabled==expectedEnabled&&phase.equals("LOBBY")&&files==expectedFiles&&selected.equals(expectedMap)&&selectedMode.equals(expectedMode)&&valid.getAsBoolean();
+        escortComplete=route->complete.accept(EscortMatch.validate(arena,route));
+        for(var p:server.getPlayerList().getPlayers())if(PLAYERS.containsKey(p.getUUID()))
+            p.sendSystemMessage(Component.literal("호위 경로를 확인하고 있습니다. 완료되면 자동으로 진행합니다."));
+    }
+    private static void tickEscortScan(){
+        if(escortScan==null)return;
+        if(!escortCurrent.getAsBoolean()){cancelEscortScan();return;}
+        var scan=escortScan;
+        try{
+            var route=scan.advance();if(route==null)return;
+            var complete=escortComplete;
+            escortScan=null;escortComplete=null;escortCurrent=null;
+            try{complete.accept(route);}finally{scan.close();}
+            broadcast(false);
+        }catch(Exception error){
+            scan.close();cancelEscortScan();
+            Throwable cause=error;while(cause instanceof java.util.concurrent.CompletionException&&cause.getCause()!=null)cause=cause.getCause();
+            LogUtils.getLogger().warn("[GunGang] Escort preparation failed",cause);
+            for(var p:server.getPlayerList().getPlayers())if(PLAYERS.containsKey(p.getUUID())||p.hasPermissions(2))
+                p.sendSystemMessage(Component.literal("호위 경로 확인 실패: "+cause.getMessage()).withStyle(ChatFormatting.RED));
+        }
+    }
     private static final String TAG = "GunGangIssued";
     private static final class Entry {
         String team = "UNASSIGNED", primary = "", secondary = "";
@@ -68,12 +103,13 @@ public final class LobbyManager {
         try { ProgressionService.open(); } catch (Exception failure) { LogUtils.getLogger().error("GunGang player database could not be loaded", failure); }
         try { reload(); } catch (Exception failure) { LogUtils.getLogger().error("GunGang config could not be loaded; previous files were not overwritten", failure); }
     }
-    @SubscribeEvent public static void stopping(ServerStoppingEvent event) { if (enabled) close(); }
+    @SubscribeEvent public static void stopping(ServerStoppingEvent event) { cancelEscortScan();if (enabled) close(); }
     @SubscribeEvent public static void stopped(ServerStoppedEvent event) { server = null; files = null; loadouts = null; PLAYERS.clear(); }
     private static void reload() throws Exception {
         reload(true);
     }
     private static void reload(boolean force) throws Exception {
+        cancelEscortScan();
         BombDrops.clear(server);
         if (!phase.equals("LOBBY")) throw new IllegalStateException("경기 중에는 설정을 다시 읽을 수 없습니다.");
         var candidate = ServerFiles.load();
@@ -197,6 +233,7 @@ public final class LobbyManager {
         send(p,true);
     }
     private static void close() {
+        cancelEscortScan();
         if (!phase.equals("LOBBY") && activeMap != null) finish("ABORTED");
         BotManager.clearLobby();
         enabled = false; phase = "LOBBY";
@@ -213,8 +250,10 @@ public final class LobbyManager {
         root.then(Commands.literal("escorttrack").requires(s->s.hasPermission(2)).executes(c->run(c.getSource(),()->{
             if(!phase.equals("LOBBY"))throw new IllegalStateException("로비에서만 선로를 갱신할 수 있습니다.");
             var arena=selectedArena();if(arena==null||arena.escort()==null)throw new IllegalArgumentException("호위 맵을 먼저 선택하세요.");
-            var route=EscortMatch.validate(server,arena);EscortTracks.get(level(arena)).rebuild(level(arena),route);
-            c.getSource().sendSuccess(()->Component.literal("호위 선로 생성 완료: "+Math.round(route.length)+"m / 체크포인트 "+route.checkpoints.size()+"개"),false);
+            scanEscort(arena,()->true,route->{
+                EscortTracks.get(level(arena)).rebuild(level(arena),route);
+                c.getSource().sendSuccess(()->Component.literal("호위 선로 생성 완료: "+Math.round(route.length)+"m / 체크포인트 "+route.checkpoints.size()+"개"),false);
+            });
         })));
         root.then(Commands.literal("lobby").executes(c -> run(c.getSource(), () -> {
             reopenLobby(c.getSource().getPlayerOrException());
@@ -464,11 +503,14 @@ public final class LobbyManager {
     private static void select(String id) {
         if (LobbyRules.RANDOM_MAP.equals(id) && files != null && files.maps().stream().noneMatch(m -> m.id().equals(id))) { randomMap(); return; }
         if (!enabled || !phase.equals("LOBBY") || files.maps().stream().noneMatch(m -> m.id().equals(id))) throw new IllegalArgumentException("선택할 수 없는 맵입니다.");
+        cancelEscortScan();
         if(selected.equals(id))return;
         var candidate=files.maps().stream().filter(m->m.id().equals(id)).findFirst().orElseThrow();
-        if(candidate.escort()!=null){var route=EscortMatch.validate(server,candidate);EscortTracks.get(level(candidate)).rebuild(level(candidate),route);}
-        selected = id; normalizeMode(); PLAYERS.values().forEach(e -> e.ready = false); broadcast(false);
+        if(candidate.escort()!=null){
+            scanEscort(candidate,()->true,route->{EscortTracks.get(level(candidate)).rebuild(level(candidate),route);selectReady(id);});
+        }else selectReady(id);
     }
+    private static void selectReady(String id){selected=id;normalizeMode();PLAYERS.values().forEach(e->e.ready=false);broadcast(false);}
     private static List<String> modes(ArenaMap arena) {
         if(arena.propHunt()!=null)return List.of("PROP_HUNT");
         var modes=new ArrayList<>(arena.freeForAll()!=null?(arena.bomb()!=null?List.of("BOMB","FREE_FOR_ALL","DEATHMATCH"):List.of("FREE_FOR_ALL","DEATHMATCH")):arena.escort()!=null?List.of("ESCORT","DEATHMATCH"):LobbyRules.modes(arena.normandy() != null, arena.capture() != null, arena.bomb() != null));
@@ -489,7 +531,12 @@ public final class LobbyManager {
         var maps = files.maps().stream().filter(m -> m != current || randomModes(m).size() > 1).toList();
         ArenaMap map = LobbyRules.pick(maps.isEmpty() ? files.maps() : maps, current, random);
         String mode = LobbyRules.pick(randomModes(map), map == current ? selectedMode : null, random);
-        if(map.escort()!=null){var route=EscortMatch.validate(server,map);EscortTracks.get(level(map)).rebuild(level(map),route);}
+        cancelEscortScan();
+        if(map.escort()!=null){
+            scanEscort(map,()->true,route->{EscortTracks.get(level(map)).rebuild(level(map),route);randomMapReady(map,mode);});
+        }else randomMapReady(map,mode);
+    }
+    private static void randomMapReady(ArenaMap map,String mode){
         selected = map.id(); selectedMode = mode;
         PLAYERS.values().forEach(e -> e.ready = false);
         String label = switch (mode) { case "PROP_HUNT" -> "숨바꼭질"; case "FREE_FOR_ALL" -> "개인전"; case "ESCORT" -> "호위"; case "BOMB" -> "폭탄전"; case "DEATHMATCH" -> "팀 데스매치"; case "NORMANDY" -> "이동점령"; default -> "쟁탈전"; };
@@ -646,11 +693,12 @@ public final class LobbyManager {
     }
     /** Starts with the current team entries regardless of ready flags; unassigned players watch as spectators. */
     private static void forceStart() {
+        if(escortScan!=null)throw new IllegalStateException("호위 경로를 확인 중입니다. 완료된 뒤 강제 시작을 다시 요청하세요.");
         if (!enabled || !phase.equals("LOBBY")) throw new IllegalStateException("열린 로비에서만 강제 시작할 수 있습니다.");
         if (selected.isEmpty()) throw new IllegalStateException("먼저 맵을 선택하세요.");
         if (PLAYERS.values().stream().noneMatch(e -> e.team.equals("ALPHA") || e.team.equals("BRAVO"))) throw new IllegalStateException("ALPHA 또는 BRAVO 참가자가 없습니다.");
         PLAYERS.values().stream().filter(e -> e.team.equals("UNASSIGNED")).forEach(e -> e.team = "SPECTATOR");
-        prepare(); broadcast(false);
+        prepare(true); broadcast(false);
     }
     private static boolean allReady() {
         return !selected.isEmpty() && LobbyRules.allReady(PLAYERS.values().stream().map(e -> new LobbyRules.Readiness(e.team, e.ready)).toList());
@@ -663,21 +711,31 @@ public final class LobbyManager {
         return level;
     }
     private static void prepare() {
-        activeMap = files.maps().stream().filter(m -> m.id().equals(selected)).findFirst().orElseThrow();
+        prepare(false);
+    }
+    private static void prepare(boolean forced) {
+        if(escortScan!=null)return;
+        var arena=files.maps().stream().filter(m->m.id().equals(selected)).findFirst().orElseThrow();
         DeathmatchRules deathmatch=selectedMode.equals("DEATHMATCH")?options().game().deathmatch(options().deathmatch()):null;
-        activeMode=selectedMode;
-        activeMap=options().game().apply(modeArena(activeMap,selectedMode,options().game()),selectedMode);
-        level(activeMap);
-        if(activeMap.propHunt()!=null)PropHuntMatch.validate(server,activeMap,catalog());
-        if(activeMap.escort()!=null)EscortMatch.validate(server,activeMap);
+        arena=options().game().apply(modeArena(arena,selectedMode,options().game()),selectedMode);
+        level(arena);
+        if(arena.propHunt()!=null)PropHuntMatch.validate(server,arena,catalog());
         if(LobbyRules.bots(selectedMode))BotManager.validate(catalog());
+        if(arena.escort()!=null){
+            var prepared=arena;
+            scanEscort(arena,()->forced?PLAYERS.values().stream().anyMatch(e->e.team.equals("ALPHA")||e.team.equals("BRAVO")):allReady(),
+                    route->prepareReady(prepared,deathmatch,route));
+        }else prepareReady(arena,deathmatch,null);
+    }
+    private static void prepareReady(ArenaMap arena,DeathmatchRules deathmatch,EscortRoute route){
+        activeMode=selectedMode;activeMap=arena;
         handicap();
         var choices=allocateLoadouts();
         choices.forEach((id,choice)->{var e=PLAYERS.get(id);e.primary=choice[0];e.secondary=choice[1];});
         phase = "PREPARING"; deadline = server.getTickCount() + preparationSeconds(activeMap)*20;
         GadgetManager.clearAll(server);
         CombatGadgets.reset(server);
-        MatchManager.prepare(server, activeMap, deathmatch);
+        MatchManager.prepare(server, activeMap, deathmatch,route);
         hooks(activeMap.onPrepare());
         for (var p : server.getPlayerList().getPlayers()) {
             Entry e = PLAYERS.get(p.getUUID()); if (e == null) continue;
@@ -897,6 +955,7 @@ public final class LobbyManager {
     }
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END || server == null) return;
+        tickEscortScan();
         int now = server.getTickCount();
         tickRespawns(now);
         if(activeMap!=null&&(phase.equals("PREPARING")||phase.equals("RUNNING"))){

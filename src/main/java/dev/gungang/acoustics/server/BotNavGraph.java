@@ -56,6 +56,8 @@ final class BotNavGraph {
     private final ArrayDeque<long[]> chunks=new ArrayDeque<>();
     private final List<BlockPos> switches=new ArrayList<>(),shutters=new ArrayList<>();
     private final Map<Integer,int[]> landings=new HashMap<>();
+    private final Map<Integer,Integer> padHeights=new HashMap<>();
+    private PadSearch padSearch;
     private int finished=-1;
     private int scanY,prepareShutter,prepareSwitch;
     private net.minecraft.world.level.chunk.LevelChunk scanning;
@@ -140,16 +142,18 @@ final class BotNavGraph {
         }
         int end=Math.min(cells.length,finished+FINISH_PER_TICK);
         while(finished<end){
-            if((finished&255)==0&&System.nanoTime()>=deadline)return;
-            int i=finished++;
+            if(System.nanoTime()>=deadline)return;
+            int i=finished;
             int x=x0+i%w,z=z0+(i/w)%d,y=y0+i/(w*d);
-            if(stand(x,y,z,null,null,null)<0)continue;
+            if(stand(x,y,z,null,null,null)<0){finished++;continue;}
             if(parts[i]<0)parts[i]=i;
-            if((cells[i]&PAD)!=0)padLandings(i,level,x,y,z);
+            if((cells[i]&PAD)!=0&&!padLandings(i,x,y,z,deadline))return;
             int from=i;moves(x,y,z,null,null,null,(nx,ny,nz,cost,kind)->union(from,index(nx,ny,nz)));
+            finished++;
         }
         if(finished>=cells.length){
             ready=true;
+            padHeights.clear();
             com.mojang.logging.LogUtils.getLogger().info("[GunGang] Bot map grid ready for {}: {}x{}x{}, {} pads, {} shutters, {} switches",
                     arena.id(),w,h,d,landings.size(),shutters.size(),switches.size());
         }
@@ -170,6 +174,7 @@ final class BotNavGraph {
                 var state=data.getBlockState(x&15,y&15,z&15);
                 int kind=kind(state,chunk,pos.set(x,y,z));
                 cells[i]=(short)kind;
+                if(state.getBlock() instanceof JumpPadBlock pad)padHeights.put(i,pad.height);
                 if((kind&SWITCH)!=0)switches.add(pos.immutable());
                 if(state.getBlock() instanceof ShutterBlock)shutters.add(pos.immutable());
             }
@@ -218,14 +223,37 @@ final class BotNavGraph {
         return true;
     }
     /** Every ledge a launch from this pad lands on: rise straight up, then drift over at walking pace. */
-    private void padLandings(int i,ServerLevel level,int x,int y,int z){
-        if(!(level.getBlockState(new BlockPos(x,y,z)).getBlock() instanceof JumpPadBlock pad))return;
-        double velocity=MotionRules.jumpVelocity(pad.height);var found=new ArrayList<Integer>();
-        for(int ly=y;ly<=y+pad.height&&found.size()<32;ly++)for(int dx=-7;dx<=7;dx++)for(int dz=-7;dz<=7;dz++){
-            if(dx*dx+dz*dz<2||stand(x+dx,ly,z+dz,null,null,null)<0)continue;
-            if(BotParkour.padFlight(new Vec3(x+.5,y+.125,z+.5),velocity,new Vec3(x+dx+.5,ly,z+dz+.5),this::bodyClear)>0)found.add(index(x+dx,ly,z+dz));
+    private boolean padLandings(int i,int x,int y,int z,long deadline){
+        // Height comes from the scanned chunk; never reload a chunk during graph finalization.
+        if(padSearch==null){
+            var height=padHeights.get(i);if(height==null)return true;
+            padSearch=new PadSearch(x,y,z,height);
         }
-        if(!found.isEmpty())landings.put(i,found.stream().mapToInt(Integer::intValue).toArray());
+        var search=padSearch;
+        while(search.ly<=search.top&&search.found.size()<32){
+            if(System.nanoTime()>=deadline)return false;
+            if(search.flight==null){
+                if(search.dx*search.dx+search.dz*search.dz<2||stand(x+search.dx,search.ly,z+search.dz,null,null,null)<0){search.next();continue;}
+                search.flight=new BotParkour.PadFlight(search.from,search.velocity,new Vec3(x+search.dx+.5,search.ly,z+search.dz+.5));
+            }
+            int result=search.flight.step(this::bodyClear);
+            if(result==0)continue;
+            if(result>0)search.found.add(index(x+search.dx,search.ly,z+search.dz));
+            search.flight=null;search.next();
+        }
+        if(!search.found.isEmpty())landings.put(i,search.found.stream().mapToInt(Integer::intValue).toArray());
+        padSearch=null;
+        return true;
+    }
+    private static final class PadSearch {
+        final Vec3 from;
+        final double velocity;
+        final int top;
+        final List<Integer> found=new ArrayList<>();
+        int ly,dx=-7,dz=-7;
+        BotParkour.PadFlight flight;
+        PadSearch(int x,int y,int z,int height){from=new Vec3(x+.5,y+.125,z+.5);velocity=MotionRules.jumpVelocity(height);ly=y;top=y+height;}
+        void next(){if(++dz>7){dz=-7;if(++dx>7){dx=-7;ly++;}}}
     }
     /** A standing body at p touches only open cells. */
     boolean bodyClear(Vec3 p){
