@@ -62,11 +62,19 @@ public final class BearTrapEntity extends Entity {
         if(speed!=null&&speed.getModifier(ROOT)==null)speed.addTransientModifier(new AttributeModifier(ROOT,"GunGang bear trap",-1,AttributeModifier.Operation.MULTIPLY_TOTAL));
         level().playSound(null,blockPosition(),SoundEvents.IRON_TRAPDOOR_CLOSE,SoundSource.PLAYERS,1.4f,.6f);
         level().playSound(null,blockPosition(),SoundEvents.ANVIL_LAND,SoundSource.PLAYERS,.5f,1.6f);
+        var attacker=((ServerLevel)level()).getEntity(owner());
+        var config=GadgetConfig.bearTrap;
+        target.invulnerableTime=0;
+        CombatRules.quietly(()->{
+            boolean hit=config.damage()<=0||target.hurt(damageSources().thrown(this,attacker),(float)config.damage());
+            if(hit&&target.isAlive()&&!target.isSpectator()&&!LobbyManager.respawning(target.getUUID()))
+                Bleeding.apply(target,attacker instanceof LivingEntity living?living:null,ExtraGadgetConfig.ticks(config.bleedSeconds()),config.bleedDamagePerSecond());
+        });
         hold();
     }
     private void hold() {
         var entity=victim==null?null:((ServerLevel)level()).getEntity(victim);
-        if(!(entity instanceof LivingEntity target)||!target.isAlive()||target.isSpectator()) {discard();return;}
+        if(!(entity instanceof LivingEntity target)||!target.isAlive()||target.isSpectator()||LobbyManager.respawning(target.getUUID())) {discard();return;}
         if(level().getGameTime()>=release) {
             // Breaking free leaves the leg hurt: Slowness after the pin (level 1 = amplifier 0).
             int slow=ExtraGadgetConfig.ticks(GadgetConfig.bearTrap.slowSeconds());

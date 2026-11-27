@@ -10,7 +10,7 @@ final class LoadoutRetirements {
         try(var files=Files.list(root.resolve("sub_weapons"))){
             for(var file:files.filter(p->p.getFileName().toString().endsWith(".json")).toList()){
                 var json=definition(file);
-                if(json==null||!json.has("id")||!java.util.Set.of("83","89").contains(json.get("id").getAsString()))continue;
+                if(json==null||!json.has("id")||!json.get("id").getAsString().equals("83"))continue;
                 var archive=root.resolve("dummy/sub_weapons");Files.createDirectories(archive);
                 var target=archive.resolve(file.getFileName());
                 for(int suffix=1;Files.exists(target);suffix++)target=archive.resolve(file.getFileName()+".backup-"+suffix);

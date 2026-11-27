@@ -220,6 +220,7 @@ public final class PatchHelp {
         item("rightClickDamage", "용도: 우클릭(강공격) 피해.");
         item("bleedDamagePerSecond", "용도: 출혈 상태의 초당 피해.\n산출식: 출혈 총 피해 = 초당 피해 × 출혈 시간");
         item("bleedSeconds", "용도: 출혈이 지속되는 시간(초).");
+        item("bear_trap", "damage", "용도: 적이 베어트랩을 밟는 순간 받는 피해. 이후 출혈 피해가 별도로 이어집니다. 기본값 49.");
         item("rootSeconds", "용도: 걸린 대상이 움직이지 못하는 시간(초).");
         item("slowSeconds", "용도: 속박이 풀린 뒤 이어지는 둔화 시간(초).");
         item("startDamage", "용도: 첫 1회 피해. 이후 콤보마다 '콤보마다 증가'만큼 커집니다.\n산출식: n번째 피해 = min(최대 피해, 첫 피해 + 증가 × (n − 1))");

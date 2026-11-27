@@ -37,6 +37,7 @@ u138: `gungang:wrench`(렌치)로 컨베이어 벨트를 우클릭해 연결 경
 | `spatial_wand` | 공간마법사: 좌·우클릭 영역 선택 | [공간마법사 명령](COMMANDS.md#area), OP 2 |
 | `bomb` / `defuser` | 폭탄 / 폭탄 해체기: 지급하지 않음(이전 월드 호환용 등록). 설치·해체는 E 키 | `server/sub_weapons`의 ID 98 / 99 |
 | `landmine` | 지뢰 | `item/landmine.json` |
+| `bear_trap` | 베어트랩 (보조무기 89): 피해 49 + 초당 7씩 5초 출혈, 3초 속박 후 2초 둔화 | `item/bear_trap.json` |
 | `barrier` | 방벽 | `item/barrier.json` |
 | `recovery_potion` | 회복약 | `item/recovery_potion.json` |
 | `adrenaline` | 전투자극제 | `item/adrenaline.json` |
