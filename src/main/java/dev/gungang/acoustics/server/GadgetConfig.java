@@ -11,8 +11,9 @@ public final class GadgetConfig {
     public record Barrier(double health,double range,int maxPlaced) {
         public Barrier(double health,double range){this(health,range,1);}
     }
-    public record BearTrap(double rootSeconds,double recallSeconds,int maxPlaced,double range,double slowSeconds,int slowAmplifier) {
-        public BearTrap(double root,double recall,int max,double range){this(root,recall,max,range,2,0);}
+    public record BearTrap(double rootSeconds,double recallSeconds,int maxPlaced,double range,double slowSeconds,int slowAmplifier,double damage,double bleedDamagePerSecond,double bleedSeconds) {
+        public BearTrap(double root,double recall,int max,double range){this(root,recall,max,range,2,0,49,7,5);}
+        public BearTrap(double root,double recall,int max,double range,double slow,int amplifier){this(root,recall,max,range,slow,amplifier,49,7,5);}
     }
     public record HealthPack(double heal,double cooldownSeconds) { }
     public static HealthPack smallHealthPack=new HealthPack(35,10),largeHealthPack=new HealthPack(70,15);
@@ -37,6 +38,7 @@ public final class GadgetConfig {
         Barrier b=read("barrier",Barrier.class,new Barrier(200,5),overrides,apply);
         BearTrap t=read("bear_trap",BearTrap.class,new BearTrap(3,3,1,5),overrides,apply);
         bounded(t.rootSeconds(),.05,60);bounded(t.slowSeconds(),0,60);bounded(t.slowAmplifier(),0,9);bounded(t.recallSeconds(),.05,60);bounded(t.maxPlaced(),1,32);bounded(t.range(),1,8);
+        bounded(t.damage(),0,10000);bounded(t.bleedDamagePerSecond(),0,10000);bounded(t.bleedSeconds(),0,60);
         HealthPack small=read("small_health_pack",HealthPack.class,new HealthPack(35,10),overrides,apply);
         HealthPack large=read("large_health_pack",HealthPack.class,new HealthPack(70,15),overrides,apply);
         for(var pack:java.util.List.of(small,large)){bounded(pack.heal(),0,10000);bounded(pack.cooldownSeconds(),0,86400);}

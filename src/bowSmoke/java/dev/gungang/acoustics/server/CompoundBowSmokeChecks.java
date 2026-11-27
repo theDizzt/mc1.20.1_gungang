@@ -90,9 +90,7 @@ public final class CompoundBowSmokeChecks {
                 System.out.println("COMPOUND_BOW_DAMAGE_PASS 32 48 42 63");
                 var stone=new BlockPos(0,101,4);level.setBlock(stone,Blocks.STONE.defaultBlockState(),3);
                 var stuck=arrow(false,1);level.addFreshEntity(stuck);((CompoundBow.ArrowAccess)stuck).gungang$embed(new BlockHitResult(new Vec3(.5,101,4),net.minecraft.core.Direction.NORTH,stone,false));
-                for(int i=0;i<CompoundBow.WALL_ARROW_TICKS;i++)stuck.tick();
-                check(!stuck.isRemoved(),"Wall arrow stays for 15 seconds");
-                stuck.tick();check(stuck.isRemoved(),"Wall arrow vanishes after 15 seconds");
+                check(stuck.isRemoved(),"Wall arrow vanishes immediately after impact");
                 level.removeBlock(stone,false);
                 System.out.println("COMPOUND_BOW_WALL_EXPIRY_PASS");
                 var face=new BlockHitResult(new Vec3(.5,101.5,4),net.minecraft.core.Direction.NORTH,new BlockPos(0,101,4),false);

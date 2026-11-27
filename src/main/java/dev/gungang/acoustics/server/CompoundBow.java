@@ -23,8 +23,6 @@ public final class CompoundBow {
     private static final ResourceLocation AMMO=new ResourceLocation("tacticalmilitarybow","normal_arrow");
     private static final String ISSUED="GunGangCompoundAmmo",EPOCH="GunGangBowEpoch";
     public static final int AMMO_SLOT=7; // Human hotbar slot 8.
-    /** Arrows stuck in a block vanish after 15 s instead of the bow mod's 5 minutes, so they cannot pile up. */
-    public static final int WALL_ARROW_TICKS=15*20;
     public interface ArrowAccess {
         float gungang$shotDamage();
         void gungang$embed(BlockHitResult hit);
