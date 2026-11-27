@@ -13,18 +13,21 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(targets="com.korkuluk.standalonebow.BowArrowEntity",remap=false)
 public abstract class CompoundBowArrowMixin implements CompoundBow.ArrowAccess {
     @Shadow private float damage;
-    @Shadow private int embeddedTicks;
-    @Shadow private java.util.UUID attachedEntity;
     @Shadow public abstract boolean isEmbedded();
     @Shadow public abstract void finishImpact(Vec3 hit);
     @Shadow public abstract void finishBlockImpact(BlockHitResult hit);
     @Override public float gungang$shotDamage(){return damage;}
     @Override public void gungang$embed(BlockHitResult hit){finishBlockImpact(hit);}
-    /** Block-embedded arrows only; arrows stuck in an entity keep the bow mod's own lifetime. Dev and SRG names of tick. */
+    /** Clean up previously embedded arrows, including ones restored from disk. Dev and SRG names of tick. */
     @Inject(method={"tick","m_8119_"},at=@At("HEAD"),cancellable=true,require=1)
     private void gungang$expire(CallbackInfo ci){
         var arrow=(Projectile)(Object)this;
-        if(!arrow.level().isClientSide&&isEmbedded()&&attachedEntity==null&&embeddedTicks>=CompoundBow.WALL_ARROW_TICKS){arrow.discard();ci.cancel();}
+        if(isEmbedded()){arrow.discard();ci.cancel();}
+    }
+    /** Keep impact damage/effects, then remove the embedded projectile instead of leaving it on the wall or body. */
+    @Inject(method="finishImpact",at=@At("RETURN"),require=1)
+    private void gungang$removeEmbedded(CallbackInfo ci){
+        if(isEmbedded())((Projectile)(Object)this).discard();
     }
     /** An arrow whose block was removed (e.g. a broken GunGang block) disappears instead of dropping an arrow item. */
     @Redirect(method="dropFromBrokenBlock",at=@At(value="INVOKE",target="Lnet/minecraft/world/level/Level;addFreshEntity(Lnet/minecraft/world/entity/Entity;)Z",remap=true),require=1)
