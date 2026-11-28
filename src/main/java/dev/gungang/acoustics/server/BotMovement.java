@@ -88,14 +88,16 @@ final class BotMovement {
     static void forgetExits() {EXITS.clear();}
     private Vec3 exit;
     private int nextExitScan;
-    void prepareSpawnExit() {findExit=true;departingSpawn=true;nextExitScan=0;}
+    private final java.util.Map<Vec3,Integer> failedExits=new java.util.HashMap<>();
+    private final java.util.ArrayDeque<Vec3> pendingExits=new java.util.ArrayDeque<>();
+    void prepareSpawnExit() {failedExits.clear();pendingExits.clear();findExit=true;departingSpawn=true;nextExitScan=0;}
     boolean leavingSpawn() {return exit!=null||departingSpawn;}
     /** An active objective supplies the route out; do not wait indefinitely for a separate patrol exit. */
-    void followObjectiveFromSpawn(){findExit=false;departingSpawn=false;if(exit!=null&&goal==exit)goal=null;exit=null;}
+    void followObjectiveFromSpawn(){pendingExits.clear();findExit=false;departingSpawn=false;if(exit!=null&&goal==exit)goal=null;exit=null;}
     private record ExitScan(java.util.List<Vec3> points,boolean complete) { }
     /** Resume the spawn route every tick, independently of the normal patrol path interval. */
     boolean exitSpawn(BotEntity bot,ArenaMap arena,String team,int now) {
-        if(departingSpawn&&clearOfSpawn(arena,team,bot.position()))departingSpawn=false;
+        if(departingSpawn&&clearOfSpawn(arena,team,bot.position())){departingSpawn=false;findExit=false;pendingExits.clear();}
         if(findExit&&now>=nextExitScan)leaveSpawn(bot,arena,team);
         if(exit==null&&!departingSpawn)return false;
         // Keep advancing beyond the door. With no mapped gate, short local routes can still leave a winding room.
@@ -119,12 +121,27 @@ final class BotMovement {
             if(scan.complete()) {if(!exits.isEmpty())EXITS.put(key,exits);}
             else findExit=true;
         }
-        for(var candidate:exits.stream().sorted(java.util.Comparator.comparingDouble(e->e.distanceToSqr(bot.position()))).limit(4).toList()) {
+        failedExits.values().removeIf(until->now>=until);
+        // Keep the remaining candidates across ticks instead of restarting at the nearest four.
+        pendingExits.retainAll(exits);
+        if(pendingExits.isEmpty())exits.stream()
+                .filter(e->!failedExits.containsKey(e))
+                .sorted(java.util.Comparator.comparingDouble(e->e.distanceToSqr(bot.position())))
+                .forEach(pendingExits::addLast);
+        for(int attempts=0;attempts<4&&!pendingExits.isEmpty();attempts++) {
+            // Budget exhaustion is a deferral, never evidence that this exit is unreachable.
+            if(spent()){findExit=true;return;}
+            var candidate=pendingExits.peekFirst();
             var path=path(bot,BlockPos.containing(candidate),0);
-            if(path!=null&&path.canReach()) {findExit=false;exit=candidate;goal=candidate;chasing=false;bot.getNavigation().moveTo(path,1);return;}
-            if(spent()) {findExit=true;return;}
+            if(path!=null&&path.canReach()&&bot.getNavigation().moveTo(path,1)) {
+                pendingExits.clear();findExit=false;exit=candidate;goal=candidate;chasing=false;return;
+            }
+            if(BotPathBudget.limited()){findExit=true;return;}
+            pendingExits.removeFirst();failedExits.put(candidate,now+200);
             diagnose(candidate,now,"스폰 출구 경로 탐색 실패");
         }
+        // Retry failed exits after ten seconds, while ordinary travel can still move out of the room.
+        if(!exits.isEmpty())findExit=true;
     }
     private static ExitScan scanExits(BotEntity bot,ArenaMap arena,String team) {
         var level=bot.level();var room=homeRoom(arena,team);
@@ -186,7 +203,7 @@ final class BotMovement {
         Vec3 eye=bot.getEyePosition();
         bot.getLookControl().setLookAt(eye.x-Math.sin(angle)*8,eye.y,eye.z+Math.cos(angle)*8);
     }
-    void reset() {travelHistory.reset();detour=null;recoveryGoal=null;route.reset();failureReason="없음";failurePoint=null;failureAt=0;failedRoutes.clear();recent.clear();nextExitScan=0;searching=false;exit=null;pendingMove=false;findExit=false;departingSpawn=false;goal=null;progressPos=null;chasing=false;strafing=false;nextFlip=0;reposition=null;nextReposition=0;}
+    void reset() {failedExits.clear();pendingExits.clear();travelHistory.reset();detour=null;recoveryGoal=null;route.reset();failureReason="없음";failurePoint=null;failureAt=0;failedRoutes.clear();recent.clear();nextExitScan=0;searching=false;exit=null;pendingMove=false;findExit=false;departingSpawn=false;goal=null;progressPos=null;chasing=false;strafing=false;nextFlip=0;reposition=null;nextReposition=0;}
     /** Another system (health packs) is steering; do not count that time as being stuck. */
     void interrupt() {travelHistory.reset();detour=null;progressPos=null;strafing=false;}
     /** Any other behaviour taking over the legs ends a strafe cleanly. */
