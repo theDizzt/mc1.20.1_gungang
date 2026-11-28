@@ -76,7 +76,7 @@ final class BotMovement {
     }
     static void newTick() {pathBudget=PATHS_PER_TICK;}
     /** The budget ran out this tick: callers retry next tick rather than treating "no path" as a real failure. */
-    static boolean spent() {return pathBudget<=0||BotPathBudget.spent();}
+    static boolean spent() {boolean spent=pathBudget<=0||BotPathBudget.spent();if(spent)BotPathSchedule.deferred();return spent;}
     static int remainingPaths(){return pathBudget;}
     static net.minecraft.world.level.pathfinder.Path path(BotEntity bot,BlockPos target,int accuracy) {
         if(spent())return null;

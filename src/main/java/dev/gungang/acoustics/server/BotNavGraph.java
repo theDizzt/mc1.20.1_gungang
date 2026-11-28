@@ -91,7 +91,7 @@ final class BotNavGraph {
         var graph=GRAPHS.get(arena.id()+"/"+arena.dimension());
         if(graph!=null&&!graph.ready)graph.build(level);
     }
-    static boolean searchSpent(){return searches<=0;}
+    static boolean searchSpent(){boolean spent=searches<=0;if(spent)BotPathSchedule.deferred();return spent;}
 
     /** The preview area when the map has one, else a box around both spawns; inclusive, with room for floors and heads. */
     private static int[] bounds(ArenaMap arena){
@@ -461,8 +461,8 @@ final class BotNavGraph {
     }
     /** Null with !done means yield, not an unreachable goal. Total expansions remain bounded across ticks. */
     List<Node> route(BotEntity bot,Search search){
-        if(searches<=0)return null;
-        searches--;
+        if(searchSpent())return null;
+        searches--;BotPathSchedule.serviced();
         long deadline=System.nanoTime()+SEARCH_NANOS;
         int start=search.start,end=search.end;
         var blocked=search.blocked;var g=search.g;var from=search.from;var open=search.open;

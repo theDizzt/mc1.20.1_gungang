@@ -11,7 +11,7 @@ final class BotPathBudget {
     }
     static boolean spent(){
         if(MatchManager.realPropHunt()==null)return false;
-        refresh();return calls>=4||used>=6_000_000;
+        refresh();boolean spent=calls>=4||used>=6_000_000;if(spent)BotPathSchedule.deferred();return spent;
     }
     static boolean begin(){
         refresh();limited=false;

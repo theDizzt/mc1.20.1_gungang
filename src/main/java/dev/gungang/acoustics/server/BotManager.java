@@ -285,11 +285,12 @@ public final class BotManager {
         ProgressionService.broadcastLevels(server);
     }
     static void close(){
+        BotPathSchedule.clear();
         BotDiagnostics.clear();
         for(var a:agents)a.close();agents.clear();
         BotMovement.forgetExits();BotWaypoints.forget();BotNavGraph.forget();arena=null;
     }
-    private static void removeAll(){for(var a:agents)a.remove();agents.clear();}
+    private static void removeAll(){for(var a:agents)a.remove();agents.clear();BotPathSchedule.clear();}
     static void died(UUID bot,UUID killer){var a=agent(bot);if(a!=null)a.died(killer);}
     /** Includes the zero-health body while its death event is being handled. */
     static BotEntity deathBody(UUID id){var a=agent(id);return a==null?null:a.bot;}
@@ -326,11 +327,10 @@ public final class BotManager {
         BotMovement.newTick();
         try{
             BotNavGraph.tick(level(),arena);
-            var scheduled=List.copyOf(agents);
-            // Rotate the first bot so a resumed search cannot monopolize the shared per-tick budget.
-            for(int i=0;i<scheduled.size();i++){
-                var a=scheduled.get(Math.floorMod(server.getTickCount()+i,scheduled.size()));
-                long begin=System.nanoTime();a.tick(running);
+            var scheduled=BotPathSchedule.order(agents,server.getTickCount());
+            for(var a:scheduled){
+                long begin=System.nanoTime();BotPathSchedule.begin(a);
+                try{a.tick(running);}finally{BotPathSchedule.end(server.getTickCount());}
                 long ms=(System.nanoTime()-begin)/1_000_000;
                 // A bot tick over 20 ms is a visible hitch: log which bot and what it was doing (at most every 5 s).
                 if(ms>=20&&server.getTickCount()>=slowLogAt){
