@@ -18,6 +18,8 @@ import net.minecraft.world.phys.Vec3;
 final class BotRoute {
     /** Goals closer than this go straight to vanilla pathing. */
     static final double FAR=12;
+    /** Keep the route's useful prefix while a moving target stays near its planned endpoint. */
+    private static final double REPLAN_DISTANCE_SQR=6*6,REPLAN_HEIGHT=2;
     /** BELT_SPACING: waypoints run closer on belts, so vanilla pathing between them stays on the belt's line. */
     private static final int SPACING=12,BELT_SPACING=4,BLOCK_TICKS=600,DOOR_WAIT=200,SWITCH_WALK=160;
     enum Result {OFF,WALK,HOLD,WAIT,NONE}
@@ -26,6 +28,7 @@ final class BotRoute {
     private Vec3 target,point,leverStand;
     private BotNavGraph.Search search;
     private Vec3 searchGoal;
+    private BotNavGraph plannedGraph;
     /** Shutters with no usable switch, and jump/pad landings that failed for real, skipped for a while. */
     private final Map<Long,Integer> blocked=new HashMap<>();
     private final Map<Long,Integer> failedSwitches=new HashMap<>();
@@ -36,7 +39,7 @@ final class BotRoute {
     private int leverSince,usedAt,doorSince,presses;
     private String state="없음";
 
-    void clear(){steps.clear();search=null;searchGoal=null;target=null;point=null;lever=null;usedLever=null;door=null;presses=0;state="없음";}
+    void clear(){steps.clear();search=null;searchGoal=null;plannedGraph=null;target=null;point=null;lever=null;usedLever=null;door=null;presses=0;state="없음";}
     void reset(){clear();blocked.clear();failedSwitches.clear();}
     void avoidCurrent(int now){if(point!=null)blocked.put(BlockPos.containing(point).asLong(),now+200);clear();}
     boolean active(){return target!=null&&!steps.isEmpty();}
@@ -51,11 +54,18 @@ final class BotRoute {
     Result towards(BotEntity bot,ArenaMap arena,Vec3 goal,int now){
         var graph=BotNavGraph.of(arena,bot.level());
         if(graph==null||!graph.contains(bot.position())||!graph.contains(goal)){clear();return Result.OFF;}
-        if(target==null||target.distanceToSqr(goal)>.25) {
+        // Only the final ordinary walking leg can hand over to local navigation. Never skip a
+        // pending jump, launch, drop or shutter merely because the destination moved closer.
+        if(plannedGraph==graph&&target!=null&&!movedFar(target,goal)&&steps.size()==1
+                &&steps.peekFirst().kind()==BotNavGraph.WALK&&target.distanceToSqr(goal)>.25
+                &&flat(bot.position(),goal)<FAR*FAR&&Math.abs(bot.getY()-goal.y)<REPLAN_HEIGHT){
+            clear();return Result.OFF;
+        }
+        if(target==null||plannedGraph!=graph||movedFar(target,goal)) {
             if(flat(bot.position(),goal)<FAR*FAR){clear();return Result.OFF;}
             if(BotNavGraph.searchSpent())return Result.WAIT;
             blocked.values().removeIf(until->now>=until);
-            if(search==null||search.graph!=graph||searchGoal.distanceToSqr(goal)>.25
+            if(search==null||search.graph!=graph||movedFar(searchGoal,goal)
                     ||!search.blocked.equals(blocked.keySet())||graph.snap(bot.position())!=search.start){
                 search=graph.search(bot,goal,blocked.keySet());searchGoal=goal;
                 if(search==null){clear();return Result.NONE;}
@@ -63,8 +73,10 @@ final class BotRoute {
             var nodes=graph.route(bot,search);
             if(nodes==null&&!search.done)return Result.WAIT;
             if(nodes==null){clear();return Result.NONE;}
-            search=null;searchGoal=null;
-            load(nodes);target=goal;
+            // Remember the endpoint actually searched, not the newer target position, so small
+            // movements accumulate and eventually trigger a replan instead of drifting forever.
+            var endpoint=searchGoal;search=null;searchGoal=null;
+            load(nodes);target=endpoint;plannedGraph=graph;
         }
         return follow(bot,arena,graph,now);
     }
@@ -232,4 +244,5 @@ final class BotRoute {
         bot.swing(InteractionHand.MAIN_HAND);
     }
     private static double flat(Vec3 a,Vec3 b){double x=a.x-b.x,z=a.z-b.z;return x*x+z*z;}
+    private static boolean movedFar(Vec3 a,Vec3 b){return flat(a,b)>REPLAN_DISTANCE_SQR||Math.abs(a.y-b.y)>REPLAN_HEIGHT;}
 }

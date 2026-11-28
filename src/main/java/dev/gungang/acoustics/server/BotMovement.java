@@ -283,8 +283,8 @@ final class BotMovement {
                     return doneChasing;
                 }
                 boolean walking=routed==BotRoute.Result.WALK;
-                // Mid-route, only a finished leg or a new goal needs a new vanilla path.
-                if(walking&&!changed&&!pendingMove&&!nav.isDone()&&BlockPos.containing(route.point()).equals(nav.getTargetPos()))return doneChasing;
+                // A moving final goal does not invalidate the unchanged next waypoint.
+                if(walking&&!pendingMove&&!nav.isDone()&&BlockPos.containing(route.point()).equals(nav.getTargetPos()))return doneChasing;
                 if(pendingMove)nav.stop(); // Drop the cached path so newly learned danger changes the route.
                 pathBudget--;pendingMove=false;
                 var step=walking?route.point():nearby(bot,goal);
