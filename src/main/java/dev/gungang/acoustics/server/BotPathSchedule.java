@@ -25,8 +25,9 @@ final class BotPathSchedule {
     static void begin(BotAgent agent){current=agent;denied=false;served=false;}
     static void deferred(){if(current!=null)denied=true;}
     static void serviced(){if(current!=null)served=true;}
-    static void end(int now){
+    static void end(int now,boolean running){
         if(current==null)return;
+        current.movement.metrics.tick(current,now,running,denied,served);
         if(current.bot==null||current.bot.isRemoved()||!current.bot.isAlive())waiting.remove(current.id);
         else if(denied){
             var old=waiting.get(current.id);

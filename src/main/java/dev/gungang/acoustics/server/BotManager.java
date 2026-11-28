@@ -330,7 +330,7 @@ public final class BotManager {
             var scheduled=BotPathSchedule.order(agents,server.getTickCount());
             for(var a:scheduled){
                 long begin=System.nanoTime();BotPathSchedule.begin(a);
-                try{a.tick(running);}finally{BotPathSchedule.end(server.getTickCount());}
+                try{a.tick(running);}finally{BotPathSchedule.end(server.getTickCount(),running);}
                 long ms=(System.nanoTime()-begin)/1_000_000;
                 // A bot tick over 20 ms is a visible hitch: log which bot and what it was doing (at most every 5 s).
                 if(ms>=20&&server.getTickCount()>=slowLogAt){

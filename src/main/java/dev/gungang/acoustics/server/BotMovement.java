@@ -19,6 +19,7 @@ final class BotMovement {
     void profile(BotCombatProfile value){profile=value;}
     private Vec3 goal,progressPos;
     private final BotTravelHistory travelHistory=new BotTravelHistory();
+    final BotMetrics metrics=new BotMetrics();
     private Vec3 detour;
     private int detourUntil;
     private Vec3 recoveryGoal;
@@ -203,7 +204,7 @@ final class BotMovement {
         Vec3 eye=bot.getEyePosition();
         bot.getLookControl().setLookAt(eye.x-Math.sin(angle)*8,eye.y,eye.z+Math.cos(angle)*8);
     }
-    void reset() {failedExits.clear();pendingExits.clear();travelHistory.reset();detour=null;recoveryGoal=null;route.reset();failureReason="없음";failurePoint=null;failureAt=0;failedRoutes.clear();recent.clear();nextExitScan=0;searching=false;exit=null;pendingMove=false;findExit=false;departingSpawn=false;goal=null;progressPos=null;chasing=false;strafing=false;nextFlip=0;reposition=null;nextReposition=0;}
+    void reset() {metrics.reset();failedExits.clear();pendingExits.clear();travelHistory.reset();detour=null;recoveryGoal=null;route.reset();failureReason="없음";failurePoint=null;failureAt=0;failedRoutes.clear();recent.clear();nextExitScan=0;searching=false;exit=null;pendingMove=false;findExit=false;departingSpawn=false;goal=null;progressPos=null;chasing=false;strafing=false;nextFlip=0;reposition=null;nextReposition=0;}
     /** Another system (health packs) is steering; do not count that time as being stuck. */
     void interrupt() {travelHistory.reset();detour=null;progressPos=null;strafing=false;}
     /** Any other behaviour taking over the legs ends a strafe cleanly. */
@@ -231,6 +232,7 @@ final class BotMovement {
         }
         boolean looping=goal!=null&&!pendingMove&&travelHistory.sample(bot.getX(),bot.getY(),bot.getZ(),now);
         if(looping||goal!=null&&progressPos!=null&&bot.position().distanceToSqr(progressPos)<=1&&now-progressAt>=STUCK_GIVE_UP&&!pendingMove){
+            metrics.stalled(now);
             diagnose(goal,now,looping?"반복 왕복 감지: 우회 경로 탐색":"정체 감지: 우회 경로 탐색");
             route.avoidCurrent(now);nav.stop();travelHistory.reset();progressPos=null;
             boolean retry=recoveryGoal!=null&&now<recoveryUntil&&recoveryGoal.distanceToSqr(goal)<9;
@@ -261,7 +263,7 @@ final class BotMovement {
         else if(chase==null&&chasing) {goal=null;chasing=false;}
         if(goal!=null&&goal!=exit&&flat(bot.position(),goal)<(patrolAfter?4:.16)&&Math.abs(bot.getY()-goal.y)<1.5) {doneChasing=chasing;goal=null;chasing=false;}
         if(progressPos==null||bot.position().distanceToSqr(progressPos)>1) {progressPos=bot.position();progressAt=now;}
-        else if(now-progressAt>=STUCK_GIVE_UP&&!pendingMove) {failed(bot.position(),goal,now,"3초간 위치 변화 부족: 경로 포기");nav.stop();route.clear();doneChasing|=chasing;goal=null;exit=null;chasing=false;progressAt=now;}
+        else if(now-progressAt>=STUCK_GIVE_UP&&!pendingMove) {metrics.stalled(now);failed(bot.position(),goal,now,"3초간 위치 변화 부족: 경로 포기");nav.stop();route.clear();doneChasing|=chasing;goal=null;exit=null;chasing=false;progressAt=now;}
         else if(now-progressAt>=STUCK_JUMP&&bot.onGround())bot.getJumpControl().jump();
         // Arrival picks the next waypoint in the same call, so there is no idle gap.
         if(goal==null&&patrolAfter) {goal=pick(bot,arena,team,now);changed=true;}

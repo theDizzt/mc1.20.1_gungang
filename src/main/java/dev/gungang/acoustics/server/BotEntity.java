@@ -10,6 +10,9 @@ import net.minecraftforge.registries.*;
 /** A non-persistent match participant. No vanilla hostile goals, loot, sunlight burn or mob griefing. */
 public final class BotEntity extends PathfinderMob {
     final BotParkour parkour=new BotParkour();
+    private void recordSearch(java.util.Set<net.minecraft.core.BlockPos> targets){
+        var agent=BotManager.agent(this);if(agent!=null)agent.movement.metrics.search(targets);
+    }
     @Override public void travel(net.minecraft.world.phys.Vec3 input){
         var steering=level().isClientSide?null:parkour.steer(this);
         super.travel(steering==null?input:steering);
@@ -98,8 +101,9 @@ public final class BotEntity extends PathfinderMob {
                 return new PathFinder(nodeEvaluator,nodes){
                     @Override public net.minecraft.world.level.pathfinder.Path findPath(net.minecraft.world.level.PathNavigationRegion region,
                             net.minecraft.world.entity.Mob mob,java.util.Set<net.minecraft.core.BlockPos> targets,float range,int accuracy,float multiplier){
-                        if(MatchManager.realPropHunt()==null){BotPathSchedule.serviced();return super.findPath(region,mob,targets,range,accuracy,multiplier);}
+                        if(MatchManager.realPropHunt()==null){recordSearch(targets);BotPathSchedule.serviced();return super.findPath(region,mob,targets,range,accuracy,multiplier);}
                         if(!BotPathBudget.begin())return null;
+                        recordSearch(targets);
                         BotPathSchedule.serviced();
                         try{return super.findPath(region,mob,targets,range,accuracy,Math.min(multiplier,512f/Math.max(1,nodes)));}
                         finally{BotPathBudget.end();}

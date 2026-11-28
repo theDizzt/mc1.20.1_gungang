@@ -49,7 +49,8 @@ public final class BotDiagnostics {
         return agent.status()+"\n위치="+position(bot.position())+" · 현재 경로 목표="+position(movement.diagnosticGoal(bot))
                 +" · "+movement.navigationState(bot)+"\n경로="+(path==null?"없음":path.getNextNodeIndex()+"/"+path.getNodeCount()+" · 도달 가능="+path.canReach())
                 +"\n최근 이동 계획="+position(movement.goal())
-                +"\n최근 경로 실패="+failure;
+                +"\n최근 경로 실패="+failure
+                +"\n"+movement.metrics.details(BotManager.server().getTickCount());
     }
     private static String position(Vec3 p){return p==null?"없음":String.format(Locale.ROOT,"%.1f, %.1f, %.1f",p.x,p.y,p.z);}
     static void clear(){
@@ -75,8 +76,11 @@ public final class BotDiagnostics {
             var movement=agent.movement;var goal=movement.diagnosticGoal(bot);var path=bot.getNavigation().getPath();
             String action=movement.leavingSpawn()?"스폰 탈출":agent.tactics.action().label;
             String failure=movement.failureReason();if(failure.length()>10)failure=failure.substring(0,10)+"…";
-            player.displayClientMessage(Component.literal(String.format(Locale.ROOT,"봇 %d · %s · %s · %s · 실패: %s",
-                    watch.slot+1,action,goal==null?"목표 없음":String.format(Locale.ROOT,"%.1fm",bot.position().distanceTo(goal)),movement.navigationState(bot),failure)),true);
+            boolean showMetrics=server.getTickCount()%100>=50;
+            String message=showMetrics?"봇 "+(watch.slot+1)+" · "+movement.metrics.summary(server.getTickCount())
+                    :String.format(Locale.ROOT,"봇 %d · %s · %s · %s · 실패: %s",
+                    watch.slot+1,action,goal==null?"목표 없음":String.format(Locale.ROOT,"%.1fm",bot.position().distanceTo(goal)),movement.navigationState(bot),failure);
+            player.displayClientMessage(Component.literal(message),true);
             for(var p:watch.trail)particle(player,TRAIL,p.add(0,.15,0));
             if(path!=null&&!path.isDone())for(int i=path.getNextNodeIndex(),count=0;i<path.getNodeCount()&&count<32;i++,count++)
                 particle(player,ROUTE,Vec3.atBottomCenterOf(path.getNodePos(i)).add(0,.3,0));
